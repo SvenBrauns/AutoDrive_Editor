@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="64"
+    height="64"
+    viewBox="0 0 64 64"
+>
+    <!-- Marker Körper -->
+    <path
+        d="M32 4
+           C20 4 10 12 10 25
+           C10 35 15 43 20 48
+           C25 53 27 58 30 63
+           C31 64 33 64 34 63
+           C37 58 39 53 44 48
+           C49 43 54 35 54 25
+           C54 12 44 4 32 4 Z"
+        fill="#0F2D52"
+    />
+
+    <!-- Innere Fläche -->
+    <path
+        d="M32 11
+           C23 11 16 17 16 26
+           C16 34 20 40 24 44
+           C27 47 29 51 31 55
+           C31.5 56 32.5 56 33 55
+           C35 51 37 47 40 44
+           C44 40 48 34 48 26
+           C48 17 41 11 32 11 Z"
+        fill="#1B4E8A"
+    />
+
+    <!-- Sechseckiger Kern -->
+    <polygon
+        points="
+            32,18
+            40,23
+            40,33
+            32,38
+            24,33
+            24,23
+        "
+        fill="#7EC8FF"
+        stroke="#FFFFFF"
+        stroke-width="2"
+    />
+</svg>
