@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
     QGraphicsScene,
     QGraphicsEllipseItem,
     QGraphicsLineItem,
+    QGraphicsPixmapItem,
     QWidget,
     QVBoxLayout,
     QPushButton,
@@ -23,6 +24,12 @@ from PySide6.QtCore import Qt
 
 from ui.map_view import MapView
 
+from map.background_loader import (
+    load_dds_as_pixmap
+)
+from map.background_transform import (
+    MapTransform
+)
 from items.node_item import NodeItem
 from items.marker_item import MarkerItem
 
@@ -73,6 +80,10 @@ class MainWindow(QMainWindow):
 
         self.marker_data = {}
 
+        self.background_item = None
+
+        self.map_scale = 4
+
     def load_xml(self):
 
         filename, _ = QFileDialog.getOpenFileName(
@@ -107,6 +118,19 @@ class MainWindow(QMainWindow):
         ys = [float(v) for v in y_node.text.split(";") if v]
         zs = [float(v) for v in z_node.text.split(";") if v]
 
+        bounds = MapTransform.calculate_world_bounds(
+            xs,
+            zs
+        )
+
+        try:
+            self.create_background()
+
+        except Exception as ex:
+            print(
+                "Background load failed:",
+                ex
+            )
 
         out_node = waypoint_section.find("out")
 
@@ -304,4 +328,44 @@ class MainWindow(QMainWindow):
             Y: {node.y_coord:.2f}
             Z: {node.z_coord:.2f}
             """
+        )
+
+    def create_background(self):
+        pixmap = load_dds_as_pixmap(
+            "maps/TestMap/overview.dds"
+        )
+
+        self.background_item = QGraphicsPixmapItem(
+            pixmap
+        )
+
+        background_scale = (
+            MapTransform.calculate_background_scale(
+                self.map_scale
+            )
+        )
+
+        pos_x, pos_z = (
+            MapTransform.calculate_background_position(
+                pixmap.width(),
+                pixmap.height(),
+                self.map_scale
+            )
+        )
+
+        self.background_item.setScale(
+            background_scale
+        )
+
+        self.background_item.setPos(
+            pos_x,
+            pos_z
+        )
+
+        self.background_item.setZValue(
+            -1000
+        )
+
+        self.scene.addItem(
+            self.background_item
         )
