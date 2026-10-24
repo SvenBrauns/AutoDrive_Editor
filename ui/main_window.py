@@ -661,6 +661,10 @@ class MainWindow(QMainWindow):
     def show_node_info(self, node_data):
         self.selected_node_data = node_data
 
+        self.scene_renderer.select_node(
+            node_data
+        )
+
         node_type = (
             "Regular Node"
             if node_data.is_regular
