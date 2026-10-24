@@ -17,3 +17,6 @@ __pycache__/
 
 # Backups
 *backup*
+
+# Local project configurations
+config/*.json
