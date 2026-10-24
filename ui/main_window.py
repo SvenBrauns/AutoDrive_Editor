@@ -25,6 +25,7 @@ from rendering.scene_renderer import SceneRenderer
 from ui.map_view import MapView
 from ui.interaction_mode import InteractionMode
 from rendering.items.node_item import NodeItem
+from ui.node_info_formatter import NodeInfoFormatter
 
 class MainWindow(QMainWindow):
 
@@ -47,6 +48,11 @@ class MainWindow(QMainWindow):
         )
 
         self.heightmap_manager = HeightmapManager()
+
+        self.node_info_formatter = NodeInfoFormatter(
+            background_manager=self.background_manager,
+            heightmap_manager=self.heightmap_manager
+        )
 
         self.scene_renderer = SceneRenderer(
             self.scene,
@@ -488,112 +494,25 @@ class MainWindow(QMainWindow):
             self.selected_node_data
         )
 
-    def show_node_info(self, node_data):
+    def show_node_info(
+        self,
+        node_data
+    ):
         self.selected_node_data = node_data
 
         self.scene_renderer.select_node(
             node_data
         )
 
-        node_type = (
-            "Regular Node"
-            if node_data.is_regular
-            else "Subprio Node"
+        node_info_text = (
+            self.node_info_formatter.format_node_info(
+                node_data=node_data,
+                autodrive_data=self.autodrive_data
+            )
         )
 
-        marker_data = None
-
-        if self.autodrive_data is not None:
-            marker_data = (
-                self.autodrive_data.get_marker(
-                    node_data.node_id
-                )
-            )
-
-        marker_lines = []
-
-        if marker_data is not None:
-            marker_lines.extend(
-                [
-                    "",
-                    f"Marker: {marker_data.name}",
-                    f"Gruppe: {marker_data.group}"
-                ]
-            )
-
-        heightmap_lines = []
-
-        if self.heightmap_manager.has_heightmap():
-            try:
-                height_sample = (
-                    self.heightmap_manager.get_height_at(
-                        world_x=node_data.x,
-                        world_z=node_data.z,
-                        map_scale=(
-                            self.background_manager.map_scale
-                        )
-                    )
-                )
-
-                height_difference = (
-                    height_sample.height
-                    - node_data.y
-                )
-
-                heightmap_lines.extend(
-                    [
-                        "",
-                        f"Y laut XML: {node_data.y:.3f}",
-                        (
-                            f"Y laut Heightmap: "
-                            f"{height_sample.height:.3f}"
-                        ),
-                        (
-                            f"Abweichung: "
-                            f"{height_difference:+.3f}"
-                        ),
-                        (
-                            f"Heightmap-Pixel: "
-                            f"{height_sample.pixel_x}, "
-                            f"{height_sample.pixel_y}"
-                        ),
-                        (
-                            f"Heightmap-Rohwert: "
-                            f"{height_sample.raw_value}"
-                        )
-                    ]
-                )
-
-            except ValueError as ex:
-                heightmap_lines.extend(
-                    [
-                        "",
-                        "Heightmap-Auswertung nicht möglich:",
-                        str(ex)
-                    ]
-                )
-
-        else:
-            heightmap_lines.extend(
-                [
-                    "",
-                    f"Y: {node_data.y:.3f}"
-                ]
-            )
-
-        info_lines = [
-            f"Node ID: {node_data.node_id}",
-            "",
-            f"Typ: {node_type}",
-            *marker_lines,
-            "",
-            f"X: {node_data.x:.3f}",
-            *heightmap_lines,
-            f"Z: {node_data.z:.3f}"
-        ]
-
         self.node_info.setText(
-            "\n".join(info_lines)
+            node_info_text
         )
 
     def set_interaction_mode(
