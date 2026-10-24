@@ -26,7 +26,6 @@ class NodeItem(QGraphicsEllipseItem):
         self.setPen(QPen(Qt.black))
 
         self.setFlag(QGraphicsEllipseItem.ItemIsSelectable)
-        self.setFlag(QGraphicsEllipseItem.ItemIsMovable)
 
     def mousePressEvent(self, event):
 
