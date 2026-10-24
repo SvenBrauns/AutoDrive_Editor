@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 
 from ui.interaction_mode import InteractionMode
 from ui.rotation_controls import RotationControls
+from ui.grid_controls import GridControls
 
 
 class MainWindowActions:
@@ -385,6 +386,39 @@ class MainWindowActions:
 
         self.quick_access_toolbar.addWidget(
             self.rotation_controls
+        )
+
+        self.grid_controls = GridControls(
+            grid_visible=(
+                self.window.background_manager.grid_visible
+            ),
+            grid_spacing=(
+                self.window.background_manager.grid_spacing
+            ),
+            grid_rotation=(
+                self.window.background_manager.grid_rotation
+            ),
+            parent=self.quick_access_toolbar
+        )
+
+        self.grid_controls.visibility_requested.connect(
+            self.window.set_grid_visible
+        )
+
+        self.grid_controls.spacing_requested.connect(
+            self.window.set_grid_spacing
+        )
+
+        self.grid_controls.rotation_requested.connect(
+            self.window.set_grid_rotation
+        )
+
+        self.grid_controls.reset_requested.connect(
+            self.window.reset_grid
+        )
+
+        self.quick_access_toolbar.addWidget(
+            self.grid_controls
         )
 
     def _create_editor_toolbar(self):
