@@ -1,8 +1,13 @@
 from collections.abc import Callable
 
-from PySide6.QtGui import QColor, QPen
+from PySide6.QtCore import Qt
+from PySide6.QtGui import (
+    QColor,
+    QPainterPath,
+    QPen
+)
 from PySide6.QtWidgets import (
-    QGraphicsLineItem,
+    QGraphicsPathItem,
     QGraphicsScene
 )
 
@@ -26,6 +31,10 @@ class SceneRenderer:
     DEFAULT_NODE_MIN_ZOOM = 1.0
     DEFAULT_MARKER_MIN_ZOOM = 1.0
 
+    CONNECTION_REGULAR = "regular"
+    CONNECTION_DUAL = "dual"
+    CONNECTION_REVERSE = "reverse"
+
     def __init__(
         self,
         scene: QGraphicsScene,
@@ -41,6 +50,8 @@ class SceneRenderer:
 
         self.node_layer = None
         self.marker_layer = None
+
+        self.connection_items = {}
 
         self.node_min_zoom = (
             self.DEFAULT_NODE_MIN_ZOOM
@@ -83,7 +94,7 @@ class SceneRenderer:
             on_node_selected
         )
 
-        self._render_connections(
+        self.rebuild_connections(
             autodrive_data
         )
 
@@ -98,6 +109,7 @@ class SceneRenderer:
 
     def reset(self):
         self.node_items.clear()
+        self.connection_items.clear()
 
         self.node_layer = None
         self.marker_layer = None
@@ -190,6 +202,86 @@ class SceneRenderer:
                 self.current_zoom
             )
 
+    def rebuild_connections(
+        self,
+        autodrive_data: AutoDriveData
+    ):
+        self._remove_connection_items()
+
+        connection_paths = {
+            self.CONNECTION_REGULAR: QPainterPath(),
+            self.CONNECTION_DUAL: QPainterPath(),
+            self.CONNECTION_REVERSE: QPainterPath()
+        }
+
+        for source_node in (
+            autodrive_data.get_sorted_nodes()
+        ):
+            for target_id in sorted(
+                source_node.outgoing
+            ):
+                target_node = (
+                    autodrive_data.get_node(
+                        target_id
+                    )
+                )
+
+                if target_node is None:
+                    continue
+
+                connection_type = (
+                    self._get_connection_type(
+                        source_node,
+                        target_node
+                    )
+                )
+
+                connection_path = (
+                    connection_paths[
+                        connection_type
+                    ]
+                )
+
+                connection_path.moveTo(
+                    source_node.x,
+                    source_node.z
+                )
+
+                connection_path.lineTo(
+                    target_node.x,
+                    target_node.z
+                )
+
+        connection_pens = {
+            self.CONNECTION_REGULAR: (
+                self.regular_pen
+            ),
+            self.CONNECTION_DUAL: (
+                self.dual_pen
+            ),
+            self.CONNECTION_REVERSE: (
+                self.reverse_pen
+            )
+        }
+
+        for (
+            connection_type,
+            connection_path
+        ) in connection_paths.items():
+            connection_item = (
+                self._create_connection_item(
+                    connection_path,
+                    connection_pens[
+                        connection_type
+                    ]
+                )
+            )
+
+            if connection_item is not None:
+                self.connection_items[
+                    connection_type
+                ] = connection_item
+
     def _create_layers(self):
         self.node_layer = GraphicsLayerItem()
 
@@ -234,65 +326,6 @@ class SceneRenderer:
                 node_data.node_id
             ] = node_item
 
-    def _render_connections(
-        self,
-        autodrive_data: AutoDriveData
-    ):
-        for source_node in (
-            autodrive_data.get_sorted_nodes()
-        ):
-            source_item = self.get_node_item(
-                source_node.node_id
-            )
-
-            if source_item is None:
-                continue
-
-            for target_id in sorted(
-                source_node.outgoing
-            ):
-                target_node = (
-                    autodrive_data.get_node(
-                        target_id
-                    )
-                )
-
-                target_item = self.get_node_item(
-                    target_id
-                )
-
-                if target_node is None:
-                    continue
-
-                if target_item is None:
-                    continue
-
-                connection_pen = (
-                    self._get_connection_pen(
-                        source_node,
-                        target_node
-                    )
-                )
-
-                line_item = QGraphicsLineItem(
-                    source_item.pos().x(),
-                    source_item.pos().y(),
-                    target_item.pos().x(),
-                    target_item.pos().y()
-                )
-
-                line_item.setPen(
-                    connection_pen
-                )
-
-                line_item.setZValue(
-                    self.CONNECTION_Z_VALUE
-                )
-
-                self.scene.addItem(
-                    line_item
-                )
-
     def _render_markers(
         self,
         autodrive_data: AutoDriveData
@@ -324,7 +357,51 @@ class SceneRenderer:
                 self.marker_layer
             )
 
-    def _get_connection_pen(
+    def _create_connection_item(
+        self,
+        connection_path,
+        connection_pen
+    ):
+        if connection_path.isEmpty():
+            return None
+
+        connection_item = QGraphicsPathItem(
+            connection_path
+        )
+
+        connection_item.setPen(
+            connection_pen
+        )
+
+        connection_item.setZValue(
+            self.CONNECTION_Z_VALUE
+        )
+
+        connection_item.setAcceptedMouseButtons(
+            Qt.NoButton
+        )
+
+        self.scene.addItem(
+            connection_item
+        )
+
+        return connection_item
+
+    def _remove_connection_items(self):
+        for connection_item in (
+            self.connection_items.values()
+        ):
+            if (
+                connection_item.scene()
+                is self.scene
+            ):
+                self.scene.removeItem(
+                    connection_item
+                )
+
+        self.connection_items.clear()
+
+    def _get_connection_type(
         self,
         source_node: NodeData,
         target_node: NodeData
@@ -333,15 +410,15 @@ class SceneRenderer:
             source_node,
             target_node
         ):
-            return self.dual_pen
+            return self.CONNECTION_DUAL
 
         if self._is_reverse_connection(
             source_node,
             target_node
         ):
-            return self.reverse_pen
+            return self.CONNECTION_REVERSE
 
-        return self.regular_pen
+        return self.CONNECTION_REGULAR
 
     @staticmethod
     def _is_dual_connection(
