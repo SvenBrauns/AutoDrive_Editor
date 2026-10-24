@@ -55,6 +55,10 @@ class MainWindow(QMainWindow):
             MARKER_ICON_PATH
         )
 
+        self.view.zoom_changed.connect(
+            self.scene_renderer.update_visibility_for_zoom
+        )   
+
         self.config_directory = CONFIG_DIRECTORY
 
         self.project_manager = ProjectManager(
