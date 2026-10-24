@@ -1,8 +1,18 @@
 from dataclasses import dataclass
+from enum import Enum
+
+from PySide6.QtCore import QRectF
+
+
+class ConnectionType(str, Enum):
+
+    REGULAR = "regular"
+    DUAL = "dual"
+    REVERSE = "reverse"
 
 
 @dataclass(frozen=True)
-class ConnectionRenderData:
+class ConnectionData:
 
     source_id: int
     target_id: int
@@ -13,11 +23,13 @@ class ConnectionRenderData:
     target_x: float
     target_z: float
 
-    connection_type: str
+    connection_type: ConnectionType
 
     @property
-    def key(self):
-        if self.connection_type == "dual":
+    def key(
+        self
+    ) -> tuple[ConnectionType, int, int]:
+        if self.connection_type == ConnectionType.DUAL:
             return (
                 self.connection_type,
                 min(
@@ -37,41 +49,37 @@ class ConnectionRenderData:
         )
 
     @property
-    def minimum_x(self):
+    def minimum_x(self) -> float:
         return min(
             self.source_x,
             self.target_x
         )
 
-
     @property
-    def maximum_x(self):
+    def maximum_x(self) -> float:
         return max(
             self.source_x,
             self.target_x
         )
 
-
     @property
-    def minimum_z(self):
+    def minimum_z(self) -> float:
         return min(
             self.source_z,
             self.target_z
         )
 
-
     @property
-    def maximum_z(self):
+    def maximum_z(self) -> float:
         return max(
             self.source_z,
             self.target_z
         )
-
 
     def intersects_rect(
         self,
-        rect
-    ):
+        rect: QRectF
+    ) -> bool:
         return not (
             self.maximum_x < rect.left()
             or self.minimum_x > rect.right()

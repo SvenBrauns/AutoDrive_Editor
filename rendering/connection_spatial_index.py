@@ -5,8 +5,11 @@ from collections import defaultdict
 from PySide6.QtCore import QRectF
 
 from autodrive.models import AutoDriveData
-from rendering.connection_render_data import (
-    ConnectionRenderData
+from rendering.connection_data import (
+    ConnectionData
+)
+from rendering.connection_geometry import (
+    get_connection_type
 )
 
 
@@ -35,8 +38,7 @@ class ConnectionSpatialIndex:
 
     def build(
         self,
-        autodrive_data: AutoDriveData,
-        connection_type_resolver
+        autodrive_data: AutoDriveData
     ):
         self.clear()
 
@@ -57,50 +59,28 @@ class ConnectionSpatialIndex:
                 if target_node is None:
                     continue
 
-                connection_type = (
-                    connection_type_resolver(
-                        source_node,
-                        target_node
-                    )
+                connection_type = get_connection_type(
+                    source_node,
+                    target_node
                 )
 
-                if connection_type == "dual":
-                    connection_key = (
-                        connection_type,
-                        min(
-                            source_node.node_id,
-                            target_node.node_id
-                        ),
-                        max(
-                            source_node.node_id,
-                            target_node.node_id
-                        )
-                    )
+                connection_data = ConnectionData(
+                    source_id=source_node.node_id,
+                    target_id=target_node.node_id,
+                    source_x=source_node.x,
+                    source_z=source_node.z,
+                    target_x=target_node.x,
+                    target_z=target_node.z,
+                    connection_type=connection_type
+                )
 
-                else:
-                    connection_key = (
-                        connection_type,
-                        source_node.node_id,
-                        target_node.node_id
-                    )
+                connection_key = connection_data.key
 
                 if connection_key in seen_connections:
                     continue
 
                 seen_connections.add(
                     connection_key
-                )
-
-                connection_data = (
-                    ConnectionRenderData(
-                        source_id=source_node.node_id,
-                        target_id=target_node.node_id,
-                        source_x=source_node.x,
-                        source_z=source_node.z,
-                        target_x=target_node.x,
-                        target_z=target_node.z,
-                        connection_type=connection_type
-                    )
                 )
 
                 self._add_connection(
@@ -180,7 +160,7 @@ class ConnectionSpatialIndex:
 
     def _add_connection(
         self,
-        connection_data
+        connection_data: ConnectionData
     ):
         minimum_x = min(
             connection_data.source_x,

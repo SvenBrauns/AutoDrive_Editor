@@ -1,9 +1,6 @@
-import math
-
 from collections.abc import Callable
 
 from PySide6.QtCore import (
-    QPointF,
     QRectF,
     Qt
 )
@@ -22,22 +19,38 @@ from autodrive.models import (
     NodeData
 )
 
-from rendering.items.graphics_layer import GraphicsLayerItem
-from rendering.items.node_selection_item import NodeSelectionItem
+from rendering.connection_data import (
+    ConnectionType
+)
+from rendering.connection_geometry import (
+    calculate_connection_endpoints,
+    get_connection_type
+)
+from rendering.connection_render_item import (
+    ConnectionRenderItem
+)
+from rendering.connection_spatial_index import (
+    ConnectionSpatialIndex
+)
 from rendering.display_style import DisplayStyle
-from rendering.connection_render_item import ConnectionRenderItem
-from rendering.connection_spatial_index import ConnectionSpatialIndex
-from rendering.node_spatial_index import NodeSpatialIndex
-from rendering.visible_node_manager import VisibleNodeManager
-from rendering.visible_marker_manager import VisibleMarkerManager
+from rendering.items.graphics_layer import (
+    GraphicsLayerItem
+)
+from rendering.items.node_selection_item import (
+    NodeSelectionItem
+)
+from rendering.node_spatial_index import (
+    NodeSpatialIndex
+)
+from rendering.visible_marker_manager import (
+    VisibleMarkerManager
+)
+from rendering.visible_node_manager import (
+    VisibleNodeManager
+)
 
 
 class SceneRenderer:
-
-    CONNECTION_REGULAR = "regular"
-    CONNECTION_DUAL = "dual"
-    CONNECTION_REVERSE = "reverse"
-
     def __init__(
         self,
         scene: QGraphicsScene,
@@ -385,9 +398,9 @@ class SceneRenderer:
         self._remove_connection_items()
 
         connection_paths = {
-            self.CONNECTION_REGULAR: QPainterPath(),
-            self.CONNECTION_DUAL: QPainterPath(),
-            self.CONNECTION_REVERSE: QPainterPath()
+            ConnectionType.REGULAR: QPainterPath(),
+            ConnectionType.DUAL: QPainterPath(),
+            ConnectionType.REVERSE: QPainterPath()
         }
 
         for source_node in (
@@ -406,7 +419,7 @@ class SceneRenderer:
                     continue
 
                 connection_type = (
-                    self._get_connection_type(
+                    get_connection_type(
                         source_node,
                         target_node
                     )
@@ -418,17 +431,22 @@ class SceneRenderer:
                     ]
                 )
 
-                geometry = (
-                    self._calculate_connection_geometry(
-                        source_node,
-                        target_node
+                endpoints = calculate_connection_endpoints(
+                    source_x=source_node.x,
+                    source_z=source_node.z,
+                    target_x=target_node.x,
+                    target_z=target_node.z,
+                    node_diameter=(
+                        self.display_style.node_diameter
                     )
                 )
 
-                if geometry is None:
+                if endpoints is None:
                     continue
 
-                start_point, end_point = geometry
+                start_point, end_point = endpoints
+
+
 
                 connection_path.moveTo(
                     start_point
@@ -439,15 +457,9 @@ class SceneRenderer:
                 )
 
         connection_pens = {
-            self.CONNECTION_REGULAR: (
-                self.regular_pen
-            ),
-            self.CONNECTION_DUAL: (
-                self.dual_pen
-            ),
-            self.CONNECTION_REVERSE: (
-                self.reverse_pen
-            )
+            ConnectionType.REGULAR: self.regular_pen,
+            ConnectionType.DUAL: self.dual_pen,
+            ConnectionType.REVERSE: self.reverse_pen
         }
 
         for (
@@ -473,10 +485,7 @@ class SceneRenderer:
         autodrive_data: AutoDriveData
     ):
         self.connection_spatial_index.build(
-            autodrive_data=autodrive_data,
-            connection_type_resolver=(
-                self._get_connection_type
-            )
+            autodrive_data
         )
 
         connection_scene_rect = (
@@ -510,63 +519,6 @@ class SceneRenderer:
         self.scene.addItem(
             self.connection_render_item
         )
-
-    def _calculate_connection_geometry(
-        self,
-        source_node: NodeData,
-        target_node: NodeData
-    ):
-        delta_x = (
-            target_node.x
-            - source_node.x
-        )
-
-        delta_z = (
-            target_node.z
-            - source_node.z
-        )
-
-        distance = math.hypot(
-            delta_x,
-            delta_z
-        )
-
-        if distance <= 0.000001:
-            return None
-
-        direction_x = delta_x / distance
-        direction_z = delta_z / distance
-
-        node_radius = (
-            self.display_style.node_diameter
-            / 2
-        )
-
-        maximum_offset = max(
-            0.0,
-            distance / 2 - 0.0001
-        )
-
-        endpoint_offset = min(
-            node_radius,
-            maximum_offset
-        )
-
-        start_point = QPointF(
-            source_node.x
-            + direction_x * endpoint_offset,
-            source_node.z
-            + direction_z * endpoint_offset
-        )
-
-        end_point = QPointF(
-            target_node.x
-            - direction_x * endpoint_offset,
-            target_node.z
-            - direction_z * endpoint_offset
-        )
-
-        return start_point, end_point
 
     def _create_layers(self):
         self.node_layer = GraphicsLayerItem()
@@ -678,50 +630,3 @@ class SceneRenderer:
                 )
 
         self.connection_items.clear()
-
-    def _get_connection_type(
-        self,
-        source_node: NodeData,
-        target_node: NodeData
-    ):
-        if self._is_dual_connection(
-            source_node,
-            target_node
-        ):
-            return self.CONNECTION_DUAL
-
-        if self._is_reverse_connection(
-            source_node,
-            target_node
-        ):
-            return self.CONNECTION_REVERSE
-
-        return self.CONNECTION_REGULAR
-
-    @staticmethod
-    def _is_dual_connection(
-        source_node: NodeData,
-        target_node: NodeData
-    ):
-        return (
-            target_node.node_id
-            in source_node.outgoing
-            and target_node.node_id
-            in source_node.incoming
-            and source_node.node_id
-            in target_node.outgoing
-            and source_node.node_id
-            in target_node.incoming
-        )
-
-    @staticmethod
-    def _is_reverse_connection(
-        source_node: NodeData,
-        target_node: NodeData
-    ):
-        return (
-            target_node.node_id
-            in source_node.outgoing
-            and source_node.node_id
-            not in target_node.incoming
-        )
