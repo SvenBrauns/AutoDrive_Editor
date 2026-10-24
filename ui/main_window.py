@@ -392,6 +392,32 @@ class MainWindow(QMainWindow):
                 "Modus: Auswahl"
             )
 
+    def set_view_rotation(
+        self,
+        rotation_angle: float
+    ):
+        self.view.set_rotation_angle(
+            rotation_angle
+        )
+
+        self._set_status(
+            f"Rotation: "
+            f"{self.view.rotation_angle:.2f}°"
+        )
+
+    def set_view_rotation_step(
+        self,
+        rotation_step: float
+    ):
+        self.view.set_rotation_step(
+            rotation_step
+        )
+
+        self._set_status(
+            f"Rotationsraster: "
+            f"{self.view.rotation_step:.2f}°"
+        )
+
     def reset_view_rotation(self):
         self.view.reset_view_rotation()
 
@@ -786,6 +812,10 @@ class MainWindow(QMainWindow):
             self._refresh_debug_dock
         )
 
+        self.view.rotation_step_changed.connect(
+            self._handle_rotation_step_changed
+        )
+
         self.view.visible_scene_rect_changed.connect(
             self._refresh_debug_dock
         )
@@ -813,6 +843,18 @@ class MainWindow(QMainWindow):
 
         self.actions.reset_rotation_action.setEnabled(
             rotation_active
+        )
+
+        self.actions.rotation_controls.set_rotation_angle(
+            rotation_angle
+        )
+
+    def _handle_rotation_step_changed(
+        self,
+        rotation_step: float
+    ):
+        self.actions.rotation_controls.set_rotation_step(
+            rotation_step
         )
 
     def _refresh_debug_dock(

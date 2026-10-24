@@ -5,10 +5,13 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import (
     QMainWindow,
-    QToolBar
+    QSizePolicy,
+    QToolBar,
+    QWidget
 )
 
 from ui.interaction_mode import InteractionMode
+from ui.rotation_controls import RotationControls
 
 
 class MainWindowActions:
@@ -343,6 +346,45 @@ class MainWindowActions:
 
         self.quick_access_toolbar.addAction(
             self.selection_action
+        )
+
+        spacer = QWidget(
+            self.quick_access_toolbar
+        )
+
+        spacer.setSizePolicy(
+            QSizePolicy.Expanding,
+            QSizePolicy.Preferred
+        )
+
+        self.quick_access_toolbar.addWidget(
+            spacer
+        )
+
+        self.rotation_controls = RotationControls(
+            rotation_angle=(
+                self.window.view.rotation_angle
+            ),
+            rotation_step=(
+                self.window.view.rotation_step
+            ),
+            parent=self.quick_access_toolbar
+        )
+
+        self.rotation_controls.rotation_angle_requested.connect(
+            self.window.set_view_rotation
+        )
+
+        self.rotation_controls.rotation_step_requested.connect(
+            self.window.set_view_rotation_step
+        )
+
+        self.rotation_controls.reset_requested.connect(
+            self.window.reset_view_rotation
+        )
+
+        self.quick_access_toolbar.addWidget(
+            self.rotation_controls
         )
 
     def _create_editor_toolbar(self):
