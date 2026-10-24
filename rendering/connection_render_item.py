@@ -54,13 +54,13 @@ class ConnectionRenderItem(QGraphicsItem):
 
         self.connection_pens = {
             ConnectionType.REGULAR: self._create_pen(
-                QColor(0, 255, 0)
+                self.display_style.regular_connection_color
             ),
             ConnectionType.DUAL: self._create_pen(
-                QColor(0, 0, 255)
+                self.display_style.dual_connection_color
             ),
             ConnectionType.REVERSE: self._create_pen(
-                QColor(100, 220, 255)
+                self.display_style.reverse_connection_color
             )
         }
 
@@ -118,10 +118,6 @@ class ConnectionRenderItem(QGraphicsItem):
             paint_margin
         )
 
-        painter.setClipRect(
-            visible_rect
-        )
-
         visible_connections = (
             self.spatial_index.get_connections_in_rect(
                 visible_rect
@@ -152,6 +148,10 @@ class ConnectionRenderItem(QGraphicsItem):
             )
 
         painter.save()
+
+        painter.setClipRect(
+            visible_rect
+        )
 
         painter.setRenderHint(
             QPainter.Antialiasing,
@@ -279,10 +279,14 @@ class ConnectionRenderItem(QGraphicsItem):
 
     def _create_pen(
         self,
-        color
-    ):
+        color: tuple[int, int, int]
+    ) -> QPen:
         connection_pen = QPen(
-            color
+            QColor(
+                color[0],
+                color[1],
+                color[2]
+            )
         )
 
         connection_pen.setWidthF(

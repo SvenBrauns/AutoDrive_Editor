@@ -112,42 +112,23 @@ class SceneRenderer:
         self.nodes_visible = None
         self.markers_visible = None
 
-        self.regular_pen = QPen(
-            QColor(0, 255, 0)
-        )
-
-        self.dual_pen = QPen(
-            QColor(0, 0, 255)
-        )
-
-        self.reverse_pen = QPen(
-            QColor(100, 220, 255)
-        )
-
-        self.regular_pen.setWidthF(
-            self.display_style.connection_width
-        )
-
-        self.dual_pen.setWidthF(
-            self.display_style.connection_width
-        )
-
-        self.reverse_pen.setWidthF(
-            self.display_style.connection_width
-        )
-
-        for connection_pen in (
-            self.regular_pen,
-            self.dual_pen,
-            self.reverse_pen
-        ):
-            connection_pen.setCapStyle(
-                Qt.FlatCap
+        self.connection_pens = {
+            ConnectionType.REGULAR: (
+                self._create_connection_pen(
+                    self.display_style.regular_connection_color
+                )
+            ),
+            ConnectionType.DUAL: (
+                self._create_connection_pen(
+                    self.display_style.dual_connection_color
+                )
+            ),
+            ConnectionType.REVERSE: (
+                self._create_connection_pen(
+                    self.display_style.reverse_connection_color
+                )
             )
-
-            connection_pen.setJoinStyle(
-                Qt.BevelJoin
-            )
+        }
 
     def render(
         self,
@@ -250,6 +231,31 @@ class SceneRenderer:
                 self.current_visible_rect
             )
 
+    def _update_virtualized_layer(
+        self,
+        layer,
+        manager,
+        should_be_visible: bool
+    ):
+        if layer is None:
+            return
+
+        layer.setVisible(
+            should_be_visible
+        )
+
+        if manager is None:
+            return
+
+        if should_be_visible:
+            if self.current_visible_rect is not None:
+                manager.update(
+                    self.current_visible_rect
+                )
+
+        else:
+            manager.clear()
+
     def update_visibility_for_zoom(
         self,
         zoom_level
@@ -273,49 +279,23 @@ class SceneRenderer:
             >= self.connection_detail_min_zoom
         )
 
-        if (
-            self.node_layer is not None
-            and show_nodes != self.nodes_visible
-        ):
-            self.node_layer.setVisible(
-                show_nodes
+        if show_nodes != self.nodes_visible:
+            self._update_virtualized_layer(
+                layer=self.node_layer,
+                manager=self.visible_node_manager,
+                should_be_visible=show_nodes
             )
 
             self.nodes_visible = show_nodes
 
-            if self.visible_node_manager is not None:
-                if (
-                    show_nodes
-                    and self.current_visible_rect is not None
-                ):
-                    self.visible_node_manager.update(
-                        self.current_visible_rect
-                    )
-
-                elif not show_nodes:
-                    self.visible_node_manager.clear()
-
-        if (
-            self.marker_layer is not None
-            and show_markers != self.markers_visible
-        ):
-            self.marker_layer.setVisible(
-                show_markers
+        if show_markers != self.markers_visible:
+            self._update_virtualized_layer(
+                layer=self.marker_layer,
+                manager=self.visible_marker_manager,
+                should_be_visible=show_markers
             )
 
             self.markers_visible = show_markers
-
-            if self.visible_marker_manager is not None:
-                if (
-                    show_markers
-                    and self.current_visible_rect is not None
-                ):
-                    self.visible_marker_manager.update(
-                        self.current_visible_rect
-                    )
-
-                elif not show_markers:
-                    self.visible_marker_manager.clear()
 
         if (
             show_detailed_connections
@@ -342,7 +322,8 @@ class SceneRenderer:
     def set_visibility_thresholds(
         self,
         node_min_zoom=None,
-        marker_min_zoom=None
+        marker_min_zoom=None,
+        connection_detail_min_zoom=None
     ):
         if node_min_zoom is not None:
             node_min_zoom = float(
@@ -370,9 +351,25 @@ class SceneRenderer:
 
             self.marker_min_zoom = marker_min_zoom
 
+        if connection_detail_min_zoom is not None:
+            connection_detail_min_zoom = float(
+                connection_detail_min_zoom
+            )
+
+            if connection_detail_min_zoom < 0:
+                raise ValueError(
+                    "Der Mindestzoom für detaillierte "
+                    "Connections darf nicht negativ sein."
+                )
+
+            self.connection_detail_min_zoom = (
+                connection_detail_min_zoom
+            )
+
         if self.current_zoom is not None:
             self.nodes_visible = None
             self.markers_visible = None
+            self.detailed_connections_visible = None
 
             self.update_visibility_for_zoom(
                 self.current_zoom
@@ -433,8 +430,6 @@ class SceneRenderer:
 
                 start_point, end_point = endpoints
 
-
-
                 connection_path.moveTo(
                     start_point
                 )
@@ -443,12 +438,6 @@ class SceneRenderer:
                     end_point
                 )
 
-        connection_pens = {
-            ConnectionType.REGULAR: self.regular_pen,
-            ConnectionType.DUAL: self.dual_pen,
-            ConnectionType.REVERSE: self.reverse_pen
-        }
-
         for (
             connection_type,
             connection_path
@@ -456,7 +445,7 @@ class SceneRenderer:
             connection_item = (
                 self._create_connection_item(
                     connection_path,
-                    connection_pens[
+                    self.connection_pens[
                         connection_type
                     ]
                 )
@@ -573,6 +562,30 @@ class SceneRenderer:
         self.node_selection_item.setVisible(
             selection_visible
         )
+
+    def _create_connection_pen(
+        self,
+        color: tuple[int, int, int]
+    ) -> QPen:
+        connection_pen = QPen(
+            QColor(
+                *color
+            )
+        )
+
+        connection_pen.setWidthF(
+            self.display_style.connection_width
+        )
+
+        connection_pen.setCapStyle(
+            Qt.FlatCap
+        )
+
+        connection_pen.setJoinStyle(
+            Qt.BevelJoin
+        )
+
+        return connection_pen
 
     def _create_connection_item(
         self,
