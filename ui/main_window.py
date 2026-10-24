@@ -1,5 +1,7 @@
 import xml.etree.ElementTree as ET
 
+from pathlib import Path
+
 from PySide6.QtWidgets import (
     QMainWindow,
     QFileDialog,
@@ -18,11 +20,14 @@ from PySide6.QtGui import (
 )
 
 from PySide6.QtCore import Qt
-from pathlib import Path
+
 from ui.map_view import MapView
 from project.project_manager import ProjectManager
 from map.background_manager import BackgroundManager
-
+from app_paths import (
+    CONFIG_DIRECTORY,
+    MARKER_ICON_PATH
+)
 from items.node_item import NodeItem
 from items.marker_item import MarkerItem
 
@@ -46,13 +51,7 @@ class MainWindow(QMainWindow):
             map_scale=1
         )
 
-        project_root = Path(
-            __file__
-        ).resolve().parent.parent
-
-        self.config_directory = (
-            project_root / "config"
-        )
+        self.config_directory = CONFIG_DIRECTORY
 
         self.project_manager = ProjectManager(
             self.config_directory
@@ -489,9 +488,7 @@ class MainWindow(QMainWindow):
                         node_id - 1
                     ]
 
-                    marker_item = MarkerItem(
-                        "icons/marker.svg"
-                    )
+                    marker_item = MarkerItem(str(MARKER_ICON_PATH))
 
                     marker_item.setScale(
                         0.15
