@@ -168,6 +168,10 @@ class MainWindowActions:
             False
         )
 
+        self.reset_rotation_action.triggered.connect(
+            self.window.reset_view_rotation
+        )
+
         self.select_background_action = QAction(
             "DDS auswählen",
             self.window

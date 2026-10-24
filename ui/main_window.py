@@ -392,6 +392,13 @@ class MainWindow(QMainWindow):
                 "Modus: Auswahl"
             )
 
+    def reset_view_rotation(self):
+        self.view.reset_view_rotation()
+
+        self._set_status(
+            "Rotation zurückgesetzt"
+        )
+
     def handle_selection_click(
         self,
         view_position: QPoint,
@@ -503,6 +510,23 @@ class MainWindow(QMainWindow):
 
         self.view.selection_click_requested.connect(
             self.handle_selection_click
+        )
+
+        self.view.rotation_changed.connect(
+            self._handle_rotation_changed
+        )
+
+    def _handle_rotation_changed(
+        self,
+        rotation_angle: float
+    ):
+        rotation_active = (
+            abs(rotation_angle)
+            >= self.view.ROTATION_COMPARISON_TOLERANCE
+        )
+
+        self.actions.reset_rotation_action.setEnabled(
+            rotation_active
         )
 
     def _apply_project_data(

@@ -1,3 +1,4 @@
+import math
 from dataclasses import dataclass, field
 
 from PySide6.QtCore import (
@@ -66,6 +67,10 @@ class MapView(QGraphicsView):
         float
     )
 
+    rotation_changed = Signal(
+        float
+    )   
+
     visible_scene_rect_changed = Signal(
         QRectF
     )
@@ -86,12 +91,17 @@ class MapView(QGraphicsView):
     VIEWPORT_UPDATE_DELAY_MS = 50
     ZOOM_COMPARISON_TOLERANCE = 0.000001
 
+    ROTATION_DEGREES_PER_PIXEL = 0.3
+    ROTATION_COMPARISON_TOLERANCE = 0.000001
+
     def __init__(self):
         super().__init__()
 
         self._interaction_mode = (
             InteractionMode.NAVIGATE
         )
+
+        self._rotation_angle = 0.0
 
         self._pointer_state = (
             PointerDragState()
@@ -105,7 +115,16 @@ class MapView(QGraphicsView):
 
     @property
     def zoom_level(self) -> float:
-        return self.transform().m11()
+        view_transform = self.transform()
+
+        return math.hypot(
+            view_transform.m11(),
+            view_transform.m12()
+        )
+
+    @property
+    def rotation_angle(self) -> float:
+        return self._rotation_angle
 
     @property
     def interaction_mode(
@@ -148,6 +167,39 @@ class MapView(QGraphicsView):
         )
 
         self._notify_view_transform_changed()
+
+    def reset_view_rotation(self):
+        if (
+            abs(self._rotation_angle)
+            < self.ROTATION_COMPARISON_TOLERANCE
+        ):
+            return
+
+        viewport_center = (
+            self.viewport()
+            .rect()
+            .center()
+        )
+
+        scene_center = self.mapToScene(
+            viewport_center
+        )
+
+        self.rotate(
+            -self._rotation_angle
+        )
+
+        self._rotation_angle = 0.0
+
+        self.centerOn(
+            scene_center
+        )
+
+        self.rotation_changed.emit(
+            self._rotation_angle
+        )
+
+        self._schedule_viewport_update()
 
     def set_interaction_mode(
         self,
@@ -261,11 +313,13 @@ class MapView(QGraphicsView):
         self,
         event: QMouseEvent
     ):
-        if event.button() != Qt.LeftButton:
+        if event.button() not in (
+            Qt.LeftButton,
+            Qt.MiddleButton
+        ):
             super().mousePressEvent(
                 event
             )
-
             return
 
         mouse_position = (
@@ -273,9 +327,14 @@ class MapView(QGraphicsView):
         )
 
         self._pointer_state.begin(
-            button=Qt.LeftButton,
+            button=event.button(),
             position=mouse_position
         )
+
+        if event.button() == Qt.MiddleButton:
+            self.viewport().setCursor(
+                Qt.SizeAllCursor
+            )
 
         event.accept()
 
@@ -287,53 +346,52 @@ class MapView(QGraphicsView):
             event.position().toPoint()
         )
 
-        if not self._is_left_button_drag(
-            event
+        if self._is_button_drag(
+            event,
+            Qt.MiddleButton
         ):
-            self._update_hover_cursor(
-                mouse_position
-            )
-
-            super().mouseMoveEvent(
-                event
-            )
-
-            return
-
-        if not self._pointer_state.drag_active:
-            if not self._drag_threshold_reached(
-                mouse_position
-            ):
-                event.accept()
-                return
-
-            self._begin_panning(
+            self._handle_rotation_drag(
                 mouse_position
             )
 
             event.accept()
             return
 
-        self._pan_to(
+        if self._is_button_drag(
+            event,
+            Qt.LeftButton
+        ):
+            self._handle_pan_drag(
+                mouse_position
+            )
+
+            event.accept()
+            return
+
+        self._update_hover_cursor(
             mouse_position
         )
 
-        event.accept()
+        super().mouseMoveEvent(
+            event
+        )
 
     def mouseReleaseEvent(
         self,
         event: QMouseEvent
     ):
         if (
-            event.button() != Qt.LeftButton
-            or self._pointer_state.pressed_button
-            != Qt.LeftButton
+            event.button()
+            != self._pointer_state.pressed_button
         ):
             super().mouseReleaseEvent(
                 event
             )
-
             return
+
+        released_button = (
+            self._pointer_state.pressed_button
+        )
 
         mouse_position = (
             event.position().toPoint()
@@ -350,7 +408,8 @@ class MapView(QGraphicsView):
         )
 
         if (
-            not was_dragging
+            released_button == Qt.LeftButton
+            and not was_dragging
             and self._interaction_mode
             == InteractionMode.SELECT
         ):
@@ -477,16 +536,17 @@ class MapView(QGraphicsView):
 
         self._schedule_viewport_update()
 
-    def _is_left_button_drag(
+    def _is_button_drag(
         self,
-        event: QMouseEvent
+        event: QMouseEvent,
+        button: Qt.MouseButton
     ) -> bool:
         return (
             self._pointer_state.pressed_button
-            == Qt.LeftButton
+            == button
             and bool(
                 event.buttons()
-                & Qt.LeftButton
+                & button
             )
         )
 
@@ -503,6 +563,119 @@ class MapView(QGraphicsView):
             drag_distance
             >= QApplication.startDragDistance()
         )
+
+    def _handle_pan_drag(
+        self,
+        mouse_position: QPoint
+    ):
+        if not self._pointer_state.drag_active:
+            if not self._drag_threshold_reached(
+                mouse_position
+            ):
+                return
+
+            self._begin_panning(
+                mouse_position
+            )
+            return
+
+        self._pan_to(
+            mouse_position
+        )
+
+    def _handle_rotation_drag(
+        self,
+        mouse_position: QPoint
+    ):
+        if not self._pointer_state.drag_active:
+            if not self._drag_threshold_reached(
+                mouse_position
+            ):
+                return
+
+            self._pointer_state.drag_active = True
+
+            self._pointer_state.last_position = QPoint(
+                mouse_position
+            )
+
+            self.viewport().setCursor(
+                Qt.SizeAllCursor
+            )
+
+            return
+
+        movement = (
+            mouse_position
+            - self._pointer_state.last_position
+        )
+
+        rotation_delta = (
+            movement.x()
+            * self.ROTATION_DEGREES_PER_PIXEL
+        )
+
+        self._pointer_state.last_position = QPoint(
+            mouse_position
+        )
+
+        if (
+            abs(rotation_delta)
+            < self.ROTATION_COMPARISON_TOLERANCE
+        ):
+            return
+
+        self._rotate_around_viewport_center(
+            rotation_delta
+        )
+
+    def _rotate_around_viewport_center(
+        self,
+        rotation_delta: float
+    ):
+        viewport_center = (
+            self.viewport()
+            .rect()
+            .center()
+        )
+
+        scene_center = self.mapToScene(
+            viewport_center
+        )
+
+        self.rotate(
+            rotation_delta
+        )
+
+        self._rotation_angle = (
+            self._normalize_rotation_angle(
+                self._rotation_angle
+                + rotation_delta
+            )
+        )
+
+        self.centerOn(
+            scene_center
+        )
+
+        self.rotation_changed.emit(
+            self._rotation_angle
+        )
+
+        self._schedule_viewport_update()
+
+    @staticmethod
+    def _normalize_rotation_angle(
+        rotation_angle: float
+    ) -> float:
+        normalized_angle = (
+            rotation_angle + 180.0
+        ) % 360.0 - 180.0
+
+        if abs(normalized_angle) < 0.000001:
+            return 0.0
+
+        return normalized_angle
 
     def _begin_panning(
         self,
@@ -562,9 +735,18 @@ class MapView(QGraphicsView):
         view_position: QPoint
     ):
         if self._pointer_state.drag_active:
-            self.viewport().setCursor(
-                Qt.ClosedHandCursor
-            )
+            if (
+                self._pointer_state.pressed_button
+                == Qt.MiddleButton
+            ):
+                self.viewport().setCursor(
+                    Qt.SizeAllCursor
+                )
+
+            else:
+                self.viewport().setCursor(
+                    Qt.ClosedHandCursor
+                )
 
             return
 
