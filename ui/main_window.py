@@ -605,8 +605,7 @@ class MainWindow(QMainWindow):
         self.background_manager.restore()
 
         self.scene_renderer.render(
-            self.autodrive_data,
-            self.show_node_info
+            self.autodrive_data
         )
 
         self.scene.setSceneRect(

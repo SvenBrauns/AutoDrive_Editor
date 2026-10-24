@@ -103,14 +103,6 @@ class VisibleMarkerManager:
                 node_id
             )
 
-    def get_marker_item(
-        self,
-        node_id: int
-    ):
-        return self.marker_items.get(
-            node_id
-        )
-
     def _add_marker_item(
         self,
         node_data: NodeData

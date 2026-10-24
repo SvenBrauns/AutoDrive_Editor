@@ -1,5 +1,3 @@
-from collections.abc import Callable
-
 from PySide6.QtCore import QRectF
 from PySide6.QtWidgets import (
     QGraphicsItem,
@@ -24,9 +22,6 @@ class VisibleNodeManager:
         node_layer: QGraphicsItem,
         node_spatial_index: NodeSpatialIndex,
         display_style: DisplayStyle,
-        on_node_selected: (
-            Callable[[NodeData], None] | None
-        ) = None,
         padding=DEFAULT_PADDING
     ):
         self.scene = scene
@@ -36,7 +31,6 @@ class VisibleNodeManager:
         )
 
         self.display_style = display_style
-        self.on_node_selected = on_node_selected
 
         self.padding = max(
             0.0,
@@ -99,21 +93,12 @@ class VisibleNodeManager:
                 node_id
             )
 
-    def get_node_item(
-        self,
-        node_id: int
-    ):
-        return self.node_items.get(
-            node_id
-        )
-
     def _add_node_item(
         self,
         node_data: NodeData
     ):
         node_item = NodeItem(
             node_data=node_data,
-            on_selected=self.on_node_selected,
             display_style=self.display_style
         )
 

@@ -1,5 +1,3 @@
-from collections.abc import Callable
-
 from PySide6.QtCore import Qt
 from PySide6.QtGui import (
     QBrush,
@@ -19,14 +17,9 @@ class NodeItem(QGraphicsEllipseItem):
     def __init__(
         self,
         node_data: NodeData,
-        on_selected: Callable[[NodeData], None] | None = None,
-        display_style: DisplayStyle | None = None
+        display_style: DisplayStyle
     ):
-        self.display_style = (
-            display_style
-            if display_style is not None
-            else DisplayStyle()
-        )
+        self.display_style = display_style
 
         diameter = (
             self.display_style.node_diameter
@@ -42,7 +35,6 @@ class NodeItem(QGraphicsEllipseItem):
         )
 
         self.node_data = node_data
-        self.on_selected = on_selected
 
         self.setPos(
             node_data.x,
@@ -85,16 +77,4 @@ class NodeItem(QGraphicsEllipseItem):
     def node_id(self) -> int:
         return self.node_data.node_id
 
-    def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            if self.on_selected is not None:
-                self.on_selected(
-                    self.node_data
-                )
-
-            event.accept()
-            return
-
-        super().mousePressEvent(
-            event
-        )
+    

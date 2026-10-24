@@ -1,5 +1,3 @@
-from collections.abc import Callable
-
 from PySide6.QtCore import (
     QRectF,
     Qt
@@ -149,10 +147,7 @@ class SceneRenderer:
 
     def render(
         self,
-        autodrive_data: AutoDriveData,
-        on_node_selected: (
-            Callable[[NodeData], None] | None
-        ) = None
+        autodrive_data: AutoDriveData
     ):
         self.reset()
         self.selected_node_data = None
@@ -170,7 +165,6 @@ class SceneRenderer:
                     self.node_spatial_index
                 ),
                 display_style=self.display_style,
-                on_node_selected=on_node_selected,
                 padding=128.0
             )
         )
@@ -227,17 +221,6 @@ class SceneRenderer:
         self.nodes_visible = None
         self.markers_visible = None
         self.detailed_connections_visible = None
-
-    def get_node_item(
-        self,
-        node_id: int
-    ):
-        if self.visible_node_manager is None:
-            return None
-
-        return self.visible_node_manager.get_node_item(
-            node_id
-        )
 
     def update_visible_scene_rect(
         self,
