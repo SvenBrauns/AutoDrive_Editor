@@ -115,23 +115,9 @@ class SceneRenderer:
         self.nodes_visible = None
         self.markers_visible = None
 
-        self.connection_pens = {
-            ConnectionType.REGULAR: (
-                self._create_connection_pen(
-                    self.display_style.regular_connection_color
-                )
-            ),
-            ConnectionType.DUAL: (
-                self._create_connection_pen(
-                    self.display_style.dual_connection_color
-                )
-            ),
-            ConnectionType.REVERSE: (
-                self._create_connection_pen(
-                    self.display_style.reverse_connection_color
-                )
-            )
-        }
+        self.connection_pens = (
+            self._create_connection_pens()
+        )
 
     def render(
         self,
@@ -645,13 +631,66 @@ class SceneRenderer:
             "markers_visible": self.markers_visible
         }
 
+    def set_display_style(
+        self,
+        display_style: DisplayStyle
+    ):
+        if not isinstance(
+            display_style,
+            DisplayStyle
+        ):
+            raise TypeError(
+                "Der Darstellungsstil ist ungültig."
+            )
+
+        self.display_style = display_style
+
+        self.node_min_zoom = (
+            display_style.node_min_zoom
+        )
+
+        self.marker_min_zoom = (
+            display_style.marker_min_zoom
+        )
+
+        self.connection_detail_min_zoom = (
+            display_style.connection_detail_min_zoom
+        )
+
+        self.connection_pens = (
+            self._create_connection_pens()
+        )
+
+    def _create_connection_pens(
+        self
+    ) -> dict[ConnectionType, QPen]:
+        return {
+            ConnectionType.REGULAR: (
+                self._create_connection_pen(
+                    self.display_style.regular_connection_color
+                )
+            ),
+            ConnectionType.DUAL: (
+                self._create_connection_pen(
+                    self.display_style.dual_connection_color
+                )
+            ),
+            ConnectionType.REVERSE: (
+                self._create_connection_pen(
+                    self.display_style.reverse_connection_color
+                )
+            )
+        }
+
     def _create_connection_pen(
         self,
         color: tuple[int, int, int]
     ) -> QPen:
         connection_pen = QPen(
             QColor(
-                *color
+                color[0],
+                color[1],
+                color[2]
             )
         )
 

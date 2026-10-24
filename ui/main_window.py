@@ -26,6 +26,10 @@ from map.heightmap_manager import HeightmapManager
 from project.project_manager import ProjectManager
 from rendering.items.node_item import NodeItem
 from rendering.scene_renderer import SceneRenderer
+from rendering.display_style import DisplayStyle
+from ui.display_options_dialog import (
+    DisplayOptionsDialog
+)
 from ui.interaction_mode import InteractionMode
 from ui.main_window_actions import MainWindowActions
 from ui.map_view import MapView
@@ -394,6 +398,90 @@ class MainWindow(QMainWindow):
         self._set_status(
             "Rotation zurückgesetzt"
         )
+
+    def open_display_options(self):
+        dialog = DisplayOptionsDialog(
+            display_style=(
+                self.scene_renderer.display_style
+            ),
+            parent=self
+        )
+
+        dialog.style_applied.connect(
+            self.apply_display_style
+        )
+
+        dialog.exec()
+
+    def apply_display_style(
+        self,
+        display_style: DisplayStyle
+    ):
+        if not isinstance(
+            display_style,
+            DisplayStyle
+        ):
+            raise TypeError(
+                "Der Darstellungsstil ist ungültig."
+            )
+
+        selected_node_ids = (
+            self.node_selection_manager.selected_node_ids
+        )
+
+        viewport_center = (
+            self.view.viewport()
+            .rect()
+            .center()
+        )
+
+        scene_center = self.view.mapToScene(
+            viewport_center
+        )
+
+        self.scene_renderer.set_display_style(
+            display_style
+        )
+
+        if self.autodrive_data is None:
+            self._set_status(
+                "Darstellungsoptionen übernommen"
+            )
+
+            self._refresh_debug_dock()
+            return
+
+        self._clear_scene_content()
+
+        self.background_manager.restore()
+
+        self.scene_renderer.render(
+            self.autodrive_data
+        )
+
+        self.scene_renderer.set_selected_node_ids(
+            selected_node_ids
+        )
+
+        self._update_scene_rect()
+
+        self.view.centerOn(
+            scene_center
+        )
+
+        self.scene_renderer.update_visibility_for_zoom(
+            self.view.zoom_level
+        )
+
+        self.scene_renderer.update_visible_scene_rect(
+            self.view.get_visible_scene_rect()
+        )
+
+        self._set_status(
+            "Darstellungsoptionen übernommen"
+        )
+
+        self._refresh_debug_dock()
 
     def handle_selection_click(
         self,

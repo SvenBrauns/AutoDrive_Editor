@@ -129,8 +129,8 @@ class MainWindowActions:
             self.window
         )
 
-        self.display_options_action.setEnabled(
-            False
+        self.display_options_action.triggered.connect(
+            self.window.open_display_options
         )
 
         self.reset_view_action = QAction(
