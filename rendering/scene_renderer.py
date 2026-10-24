@@ -27,8 +27,9 @@ from rendering.graphics_layer import GraphicsLayerItem
 from rendering.display_style import DisplayStyle
 from rendering.connection_render_item import ConnectionRenderItem
 from rendering.connection_spatial_index import ConnectionSpatialIndex
-from rendering.node_spatial_index import ( NodeSpatialIndex )
-from rendering.visible_node_manager import ( VisibleNodeManager )
+from rendering.node_spatial_index import NodeSpatialIndex
+from rendering.visible_node_manager import VisibleNodeManager
+from rendering.visible_marker_manager import VisibleMarkerManager
 
 
 class SceneRenderer:
@@ -60,6 +61,7 @@ class SceneRenderer:
         )
 
         self.visible_node_manager = None
+        self.visible_marker_manager = None
         self.current_visible_rect = None
 
         self.node_selection_item = None
@@ -160,6 +162,20 @@ class SceneRenderer:
             )
         )
 
+        self.visible_marker_manager = (
+            VisibleMarkerManager(
+                scene=self.scene,
+                marker_layer=self.marker_layer,
+                marker_icon_path=self.marker_icon_path,
+                autodrive_data=autodrive_data,
+                node_spatial_index=(
+                    self.node_spatial_index
+                ),
+                display_style=self.display_style,
+                padding=128.0
+            )
+        )
+
         self.rebuild_connections(
             autodrive_data
         )
@@ -177,14 +193,19 @@ class SceneRenderer:
         if self.visible_node_manager is not None:
             self.visible_node_manager.clear()
 
+        if self.visible_marker_manager is not None:
+            self.visible_marker_manager.clear()
+
         self.visible_node_manager = None
+        self.visible_marker_manager = None
+
         self.node_spatial_index.clear()
         self.current_visible_rect = None
+
         self.node_selection_item = None
         self.connection_items.clear()
 
         self.connection_spatial_index.clear()
-
         self.connection_render_item = None
 
         self.node_layer = None
@@ -192,7 +213,6 @@ class SceneRenderer:
 
         self.nodes_visible = None
         self.markers_visible = None
-
         self.detailed_connections_visible = None
 
     def get_node_item(
@@ -214,15 +234,21 @@ class SceneRenderer:
             visible_rect
         )
 
-        if self.visible_node_manager is None:
-            return
+        if (
+            self.visible_node_manager is not None
+            and self.nodes_visible is True
+        ):
+            self.visible_node_manager.update(
+                self.current_visible_rect
+            )
 
-        if self.nodes_visible is not True:
-            return
-
-        self.visible_node_manager.update(
-            self.current_visible_rect
-        )
+        if (
+            self.visible_marker_manager is not None
+            and self.markers_visible is True
+        ):
+            self.visible_marker_manager.update(
+                self.current_visible_rect
+            )
 
     def update_visibility_for_zoom(
         self,
@@ -238,9 +264,9 @@ class SceneRenderer:
             zoom_level >= self.node_min_zoom
         )
 
-        # Marker bleiben deaktiviert,
-        # bis sie sichtbereichsabhängig verwaltet werden.
-        show_markers = False
+        show_markers = (
+            zoom_level >= self.marker_min_zoom
+        )
 
         # Der Detailrenderer bleibt deaktiviert,
         # bis dessen Paint-Performance optimiert ist.
@@ -277,6 +303,18 @@ class SceneRenderer:
             )
 
             self.markers_visible = show_markers
+
+            if self.visible_marker_manager is not None:
+                if (
+                    show_markers
+                    and self.current_visible_rect is not None
+                ):
+                    self.visible_marker_manager.update(
+                        self.current_visible_rect
+                    )
+
+                elif not show_markers:
+                    self.visible_marker_manager.clear()
 
         if (
             show_detailed_connections
