@@ -19,9 +19,6 @@ class DisplayStyle:
     connection_width: float = 0.8
     selected_connection_width: float = 1.4
 
-    arrow_length: float = 3.0
-    arrow_width: float = 2.0
-
     node_min_zoom: float = 1.0
     marker_min_zoom: float = 1.0
 
@@ -32,3 +29,9 @@ class DisplayStyle:
     selected_connection_z: float = 100.0
     selected_node_z: float = 110.0
     selected_marker_z: float = 120.0
+
+    detailed_connection_width: float = 0.25
+    connection_detail_min_zoom: float = 1.0
+
+    arrow_length: float = 1.5
+    arrow_width: float = 1.2

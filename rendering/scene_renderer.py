@@ -4,6 +4,7 @@ from collections.abc import Callable
 
 from PySide6.QtCore import (
     QPointF,
+    QRectF,
     Qt
 )
 from PySide6.QtGui import (
@@ -21,11 +22,13 @@ from autodrive.models import (
     NodeData
 )
 
-from items.marker_item import MarkerItem
-from items.node_item import NodeItem
 from items.node_selection_item import NodeSelectionItem
 from rendering.graphics_layer import GraphicsLayerItem
 from rendering.display_style import DisplayStyle
+from rendering.connection_render_item import ConnectionRenderItem
+from rendering.connection_spatial_index import ConnectionSpatialIndex
+from rendering.node_spatial_index import ( NodeSpatialIndex )
+from rendering.visible_node_manager import ( VisibleNodeManager )
 
 
 class SceneRenderer:
@@ -50,12 +53,34 @@ class SceneRenderer:
             marker_icon_path
         )
 
-        self.node_items = {}
+        self.node_spatial_index = (
+            NodeSpatialIndex(
+                tile_size=256.0
+            )
+        )
+
+        self.visible_node_manager = None
+        self.current_visible_rect = None
+
         self.node_selection_item = None
         self.node_layer = None
         self.marker_layer = None
         self.selected_node_data = None
         self.connection_items = {}
+
+        self.connection_spatial_index = (
+            ConnectionSpatialIndex(
+                tile_size=256.0
+            )
+        )
+
+        self.connection_render_item = None
+
+        self.connection_detail_min_zoom = (
+            self.display_style.connection_detail_min_zoom
+        )
+
+        self.detailed_connections_visible = None
 
         self.node_min_zoom = (
             self.display_style.node_min_zoom
@@ -118,16 +143,28 @@ class SceneRenderer:
         self.selected_node_data = None
         self._create_layers()
 
-        self._render_nodes(
-            autodrive_data,
-            on_node_selected
+        self.node_spatial_index.build(
+            autodrive_data
+        )
+
+        self.visible_node_manager = (
+            VisibleNodeManager(
+                scene=self.scene,
+                node_layer=self.node_layer,
+                node_spatial_index=(
+                    self.node_spatial_index
+                ),
+                display_style=self.display_style,
+                on_node_selected=on_node_selected,
+                padding=128.0
+            )
         )
 
         self.rebuild_connections(
             autodrive_data
         )
 
-        self._render_markers(
+        self._create_detailed_connection_renderer(
             autodrive_data
         )
 
@@ -137,21 +174,54 @@ class SceneRenderer:
             )
 
     def reset(self):
-        self.node_items.clear()
+        if self.visible_node_manager is not None:
+            self.visible_node_manager.clear()
+
+        self.visible_node_manager = None
+        self.node_spatial_index.clear()
+        self.current_visible_rect = None
         self.node_selection_item = None
         self.connection_items.clear()
+
+        self.connection_spatial_index.clear()
+
+        self.connection_render_item = None
+
         self.node_layer = None
         self.marker_layer = None
 
         self.nodes_visible = None
         self.markers_visible = None
 
+        self.detailed_connections_visible = None
+
     def get_node_item(
         self,
         node_id: int
     ):
-        return self.node_items.get(
+        if self.visible_node_manager is None:
+            return None
+
+        return self.visible_node_manager.get_node_item(
             node_id
+        )
+
+    def update_visible_scene_rect(
+        self,
+        visible_rect: QRectF
+    ):
+        self.current_visible_rect = QRectF(
+            visible_rect
+        )
+
+        if self.visible_node_manager is None:
+            return
+
+        if self.nodes_visible is not True:
+            return
+
+        self.visible_node_manager.update(
+            self.current_visible_rect
         )
 
     def update_visibility_for_zoom(
@@ -168,9 +238,13 @@ class SceneRenderer:
             zoom_level >= self.node_min_zoom
         )
 
-        show_markers = (
-            zoom_level >= self.marker_min_zoom
-        )
+        # Marker bleiben deaktiviert,
+        # bis sie sichtbereichsabhängig verwaltet werden.
+        show_markers = False
+
+        # Der Detailrenderer bleibt deaktiviert,
+        # bis dessen Paint-Performance optimiert ist.
+        show_detailed_connections = False
 
         if (
             self.node_layer is not None
@@ -182,6 +256,18 @@ class SceneRenderer:
 
             self.nodes_visible = show_nodes
 
+            if self.visible_node_manager is not None:
+                if (
+                    show_nodes
+                    and self.current_visible_rect is not None
+                ):
+                    self.visible_node_manager.update(
+                        self.current_visible_rect
+                    )
+
+                elif not show_nodes:
+                    self.visible_node_manager.clear()
+
         if (
             self.marker_layer is not None
             and show_markers != self.markers_visible
@@ -191,6 +277,26 @@ class SceneRenderer:
             )
 
             self.markers_visible = show_markers
+
+        if (
+            show_detailed_connections
+            != self.detailed_connections_visible
+        ):
+            for connection_item in (
+                self.connection_items.values()
+            ):
+                connection_item.setVisible(
+                    not show_detailed_connections
+                )
+
+            if self.connection_render_item is not None:
+                self.connection_render_item.setVisible(
+                    show_detailed_connections
+                )
+
+            self.detailed_connections_visible = (
+                show_detailed_connections
+            )
 
         self._update_selection_visibility()
 
@@ -323,6 +429,49 @@ class SceneRenderer:
                     connection_type
                 ] = connection_item
 
+    def _create_detailed_connection_renderer(
+        self,
+        autodrive_data: AutoDriveData
+    ):
+        self.connection_spatial_index.build(
+            autodrive_data=autodrive_data,
+            connection_type_resolver=(
+                self._get_connection_type
+            )
+        )
+
+        connection_scene_rect = (
+            self.scene.sceneRect()
+        )
+
+        if connection_scene_rect.isEmpty():
+            connection_scene_rect = (
+                self.scene.itemsBoundingRect()
+            )
+
+        self.connection_render_item = (
+            ConnectionRenderItem(
+                spatial_index=(
+                    self.connection_spatial_index
+                ),
+                scene_rect=connection_scene_rect,
+                display_style=self.display_style
+            )
+        )
+
+        self.connection_render_item.setZValue(
+            self.display_style.normal_connection_z
+            + 0.1
+        )
+
+        self.connection_render_item.setVisible(
+            False
+        )
+
+        self.scene.addItem(
+            self.connection_render_item
+        )
+
     def _calculate_connection_geometry(
         self,
         source_node: NodeData,
@@ -413,30 +562,6 @@ class SceneRenderer:
             self.node_selection_item
         )
 
-    def _render_nodes(
-        self,
-        autodrive_data: AutoDriveData,
-        on_node_selected: (
-            Callable[[NodeData], None] | None
-        )
-    ):
-        for node_data in (
-            autodrive_data.get_sorted_nodes()
-        ):
-            node_item = NodeItem(
-                node_data=node_data,
-                on_selected=on_node_selected,
-                display_style=self.display_style
-            )
-
-            node_item.setParentItem(
-                self.node_layer
-            )
-
-            self.node_items[
-                node_data.node_id
-            ] = node_item
-
     def select_node(
         self,
         node_data: NodeData
@@ -470,68 +595,6 @@ class SceneRenderer:
         self.node_selection_item.setVisible(
             selection_visible
         )
-
-    def _render_markers(
-        self,
-        autodrive_data: AutoDriveData
-    ):
-        for marker_data in (
-            autodrive_data.markers.values()
-        ):
-            node_item = self.get_node_item(
-                marker_data.node_id
-            )
-
-            if node_item is None:
-                continue
-
-            marker_item = MarkerItem(
-                self.marker_icon_path
-            )
-
-            marker_scale = (
-                self.display_style.marker_scale
-            )
-
-            marker_item.setScale(
-                marker_scale
-            )
-
-            marker_bounds = (
-                marker_item.boundingRect()
-            )
-
-            anchor_x = (
-                marker_bounds.left()
-                + marker_bounds.width()
-                * self.display_style.marker_anchor_x
-            )
-
-            anchor_y = (
-                marker_bounds.top()
-                + marker_bounds.height()
-                * self.display_style.marker_anchor_y
-            )
-
-            marker_x = (
-                node_item.pos().x()
-                - anchor_x * marker_scale
-            )
-
-            marker_y = (
-                node_item.pos().y()
-                - anchor_y * marker_scale
-                - self.display_style.marker_node_gap
-            )
-
-            marker_item.setPos(
-                marker_x,
-                marker_y
-            )
-
-            marker_item.setParentItem(
-                self.marker_layer
-            )
 
     def _create_connection_item(
         self,

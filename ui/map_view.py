@@ -1,11 +1,17 @@
-from PySide6.QtCore import Signal
+from PySide6.QtCore import (
+    QRectF,
+    QTimer,
+    Signal
+)
 from PySide6.QtWidgets import QGraphicsView
 
 
 class MapView(QGraphicsView):
 
     zoom_changed = Signal(float)
-
+    visible_scene_rect_changed = Signal(
+        QRectF
+    )
     ZOOM_FACTOR = 1.15
     MIN_ZOOM = 0.02
     MAX_ZOOM = 50.0
@@ -23,6 +29,30 @@ class MapView(QGraphicsView):
 
         self.setResizeAnchor(
             QGraphicsView.AnchorViewCenter
+        )
+
+        self.viewport_update_timer = QTimer(
+            self
+        )
+
+        self.viewport_update_timer.setSingleShot(
+            True
+        )
+
+        self.viewport_update_timer.setInterval(
+            50
+        )
+
+        self.viewport_update_timer.timeout.connect(
+            self._emit_visible_scene_rect
+        )
+
+        self.horizontalScrollBar().valueChanged.connect(
+            self._schedule_viewport_update
+        )
+
+        self.verticalScrollBar().valueChanged.connect(
+            self._schedule_viewport_update
         )
 
     @property
@@ -79,6 +109,8 @@ class MapView(QGraphicsView):
             self.zoom_level
         )
 
+        self._schedule_viewport_update()
+
         event.accept()
 
     def fitInView(self, *args):
@@ -89,6 +121,15 @@ class MapView(QGraphicsView):
         self.zoom_changed.emit(
             self.zoom_level
         )
+
+        self._schedule_viewport_update()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(
+            event
+        )
+
+        self._schedule_viewport_update()
 
     def set_zoom_level(
         self,
@@ -128,4 +169,22 @@ class MapView(QGraphicsView):
 
         self.zoom_changed.emit(
             self.zoom_level
+        )
+
+        self._schedule_viewport_update()
+
+    def get_visible_scene_rect(self) -> QRectF:
+        return self.mapToScene(
+            self.viewport().rect()
+        ).boundingRect()
+
+    def _schedule_viewport_update(
+        self,
+        *args
+    ):
+        self.viewport_update_timer.start()
+
+    def _emit_visible_scene_rect(self):
+        self.visible_scene_rect_changed.emit(
+            self.get_visible_scene_rect()
         )

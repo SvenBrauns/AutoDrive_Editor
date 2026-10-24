@@ -57,7 +57,11 @@ class MainWindow(QMainWindow):
 
         self.view.zoom_changed.connect(
             self.scene_renderer.update_visibility_for_zoom
-        )   
+        ) 
+
+        self.view.visible_scene_rect_changed.connect(
+            self.scene_renderer.update_visible_scene_rect
+        )  
 
         self.config_directory = CONFIG_DIRECTORY
 
