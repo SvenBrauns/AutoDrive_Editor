@@ -589,6 +589,62 @@ class SceneRenderer:
             selection_path
         )
 
+    def get_debug_state(self) -> dict:
+        visible_nodes = 0
+
+        if self.visible_node_manager is not None:
+            visible_nodes = len(
+                self.visible_node_manager.visible_node_items
+            )
+
+        visible_markers = 0
+
+        if self.visible_marker_manager is not None:
+            visible_markers = len(
+                self.visible_marker_manager.visible_marker_items
+            )
+
+        visible_selection_items = 0
+
+        if (
+            self.visible_node_selection_manager
+            is not None
+        ):
+            visible_selection_items = len(
+                self.visible_node_selection_manager
+                .visible_selection_items
+            )
+
+        if self.detailed_connections_visible is True:
+            connection_mode = "Detail mit Pfeilen"
+
+        elif self.detailed_connections_visible is False:
+            connection_mode = "Globale Übersicht"
+
+        else:
+            connection_mode = "-"
+
+        return {
+            "total_nodes": (
+                self.node_spatial_index.node_count
+            ),
+            "visible_nodes": visible_nodes,
+            "visible_markers": visible_markers,
+            "selected_nodes": len(
+                self.selected_node_ids
+            ),
+            "visible_selection_items": (
+                visible_selection_items
+            ),
+            "connection_mode": connection_mode,
+            "total_connections": (
+                self.connection_spatial_index
+                .connection_count
+            ),
+            "nodes_visible": self.nodes_visible,
+            "markers_visible": self.markers_visible
+        }
+
     def _create_connection_pen(
         self,
         color: tuple[int, int, int]

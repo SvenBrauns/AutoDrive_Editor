@@ -35,15 +35,24 @@ class NodeInfoFormatter:
         )
 
         info_lines = [
-            f"Node ID: {node_data.node_id}",
+            f"Node {node_data.node_id}",
             "",
             f"Typ: {node_type}",
-            *marker_lines,
             "",
+            "Koordinaten",
             f"X: {node_data.x:.3f}",
             *heightmap_lines,
             f"Z: {node_data.z:.3f}"
         ]
+
+        if marker_lines:
+            info_lines.extend(
+                [
+                    "",
+                    "Marker",
+                    *marker_lines
+                ]
+            )
 
         return "\n".join(
             info_lines
@@ -74,8 +83,7 @@ class NodeInfoFormatter:
             return []
 
         return [
-            "",
-            f"Marker: {marker_data.name}",
+            f"Name: {marker_data.name}",
             f"Gruppe: {marker_data.group}"
         ]
 
@@ -85,7 +93,6 @@ class NodeInfoFormatter:
     ) -> list[str]:
         if not self.heightmap_manager.has_heightmap():
             return [
-                "",
                 f"Y: {node_data.y:.3f}"
             ]
 
@@ -102,6 +109,7 @@ class NodeInfoFormatter:
 
         except ValueError as ex:
             return [
+                f"Y laut XML: {node_data.y:.3f}",
                 "",
                 "Heightmap-Auswertung nicht möglich:",
                 str(ex)
@@ -113,23 +121,15 @@ class NodeInfoFormatter:
         )
 
         return [
-            "",
             f"Y laut XML: {node_data.y:.3f}",
+            f"Y laut Heightmap: {height_sample.height:.3f}",
+            f"Abweichung: {height_difference:+.3f}",
+            "",
+            "Heightmap",
             (
-                f"Y laut Heightmap: "
-                f"{height_sample.height:.3f}"
-            ),
-            (
-                f"Abweichung: "
-                f"{height_difference:+.3f}"
-            ),
-            (
-                f"Heightmap-Pixel: "
+                f"Pixel: "
                 f"{height_sample.pixel_x}, "
                 f"{height_sample.pixel_y}"
             ),
-            (
-                f"Heightmap-Rohwert: "
-                f"{height_sample.raw_value}"
-            )
+            f"Rohwert: {height_sample.raw_value}"
         ]
