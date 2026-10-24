@@ -1,5 +1,3 @@
-import math
-
 from PySide6.QtCore import (
     QPointF,
     QRectF,
@@ -10,8 +8,7 @@ from PySide6.QtGui import (
     QBrush,
     QColor,
     QPainter,
-    QPen,
-    QPolygonF
+    QPen
 )
 
 from PySide6.QtWidgets import (
@@ -23,14 +20,18 @@ from rendering.connection_spatial_index import (
 )
 
 from rendering.display_style import DisplayStyle
+from rendering.connection_data import (
+    ConnectionData,
+    ConnectionType
+)
+from rendering.connection_geometry import (
+    MINIMUM_VISIBLE_LENGTH,
+    calculate_connection_geometry,
+    create_arrow_polygon
+)
 
 
 class ConnectionRenderItem(QGraphicsItem):
-
-    CONNECTION_REGULAR = "regular"
-    CONNECTION_DUAL = "dual"
-    CONNECTION_REVERSE = "reverse"
-
     def __init__(
         self,
         spatial_index: ConnectionSpatialIndex,
@@ -52,14 +53,14 @@ class ConnectionRenderItem(QGraphicsItem):
         self.display_style = display_style
 
         self.connection_pens = {
-            self.CONNECTION_REGULAR: self._create_pen(
-                QColor(0, 255, 0)
+            ConnectionType.REGULAR: self._create_pen(
+                self.display_style.regular_connection_color
             ),
-            self.CONNECTION_DUAL: self._create_pen(
-                QColor(0, 0, 255)
+            ConnectionType.DUAL: self._create_pen(
+                self.display_style.dual_connection_color
             ),
-            self.CONNECTION_REVERSE: self._create_pen(
-                QColor(100, 220, 255)
+            ConnectionType.REVERSE: self._create_pen(
+                self.display_style.reverse_connection_color
             )
         }
 
@@ -117,10 +118,6 @@ class ConnectionRenderItem(QGraphicsItem):
             paint_margin
         )
 
-        painter.setClipRect(
-            visible_rect
-        )
-
         visible_connections = (
             self.spatial_index.get_connections_in_rect(
                 visible_rect
@@ -131,9 +128,9 @@ class ConnectionRenderItem(QGraphicsItem):
             return
 
         connections_by_type = {
-            self.CONNECTION_REGULAR: [],
-            self.CONNECTION_DUAL: [],
-            self.CONNECTION_REVERSE: []
+            ConnectionType.REGULAR: [],
+            ConnectionType.DUAL: [],
+            ConnectionType.REVERSE: []
         }
 
         for connection in visible_connections:
@@ -151,6 +148,10 @@ class ConnectionRenderItem(QGraphicsItem):
             )
 
         painter.save()
+
+        painter.setClipRect(
+            visible_rect
+        )
 
         painter.setRenderHint(
             QPainter.Antialiasing,
@@ -186,66 +187,29 @@ class ConnectionRenderItem(QGraphicsItem):
 
     def _draw_connection(
         self,
-        painter,
-        connection
+        painter: QPainter,
+        connection: ConnectionData
     ):
-        delta_x = (
-            connection.target_x
-            - connection.source_x
+        geometry = calculate_connection_geometry(
+            source_x=connection.source_x,
+            source_z=connection.source_z,
+            target_x=connection.target_x,
+            target_z=connection.target_z,
+            node_diameter=(
+                self.display_style.node_diameter
+            )
         )
 
-        delta_z = (
-            connection.target_z
-            - connection.source_z
-        )
-
-        distance = math.hypot(
-            delta_x,
-            delta_z
-        )
-
-        if distance <= 0.000001:
+        if geometry is None:
             return
-
-        direction_x = delta_x / distance
-        direction_z = delta_z / distance
-
-        node_radius = (
-            self.display_style.node_diameter
-            / 2
-        )
-
-        maximum_offset = max(
-            0.0,
-            distance / 2 - 0.0001
-        )
-
-        endpoint_offset = min(
-            node_radius,
-            maximum_offset
-        )
-
-        source_tip = QPointF(
-            connection.source_x
-            + direction_x * endpoint_offset,
-            connection.source_z
-            + direction_z * endpoint_offset
-        )
-
-        target_tip = QPointF(
-            connection.target_x
-            - direction_x * endpoint_offset,
-            connection.target_z
-            - direction_z * endpoint_offset
-        )
 
         visible_length = max(
             0.0,
-            distance
-            - 2 * endpoint_offset
+            geometry.distance
+            - 2 * geometry.endpoint_offset
         )
 
-        if visible_length <= 0.0001:
+        if visible_length <= MINIMUM_VISIBLE_LENGTH:
             return
 
         arrow_length = min(
@@ -253,7 +217,7 @@ class ConnectionRenderItem(QGraphicsItem):
             visible_length * 0.4
         )
 
-        if arrow_length <= 0.0001:
+        if arrow_length <= MINIMUM_VISIBLE_LENGTH:
             return
 
         arrow_width = min(
@@ -262,36 +226,34 @@ class ConnectionRenderItem(QGraphicsItem):
         )
 
         target_arrow_base = QPointF(
-            target_tip.x()
-            - direction_x * arrow_length,
-            target_tip.y()
-            - direction_z * arrow_length
+            geometry.target_tip.x()
+            - geometry.direction_x * arrow_length,
+            geometry.target_tip.y()
+            - geometry.direction_z * arrow_length
         )
 
-        line_start = source_tip
+        line_start = geometry.source_tip
         line_end = target_arrow_base
 
         if (
             connection.connection_type
-            == self.CONNECTION_DUAL
+            == ConnectionType.DUAL
         ):
             source_arrow_base = QPointF(
-                source_tip.x()
-                + direction_x * arrow_length,
-                source_tip.y()
-                + direction_z * arrow_length
+                geometry.source_tip.x()
+                + geometry.direction_x * arrow_length,
+                geometry.source_tip.y()
+                + geometry.direction_z * arrow_length
             )
 
             line_start = source_arrow_base
 
-            source_arrow = (
-                self._create_arrow_polygon(
-                    tip=source_tip,
-                    direction_x=-direction_x,
-                    direction_z=-direction_z,
-                    arrow_length=arrow_length,
-                    arrow_width=arrow_width
-                )
+            source_arrow = create_arrow_polygon(
+                tip=geometry.source_tip,
+                direction_x=-geometry.direction_x,
+                direction_z=-geometry.direction_z,
+                arrow_length=arrow_length,
+                arrow_width=arrow_width
             )
 
             painter.drawPolygon(
@@ -303,71 +265,28 @@ class ConnectionRenderItem(QGraphicsItem):
             line_end
         )
 
-        target_arrow = (
-            self._create_arrow_polygon(
-                tip=target_tip,
-                direction_x=direction_x,
-                direction_z=direction_z,
-                arrow_length=arrow_length,
-                arrow_width=arrow_width
-            )
+        target_arrow = create_arrow_polygon(
+            tip=geometry.target_tip,
+            direction_x=geometry.direction_x,
+            direction_z=geometry.direction_z,
+            arrow_length=arrow_length,
+            arrow_width=arrow_width
         )
 
         painter.drawPolygon(
             target_arrow
         )
 
-    @staticmethod
-    def _create_arrow_polygon(
-        tip,
-        direction_x,
-        direction_z,
-        arrow_length,
-        arrow_width
-    ):
-        base_x = (
-            tip.x()
-            - direction_x * arrow_length
-        )
-
-        base_z = (
-            tip.y()
-            - direction_z * arrow_length
-        )
-
-        perpendicular_x = -direction_z
-        perpendicular_z = direction_x
-
-        half_width = arrow_width / 2
-
-        left_point = QPointF(
-            base_x
-            + perpendicular_x * half_width,
-            base_z
-            + perpendicular_z * half_width
-        )
-
-        right_point = QPointF(
-            base_x
-            - perpendicular_x * half_width,
-            base_z
-            - perpendicular_z * half_width
-        )
-
-        return QPolygonF(
-            [
-                tip,
-                left_point,
-                right_point
-            ]
-        )
-
     def _create_pen(
         self,
-        color
-    ):
+        color: tuple[int, int, int]
+    ) -> QPen:
         connection_pen = QPen(
-            color
+            QColor(
+                color[0],
+                color[1],
+                color[2]
+            )
         )
 
         connection_pen.setWidthF(

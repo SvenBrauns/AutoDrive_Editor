@@ -3,7 +3,7 @@ __pycache__/
 *.pyc
 *.pyo
 
-# Virtual Environment
+# Virtual environment
 .venv/
 
 # IDE
@@ -12,11 +12,11 @@ __pycache__/
 # Logs
 *.log
 
-# Local test files
+# Local AutoDrive data
 *.xml
 
-# Backups
-*backup*
+# Local map data
+maps/
 
-# Local project configurations
-config/*.json
+# Local project files
+local_projects/*.json

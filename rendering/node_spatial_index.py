@@ -2,7 +2,11 @@ import math
 
 from collections import defaultdict
 
-from PySide6.QtCore import QRectF
+from PySide6.QtCore import (
+    QPointF,
+    QRectF
+)
+from PySide6.QtGui import QPainterPath
 
 from autodrive.models import (
     AutoDriveData,
@@ -126,6 +130,32 @@ class NodeSpatialIndex:
                     )
 
         return visible_nodes
+
+    def get_nodes_in_path(
+        self,
+        selection_path: QPainterPath
+    ) -> list[NodeData]:
+        if selection_path.isEmpty():
+            return []
+
+        path_bounds = (
+            selection_path.boundingRect()
+        )
+
+        candidate_nodes = self.get_nodes_in_rect(
+            path_bounds
+        )
+
+        return [
+            node_data
+            for node_data in candidate_nodes
+            if selection_path.contains(
+                QPointF(
+                    node_data.x,
+                    node_data.z
+                )
+            )
+        ]
 
     def _get_tile_key(
         self,
