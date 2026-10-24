@@ -6,13 +6,7 @@ from PySide6.QtWidgets import (
     QGraphicsScene,
     QWidget,
     QLabel,
-    QHBoxLayout,
-    QToolBar
-)
-
-from PySide6.QtGui import (
-    QAction,
-    QActionGroup
+    QHBoxLayout
 )
 
 from PySide6.QtCore import Qt
@@ -22,6 +16,7 @@ from app_paths import (
     MARKER_ICON_PATH
 )
 
+from ui.main_window_actions import MainWindowActions
 from autodrive.xml_parser import AutoDriveXmlParser
 from map.background_manager import BackgroundManager
 from map.heightmap_manager import HeightmapManager
@@ -76,10 +71,13 @@ class MainWindow(QMainWindow):
             self.config_directory
         )
 
-        self.create_interaction_actions()
-        self.create_menu_bar()
-        self.create_quick_access_toolbar()
-        self.create_editor_toolbar()
+        self.actions = MainWindowActions(
+            self
+        )
+
+        self.actions.set_current_map_scale(
+            self.background_manager.map_scale
+        )
 
         self.current_xml_path = None
         self.current_config_path = None
@@ -186,7 +184,7 @@ class MainWindow(QMainWindow):
             heightmap_data.file_path
         )
 
-        self.remove_heightmap_action.setEnabled(
+        self.actions.remove_heightmap_action.setEnabled(
             True
         )
 
@@ -204,7 +202,7 @@ class MainWindow(QMainWindow):
 
         self.current_heightmap_path = None
 
-        self.remove_heightmap_action.setEnabled(
+        self.actions.remove_heightmap_action.setEnabled(
             False
         )
 
@@ -214,311 +212,7 @@ class MainWindow(QMainWindow):
 
         self._refresh_selected_node_info()
 
-    def create_interaction_actions(self):
-        self.navigation_action = QAction(
-            "Navigation",
-            self
-        )
-
-        self.navigation_action.setCheckable(
-            True
-        )
-
-        self.navigation_action.setToolTip(
-            "Kartenansicht verschieben und drehen"
-        )
-
-        self.navigation_action.triggered.connect(
-            self.activate_navigation_mode
-        )
-
-        self.selection_action = QAction(
-            "Auswahl",
-            self
-        )
-
-        self.selection_action.setCheckable(
-            True
-        )
-
-        self.selection_action.setToolTip(
-            "Nodes und Connections auswählen"
-        )
-
-        self.selection_action.triggered.connect(
-            self.activate_selection_mode
-        )
-
-        self.interaction_action_group = QActionGroup(
-            self
-        )
-
-        self.interaction_action_group.setExclusive(
-            True
-        )
-
-        self.interaction_action_group.addAction(
-            self.navigation_action
-        )
-
-        self.interaction_action_group.addAction(
-            self.selection_action
-        )
-
-        self.navigation_action.setChecked(
-            True
-        )
-
-    def create_menu_bar(self):
-        menu_bar = self.menuBar()
-
-        file_menu = menu_bar.addMenu(
-            "Datei"
-        )
-
-        load_project_action = QAction(
-            "Projekt laden",
-            self
-        )
-
-        load_project_action.triggered.connect(
-            self.load_project
-        )
-
-        file_menu.addAction(
-            load_project_action
-        )
-
-        save_project_action = QAction(
-            "Projekt speichern",
-            self
-        )
-
-        save_project_action.triggered.connect(
-            self.save_project
-        )
-
-        file_menu.addAction(
-            save_project_action
-        )
-
-        file_menu.addSeparator()
-
-        load_xml_action = QAction(
-            "AutoDrive-XML laden",
-            self
-        )
-
-        load_xml_action.triggered.connect(
-            self.load_xml
-        )
-
-        file_menu.addAction(
-            load_xml_action
-        )
-
-        file_menu.addSeparator()
-
-        exit_action = QAction(
-            "Beenden",
-            self
-        )
-
-        exit_action.triggered.connect(
-            self.close
-        )
-
-        file_menu.addAction(
-            exit_action
-        )
-
-        map_menu = menu_bar.addMenu(
-            "Karte"
-        )
-
-        select_dds_action = QAction(
-            "DDS auswählen",
-            self
-        )
-
-        select_dds_action.triggered.connect(
-            self.select_background
-        )
-
-        map_menu.addAction(
-            select_dds_action
-        )
-
-        map_menu.addSeparator()
-
-        select_heightmap_action = QAction(
-            "Heightmap auswählen",
-            self
-        )
-
-        select_heightmap_action.triggered.connect(
-            self.select_heightmap
-        )
-
-        map_menu.addAction(
-            select_heightmap_action
-        )
-
-        self.remove_heightmap_action = QAction(
-            "Heightmap entfernen",
-            self
-        )
-
-        self.remove_heightmap_action.triggered.connect(
-            self.remove_heightmap
-        )
-
-        self.remove_heightmap_action.setEnabled(
-            False
-        )
-
-        map_menu.addAction(
-            self.remove_heightmap_action
-        )
-
-        map_menu.addSeparator()
-
-        map_size_menu = map_menu.addMenu(
-            "Kartengröße"
-        )
-
-        self.map_scale_action_group = QActionGroup(
-            self
-        )
-
-        self.map_scale_action_group.setExclusive(
-            True
-        )
-
-        self.map_scale_actions = {}
-
-        map_sizes = (
-            ("Originalgröße", 1),
-            ("4x-Karte", 2),
-            ("16x-Karte", 4),
-            ("64x-Karte", 8)
-        )
-
-        for label, scale in map_sizes:
-            action = QAction(
-                label,
-                self
-            )
-
-            action.setCheckable(
-                True
-            )
-
-            action.setData(
-                scale
-            )
-
-            action.triggered.connect(
-                lambda checked, selected_scale=scale:
-                self.set_map_scale(
-                    selected_scale
-                )
-                if checked
-                else None
-            )
-
-            self.map_scale_action_group.addAction(
-                action
-            )
-
-            map_size_menu.addAction(
-                action
-            )
-
-            self.map_scale_actions[scale] = action
-
-        current_scale = (
-            self.background_manager.map_scale
-        )
-
-        current_action = (
-            self.map_scale_actions.get(
-                current_scale
-            )
-        )
-
-        if current_action is not None:
-            current_action.setChecked(
-                True
-            )
-
-        view_menu = menu_bar.addMenu(
-            "Ansicht"
-        )
-
-        display_options_action = QAction(
-            "Darstellungsoptionen...",
-            self
-        )
-
-        display_options_action.setEnabled(
-            False
-        )
-
-        view_menu.addAction(
-            display_options_action
-        )
-
-        view_menu.addSeparator()
-
-        debug_view_action = QAction(
-            "Debuganzeige",
-            self
-        )
-
-        debug_view_action.setCheckable(
-            True
-        )
-
-        debug_view_action.setChecked(
-            True
-        )
-
-        debug_view_action.setEnabled(
-            False
-        )
-
-        view_menu.addAction(
-            debug_view_action
-        )
-
-        view_menu.addSeparator()
-
-        reset_view_action = QAction(
-            "Ansicht zurücksetzen",
-            self
-        )
-
-        reset_view_action.setEnabled(
-            False
-        )
-
-        view_menu.addAction(
-            reset_view_action
-        )
-
-        reset_rotation_action = QAction(
-            "Rotation zurücksetzen",
-            self
-        )
-
-        reset_rotation_action.setEnabled(
-            False
-        )
-
-        view_menu.addAction(
-            reset_rotation_action
-        )
+    
 
     def set_map_scale(self, map_scale):
         try:
@@ -533,14 +227,13 @@ class MainWindow(QMainWindow):
 
             return
 
-        action = self.map_scale_actions.get(
+        action = self.actions.map_scale_actions.get(
             map_scale
         )
 
-        if action is not None:
-            action.setChecked(
-                True
-            )
+        self.actions.set_current_map_scale(
+            map_scale
+        )
 
         self.scene.setSceneRect(
             self.scene.itemsBoundingRect()
@@ -707,7 +400,7 @@ class MainWindow(QMainWindow):
                 "map_scale"
             ]
 
-            if map_scale not in self.map_scale_actions:
+            if map_scale not in self.actions.map_scale_actions:
                 raise ValueError(
                     f"Unbekannte Kartengröße: {map_scale}"
                 )
@@ -747,7 +440,7 @@ class MainWindow(QMainWindow):
                     heightmap_data.file_path
                 )
 
-                self.remove_heightmap_action.setEnabled(
+                self.actions.remove_heightmap_action.setEnabled(
                     True
                 )
 
@@ -756,7 +449,7 @@ class MainWindow(QMainWindow):
 
                 self.current_heightmap_path = None
 
-                self.remove_heightmap_action.setEnabled(
+                self.actions.remove_heightmap_action.setEnabled(
                     False
                 )
 
@@ -903,30 +596,6 @@ class MainWindow(QMainWindow):
             "\n".join(info_lines)
         )
 
-    def activate_navigation_mode(
-        self,
-        checked
-    ):
-        if not checked:
-            return
-
-        self.set_interaction_mode(
-            InteractionMode.NAVIGATE
-        )
-
-
-    def activate_selection_mode(
-        self,
-        checked
-    ):
-        if not checked:
-            return
-
-        self.set_interaction_mode(
-            InteractionMode.SELECT
-        )
-
-
     def set_interaction_mode(
         self,
         interaction_mode: InteractionMode
@@ -944,85 +613,6 @@ class MainWindow(QMainWindow):
             self.status.setText(
                 "Modus: Auswahl"
             )
-
-    def create_quick_access_toolbar(self):
-        self.quick_access_toolbar = QToolBar(
-            "Schnellauswahl",
-            self
-        )
-
-        self.quick_access_toolbar.setObjectName(
-            "quick_access_toolbar"
-        )
-
-        self.quick_access_toolbar.setMovable(
-            False
-        )
-
-        self.quick_access_toolbar.setFloatable(
-            False
-        )
-
-        self.quick_access_toolbar.setToolButtonStyle(
-            Qt.ToolButtonTextOnly
-        )
-
-        self.addToolBar(
-            Qt.TopToolBarArea,
-            self.quick_access_toolbar
-        )
-
-        self.quick_access_toolbar.addAction(
-            self.navigation_action
-        )
-
-        self.quick_access_toolbar.addAction(
-            self.selection_action
-        )
-
-    def create_editor_toolbar(self):
-        self.editor_toolbar = QToolBar(
-            "Editor-Werkzeuge",
-            self
-        )
-
-        self.editor_toolbar.setObjectName(
-            "editor_toolbar"
-        )
-
-        self.editor_toolbar.setMovable(
-            False
-        )
-
-        self.editor_toolbar.setFloatable(
-            False
-        )
-
-        self.editor_toolbar.setToolButtonStyle(
-            Qt.ToolButtonTextUnderIcon
-        )
-
-        self.addToolBar(
-            Qt.LeftToolBarArea,
-            self.editor_toolbar
-        )
-
-        placeholder_action = QAction(
-            "Editor",
-            self
-        )
-
-        placeholder_action.setEnabled(
-            False
-        )
-
-        placeholder_action.setToolTip(
-            "Editor-Werkzeuge werden später ergänzt"
-        )
-
-        self.editor_toolbar.addAction(
-            placeholder_action
-        )
 
     def handle_selection_click(
         self,
