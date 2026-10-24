@@ -1,4 +1,6 @@
 import json
+import os
+
 from pathlib import Path
 
 
@@ -34,27 +36,17 @@ class ProjectManager:
                 ".json"
             )
 
-        if not xml_path:
-            raise ValueError(
-                "Es wurde keine AutoDrive-XML geladen."
-            )
+        xml_path = self._validate_required_path(
+            xml_path,
+            "AutoDrive-XML"
+        )
 
-        xml_path = Path(
-            xml_path
-        ).resolve()
-
-        if not xml_path.is_file():
-            raise FileNotFoundError(
-                f"Die AutoDrive-XML wurde nicht gefunden: "
-                f"{xml_path}"
-            )
-
-        background_value = self._prepare_optional_path(
+        background_path = self._validate_optional_path(
             background_path,
             "DDS-Datei"
         )
 
-        heightmap_value = self._prepare_optional_path(
+        heightmap_path = self._validate_optional_path(
             heightmap_path,
             "Heightmap"
         )
@@ -68,15 +60,26 @@ class ProjectManager:
                 f"Ungültige Kartengröße: {map_scale}"
             )
 
+        config_directory = config_path.parent
+
         project_data = {
             "format_version": self.FORMAT_VERSION,
-            "autodrive_xml": str(xml_path),
-            "background_dds": background_value,
+            "autodrive_xml": self._make_relative_path(
+                xml_path,
+                config_directory
+            ),
+            "background_dds": self._make_relative_path(
+                background_path,
+                config_directory
+            ),
             "map_scale": map_scale,
-            "heightmap": heightmap_value
+            "heightmap": self._make_relative_path(
+                heightmap_path,
+                config_directory
+            )
         }
 
-        config_path.parent.mkdir(
+        config_directory.mkdir(
             parents=True,
             exist_ok=True
         )
@@ -105,46 +108,72 @@ class ProjectManager:
                 f"{config_path}"
             )
 
-        with config_path.open(
-            "r",
-            encoding="utf-8"
-        ) as config_file:
-            project_data = json.load(
-                config_file
-            )
+        try:
+            with config_path.open(
+                "r",
+                encoding="utf-8"
+            ) as config_file:
+                project_data = json.load(
+                    config_file
+                )
+
+        except json.JSONDecodeError as ex:
+            raise ValueError(
+                f"Die JSON-Projektkonfiguration ist ungültig: {ex}"
+            ) from ex
 
         self._validate_project_data(
             project_data
         )
 
-        xml_path = Path(
-            project_data["autodrive_xml"]
-        ).resolve()
+        config_directory = config_path.parent
 
-        if not xml_path.is_file():
-            raise FileNotFoundError(
-                f"Die AutoDrive-XML wurde nicht gefunden: "
-                f"{xml_path}"
-            )
+        xml_path = self._resolve_relative_path(
+            project_data["autodrive_xml"],
+            config_directory
+        )
+
+        xml_path = self._validate_required_path(
+            xml_path,
+            "AutoDrive-XML"
+        )
+
+        background_path = self._resolve_relative_path(
+            project_data.get("background_dds"),
+            config_directory
+        )
 
         background_path = self._validate_optional_path(
-            project_data.get("background_dds"),
+            background_path,
             "DDS-Datei"
         )
 
-        heightmap_path = self._validate_optional_path(
+        heightmap_path = self._resolve_relative_path(
             project_data.get("heightmap"),
+            config_directory
+        )
+
+        heightmap_path = self._validate_optional_path(
+            heightmap_path,
             "Heightmap"
         )
 
         return {
             "config_path": str(config_path),
             "autodrive_xml": str(xml_path),
-            "background_dds": background_path,
+            "background_dds": (
+                str(background_path)
+                if background_path is not None
+                else None
+            ),
             "map_scale": int(
                 project_data["map_scale"]
             ),
-            "heightmap": heightmap_path
+            "heightmap": (
+                str(heightmap_path)
+                if heightmap_path is not None
+                else None
+            )
         }
 
     def _validate_project_data(
@@ -187,13 +216,30 @@ class ProjectManager:
                 f"Ungültige Kartengröße: {map_scale}"
             )
 
+        self._validate_relative_config_path(
+            project_data["autodrive_xml"],
+            "AutoDrive-XML"
+        )
+
+        self._validate_relative_config_path(
+            project_data.get("background_dds"),
+            "DDS-Datei"
+        )
+
+        self._validate_relative_config_path(
+            project_data.get("heightmap"),
+            "Heightmap"
+        )
+
     @staticmethod
-    def _prepare_optional_path(
+    def _validate_required_path(
         file_path,
         description
     ):
         if not file_path:
-            return None
+            raise ValueError(
+                f"Es wurde keine {description} angegeben."
+            )
 
         path = Path(
             file_path
@@ -205,7 +251,7 @@ class ProjectManager:
                 f"{path}"
             )
 
-        return str(path)
+        return path
 
     @staticmethod
     def _validate_optional_path(
@@ -225,4 +271,74 @@ class ProjectManager:
                 f"{path}"
             )
 
-        return str(path)
+        return path
+
+    @staticmethod
+    def _make_relative_path(
+        file_path,
+        config_directory
+    ):
+        if file_path is None:
+            return None
+
+        file_path = Path(
+            file_path
+        ).resolve()
+
+        config_directory = Path(
+            config_directory
+        ).resolve()
+
+        try:
+            relative_path = os.path.relpath(
+                file_path,
+                config_directory
+            )
+
+        except ValueError as ex:
+            raise ValueError(
+                "Projektkonfiguration und referenzierte Dateien "
+                "müssen auf demselben Laufwerk liegen."
+            ) from ex
+
+        return Path(
+            relative_path
+        ).as_posix()
+
+    @staticmethod
+    def _resolve_relative_path(
+        stored_path,
+        config_directory
+    ):
+        if not stored_path:
+            return None
+
+        stored_path = Path(
+            stored_path
+        )
+
+        if stored_path.is_absolute():
+            raise ValueError(
+                "Die Projektkonfiguration enthält einen absoluten "
+                f"Pfad, obwohl nur relative Pfade unterstützt werden: "
+                f"{stored_path}"
+            )
+
+        return (
+            Path(config_directory)
+            / stored_path
+        ).resolve()
+
+    @staticmethod
+    def _validate_relative_config_path(
+        stored_path,
+        description
+    ):
+        if not stored_path:
+            return
+
+        if Path(stored_path).is_absolute():
+            raise ValueError(
+                f"Der gespeicherte Pfad für die {description} "
+                "muss relativ zur Projektkonfiguration sein."
+            )
