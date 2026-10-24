@@ -2,23 +2,29 @@ from collections.abc import Callable
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QBrush, QColor, QPen
-from PySide6.QtWidgets import QGraphicsEllipseItem
+from PySide6.QtWidgets import (
+    QGraphicsEllipseItem
+)
 
 from autodrive.models import NodeData
 
 
 class NodeItem(QGraphicsEllipseItem):
 
+    NODE_DIAMETER = 2.0
+
     def __init__(
         self,
         node_data: NodeData,
         on_selected: Callable[[NodeData], None] | None = None
     ):
+        radius = self.NODE_DIAMETER / 2
+
         super().__init__(
-            -3,
-            -3,
-            6,
-            6
+            -radius,
+            -radius,
+            self.NODE_DIAMETER,
+            self.NODE_DIAMETER
         )
 
         self.node_data = node_data
@@ -35,6 +41,7 @@ class NodeItem(QGraphicsEllipseItem):
                     QColor("red")
                 )
             )
+
         else:
             self.setBrush(
                 QBrush(
@@ -43,7 +50,9 @@ class NodeItem(QGraphicsEllipseItem):
             )
 
         self.setPen(
-            QPen(Qt.black)
+            QPen(
+                Qt.black
+            )
         )
 
         self.setFlag(
