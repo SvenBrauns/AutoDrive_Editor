@@ -9,12 +9,15 @@ class ProjectManager:
     FORMAT_VERSION = 1
     VALID_MAP_SCALES = (1, 2, 4, 8)
 
-    def __init__(self, config_directory):
-        self.config_directory = Path(
-            config_directory
+    def __init__(
+        self,
+        projects_directory
+    ):
+        self.projects_directory = Path(
+            projects_directory
         ).resolve()
 
-        self.config_directory.mkdir(
+        self.projects_directory.mkdir(
             parents=True,
             exist_ok=True
         )

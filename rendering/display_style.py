@@ -15,7 +15,35 @@ class DisplayStyle:
     marker_anchor_x: float = 0.5
     marker_anchor_y: float = 1.0
     marker_node_gap: float = 0.5
+    regular_connection_color: tuple[
+        int,
+        int,
+        int
+    ] = (
+        0,
+        255,
+        0
+    )
 
+    dual_connection_color: tuple[
+        int,
+        int,
+        int
+    ] = (
+        0,
+        0,
+        255
+    )
+
+    reverse_connection_color: tuple[
+        int,
+        int,
+        int
+    ] = (
+        100,
+        220,
+        255
+    )
     connection_width: float = 0.8
     selected_connection_width: float = 1.4
 

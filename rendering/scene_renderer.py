@@ -1,9 +1,4 @@
-import math
-
-from collections.abc import Callable
-
 from PySide6.QtCore import (
-    QPointF,
     QRectF,
     Qt
 )
@@ -22,21 +17,41 @@ from autodrive.models import (
     NodeData
 )
 
-from items.node_selection_item import NodeSelectionItem
-from rendering.graphics_layer import GraphicsLayerItem
+from rendering.connection_data import (
+    ConnectionType
+)
+from rendering.connection_geometry import (
+    calculate_connection_endpoints,
+    get_connection_type
+)
+from rendering.connection_render_item import (
+    ConnectionRenderItem
+)
+from rendering.connection_spatial_index import (
+    ConnectionSpatialIndex
+)
 from rendering.display_style import DisplayStyle
-from rendering.connection_render_item import ConnectionRenderItem
-from rendering.connection_spatial_index import ConnectionSpatialIndex
-from rendering.node_spatial_index import NodeSpatialIndex
-from rendering.visible_node_manager import VisibleNodeManager
-from rendering.visible_marker_manager import VisibleMarkerManager
+from rendering.items.graphics_layer import (
+    GraphicsLayerItem
+)
+from rendering.items.node_selection_item import (
+    NodeSelectionItem
+)
+from rendering.node_spatial_index import (
+    NodeSpatialIndex
+)
+from rendering.visible_marker_manager import (
+    VisibleMarkerManager
+)
+from rendering.visible_node_manager import (
+    VisibleNodeManager
+)
 
 
 class SceneRenderer:
-
-    CONNECTION_REGULAR = "regular"
-    CONNECTION_DUAL = "dual"
-    CONNECTION_REVERSE = "reverse"
+    
+    SPATIAL_TILE_SIZE = 256.0
+    VISIBILITY_PADDING = 128.0
 
     def __init__(
         self,
@@ -56,7 +71,7 @@ class SceneRenderer:
 
         self.node_spatial_index = (
             NodeSpatialIndex(
-                tile_size=256.0
+                tile_size=self.SPATIAL_TILE_SIZE
             )
         )
 
@@ -72,7 +87,7 @@ class SceneRenderer:
 
         self.connection_spatial_index = (
             ConnectionSpatialIndex(
-                tile_size=256.0
+                tile_size=self.SPATIAL_TILE_SIZE
             )
         )
 
@@ -97,49 +112,27 @@ class SceneRenderer:
         self.nodes_visible = None
         self.markers_visible = None
 
-        self.regular_pen = QPen(
-            QColor(0, 255, 0)
-        )
-
-        self.dual_pen = QPen(
-            QColor(0, 0, 255)
-        )
-
-        self.reverse_pen = QPen(
-            QColor(100, 220, 255)
-        )
-
-        self.regular_pen.setWidthF(
-            self.display_style.connection_width
-        )
-
-        self.dual_pen.setWidthF(
-            self.display_style.connection_width
-        )
-
-        self.reverse_pen.setWidthF(
-            self.display_style.connection_width
-        )
-
-        for connection_pen in (
-            self.regular_pen,
-            self.dual_pen,
-            self.reverse_pen
-        ):
-            connection_pen.setCapStyle(
-                Qt.FlatCap
+        self.connection_pens = {
+            ConnectionType.REGULAR: (
+                self._create_connection_pen(
+                    self.display_style.regular_connection_color
+                )
+            ),
+            ConnectionType.DUAL: (
+                self._create_connection_pen(
+                    self.display_style.dual_connection_color
+                )
+            ),
+            ConnectionType.REVERSE: (
+                self._create_connection_pen(
+                    self.display_style.reverse_connection_color
+                )
             )
-
-            connection_pen.setJoinStyle(
-                Qt.BevelJoin
-            )
+        }
 
     def render(
         self,
-        autodrive_data: AutoDriveData,
-        on_node_selected: (
-            Callable[[NodeData], None] | None
-        ) = None
+        autodrive_data: AutoDriveData
     ):
         self.reset()
         self.selected_node_data = None
@@ -157,8 +150,7 @@ class SceneRenderer:
                     self.node_spatial_index
                 ),
                 display_style=self.display_style,
-                on_node_selected=on_node_selected,
-                padding=128.0
+                padding=self.VISIBILITY_PADDING
             )
         )
 
@@ -172,7 +164,7 @@ class SceneRenderer:
                     self.node_spatial_index
                 ),
                 display_style=self.display_style,
-                padding=128.0
+                padding=self.VISIBILITY_PADDING
             )
         )
 
@@ -215,17 +207,6 @@ class SceneRenderer:
         self.markers_visible = None
         self.detailed_connections_visible = None
 
-    def get_node_item(
-        self,
-        node_id: int
-    ):
-        if self.visible_node_manager is None:
-            return None
-
-        return self.visible_node_manager.get_node_item(
-            node_id
-        )
-
     def update_visible_scene_rect(
         self,
         visible_rect: QRectF
@@ -250,6 +231,31 @@ class SceneRenderer:
                 self.current_visible_rect
             )
 
+    def _update_virtualized_layer(
+        self,
+        layer,
+        manager,
+        should_be_visible: bool
+    ):
+        if layer is None:
+            return
+
+        layer.setVisible(
+            should_be_visible
+        )
+
+        if manager is None:
+            return
+
+        if should_be_visible:
+            if self.current_visible_rect is not None:
+                manager.update(
+                    self.current_visible_rect
+                )
+
+        else:
+            manager.clear()
+
     def update_visibility_for_zoom(
         self,
         zoom_level
@@ -273,49 +279,23 @@ class SceneRenderer:
             >= self.connection_detail_min_zoom
         )
 
-        if (
-            self.node_layer is not None
-            and show_nodes != self.nodes_visible
-        ):
-            self.node_layer.setVisible(
-                show_nodes
+        if show_nodes != self.nodes_visible:
+            self._update_virtualized_layer(
+                layer=self.node_layer,
+                manager=self.visible_node_manager,
+                should_be_visible=show_nodes
             )
 
             self.nodes_visible = show_nodes
 
-            if self.visible_node_manager is not None:
-                if (
-                    show_nodes
-                    and self.current_visible_rect is not None
-                ):
-                    self.visible_node_manager.update(
-                        self.current_visible_rect
-                    )
-
-                elif not show_nodes:
-                    self.visible_node_manager.clear()
-
-        if (
-            self.marker_layer is not None
-            and show_markers != self.markers_visible
-        ):
-            self.marker_layer.setVisible(
-                show_markers
+        if show_markers != self.markers_visible:
+            self._update_virtualized_layer(
+                layer=self.marker_layer,
+                manager=self.visible_marker_manager,
+                should_be_visible=show_markers
             )
 
             self.markers_visible = show_markers
-
-            if self.visible_marker_manager is not None:
-                if (
-                    show_markers
-                    and self.current_visible_rect is not None
-                ):
-                    self.visible_marker_manager.update(
-                        self.current_visible_rect
-                    )
-
-                elif not show_markers:
-                    self.visible_marker_manager.clear()
 
         if (
             show_detailed_connections
@@ -342,7 +322,8 @@ class SceneRenderer:
     def set_visibility_thresholds(
         self,
         node_min_zoom=None,
-        marker_min_zoom=None
+        marker_min_zoom=None,
+        connection_detail_min_zoom=None
     ):
         if node_min_zoom is not None:
             node_min_zoom = float(
@@ -370,9 +351,25 @@ class SceneRenderer:
 
             self.marker_min_zoom = marker_min_zoom
 
+        if connection_detail_min_zoom is not None:
+            connection_detail_min_zoom = float(
+                connection_detail_min_zoom
+            )
+
+            if connection_detail_min_zoom < 0:
+                raise ValueError(
+                    "Der Mindestzoom für detaillierte "
+                    "Connections darf nicht negativ sein."
+                )
+
+            self.connection_detail_min_zoom = (
+                connection_detail_min_zoom
+            )
+
         if self.current_zoom is not None:
             self.nodes_visible = None
             self.markers_visible = None
+            self.detailed_connections_visible = None
 
             self.update_visibility_for_zoom(
                 self.current_zoom
@@ -385,9 +382,9 @@ class SceneRenderer:
         self._remove_connection_items()
 
         connection_paths = {
-            self.CONNECTION_REGULAR: QPainterPath(),
-            self.CONNECTION_DUAL: QPainterPath(),
-            self.CONNECTION_REVERSE: QPainterPath()
+            ConnectionType.REGULAR: QPainterPath(),
+            ConnectionType.DUAL: QPainterPath(),
+            ConnectionType.REVERSE: QPainterPath()
         }
 
         for source_node in (
@@ -406,7 +403,7 @@ class SceneRenderer:
                     continue
 
                 connection_type = (
-                    self._get_connection_type(
+                    get_connection_type(
                         source_node,
                         target_node
                     )
@@ -418,17 +415,20 @@ class SceneRenderer:
                     ]
                 )
 
-                geometry = (
-                    self._calculate_connection_geometry(
-                        source_node,
-                        target_node
+                endpoints = calculate_connection_endpoints(
+                    source_x=source_node.x,
+                    source_z=source_node.z,
+                    target_x=target_node.x,
+                    target_z=target_node.z,
+                    node_diameter=(
+                        self.display_style.node_diameter
                     )
                 )
 
-                if geometry is None:
+                if endpoints is None:
                     continue
 
-                start_point, end_point = geometry
+                start_point, end_point = endpoints
 
                 connection_path.moveTo(
                     start_point
@@ -438,18 +438,6 @@ class SceneRenderer:
                     end_point
                 )
 
-        connection_pens = {
-            self.CONNECTION_REGULAR: (
-                self.regular_pen
-            ),
-            self.CONNECTION_DUAL: (
-                self.dual_pen
-            ),
-            self.CONNECTION_REVERSE: (
-                self.reverse_pen
-            )
-        }
-
         for (
             connection_type,
             connection_path
@@ -457,7 +445,7 @@ class SceneRenderer:
             connection_item = (
                 self._create_connection_item(
                     connection_path,
-                    connection_pens[
+                    self.connection_pens[
                         connection_type
                     ]
                 )
@@ -473,10 +461,7 @@ class SceneRenderer:
         autodrive_data: AutoDriveData
     ):
         self.connection_spatial_index.build(
-            autodrive_data=autodrive_data,
-            connection_type_resolver=(
-                self._get_connection_type
-            )
+            autodrive_data
         )
 
         connection_scene_rect = (
@@ -510,63 +495,6 @@ class SceneRenderer:
         self.scene.addItem(
             self.connection_render_item
         )
-
-    def _calculate_connection_geometry(
-        self,
-        source_node: NodeData,
-        target_node: NodeData
-    ):
-        delta_x = (
-            target_node.x
-            - source_node.x
-        )
-
-        delta_z = (
-            target_node.z
-            - source_node.z
-        )
-
-        distance = math.hypot(
-            delta_x,
-            delta_z
-        )
-
-        if distance <= 0.000001:
-            return None
-
-        direction_x = delta_x / distance
-        direction_z = delta_z / distance
-
-        node_radius = (
-            self.display_style.node_diameter
-            / 2
-        )
-
-        maximum_offset = max(
-            0.0,
-            distance / 2 - 0.0001
-        )
-
-        endpoint_offset = min(
-            node_radius,
-            maximum_offset
-        )
-
-        start_point = QPointF(
-            source_node.x
-            + direction_x * endpoint_offset,
-            source_node.z
-            + direction_z * endpoint_offset
-        )
-
-        end_point = QPointF(
-            target_node.x
-            - direction_x * endpoint_offset,
-            target_node.z
-            - direction_z * endpoint_offset
-        )
-
-        return start_point, end_point
 
     def _create_layers(self):
         self.node_layer = GraphicsLayerItem()
@@ -635,6 +563,30 @@ class SceneRenderer:
             selection_visible
         )
 
+    def _create_connection_pen(
+        self,
+        color: tuple[int, int, int]
+    ) -> QPen:
+        connection_pen = QPen(
+            QColor(
+                *color
+            )
+        )
+
+        connection_pen.setWidthF(
+            self.display_style.connection_width
+        )
+
+        connection_pen.setCapStyle(
+            Qt.FlatCap
+        )
+
+        connection_pen.setJoinStyle(
+            Qt.BevelJoin
+        )
+
+        return connection_pen
+
     def _create_connection_item(
         self,
         connection_path,
@@ -678,50 +630,3 @@ class SceneRenderer:
                 )
 
         self.connection_items.clear()
-
-    def _get_connection_type(
-        self,
-        source_node: NodeData,
-        target_node: NodeData
-    ):
-        if self._is_dual_connection(
-            source_node,
-            target_node
-        ):
-            return self.CONNECTION_DUAL
-
-        if self._is_reverse_connection(
-            source_node,
-            target_node
-        ):
-            return self.CONNECTION_REVERSE
-
-        return self.CONNECTION_REGULAR
-
-    @staticmethod
-    def _is_dual_connection(
-        source_node: NodeData,
-        target_node: NodeData
-    ):
-        return (
-            target_node.node_id
-            in source_node.outgoing
-            and target_node.node_id
-            in source_node.incoming
-            and source_node.node_id
-            in target_node.outgoing
-            and source_node.node_id
-            in target_node.incoming
-        )
-
-    @staticmethod
-    def _is_reverse_connection(
-        source_node: NodeData,
-        target_node: NodeData
-    ):
-        return (
-            target_node.node_id
-            in source_node.outgoing
-            and source_node.node_id
-            not in target_node.incoming
-        )

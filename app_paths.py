@@ -5,8 +5,8 @@ APP_ROOT = Path(
     __file__
 ).resolve().parent
 
-CONFIG_DIRECTORY = (
-    APP_ROOT / "config"
+LOCAL_PROJECTS_DIRECTORY = (
+    APP_ROOT / "local_projects"
 )
 
 ICON_DIRECTORY = (

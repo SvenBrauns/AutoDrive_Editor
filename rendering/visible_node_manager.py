@@ -1,5 +1,3 @@
-from collections.abc import Callable
-
 from PySide6.QtCore import QRectF
 from PySide6.QtWidgets import (
     QGraphicsItem,
@@ -7,7 +5,7 @@ from PySide6.QtWidgets import (
 )
 
 from autodrive.models import NodeData
-from items.node_item import NodeItem
+from rendering.items.node_item import NodeItem
 from rendering.display_style import DisplayStyle
 from rendering.node_spatial_index import (
     NodeSpatialIndex
@@ -24,10 +22,7 @@ class VisibleNodeManager:
         node_layer: QGraphicsItem,
         node_spatial_index: NodeSpatialIndex,
         display_style: DisplayStyle,
-        on_node_selected: (
-            Callable[[NodeData], None] | None
-        ) = None,
-        padding=DEFAULT_PADDING
+        padding: float = DEFAULT_PADDING
     ):
         self.scene = scene
         self.node_layer = node_layer
@@ -36,14 +31,16 @@ class VisibleNodeManager:
         )
 
         self.display_style = display_style
-        self.on_node_selected = on_node_selected
 
         self.padding = max(
             0.0,
             float(padding)
         )
 
-        self.node_items = {}
+        self.visible_node_items: dict[
+            int,
+            NodeItem
+        ] = {}
 
     def update(
         self,
@@ -66,7 +63,7 @@ class VisibleNodeManager:
         )
 
         existing_node_ids = set(
-            self.node_items
+            self.visible_node_items
         )
 
         node_ids_to_remove = (
@@ -93,19 +90,11 @@ class VisibleNodeManager:
 
     def clear(self):
         for node_id in list(
-            self.node_items
+            self.visible_node_items
         ):
             self._remove_node_item(
                 node_id
             )
-
-    def get_node_item(
-        self,
-        node_id: int
-    ):
-        return self.node_items.get(
-            node_id
-        )
 
     def _add_node_item(
         self,
@@ -113,7 +102,6 @@ class VisibleNodeManager:
     ):
         node_item = NodeItem(
             node_data=node_data,
-            on_selected=self.on_node_selected,
             display_style=self.display_style
         )
 
@@ -121,7 +109,7 @@ class VisibleNodeManager:
             self.node_layer
         )
 
-        self.node_items[
+        self.visible_node_items[
             node_data.node_id
         ] = node_item
 
@@ -129,7 +117,7 @@ class VisibleNodeManager:
         self,
         node_id: int
     ):
-        node_item = self.node_items.pop(
+        node_item = self.visible_node_items.pop(
             node_id,
             None
         )
