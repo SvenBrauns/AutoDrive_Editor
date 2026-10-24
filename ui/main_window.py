@@ -3,19 +3,16 @@ import xml.etree.ElementTree as ET
 from PySide6.QtWidgets import (
     QMainWindow,
     QFileDialog,
-    QComboBox,
     QGraphicsScene,
-    QGraphicsEllipseItem,
     QGraphicsLineItem,
     QWidget,
-    QVBoxLayout,
-    QPushButton,
     QLabel,
     QHBoxLayout
 )
 
 from PySide6.QtGui import (
-    QBrush,
+    QAction,
+    QActionGroup,
     QColor,
     QPen
 )
@@ -60,12 +57,20 @@ class MainWindow(QMainWindow):
         self.project_manager = ProjectManager(
             self.config_directory
         )
+        self.create_menu_bar()
 
         self.current_xml_path = None
         self.current_config_path = None
         self.current_heightmap_path = None
 
-        self.status = QLabel("Keine Datei geladen")
+        self.status = QLabel(
+            "Keine Datei geladen"
+        )
+
+        self.statusBar().addWidget(
+            self.status,
+            1
+        )
 
         self.node_info = QLabel(
             "Keine Node ausgewählt"
@@ -73,137 +78,25 @@ class MainWindow(QMainWindow):
 
         self.node_info.setMinimumWidth(250)
 
-        btn_load = QPushButton("XML laden")
-        btn_load.clicked.connect(self.load_xml)
+        main_layout = QHBoxLayout()
 
-        btn_background = QPushButton("DDS auswählen")
-        btn_background.clicked.connect(
-            self.select_background
-        )
-
-        btn_load_project = QPushButton(
-            "Projekt laden"
-        )
-
-        btn_load_project.clicked.connect(
-            self.load_project
-        )
-
-        btn_save_project = QPushButton(
-            "Projekt speichern"
-        )
-
-        btn_save_project.clicked.connect(
-            self.save_project
-        )
-
-        map_size_label = QLabel("Kartengröße:")
-
-        self.map_size_combo = QComboBox()
-
-        self.map_size_combo.addItem(
-            "Originalgröße",
+        main_layout.addWidget(
+            self.view,
             1
         )
 
-        self.map_size_combo.addItem(
-            "4x-Karte",
-            2
+        main_layout.addWidget(
+            self.node_info
         )
-
-        self.map_size_combo.addItem(
-            "16x-Karte",
-            4
-        )
-
-        self.map_size_combo.addItem(
-            "64x-Karte",
-            8
-        )
-
-        default_index = self.map_size_combo.findData(
-            self.background_manager.map_scale
-        )
-
-        if default_index >= 0:
-            self.map_size_combo.setCurrentIndex(
-                default_index
-            )
-
-        self.map_size_combo.currentIndexChanged.connect(
-            self.on_map_scale_changed
-        )
-
-
-        top = QHBoxLayout()
-
-        top.addWidget(
-            btn_load_project
-        )
-
-        top.addWidget(
-            btn_save_project
-        )
-
-        top.addWidget(
-            btn_load
-        )
-
-        top.addWidget(
-            btn_background
-        )
-
-        top.addWidget(
-            map_size_label
-        )
-
-        top.addWidget(
-            self.map_size_combo
-        )
-
-        top.addWidget(
-            self.status
-        )
-
-        top.addStretch()
-
-        main_layout = QHBoxLayout()
-
-        left_layout = QVBoxLayout()
-        left_layout.addLayout(top)
-        left_layout.addWidget(self.view)
-
-        main_layout.addLayout(left_layout)
-        main_layout.addWidget(self.node_info)
 
         container = QWidget()
-        container.setLayout(main_layout)
 
-        self.setCentralWidget(container)
-        self.view.setScene(self.scene)
-
-    def on_map_scale_changed(self, index):
-        selected_scale = self.map_size_combo.itemData(
-            index
+        container.setLayout(
+            main_layout
         )
 
-        if selected_scale is None:
-            return
-
-        try:
-            self.background_manager.set_map_scale(
-                selected_scale
-            )
-
-        except Exception as ex:
-            self.status.setText(
-                f"Kartengröße konnte nicht geändert werden: {ex}"
-            )
-
-            return
-
-        self.scene.setSceneRect(
-            self.scene.itemsBoundingRect()
+        self.setCentralWidget(
+            container
         )
 
     def select_background(self):
@@ -241,6 +134,188 @@ class MainWindow(QMainWindow):
 
         self.status.setText(
             "DDS-Hintergrund geladen"
+        )
+
+    def create_menu_bar(self):
+        menu_bar = self.menuBar()
+
+        file_menu = menu_bar.addMenu(
+            "Datei"
+        )
+
+        load_project_action = QAction(
+            "Projekt laden",
+            self
+        )
+
+        load_project_action.triggered.connect(
+            self.load_project
+        )
+
+        file_menu.addAction(
+            load_project_action
+        )
+
+        save_project_action = QAction(
+            "Projekt speichern",
+            self
+        )
+
+        save_project_action.triggered.connect(
+            self.save_project
+        )
+
+        file_menu.addAction(
+            save_project_action
+        )
+
+        file_menu.addSeparator()
+
+        load_xml_action = QAction(
+            "AutoDrive-XML laden",
+            self
+        )
+
+        load_xml_action.triggered.connect(
+            self.load_xml
+        )
+
+        file_menu.addAction(
+            load_xml_action
+        )
+
+        file_menu.addSeparator()
+
+        exit_action = QAction(
+            "Beenden",
+            self
+        )
+
+        exit_action.triggered.connect(
+            self.close
+        )
+
+        file_menu.addAction(
+            exit_action
+        )
+
+        map_menu = menu_bar.addMenu(
+            "Karte"
+        )
+
+        select_dds_action = QAction(
+            "DDS auswählen",
+            self
+        )
+
+        select_dds_action.triggered.connect(
+            self.select_background
+        )
+
+        map_menu.addAction(
+            select_dds_action
+        )
+
+        map_menu.addSeparator()
+
+        map_size_menu = map_menu.addMenu(
+            "Kartengröße"
+        )
+
+        self.map_scale_action_group = QActionGroup(
+            self
+        )
+
+        self.map_scale_action_group.setExclusive(
+            True
+        )
+
+        self.map_scale_actions = {}
+
+        map_sizes = (
+            ("Originalgröße", 1),
+            ("4x-Karte", 2),
+            ("16x-Karte", 4),
+            ("64x-Karte", 8)
+        )
+
+        for label, scale in map_sizes:
+            action = QAction(
+                label,
+                self
+            )
+
+            action.setCheckable(
+                True
+            )
+
+            action.setData(
+                scale
+            )
+
+            action.triggered.connect(
+                lambda checked, selected_scale=scale:
+                self.set_map_scale(
+                    selected_scale
+                )
+                if checked
+                else None
+            )
+
+            self.map_scale_action_group.addAction(
+                action
+            )
+
+            map_size_menu.addAction(
+                action
+            )
+
+            self.map_scale_actions[scale] = action
+
+        current_scale = (
+            self.background_manager.map_scale
+        )
+
+        current_action = (
+            self.map_scale_actions.get(
+                current_scale
+            )
+        )
+
+        if current_action is not None:
+            current_action.setChecked(
+                True
+            )
+
+    def set_map_scale(self, map_scale):
+        try:
+            self.background_manager.set_map_scale(
+                map_scale
+            )
+
+        except Exception as ex:
+            self.status.setText(
+                f"Kartengröße konnte nicht geändert werden: {ex}"
+            )
+
+            return
+
+        action = self.map_scale_actions.get(
+            map_scale
+        )
+
+        if action is not None:
+            action.setChecked(
+                True
+            )
+
+        self.scene.setSceneRect(
+            self.scene.itemsBoundingRect()
+        )
+
+        self.status.setText(
+            f"Kartengröße: "
+            f"{action.text() if action else map_scale}"
         )
 
     def load_xml(self):
@@ -656,19 +731,13 @@ class MainWindow(QMainWindow):
                 "map_scale"
             ]
 
-            scale_index = (
-                self.map_size_combo.findData(
-                    map_scale
-                )
-            )
-
-            if scale_index < 0:
+            if map_scale not in self.map_scale_actions:
                 raise ValueError(
                     f"Unbekannte Kartengröße: {map_scale}"
                 )
 
-            self.map_size_combo.setCurrentIndex(
-                scale_index
+            self.set_map_scale(
+                map_scale
             )
 
             background_path = project_data[
