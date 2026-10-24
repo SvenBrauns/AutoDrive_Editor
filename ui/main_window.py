@@ -1,5 +1,3 @@
-import xml.etree.ElementTree as ET
-
 from pathlib import Path
 
 from PySide6.QtWidgets import (
@@ -31,6 +29,8 @@ from app_paths import (
 from items.node_item import NodeItem
 from items.marker_item import MarkerItem
 
+from autodrive.xml_parser import AutoDriveXmlParser
+
 class MainWindow(QMainWindow):
 
     def __init__(self):
@@ -45,6 +45,7 @@ class MainWindow(QMainWindow):
         self.view.setScene(self.scene)
         self.waypoints = []
         self.marker_data = {}
+        self.autodrive_data = None
 
         self.background_manager = BackgroundManager(
             self.scene,
@@ -339,8 +340,12 @@ class MainWindow(QMainWindow):
             )
 
     def load_xml_file(self, filename):
-        self.current_xml_path = str(
-            Path(filename).resolve()
+        xml_path = Path(
+            filename
+        ).resolve()
+
+        autodrive_data = AutoDriveXmlParser.load(
+            xml_path
         )
 
         self.background_manager.remove_from_scene(
@@ -352,99 +357,25 @@ class MainWindow(QMainWindow):
         self.waypoints.clear()
         self.marker_data.clear()
 
-        tree = ET.parse(
-            self.current_xml_path
+        self.current_xml_path = str(
+            xml_path
         )
 
-        root = tree.getroot()
-
-        waypoint_section = root.find(
-            "waypoints"
-        )
-
-        if waypoint_section is None:
-            raise ValueError(
-                "Die XML enthält keinen Waypoint-Bereich."
-            )
-
-        markers_section = root.find(
-            "markers"
-        )
-
-        x_node = waypoint_section.find("x")
-        y_node = waypoint_section.find("y")
-        z_node = waypoint_section.find("z")
-
-        if (
-            x_node is None
-            or y_node is None
-            or z_node is None
-        ):
-            raise ValueError(
-                "x/y/z-Daten fehlen."
-            )
-
-        xs = [
-            float(value)
-            for value in x_node.text.split(";")
-            if value
-        ]
-
-        ys = [
-            float(value)
-            for value in y_node.text.split(";")
-            if value
-        ]
-
-        zs = [
-            float(value)
-            for value in z_node.text.split(";")
-            if value
-        ]
+        self.autodrive_data = autodrive_data
 
         self.background_manager.restore()
 
-        out_node = waypoint_section.find(
-            "out"
+        sorted_nodes = (
+            self.autodrive_data.get_sorted_nodes()
         )
 
-        if out_node is not None and out_node.text:
-            out_connections = out_node.text.split(";")
-        else:
-            out_connections = []
-
-        in_node = waypoint_section.find(
-            "in"
-        )
-
-        if in_node is not None and in_node.text:
-            in_connections = in_node.text.split(";")
-        else:
-            in_connections = []
-
-        flags_node = waypoint_section.find(
-            "flags"
-        )
-
-        if flags_node is not None and flags_node.text:
-            flag_values = flags_node.text.split(";")
-        else:
-            flag_values = ["0"] * len(xs)
-
-        count = min(
-            len(xs),
-            len(ys),
-            len(zs),
-            len(flag_values)
-        )
-
-        for index in range(count):
+        for node_data in sorted_nodes:
             item = NodeItem(
-                index + 1,
-                xs[index],
-                ys[index],
-                zs[index],
-                int(flag_values[index]),
+                node_data.node_id,
+                node_data.x,
+                node_data.y,
+                node_data.z,
+                node_data.flag,
                 self
             )
 
@@ -456,60 +387,72 @@ class MainWindow(QMainWindow):
                 item
             )
 
-        if markers_section is not None:
-            for marker in markers_section:
-                try:
-                    node_id = int(
-                        marker.attrib["i"]
-                    )
+        for marker_data in (
+            self.autodrive_data.markers.values()
+        ):
+            self.marker_data[marker_data.node_id] = {
+                "name": marker_data.name,
+                "group": marker_data.group
+            }
 
-                    marker_name = marker.attrib.get(
-                        "n",
-                        ""
-                    )
+            node_item = self._get_waypoint_item(
+                marker_data.node_id
+            )
 
-                    marker_group = marker.attrib.get(
-                        "g",
-                        ""
-                    )
+            if node_item is None:
+                continue
 
-                    self.marker_data[node_id] = {
-                        "name": marker_name,
-                        "group": marker_group
-                    }
+            marker_item = MarkerItem(
+                str(MARKER_ICON_PATH)
+            )
 
-                    if node_id <= 0:
-                        continue
+            marker_item.setScale(
+                0.15
+            )
 
-                    if node_id > len(self.waypoints):
-                        continue
+            marker_item.setPos(
+                node_item.pos().x() - 5,
+                node_item.pos().y() - 12
+            )
 
-                    node = self.waypoints[
-                        node_id - 1
-                    ]
+            self.scene.addItem(
+                marker_item
+            )
 
-                    marker_item = MarkerItem(str(MARKER_ICON_PATH))
+        self._create_connections()
 
-                    marker_item.setScale(
-                        0.15
-                    )
+        self.scene.setSceneRect(
+            self.scene.itemsBoundingRect()
+        )
 
-                    marker_item.setPos(
-                        node.pos().x() - 5,
-                        node.pos().y() - 12
-                    )
+        self.view.fitInView(
+            self.scene.sceneRect(),
+            Qt.KeepAspectRatio
+        )
 
-                    self.scene.addItem(
-                        marker_item
-                    )
+        self.status.setText(
+            f"{len(self.autodrive_data)} Waypoints geladen"
+        )
 
-                except (
-                    KeyError,
-                    TypeError,
-                    ValueError
-                ):
-                    continue
+    def _get_waypoint_item(self, node_id):
+        waypoint_index = node_id - 1
 
+        if waypoint_index < 0:
+            return None
+
+        if waypoint_index >= len(self.waypoints):
+            return None
+
+        waypoint_item = self.waypoints[
+            waypoint_index
+        ]
+
+        if waypoint_item.index != node_id:
+            return None
+
+        return waypoint_item
+
+    def _create_connections(self):
         regular_pen = QPen(
             QColor(0, 255, 0)
         )
@@ -522,125 +465,71 @@ class MainWindow(QMainWindow):
             QColor(100, 220, 255)
         )
 
-        for source_idx, connection_text in enumerate(
-            out_connections
+        for source_node in (
+            self.autodrive_data.get_sorted_nodes()
         ):
-            if not connection_text.strip():
+            source_item = self._get_waypoint_item(
+                source_node.node_id
+            )
+
+            if source_item is None:
                 continue
 
-            if source_idx >= len(
-                self.waypoints
-            ):
-                continue
-
-            source = self.waypoints[
-                source_idx
-            ]
-
-            targets = connection_text.split(",")
-
-            for target_text in targets:
-                try:
-                    target_idx = int(
-                        target_text
-                    ) - 1
-
-                    if target_idx < 0:
-                        continue
-
-                    if target_idx >= len(
-                        self.waypoints
-                    ):
-                        continue
-
-                    target = self.waypoints[
-                        target_idx
-                    ]
-
-                    source_id = str(
-                        source_idx + 1
+            for target_id in source_node.outgoing:
+                target_node = (
+                    self.autodrive_data.get_node(
+                        target_id
                     )
+                )
 
-                    target_id = str(
-                        target_idx + 1
-                    )
+                target_item = self._get_waypoint_item(
+                    target_id
+                )
 
-                    source_out = (
-                        out_connections[source_idx]
-                        .split(",")
-                    )
-
-                    source_in = (
-                        in_connections[source_idx]
-                        .split(",")
-                    )
-
-                    target_out = (
-                        out_connections[target_idx]
-                        .split(",")
-                    )
-
-                    target_in = (
-                        in_connections[target_idx]
-                        .split(",")
-                    )
-
-                    is_dual = (
-                        target_id in source_out
-                        and target_id in source_in
-                        and source_id in target_out
-                        and source_id in target_in
-                    )
-
-                    is_reverse = (
-                        target_id in source_out
-                        and source_id not in target_in
-                    )
-
-                    line = QGraphicsLineItem(
-                        source.pos().x(),
-                        source.pos().y(),
-                        target.pos().x(),
-                        target.pos().y()
-                    )
-
-                    if is_dual:
-                        line.setPen(
-                            dual_pen
-                        )
-
-                    elif is_reverse:
-                        line.setPen(
-                            reverse_pen
-                        )
-
-                    else:
-                        line.setPen(
-                            regular_pen
-                        )
-
-                    self.scene.addItem(
-                        line
-                    )
-
-                except (
-                    IndexError,
-                    ValueError
-                ):
+                if target_node is None:
                     continue
 
-        self.scene.setSceneRect(
-            self.scene.itemsBoundingRect()
-        )
+                if target_item is None:
+                    continue
 
-        self.view.fitInView(
-            self.scene.sceneRect(),
-            Qt.KeepAspectRatio
-        )
+                is_dual = (
+                    target_id in source_node.outgoing
+                    and target_id in source_node.incoming
+                    and source_node.node_id in target_node.outgoing
+                    and source_node.node_id in target_node.incoming
+                )
 
-        self.status.setText(
-            f"{count} Waypoints geladen"
-        )
+                is_reverse = (
+                    target_id in source_node.outgoing
+                    and source_node.node_id
+                    not in target_node.incoming
+                )
+
+                line = QGraphicsLineItem(
+                    source_item.pos().x(),
+                    source_item.pos().y(),
+                    target_item.pos().x(),
+                    target_item.pos().y()
+                )
+
+                if is_dual:
+                    line.setPen(
+                        dual_pen
+                    )
+
+                elif is_reverse:
+                    line.setPen(
+                        reverse_pen
+                    )
+
+                else:
+                    line.setPen(
+                        regular_pen
+                    )
+
+                self.scene.addItem(
+                    line
+                )
 
     def save_project(self):
         if not self.current_xml_path:
