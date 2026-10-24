@@ -57,7 +57,11 @@ class MainWindow(QMainWindow):
 
         self.view.zoom_changed.connect(
             self.scene_renderer.update_visibility_for_zoom
-        )   
+        ) 
+
+        self.view.visible_scene_rect_changed.connect(
+            self.scene_renderer.update_visible_scene_rect
+        )  
 
         self.config_directory = CONFIG_DIRECTORY
 
@@ -660,6 +664,10 @@ class MainWindow(QMainWindow):
 
     def show_node_info(self, node_data):
         self.selected_node_data = node_data
+
+        self.scene_renderer.select_node(
+            node_data
+        )
 
         node_type = (
             "Regular Node"
