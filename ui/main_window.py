@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 from app_paths import (
-    CONFIG_DIRECTORY,
+    LOCAL_PROJECTS_DIRECTORY,
     MARKER_ICON_PATH
 )
 from autodrive.models import (
@@ -54,7 +54,9 @@ class MainWindow(QMainWindow):
         self.current_config_path: str | None = None
         self.current_heightmap_path: str | None = None
 
-        self.config_directory = CONFIG_DIRECTORY
+        self.local_projects_directory = (
+            LOCAL_PROJECTS_DIRECTORY
+        )
 
         self._configure_window()
         self._create_scene_and_view()
@@ -257,7 +259,7 @@ class MainWindow(QMainWindow):
         default_path = (
             self.current_config_path
             if self.current_config_path
-            else str(self.config_directory)
+            else str(self.local_projects_directory)
         )
 
         config_path, _ = QFileDialog.getSaveFileName(
@@ -310,7 +312,7 @@ class MainWindow(QMainWindow):
         config_path, _ = QFileDialog.getOpenFileName(
             self,
             "Projektkonfiguration öffnen",
-            str(self.config_directory),
+            str(self.local_projects_directory),
             "JSON-Konfiguration (*.json)"
         )
 
@@ -447,7 +449,7 @@ class MainWindow(QMainWindow):
         )
 
         self.project_manager = ProjectManager(
-            self.config_directory
+            self.local_projects_directory
         )
 
     def _create_status_widgets(self):
