@@ -3,6 +3,7 @@ import xml.etree.ElementTree as ET
 from PySide6.QtWidgets import (
     QMainWindow,
     QFileDialog,
+    QComboBox,
     QGraphicsScene,
     QGraphicsEllipseItem,
     QGraphicsLineItem,
@@ -45,7 +46,12 @@ class MainWindow(QMainWindow):
 
         self.view = MapView()
         self.view.setScene(self.scene)
+        self.waypoints = []
+        self.marker_data = {}
+        self.background_item = None
 
+        # Standardmäßig Originalgröße
+        self.map_scale = 1
         self.status = QLabel("Keine Datei geladen")
 
         self.node_info = QLabel(
@@ -57,10 +63,52 @@ class MainWindow(QMainWindow):
         btn_load = QPushButton("XML laden")
         btn_load.clicked.connect(self.load_xml)
 
+        map_size_label = QLabel("Kartengröße:")
+
+        self.map_size_combo = QComboBox()
+
+        self.map_size_combo.addItem(
+            "Originalgröße",
+            1
+        )
+
+        self.map_size_combo.addItem(
+            "4x-Karte",
+            2
+        )
+
+        self.map_size_combo.addItem(
+            "16x-Karte",
+            4
+        )
+
+        self.map_size_combo.addItem(
+            "64x-Karte",
+            8
+        )
+
+        default_index = self.map_size_combo.findData(
+            self.map_scale
+        )
+
+        if default_index >= 0:
+            self.map_size_combo.setCurrentIndex(
+                default_index
+            )
+
+        self.map_size_combo.currentIndexChanged.connect(
+            self.on_map_scale_changed
+        )
+
 
         top = QHBoxLayout()
+
         top.addWidget(btn_load)
+        top.addWidget(map_size_label)
+        top.addWidget(self.map_size_combo)
         top.addWidget(self.status)
+
+        top.addStretch()
 
         main_layout = QHBoxLayout()
 
@@ -75,14 +123,54 @@ class MainWindow(QMainWindow):
         container.setLayout(main_layout)
 
         self.setCentralWidget(container)
+        self.view.setScene(self.scene)
 
-        self.waypoints = []
+    def on_map_scale_changed(self, index):
+        selected_scale = self.map_size_combo.itemData(index)
 
-        self.marker_data = {}
+        if selected_scale is None:
+            return
 
-        self.background_item = None
+        self.map_scale = int(selected_scale)
 
-        self.map_scale = 4
+        if self.background_item is not None:
+            self.apply_background_transform()
+
+            self.scene.setSceneRect(
+                self.scene.itemsBoundingRect()
+            )
+
+    def apply_background_transform(self):
+        if self.background_item is None:
+            return
+
+        pixmap = self.background_item.pixmap()
+
+        if pixmap.isNull():
+            return
+
+        background_scale = (
+            MapTransform.calculate_background_scale(
+                self.map_scale
+            )
+        )
+
+        pos_x, pos_z = (
+            MapTransform.calculate_background_position(
+                pixmap.width(),
+                pixmap.height(),
+                self.map_scale
+            )
+        )
+
+        self.background_item.setScale(
+            background_scale
+        )
+
+        self.background_item.setPos(
+            pos_x,
+            pos_z
+        )
 
     def load_xml(self):
 
@@ -97,7 +185,10 @@ class MainWindow(QMainWindow):
             return
 
         self.scene.clear()
+
         self.waypoints.clear()
+        self.marker_data.clear()
+        self.background_item = None
 
         tree = ET.parse(filename)
         root = tree.getroot()
@@ -117,11 +208,6 @@ class MainWindow(QMainWindow):
         xs = [float(v) for v in x_node.text.split(";") if v]
         ys = [float(v) for v in y_node.text.split(";") if v]
         zs = [float(v) for v in z_node.text.split(";") if v]
-
-        bounds = MapTransform.calculate_world_bounds(
-            xs,
-            zs
-        )
 
         try:
             self.create_background()
@@ -335,31 +421,13 @@ class MainWindow(QMainWindow):
             "maps/TestMap/overview.dds"
         )
 
+        if pixmap.isNull():
+            raise ValueError(
+                "Die Hintergrundkarte konnte nicht geladen werden."
+            )
+
         self.background_item = QGraphicsPixmapItem(
             pixmap
-        )
-
-        background_scale = (
-            MapTransform.calculate_background_scale(
-                self.map_scale
-            )
-        )
-
-        pos_x, pos_z = (
-            MapTransform.calculate_background_position(
-                pixmap.width(),
-                pixmap.height(),
-                self.map_scale
-            )
-        )
-
-        self.background_item.setScale(
-            background_scale
-        )
-
-        self.background_item.setPos(
-            pos_x,
-            pos_z
         )
 
         self.background_item.setZValue(
@@ -369,3 +437,5 @@ class MainWindow(QMainWindow):
         self.scene.addItem(
             self.background_item
         )
+
+        self.apply_background_transform()
