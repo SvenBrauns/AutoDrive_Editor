@@ -365,7 +365,7 @@ class MainWindow(QMainWindow):
 
         self.scene_renderer.render(
             self.autodrive_data,
-            self
+            self.show_node_info
         )
 
         self.scene.setSceneRect(
@@ -510,28 +510,21 @@ class MainWindow(QMainWindow):
             f"Projekt geladen: {Path(config_path).name}"
         )
 
-    def show_node_info(self, node_item):
-        if self.autodrive_data is None:
-            return
-
-        node_data = self.autodrive_data.get_node(
-            node_item.index
-        )
-
-        if node_data is None:
-            return
-
+    def show_node_info(self, node_data):
         node_type = (
             "Regular Node"
             if node_data.is_regular
             else "Subprio Node"
         )
 
-        marker_data = (
-            self.autodrive_data.get_marker(
-                node_data.node_id
+        marker_data = None
+
+        if self.autodrive_data is not None:
+            marker_data = (
+                self.autodrive_data.get_marker(
+                    node_data.node_id
+                )
             )
-        )
 
         marker_text = ""
 

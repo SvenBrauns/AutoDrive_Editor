@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 from PySide6.QtGui import QColor, QPen
 from PySide6.QtWidgets import (
     QGraphicsLineItem,
@@ -43,13 +45,13 @@ class SceneRenderer:
     def render(
         self,
         autodrive_data: AutoDriveData,
-        main_window
+        on_node_selected: Callable[[NodeData], None] | None = None
     ):
         self.reset()
 
         self._render_nodes(
             autodrive_data,
-            main_window
+            on_node_selected
         )
 
         self._render_connections(
@@ -74,18 +76,14 @@ class SceneRenderer:
     def _render_nodes(
         self,
         autodrive_data: AutoDriveData,
-        main_window
+        on_node_selected: Callable[[NodeData], None] | None
     ):
         for node_data in (
             autodrive_data.get_sorted_nodes()
         ):
             node_item = NodeItem(
-                node_data.node_id,
-                node_data.x,
-                node_data.y,
-                node_data.z,
-                node_data.flag,
-                main_window
+                node_data=node_data,
+                on_selected=on_node_selected
             )
 
             node_item.setZValue(
