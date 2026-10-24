@@ -22,8 +22,8 @@ from autodrive.models import (
     NodeData
 )
 
-from items.node_selection_item import NodeSelectionItem
-from rendering.graphics_layer import GraphicsLayerItem
+from rendering.items.graphics_layer import GraphicsLayerItem
+from rendering.items.node_selection_item import NodeSelectionItem
 from rendering.display_style import DisplayStyle
 from rendering.connection_render_item import ConnectionRenderItem
 from rendering.connection_spatial_index import ConnectionSpatialIndex

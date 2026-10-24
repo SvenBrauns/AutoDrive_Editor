@@ -29,7 +29,7 @@ from project.project_manager import ProjectManager
 from rendering.scene_renderer import SceneRenderer
 from ui.map_view import MapView
 from ui.interaction_mode import InteractionMode
-from items.node_item import NodeItem
+from rendering.items.node_item import NodeItem
 
 class MainWindow(QMainWindow):
 

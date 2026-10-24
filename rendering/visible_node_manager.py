@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
 )
 
 from autodrive.models import NodeData
-from items.node_item import NodeItem
+from rendering.items.node_item import NodeItem
 from rendering.display_style import DisplayStyle
 from rendering.node_spatial_index import (
     NodeSpatialIndex

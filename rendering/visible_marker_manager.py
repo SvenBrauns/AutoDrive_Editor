@@ -8,11 +8,9 @@ from autodrive.models import (
     AutoDriveData,
     NodeData
 )
-from items.marker_item import MarkerItem
+from rendering.items.marker_item import MarkerItem
 from rendering.display_style import DisplayStyle
-from rendering.node_spatial_index import (
-    NodeSpatialIndex
-)
+from rendering.node_spatial_index import NodeSpatialIndex
 
 
 class VisibleMarkerManager:
