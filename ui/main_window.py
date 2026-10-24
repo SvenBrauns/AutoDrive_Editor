@@ -7,7 +7,6 @@ from PySide6.QtWidgets import (
     QGraphicsScene,
     QGraphicsEllipseItem,
     QGraphicsLineItem,
-    QGraphicsPixmapItem,
     QWidget,
     QVBoxLayout,
     QPushButton,
@@ -25,12 +24,8 @@ from PySide6.QtCore import Qt
 
 from ui.map_view import MapView
 
-from map.background_loader import (
-    load_dds_as_pixmap
-)
-from map.background_transform import (
-    MapTransform
-)
+from map.background_manager import BackgroundManager
+
 from items.node_item import NodeItem
 from items.marker_item import MarkerItem
 
@@ -48,10 +43,11 @@ class MainWindow(QMainWindow):
         self.view.setScene(self.scene)
         self.waypoints = []
         self.marker_data = {}
-        self.background_item = None
 
-        # Standardmäßig Originalgröße
-        self.map_scale = 1
+        self.background_manager = BackgroundManager(
+            self.scene,
+            map_scale=1
+        )
         self.status = QLabel("Keine Datei geladen")
 
         self.node_info = QLabel(
@@ -62,6 +58,11 @@ class MainWindow(QMainWindow):
 
         btn_load = QPushButton("XML laden")
         btn_load.clicked.connect(self.load_xml)
+
+        btn_background = QPushButton("DDS auswählen")
+        btn_background.clicked.connect(
+            self.select_background
+        )
 
         map_size_label = QLabel("Kartengröße:")
 
@@ -88,7 +89,7 @@ class MainWindow(QMainWindow):
         )
 
         default_index = self.map_size_combo.findData(
-            self.map_scale
+            self.background_manager.map_scale
         )
 
         if default_index >= 0:
@@ -104,6 +105,7 @@ class MainWindow(QMainWindow):
         top = QHBoxLayout()
 
         top.addWidget(btn_load)
+        top.addWidget(btn_background)
         top.addWidget(map_size_label)
         top.addWidget(self.map_size_combo)
         top.addWidget(self.status)
@@ -126,50 +128,64 @@ class MainWindow(QMainWindow):
         self.view.setScene(self.scene)
 
     def on_map_scale_changed(self, index):
-        selected_scale = self.map_size_combo.itemData(index)
+        selected_scale = self.map_size_combo.itemData(
+            index
+        )
 
         if selected_scale is None:
             return
 
-        self.map_scale = int(selected_scale)
-
-        if self.background_item is not None:
-            self.apply_background_transform()
-
-            self.scene.setSceneRect(
-                self.scene.itemsBoundingRect()
+        try:
+            self.background_manager.set_map_scale(
+                selected_scale
             )
 
-    def apply_background_transform(self):
-        if self.background_item is None:
+        except Exception as ex:
+            self.status.setText(
+                f"Kartengröße konnte nicht geändert werden: {ex}"
+            )
+
             return
 
-        pixmap = self.background_item.pixmap()
+        self.scene.setSceneRect(
+            self.scene.itemsBoundingRect()
+        )
 
-        if pixmap.isNull():
+    def select_background(self):
+        filename, _ = QFileDialog.getOpenFileName(
+            self,
+            "overview.dds auswählen",
+            "",
+            "DDS-Bilder (*.dds);;Alle Dateien (*)"
+        )
+
+        if not filename:
             return
 
-        background_scale = (
-            MapTransform.calculate_background_scale(
-                self.map_scale
+        try:
+            self.background_manager.load(
+                filename
             )
-        )
 
-        pos_x, pos_z = (
-            MapTransform.calculate_background_position(
-                pixmap.width(),
-                pixmap.height(),
-                self.map_scale
+        except Exception as ex:
+            self.status.setText(
+                f"DDS konnte nicht geladen werden: {ex}"
             )
+
+            return
+
+        self.scene.setSceneRect(
+            self.scene.itemsBoundingRect()
         )
 
-        self.background_item.setScale(
-            background_scale
-        )
+        if not self.waypoints:
+            self.view.fitInView(
+                self.scene.sceneRect(),
+                Qt.KeepAspectRatio
+            )
 
-        self.background_item.setPos(
-            pos_x,
-            pos_z
+        self.status.setText(
+            "DDS-Hintergrund geladen"
         )
 
     def load_xml(self):
@@ -184,14 +200,25 @@ class MainWindow(QMainWindow):
         if not filename:
             return
 
+        self.background_manager.remove_from_scene(
+            preserve_file_path=True
+        )
+
         self.scene.clear()
 
         self.waypoints.clear()
         self.marker_data.clear()
-        self.background_item = None
 
         tree = ET.parse(filename)
         root = tree.getroot()
+
+        try:
+            self.background_manager.restore()
+
+        except Exception as ex:
+            self.status.setText(
+                f"DDS-Hintergrund konnte nicht wiederhergestellt werden: {ex}"
+            )
 
         waypoint_section = root.find("waypoints")
 
@@ -415,27 +442,3 @@ class MainWindow(QMainWindow):
             Z: {node.z_coord:.2f}
             """
         )
-
-    def create_background(self):
-        pixmap = load_dds_as_pixmap(
-            "maps/TestMap/overview.dds"
-        )
-
-        if pixmap.isNull():
-            raise ValueError(
-                "Die Hintergrundkarte konnte nicht geladen werden."
-            )
-
-        self.background_item = QGraphicsPixmapItem(
-            pixmap
-        )
-
-        self.background_item.setZValue(
-            -1000
-        )
-
-        self.scene.addItem(
-            self.background_item
-        )
-
-        self.apply_background_transform()
