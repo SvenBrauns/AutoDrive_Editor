@@ -5,8 +5,9 @@ from dataclasses import dataclass
 class DisplayStyle:
 
     node_diameter: float = 2.0
-    node_hit_diameter: float = 5.0
     node_border_width: float = 0.2
+
+    selected_node_ring_width: float = 0.2
 
     marker_scale: float = 0.05
     selected_marker_scale: float = 0.06

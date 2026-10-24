@@ -18,16 +18,12 @@ from autodrive.models import (
 
 from items.marker_item import MarkerItem
 from items.node_item import NodeItem
+from items.node_selection_item import NodeSelectionItem
 from rendering.graphics_layer import GraphicsLayerItem
 from rendering.display_style import DisplayStyle
 
 
 class SceneRenderer:
-
-    BACKGROUND_Z_VALUE = -1000
-    CONNECTION_Z_VALUE = -10
-    NODE_Z_VALUE = 0
-    MARKER_Z_VALUE = 10
 
     CONNECTION_REGULAR = "regular"
     CONNECTION_DUAL = "dual"
@@ -50,10 +46,10 @@ class SceneRenderer:
         )
 
         self.node_items = {}
-
+        self.node_selection_item = None
         self.node_layer = None
         self.marker_layer = None
-
+        self.selected_node_data = None
         self.connection_items = {}
 
         self.node_min_zoom = (
@@ -114,7 +110,7 @@ class SceneRenderer:
         ) = None
     ):
         self.reset()
-
+        self.selected_node_data = None
         self._create_layers()
 
         self._render_nodes(
@@ -137,8 +133,8 @@ class SceneRenderer:
 
     def reset(self):
         self.node_items.clear()
+        self.node_selection_item = None
         self.connection_items.clear()
-
         self.node_layer = None
         self.marker_layer = None
 
@@ -190,6 +186,8 @@ class SceneRenderer:
             )
 
             self.markers_visible = show_markers
+
+        self._update_selection_visibility()
 
     def set_visibility_thresholds(
         self,
@@ -331,6 +329,18 @@ class SceneRenderer:
             self.marker_layer
         )
 
+        self.node_selection_item = NodeSelectionItem(
+            self.display_style
+        )
+
+        self.node_selection_item.setZValue(
+            self.display_style.selected_node_z
+        )
+
+        self.scene.addItem(
+            self.node_selection_item
+        )
+
     def _render_nodes(
         self,
         autodrive_data: AutoDriveData,
@@ -354,6 +364,40 @@ class SceneRenderer:
             self.node_items[
                 node_data.node_id
             ] = node_item
+
+    def select_node(
+        self,
+        node_data: NodeData
+    ):
+        self.selected_node_data = node_data
+
+        if self.node_selection_item is None:
+            return
+
+        self.node_selection_item.show_node(
+            node_data
+        )
+
+        self._update_selection_visibility()
+
+    def clear_selection(self):
+        self.selected_node_data = None
+
+        if self.node_selection_item is not None:
+            self.node_selection_item.clear_selection()
+
+    def _update_selection_visibility(self):
+        if self.node_selection_item is None:
+            return
+
+        selection_visible = (
+            self.selected_node_data is not None
+            and self.nodes_visible is True
+        )
+
+        self.node_selection_item.setVisible(
+            selection_visible
+        )
 
     def _render_markers(
         self,

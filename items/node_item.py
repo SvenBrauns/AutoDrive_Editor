@@ -1,7 +1,11 @@
 from collections.abc import Callable
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QBrush, QColor, QPen
+from PySide6.QtGui import (
+    QBrush,
+    QColor,
+    QPen
+)
 from PySide6.QtWidgets import (
     QGraphicsEllipseItem
 )
@@ -46,18 +50,20 @@ class NodeItem(QGraphicsEllipseItem):
         )
 
         if node_data.is_regular:
-            self.setBrush(
-                QBrush(
-                    QColor("red")
-                )
+            node_color = QColor(
+                "red"
             )
 
         else:
-            self.setBrush(
-                QBrush(
-                    QColor("orange")
-                )
+            node_color = QColor(
+                "orange"
             )
+
+        self.setBrush(
+            QBrush(
+                node_color
+            )
+        )
 
         node_pen = QPen(
             Qt.black
@@ -71,8 +77,8 @@ class NodeItem(QGraphicsEllipseItem):
             node_pen
         )
 
-        self.setFlag(
-            QGraphicsEllipseItem.ItemIsSelectable
+        self.setAcceptedMouseButtons(
+            Qt.LeftButton
         )
 
     @property
@@ -80,10 +86,14 @@ class NodeItem(QGraphicsEllipseItem):
         return self.node_data.node_id
 
     def mousePressEvent(self, event):
-        if self.on_selected is not None:
-            self.on_selected(
-                self.node_data
-            )
+        if event.button() == Qt.LeftButton:
+            if self.on_selected is not None:
+                self.on_selected(
+                    self.node_data
+                )
+
+            event.accept()
+            return
 
         super().mousePressEvent(
             event
