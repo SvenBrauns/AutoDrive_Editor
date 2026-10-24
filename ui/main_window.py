@@ -6,7 +6,8 @@ from PySide6.QtWidgets import (
     QGraphicsScene,
     QWidget,
     QLabel,
-    QHBoxLayout
+    QHBoxLayout,
+    QToolBar
 )
 
 from PySide6.QtGui import (
@@ -27,6 +28,7 @@ from map.heightmap_manager import HeightmapManager
 from project.project_manager import ProjectManager
 from rendering.scene_renderer import SceneRenderer
 from ui.map_view import MapView
+from ui.interaction_mode import InteractionMode
 
 class MainWindow(QMainWindow):
 
@@ -68,7 +70,11 @@ class MainWindow(QMainWindow):
         self.project_manager = ProjectManager(
             self.config_directory
         )
+
+        self.create_interaction_actions()
         self.create_menu_bar()
+        self.create_quick_access_toolbar()
+        self.create_editor_toolbar()
 
         self.current_xml_path = None
         self.current_config_path = None
@@ -202,6 +208,61 @@ class MainWindow(QMainWindow):
         )
 
         self._refresh_selected_node_info()
+
+    def create_interaction_actions(self):
+        self.navigation_action = QAction(
+            "Navigation",
+            self
+        )
+
+        self.navigation_action.setCheckable(
+            True
+        )
+
+        self.navigation_action.setToolTip(
+            "Kartenansicht verschieben und drehen"
+        )
+
+        self.navigation_action.triggered.connect(
+            self.activate_navigation_mode
+        )
+
+        self.selection_action = QAction(
+            "Auswahl",
+            self
+        )
+
+        self.selection_action.setCheckable(
+            True
+        )
+
+        self.selection_action.setToolTip(
+            "Nodes und Connections auswählen"
+        )
+
+        self.selection_action.triggered.connect(
+            self.activate_selection_mode
+        )
+
+        self.interaction_action_group = QActionGroup(
+            self
+        )
+
+        self.interaction_action_group.setExclusive(
+            True
+        )
+
+        self.interaction_action_group.addAction(
+            self.navigation_action
+        )
+
+        self.interaction_action_group.addAction(
+            self.selection_action
+        )
+
+        self.navigation_action.setChecked(
+            True
+        )
 
     def create_menu_bar(self):
         menu_bar = self.menuBar()
@@ -385,6 +446,74 @@ class MainWindow(QMainWindow):
             current_action.setChecked(
                 True
             )
+
+        view_menu = menu_bar.addMenu(
+            "Ansicht"
+        )
+
+        display_options_action = QAction(
+            "Darstellungsoptionen...",
+            self
+        )
+
+        display_options_action.setEnabled(
+            False
+        )
+
+        view_menu.addAction(
+            display_options_action
+        )
+
+        view_menu.addSeparator()
+
+        debug_view_action = QAction(
+            "Debuganzeige",
+            self
+        )
+
+        debug_view_action.setCheckable(
+            True
+        )
+
+        debug_view_action.setChecked(
+            True
+        )
+
+        debug_view_action.setEnabled(
+            False
+        )
+
+        view_menu.addAction(
+            debug_view_action
+        )
+
+        view_menu.addSeparator()
+
+        reset_view_action = QAction(
+            "Ansicht zurücksetzen",
+            self
+        )
+
+        reset_view_action.setEnabled(
+            False
+        )
+
+        view_menu.addAction(
+            reset_view_action
+        )
+
+        reset_rotation_action = QAction(
+            "Rotation zurücksetzen",
+            self
+        )
+
+        reset_rotation_action.setEnabled(
+            False
+        )
+
+        view_menu.addAction(
+            reset_rotation_action
+        )
 
     def set_map_scale(self, map_scale):
         try:
@@ -768,4 +897,125 @@ class MainWindow(QMainWindow):
 
         self.node_info.setText(
             "\n".join(info_lines)
+        )
+
+    def activate_navigation_mode(
+        self,
+        checked
+    ):
+        if not checked:
+            return
+
+        self.set_interaction_mode(
+            InteractionMode.NAVIGATE
+        )
+
+
+    def activate_selection_mode(
+        self,
+        checked
+    ):
+        if not checked:
+            return
+
+        self.set_interaction_mode(
+            InteractionMode.SELECT
+        )
+
+
+    def set_interaction_mode(
+        self,
+        interaction_mode: InteractionMode
+    ):
+        self.view.set_interaction_mode(
+            interaction_mode
+        )
+
+        if interaction_mode == InteractionMode.NAVIGATE:
+            self.status.setText(
+                "Modus: Navigation"
+            )
+
+        elif interaction_mode == InteractionMode.SELECT:
+            self.status.setText(
+                "Modus: Auswahl"
+            )
+
+    def create_quick_access_toolbar(self):
+        self.quick_access_toolbar = QToolBar(
+            "Schnellauswahl",
+            self
+        )
+
+        self.quick_access_toolbar.setObjectName(
+            "quick_access_toolbar"
+        )
+
+        self.quick_access_toolbar.setMovable(
+            False
+        )
+
+        self.quick_access_toolbar.setFloatable(
+            False
+        )
+
+        self.quick_access_toolbar.setToolButtonStyle(
+            Qt.ToolButtonTextOnly
+        )
+
+        self.addToolBar(
+            Qt.TopToolBarArea,
+            self.quick_access_toolbar
+        )
+
+        self.quick_access_toolbar.addAction(
+            self.navigation_action
+        )
+
+        self.quick_access_toolbar.addAction(
+            self.selection_action
+        )
+
+    def create_editor_toolbar(self):
+        self.editor_toolbar = QToolBar(
+            "Editor-Werkzeuge",
+            self
+        )
+
+        self.editor_toolbar.setObjectName(
+            "editor_toolbar"
+        )
+
+        self.editor_toolbar.setMovable(
+            False
+        )
+
+        self.editor_toolbar.setFloatable(
+            False
+        )
+
+        self.editor_toolbar.setToolButtonStyle(
+            Qt.ToolButtonTextUnderIcon
+        )
+
+        self.addToolBar(
+            Qt.LeftToolBarArea,
+            self.editor_toolbar
+        )
+
+        placeholder_action = QAction(
+            "Editor",
+            self
+        )
+
+        placeholder_action.setEnabled(
+            False
+        )
+
+        placeholder_action.setToolTip(
+            "Editor-Werkzeuge werden später ergänzt"
+        )
+
+        self.editor_toolbar.addAction(
+            placeholder_action
         )

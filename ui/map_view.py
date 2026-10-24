@@ -5,6 +5,7 @@ from PySide6.QtCore import (
 )
 from PySide6.QtWidgets import QGraphicsView
 
+from ui.interaction_mode import InteractionMode
 
 class MapView(QGraphicsView):
 
@@ -12,12 +13,19 @@ class MapView(QGraphicsView):
     visible_scene_rect_changed = Signal(
         QRectF
     )
+    interaction_mode_changed = Signal(
+        object
+    )
     ZOOM_FACTOR = 1.15
     MIN_ZOOM = 0.02
     MAX_ZOOM = 50.0
 
     def __init__(self):
         super().__init__()
+
+        self.interaction_mode = (
+            InteractionMode.NAVIGATE
+        )
 
         self.setDragMode(
             QGraphicsView.ScrollHandDrag
@@ -188,3 +196,30 @@ class MapView(QGraphicsView):
         self.visible_scene_rect_changed.emit(
             self.get_visible_scene_rect()
         )
+
+    def set_interaction_mode(
+        self,
+        interaction_mode: InteractionMode
+    ):
+        if not isinstance(
+            interaction_mode,
+            InteractionMode
+        ):
+            raise TypeError(
+                "Der Interaktionsmodus ist ungültig."
+            )
+
+        if interaction_mode == self.interaction_mode:
+            return
+
+        self.interaction_mode = interaction_mode
+
+        self.interaction_mode_changed.emit(
+            interaction_mode
+        )
+
+
+    def get_interaction_mode(
+        self
+    ) -> InteractionMode:
+        return self.interaction_mode
