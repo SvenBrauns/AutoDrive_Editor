@@ -1004,3 +1004,86 @@ class MainWindow(QMainWindow):
         self.status.setText(
             message
         )
+
+    def set_grid_visible(
+        self,
+        visible: bool
+    ):
+        self.background_manager.set_grid_visible(
+            visible
+        )
+
+        self.actions.grid_controls.set_grid_visible(
+            self.background_manager.grid_visible
+        )
+
+        if self.background_manager.grid_visible:
+            status_text = "Raster eingeblendet"
+
+        else:
+            status_text = "Raster ausgeblendet"
+
+        self._set_status(
+            status_text
+        )
+
+    def set_grid_spacing(
+        self,
+        spacing: float
+    ):
+        try:
+            self.background_manager.set_grid_spacing(
+                spacing
+            )
+
+        except Exception as ex:
+            self._set_status(
+                f"Rasterabstand konnte nicht "
+                f"geändert werden: {ex}"
+            )
+            return
+
+        self.actions.grid_controls.set_grid_spacing(
+            self.background_manager.grid_spacing
+        )
+
+        self._set_status(
+            f"Rasterabstand: "
+            f"{self.background_manager.grid_spacing:.2f} m"
+        )
+
+    def set_grid_rotation(
+        self,
+        rotation_angle: float
+    ):
+        self.background_manager.set_grid_rotation(
+            rotation_angle
+        )
+
+        self.actions.grid_controls.set_grid_rotation(
+            self.background_manager.grid_rotation
+        )
+
+        self._set_status(
+            f"Rasterrotation: "
+            f"{self.background_manager.grid_rotation:.2f}°"
+        )
+
+    def reset_grid(self):
+        self.background_manager.reset_grid()
+
+        self.actions.grid_controls.set_grid_visible(
+            self.background_manager.grid_visible
+        )
+
+        self.actions.grid_controls.set_grid_spacing(
+            self.background_manager.grid_spacing
+        )
+
+        self.actions.grid_controls.set_grid_rotation(
+            self.background_manager.grid_rotation
+        )
+
+        self._set_status(
+            "Raster zurückgesetzt"
+        )

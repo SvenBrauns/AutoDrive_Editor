@@ -1,3 +1,4 @@
+from PySide6.QtCore import QRectF
 from PySide6.QtWidgets import (
     QGraphicsPixmapItem,
     QGraphicsScene
@@ -5,6 +6,9 @@ from PySide6.QtWidgets import (
 
 from map.background_loader import load_dds_as_pixmap
 from map.background_transform import MapTransform
+from rendering.items.map_grid_item import (
+    MapGridItem
+)
 
 
 class BackgroundManager:
@@ -19,6 +23,11 @@ class BackgroundManager:
 
         self.file_path = None
         self.background_item = None
+        self.grid_item = None
+
+        self.grid_visible = True
+        self.grid_spacing = 10.0
+        self.grid_rotation = 0.0
 
     def load(self, file_path):
         pixmap = load_dds_as_pixmap(
@@ -60,8 +69,13 @@ class BackgroundManager:
 
         return True
 
-    def set_map_scale(self, map_scale):
-        map_scale = int(map_scale)
+    def set_map_scale(
+        self,
+        map_scale
+    ):
+        map_scale = int(
+            map_scale
+        )
 
         if map_scale <= 0:
             raise ValueError(
@@ -71,17 +85,20 @@ class BackgroundManager:
         self.map_scale = map_scale
 
         self._apply_transform()
+        self._update_grid_rect()
 
     def remove_from_scene(
         self,
         preserve_file_path=True
     ):
-        """
-        Entfernt das GraphicsItem aus der Scene.
+        if self.grid_item is not None:
+            if self.grid_item.scene() is self.scene:
+                self.scene.removeItem(
+                    self.grid_item
+                )
 
-        Bei preserve_file_path=True kann die Karte danach mit
-        restore() erneut geladen werden.
-        """
+            self.grid_item = None
+
         if self.background_item is not None:
             if self.background_item.scene() is self.scene:
                 self.scene.removeItem(
@@ -99,7 +116,10 @@ class BackgroundManager:
     def has_file(self):
         return self.file_path is not None
 
-    def _replace_background(self, pixmap):
+    def _replace_background(
+        self,
+        pixmap
+    ):
         self.remove_from_scene(
             preserve_file_path=True
         )
@@ -117,6 +137,7 @@ class BackgroundManager:
         )
 
         self._apply_transform()
+        self._create_grid_item()
 
     def _apply_transform(self):
         if self.background_item is None:
@@ -148,4 +169,125 @@ class BackgroundManager:
         self.background_item.setPos(
             position_x,
             position_z
+        )
+
+        self._update_grid_rect()
+
+    def set_grid_visible(
+        self,
+        visible: bool
+    ):
+        self.grid_visible = bool(
+            visible
+        )
+
+        if self.grid_item is not None:
+            self.grid_item.setVisible(
+                self.grid_visible
+            )
+
+    def set_grid_spacing(
+        self,
+        spacing: float
+    ):
+        spacing = float(
+            spacing
+        )
+
+        if spacing <= 0.0:
+            raise ValueError(
+                "Der Rasterabstand muss "
+                "größer als 0 sein."
+            )
+
+        self.grid_spacing = spacing
+
+        if self.grid_item is not None:
+            self.grid_item.set_spacing(
+                spacing
+            )
+
+    def set_grid_rotation(
+        self,
+        rotation_angle: float
+    ):
+        self.grid_rotation = (
+            float(rotation_angle)
+            % 360.0
+        )
+
+        if self.grid_item is not None:
+            self.grid_item.set_rotation_angle(
+                self.grid_rotation
+            )
+
+    def reset_grid(self):
+        self.grid_visible = True
+        self.grid_spacing = 10.0
+        self.grid_rotation = 0.0
+
+        if self.grid_item is None:
+            self._create_grid_item()
+            return
+
+        self.grid_item.set_spacing(
+            self.grid_spacing
+        )
+
+        self.grid_item.set_rotation_angle(
+            self.grid_rotation
+        )
+
+        self.grid_item.setVisible(
+            self.grid_visible
+        )
+
+    def _create_grid_item(self):
+        if self.background_item is None:
+            return
+
+        if self.grid_item is not None:
+            if self.grid_item.scene() is self.scene:
+                self.scene.removeItem(
+                    self.grid_item
+                )
+
+            self.grid_item = None
+
+        grid_rect = (
+            self.background_item
+            .sceneBoundingRect()
+        )
+
+        if grid_rect.isEmpty():
+            return
+
+        self.grid_item = MapGridItem(
+            grid_rect=grid_rect,
+            spacing=self.grid_spacing,
+            rotation_angle=self.grid_rotation
+        )
+
+        self.grid_item.setVisible(
+            self.grid_visible
+        )
+
+        self.scene.addItem(
+            self.grid_item
+        )
+
+    def _update_grid_rect(self):
+        if (
+            self.background_item is None
+            or self.grid_item is None
+        ):
+            return
+
+        grid_rect = (
+            self.background_item
+            .sceneBoundingRect()
+        )
+
+        self.grid_item.set_grid_rect(
+            grid_rect
         )
