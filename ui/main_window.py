@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QWidget
 )
+from PySide6.QtGui import QPainterPath
 
 from app_paths import (
     LOCAL_PROJECTS_DIRECTORY,
@@ -31,6 +32,9 @@ from ui.interaction_mode import InteractionMode
 from ui.main_window_actions import MainWindowActions
 from ui.map_view import MapView
 from ui.node_info_formatter import NodeInfoFormatter
+from selection.node_selection_manager import (
+    NodeSelectionManager
+)
 
 
 class MainWindow(QMainWindow):
@@ -48,7 +52,6 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         self.autodrive_data: AutoDriveData | None = None
-        self.selected_node_data: NodeData | None = None
 
         self.current_xml_path: str | None = None
         self.current_config_path: str | None = None
@@ -242,6 +245,10 @@ class MainWindow(QMainWindow):
             self.autodrive_data
         )
 
+        self.scene_renderer.set_selected_node_ids(
+            self.node_selection_manager.selected_node_ids
+        )
+
         self._update_scene_rect()
         self._fit_scene_in_view()
 
@@ -357,21 +364,9 @@ class MainWindow(QMainWindow):
         self,
         node_data: NodeData
     ):
-        self.selected_node_data = node_data
-
-        self.scene_renderer.select_node(
-            node_data
-        )
-
-        node_info_text = (
-            self.node_info_formatter.format_node_info(
-                node_data=node_data,
-                autodrive_data=self.autodrive_data
-            )
-        )
-
-        self.node_info.setText(
-            node_info_text
+        self.node_selection_manager.replace(
+            {node_data.node_id},
+            primary_node_id=node_data.node_id
         )
 
     def set_interaction_mode(
@@ -404,6 +399,8 @@ class MainWindow(QMainWindow):
         view_position: QPoint,
         modifiers
     ):
+        clicked_node = None
+
         for item in self.view.items(
             view_position
         ):
@@ -411,12 +408,165 @@ class MainWindow(QMainWindow):
                 item,
                 NodeItem
             ):
-                self.show_node_info(
-                    item.node_data
-                )
-                return
+                clicked_node = item.node_data
+                break
 
-        self._clear_node_selection()
+        control_pressed = bool(
+            modifiers
+            & Qt.ControlModifier
+        )
+
+        if clicked_node is None:
+            if not control_pressed:
+                self.node_selection_manager.clear()
+
+            return
+
+        if control_pressed:
+            self.node_selection_manager.toggle(
+                clicked_node.node_id
+            )
+
+        else:
+            self.node_selection_manager.replace(
+                {clicked_node.node_id},
+                primary_node_id=clicked_node.node_id
+            )
+
+    def handle_selection_area(
+        self,
+        selection_path: QPainterPath,
+        modifiers
+    ):
+        selected_nodes = (
+            self.scene_renderer.get_nodes_in_selection_path(
+                selection_path
+            )
+        )
+
+        selected_node_ids = {
+            node_data.node_id
+            for node_data in selected_nodes
+        }
+
+        primary_node_id = (
+            min(selected_node_ids)
+            if selected_node_ids
+            else None
+        )
+
+        control_pressed = bool(
+            modifiers
+            & Qt.ControlModifier
+        )
+
+        if control_pressed:
+            self.node_selection_manager.toggle_many(
+                selected_node_ids,
+                primary_node_id=primary_node_id
+            )
+
+        else:
+            self.node_selection_manager.replace(
+                selected_node_ids,
+                primary_node_id=primary_node_id
+            )
+
+    def handle_selection_area_preview(
+        self,
+        selection_path: QPainterPath,
+        modifiers
+    ):
+        preview_nodes = (
+            self.scene_renderer.get_nodes_in_selection_path(
+                selection_path
+            )
+        )
+
+        area_node_ids = {
+            node_data.node_id
+            for node_data in preview_nodes
+        }
+
+        current_node_ids = (
+            self.node_selection_manager.selected_node_ids
+        )
+
+        control_pressed = bool(
+            modifiers
+            & Qt.ControlModifier
+        )
+
+        if control_pressed:
+            preview_node_ids = (
+                current_node_ids
+                ^ area_node_ids
+            )
+
+        else:
+            preview_node_ids = area_node_ids
+
+        self.scene_renderer.set_selected_node_ids(
+            preview_node_ids
+        )
+
+    def clear_selection_area_preview(self):
+        self.scene_renderer.set_selected_node_ids(
+            self.node_selection_manager.selected_node_ids
+        )
+
+    def _handle_node_selection_changed(
+        self,
+        selected_node_ids,
+        primary_node_id
+    ):
+        self.scene_renderer.set_selected_node_ids(
+            selected_node_ids
+        )
+
+        if not selected_node_ids:
+            self.node_info.setText(
+                self.NO_NODE_INFO
+            )
+            return
+
+        if (
+            self.autodrive_data is None
+            or primary_node_id is None
+        ):
+            self.node_info.setText(
+                f"{len(selected_node_ids)} Nodes ausgewählt"
+            )
+            return
+
+        primary_node = self.autodrive_data.get_node(
+            primary_node_id
+        )
+
+        if primary_node is None:
+            self.node_info.setText(
+                f"{len(selected_node_ids)} Nodes ausgewählt"
+            )
+            return
+
+        node_info_text = (
+            self.node_info_formatter.format_node_info(
+                node_data=primary_node,
+                autodrive_data=self.autodrive_data
+            )
+        )
+
+        if len(selected_node_ids) == 1:
+            self.node_info.setText(
+                node_info_text
+            )
+
+        else:
+            self.node_info.setText(
+                f"{len(selected_node_ids)} Nodes ausgewählt\n\n"
+                f"Primäre Auswahl:\n"
+                f"{node_info_text}"
+            )
 
     def _configure_window(self):
         self.setWindowTitle(
@@ -457,6 +607,10 @@ class MainWindow(QMainWindow):
 
         self.project_manager = ProjectManager(
             self.local_projects_directory
+        )
+
+        self.node_selection_manager = (
+            NodeSelectionManager()
         )
 
     def _create_status_widgets(self):
@@ -514,6 +668,22 @@ class MainWindow(QMainWindow):
 
         self.view.rotation_changed.connect(
             self._handle_rotation_changed
+        )
+
+        self.view.selection_area_requested.connect(
+            self.handle_selection_area
+        )
+
+        self.view.selection_area_preview_requested.connect(
+            self.handle_selection_area_preview
+        )
+
+        self.view.selection_area_preview_cleared.connect(
+            self.clear_selection_area_preview
+        )
+
+        self.node_selection_manager.selection_changed.connect(
+            self._handle_node_selection_changed
         )
 
     def _handle_rotation_changed(
@@ -611,20 +781,12 @@ class MainWindow(QMainWindow):
         self.scene.clear()
 
     def _clear_node_selection(self):
-        self.selected_node_data = None
-
-        self.scene_renderer.clear_selection()
-
-        self.node_info.setText(
-            self.NO_NODE_INFO
-        )
+        self.node_selection_manager.clear()
 
     def _refresh_selected_node_info(self):
-        if self.selected_node_data is None:
-            return
-
-        self.show_node_info(
-            self.selected_node_data
+        self._handle_node_selection_changed(
+            self.node_selection_manager.selected_node_ids,
+            self.node_selection_manager.primary_node_id
         )
 
     def _update_scene_rect(self):

@@ -92,6 +92,13 @@ class MapView(QGraphicsView):
         object
     )
 
+    selection_area_preview_requested = Signal(
+        object,
+        object
+    )
+
+    selection_area_preview_cleared = Signal()
+
     ZOOM_FACTOR = 1.15
     MIN_ZOOM = 0.02
     MAX_ZOOM = 50.0
@@ -393,7 +400,8 @@ class MapView(QGraphicsView):
             Qt.RightButton
         ):
             self._handle_selection_area_drag(
-                mouse_position
+                mouse_position=mouse_position,
+                modifiers=event.modifiers()
             )
 
             event.accept()
@@ -453,6 +461,9 @@ class MapView(QGraphicsView):
 
         else:
             self._selection_rubber_band.hide()
+
+            if released_button == Qt.RightButton:
+                self.selection_area_preview_cleared.emit()
 
         self._pointer_state.reset()
 
@@ -638,7 +649,8 @@ class MapView(QGraphicsView):
 
     def _handle_selection_area_drag(
         self,
-        mouse_position: QPoint
+        mouse_position: QPoint,
+        modifiers
     ):
         if not self._pointer_state.drag_active:
             if not self._drag_threshold_reached(
@@ -652,16 +664,22 @@ class MapView(QGraphicsView):
                 Qt.CrossCursor
             )
 
-            self._update_selection_rubber_band(
-                mouse_position
-            )
-
             self._selection_rubber_band.show()
-
-            return
 
         self._update_selection_rubber_band(
             mouse_position
+        )
+
+        selection_path = (
+            self._create_selection_path()
+        )
+
+        if selection_path is None:
+            return
+
+        self.selection_area_preview_requested.emit(
+            selection_path,
+            modifiers
         )
 
     def _update_selection_rubber_band(
@@ -677,21 +695,18 @@ class MapView(QGraphicsView):
             selection_rect
         )
 
-    def _finish_selection_area(
-        self,
-        modifiers
-    ):
+    def _create_selection_path(
+        self
+    ) -> QPainterPath | None:
         selection_rect = (
             self._selection_rubber_band.geometry()
         )
-
-        self._selection_rubber_band.hide()
 
         if (
             selection_rect.width() <= 0
             or selection_rect.height() <= 0
         ):
-            return
+            return None
 
         scene_polygon = self.mapToScene(
             selection_rect
@@ -705,10 +720,25 @@ class MapView(QGraphicsView):
 
         selection_path.closeSubpath()
 
-        self.selection_area_requested.emit(
-            selection_path,
-            modifiers
+        return selection_path
+
+    def _finish_selection_area(
+        self,
+        modifiers
+    ):
+        selection_path = (
+            self._create_selection_path()
         )
+
+        self._selection_rubber_band.hide()
+
+        if selection_path is not None:
+            self.selection_area_requested.emit(
+                selection_path,
+                modifiers
+            )
+
+        self.selection_area_preview_cleared.emit()
 
     def _handle_rotation_drag(
         self,

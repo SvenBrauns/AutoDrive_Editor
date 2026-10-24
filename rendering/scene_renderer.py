@@ -34,9 +34,6 @@ from rendering.display_style import DisplayStyle
 from rendering.items.graphics_layer import (
     GraphicsLayerItem
 )
-from rendering.items.node_selection_item import (
-    NodeSelectionItem
-)
 from rendering.node_spatial_index import (
     NodeSpatialIndex
 )
@@ -45,6 +42,9 @@ from rendering.visible_marker_manager import (
 )
 from rendering.visible_node_manager import (
     VisibleNodeManager
+)
+from rendering.visible_node_selection_manager import (
+    VisibleNodeSelectionManager
 )
 
 
@@ -77,12 +77,15 @@ class SceneRenderer:
 
         self.visible_node_manager = None
         self.visible_marker_manager = None
+        self.visible_node_selection_manager = None
+
         self.current_visible_rect = None
 
-        self.node_selection_item = None
         self.node_layer = None
         self.marker_layer = None
-        self.selected_node_data = None
+        self.selection_layer = None
+
+        self.selected_node_ids: set[int] = set()
         self.connection_items = {}
 
         self.connection_spatial_index = (
@@ -135,7 +138,6 @@ class SceneRenderer:
         autodrive_data: AutoDriveData
     ):
         self.reset()
-        self.selected_node_data = None
         self._create_layers()
 
         self.node_spatial_index.build(
@@ -168,6 +170,22 @@ class SceneRenderer:
             )
         )
 
+        self.visible_node_selection_manager = (
+            VisibleNodeSelectionManager(
+                scene=self.scene,
+                selection_layer=self.selection_layer,
+                node_spatial_index=(
+                    self.node_spatial_index
+                ),
+                display_style=self.display_style,
+                padding=self.VISIBILITY_PADDING
+            )
+        )
+
+        self.visible_node_selection_manager.set_selected_node_ids(
+            self.selected_node_ids
+        )
+
         self.rebuild_connections(
             autodrive_data
         )
@@ -188,13 +206,16 @@ class SceneRenderer:
         if self.visible_marker_manager is not None:
             self.visible_marker_manager.clear()
 
+        if self.visible_node_selection_manager is not None:
+            self.visible_node_selection_manager.clear()
+
         self.visible_node_manager = None
         self.visible_marker_manager = None
+        self.visible_node_selection_manager = None
 
         self.node_spatial_index.clear()
         self.current_visible_rect = None
 
-        self.node_selection_item = None
         self.connection_items.clear()
 
         self.connection_spatial_index.clear()
@@ -202,6 +223,8 @@ class SceneRenderer:
 
         self.node_layer = None
         self.marker_layer = None
+        self.selection_layer = None
+        self.selected_node_ids.clear()
 
         self.nodes_visible = None
         self.markers_visible = None
@@ -228,6 +251,14 @@ class SceneRenderer:
             and self.markers_visible is True
         ):
             self.visible_marker_manager.update(
+                self.current_visible_rect
+            )
+
+        if (
+            self.visible_node_selection_manager is not None
+            and self.nodes_visible is True
+        ):
+            self.visible_node_selection_manager.update(
                 self.current_visible_rect
             )
 
@@ -286,6 +317,14 @@ class SceneRenderer:
                 should_be_visible=show_nodes
             )
 
+            self._update_virtualized_layer(
+                layer=self.selection_layer,
+                manager=(
+                    self.visible_node_selection_manager
+                ),
+                should_be_visible=show_nodes
+            )
+
             self.nodes_visible = show_nodes
 
         if show_markers != self.markers_visible:
@@ -316,8 +355,6 @@ class SceneRenderer:
             self.detailed_connections_visible = (
                 show_detailed_connections
             )
-
-        self._update_selection_visibility()
 
     def set_visibility_thresholds(
         self,
@@ -517,50 +554,39 @@ class SceneRenderer:
             self.marker_layer
         )
 
-        self.node_selection_item = NodeSelectionItem(
-            self.display_style
-        )
+        self.selection_layer = GraphicsLayerItem()
 
-        self.node_selection_item.setZValue(
+        self.selection_layer.setZValue(
             self.display_style.selected_node_z
         )
 
         self.scene.addItem(
-            self.node_selection_item
+            self.selection_layer
         )
 
-    def select_node(
+    def set_selected_node_ids(
         self,
-        node_data: NodeData
+        node_ids
     ):
-        self.selected_node_data = node_data
+        self.selected_node_ids = {
+            int(node_id)
+            for node_id in node_ids
+        }
 
-        if self.node_selection_item is None:
-            return
+        if (
+            self.visible_node_selection_manager
+            is not None
+        ):
+            self.visible_node_selection_manager.set_selected_node_ids(
+                self.selected_node_ids
+            )
 
-        self.node_selection_item.show_node(
-            node_data
-        )
-
-        self._update_selection_visibility()
-
-    def clear_selection(self):
-        self.selected_node_data = None
-
-        if self.node_selection_item is not None:
-            self.node_selection_item.clear_selection()
-
-    def _update_selection_visibility(self):
-        if self.node_selection_item is None:
-            return
-
-        selection_visible = (
-            self.selected_node_data is not None
-            and self.nodes_visible is True
-        )
-
-        self.node_selection_item.setVisible(
-            selection_visible
+    def get_nodes_in_selection_path(
+        self,
+        selection_path: QPainterPath
+    ) -> list[NodeData]:
+        return self.node_spatial_index.get_nodes_in_path(
+            selection_path
         )
 
     def _create_connection_pen(
