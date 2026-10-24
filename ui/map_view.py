@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 
 from PySide6.QtCore import (
     QPoint,
+    QRect,
     QRectF,
     QTimer,
     Qt,
@@ -11,13 +12,15 @@ from PySide6.QtCore import (
 from PySide6.QtGui import (
     QCursor,
     QMouseEvent,
+    QPainterPath,
     QResizeEvent,
     QWheelEvent
 )
 from PySide6.QtWidgets import (
     QApplication,
     QGraphicsItem,
-    QGraphicsView
+    QGraphicsView,
+    QRubberBand
 )
 
 from ui.interaction_mode import InteractionMode
@@ -84,6 +87,11 @@ class MapView(QGraphicsView):
         object
     )
 
+    selection_area_requested = Signal(
+        object,
+        object
+    )
+
     ZOOM_FACTOR = 1.15
     MIN_ZOOM = 0.02
     MAX_ZOOM = 50.0
@@ -106,6 +114,13 @@ class MapView(QGraphicsView):
         self._pointer_state = (
             PointerDragState()
         )
+
+        self._selection_rubber_band = QRubberBand(
+            QRubberBand.Rectangle,
+            self.viewport()
+        )
+
+        self._selection_rubber_band.hide()
 
         self._configure_view()
         self._create_viewport_update_timer()
@@ -313,9 +328,25 @@ class MapView(QGraphicsView):
         self,
         event: QMouseEvent
     ):
-        if event.button() not in (
-            Qt.LeftButton,
-            Qt.MiddleButton
+        pressed_button = event.button()
+
+        supported_button = (
+            pressed_button
+            in (
+                Qt.LeftButton,
+                Qt.MiddleButton
+            )
+        )
+
+        right_selection_button = (
+            pressed_button == Qt.RightButton
+            and self._interaction_mode
+            == InteractionMode.SELECT
+        )
+
+        if (
+            not supported_button
+            and not right_selection_button
         ):
             super().mousePressEvent(
                 event
@@ -327,11 +358,11 @@ class MapView(QGraphicsView):
         )
 
         self._pointer_state.begin(
-            button=event.button(),
+            button=pressed_button,
             position=mouse_position
         )
 
-        if event.button() == Qt.MiddleButton:
+        if pressed_button == Qt.MiddleButton:
             self.viewport().setCursor(
                 Qt.SizeAllCursor
             )
@@ -351,6 +382,17 @@ class MapView(QGraphicsView):
             Qt.MiddleButton
         ):
             self._handle_rotation_drag(
+                mouse_position
+            )
+
+            event.accept()
+            return
+
+        if self._is_button_drag(
+            event,
+            Qt.RightButton
+        ):
+            self._handle_selection_area_drag(
                 mouse_position
             )
 
@@ -400,6 +442,17 @@ class MapView(QGraphicsView):
         was_dragging = (
             self._pointer_state.drag_active
         )
+
+        if (
+            released_button == Qt.RightButton
+            and was_dragging
+        ):
+            self._finish_selection_area(
+                event.modifiers()
+            )
+
+        else:
+            self._selection_rubber_band.hide()
 
         self._pointer_state.reset()
 
@@ -583,6 +636,80 @@ class MapView(QGraphicsView):
             mouse_position
         )
 
+    def _handle_selection_area_drag(
+        self,
+        mouse_position: QPoint
+    ):
+        if not self._pointer_state.drag_active:
+            if not self._drag_threshold_reached(
+                mouse_position
+            ):
+                return
+
+            self._pointer_state.drag_active = True
+
+            self.viewport().setCursor(
+                Qt.CrossCursor
+            )
+
+            self._update_selection_rubber_band(
+                mouse_position
+            )
+
+            self._selection_rubber_band.show()
+
+            return
+
+        self._update_selection_rubber_band(
+            mouse_position
+        )
+
+    def _update_selection_rubber_band(
+        self,
+        mouse_position: QPoint
+    ):
+        selection_rect = QRect(
+            self._pointer_state.press_position,
+            mouse_position
+        ).normalized()
+
+        self._selection_rubber_band.setGeometry(
+            selection_rect
+        )
+
+    def _finish_selection_area(
+        self,
+        modifiers
+    ):
+        selection_rect = (
+            self._selection_rubber_band.geometry()
+        )
+
+        self._selection_rubber_band.hide()
+
+        if (
+            selection_rect.width() <= 0
+            or selection_rect.height() <= 0
+        ):
+            return
+
+        scene_polygon = self.mapToScene(
+            selection_rect
+        )
+
+        selection_path = QPainterPath()
+
+        selection_path.addPolygon(
+            scene_polygon
+        )
+
+        selection_path.closeSubpath()
+
+        self.selection_area_requested.emit(
+            selection_path,
+            modifiers
+        )
+
     def _handle_rotation_drag(
         self,
         mouse_position: QPoint
@@ -741,6 +868,14 @@ class MapView(QGraphicsView):
             ):
                 self.viewport().setCursor(
                     Qt.SizeAllCursor
+                )
+
+            elif (
+                self._pointer_state.pressed_button
+                == Qt.RightButton
+            ):
+                self.viewport().setCursor(
+                    Qt.CrossCursor
                 )
 
             else:
