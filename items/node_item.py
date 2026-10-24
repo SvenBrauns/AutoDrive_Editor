@@ -7,24 +7,34 @@ from PySide6.QtWidgets import (
 )
 
 from autodrive.models import NodeData
+from rendering.display_style import DisplayStyle
 
 
 class NodeItem(QGraphicsEllipseItem):
 
-    NODE_DIAMETER = 2.0
-
     def __init__(
         self,
         node_data: NodeData,
-        on_selected: Callable[[NodeData], None] | None = None
+        on_selected: Callable[[NodeData], None] | None = None,
+        display_style: DisplayStyle | None = None
     ):
-        radius = self.NODE_DIAMETER / 2
+        self.display_style = (
+            display_style
+            if display_style is not None
+            else DisplayStyle()
+        )
+
+        diameter = (
+            self.display_style.node_diameter
+        )
+
+        radius = diameter / 2
 
         super().__init__(
             -radius,
             -radius,
-            self.NODE_DIAMETER,
-            self.NODE_DIAMETER
+            diameter,
+            diameter
         )
 
         self.node_data = node_data
@@ -49,10 +59,16 @@ class NodeItem(QGraphicsEllipseItem):
                 )
             )
 
+        node_pen = QPen(
+            Qt.black
+        )
+
+        node_pen.setWidthF(
+            self.display_style.node_border_width
+        )
+
         self.setPen(
-            QPen(
-                Qt.black
-            )
+            node_pen
         )
 
         self.setFlag(

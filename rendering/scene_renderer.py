@@ -19,6 +19,7 @@ from autodrive.models import (
 from items.marker_item import MarkerItem
 from items.node_item import NodeItem
 from rendering.graphics_layer import GraphicsLayerItem
+from rendering.display_style import DisplayStyle
 
 
 class SceneRenderer:
@@ -28,9 +29,6 @@ class SceneRenderer:
     NODE_Z_VALUE = 0
     MARKER_Z_VALUE = 10
 
-    DEFAULT_NODE_MIN_ZOOM = 1.0
-    DEFAULT_MARKER_MIN_ZOOM = 1.0
-
     CONNECTION_REGULAR = "regular"
     CONNECTION_DUAL = "dual"
     CONNECTION_REVERSE = "reverse"
@@ -38,10 +36,15 @@ class SceneRenderer:
     def __init__(
         self,
         scene: QGraphicsScene,
-        marker_icon_path
+        marker_icon_path,
+        display_style: DisplayStyle | None = None
     ):
         self.scene = scene
-
+        self.display_style = (
+            display_style
+            if display_style is not None
+            else DisplayStyle()
+        )
         self.marker_icon_path = str(
             marker_icon_path
         )
@@ -54,11 +57,11 @@ class SceneRenderer:
         self.connection_items = {}
 
         self.node_min_zoom = (
-            self.DEFAULT_NODE_MIN_ZOOM
+            self.display_style.node_min_zoom
         )
 
         self.marker_min_zoom = (
-            self.DEFAULT_MARKER_MIN_ZOOM
+            self.display_style.marker_min_zoom
         )
 
         self.current_zoom = None
@@ -77,6 +80,31 @@ class SceneRenderer:
         self.reverse_pen = QPen(
             QColor(100, 220, 255)
         )
+
+        self.regular_pen.setWidthF(
+            self.display_style.connection_width
+        )
+
+        self.dual_pen.setWidthF(
+            self.display_style.connection_width
+        )
+
+        self.reverse_pen.setWidthF(
+            self.display_style.connection_width
+        )
+
+        for connection_pen in (
+            self.regular_pen,
+            self.dual_pen,
+            self.reverse_pen
+        ):
+            connection_pen.setCapStyle(
+                Qt.FlatCap
+            )
+
+            connection_pen.setJoinStyle(
+                Qt.BevelJoin
+            )
 
     def render(
         self,
@@ -286,7 +314,7 @@ class SceneRenderer:
         self.node_layer = GraphicsLayerItem()
 
         self.node_layer.setZValue(
-            self.NODE_Z_VALUE
+            self.display_style.normal_node_z
         )
 
         self.scene.addItem(
@@ -296,7 +324,7 @@ class SceneRenderer:
         self.marker_layer = GraphicsLayerItem()
 
         self.marker_layer.setZValue(
-            self.MARKER_Z_VALUE
+            self.display_style.normal_marker_z
         )
 
         self.scene.addItem(
@@ -315,7 +343,8 @@ class SceneRenderer:
         ):
             node_item = NodeItem(
                 node_data=node_data,
-                on_selected=on_node_selected
+                on_selected=on_node_selected,
+                display_style=self.display_style
             )
 
             node_item.setParentItem(
@@ -344,13 +373,44 @@ class SceneRenderer:
                 self.marker_icon_path
             )
 
+            marker_scale = (
+                self.display_style.marker_scale
+            )
+
             marker_item.setScale(
-                0.15
+                marker_scale
+            )
+
+            marker_bounds = (
+                marker_item.boundingRect()
+            )
+
+            anchor_x = (
+                marker_bounds.left()
+                + marker_bounds.width()
+                * self.display_style.marker_anchor_x
+            )
+
+            anchor_y = (
+                marker_bounds.top()
+                + marker_bounds.height()
+                * self.display_style.marker_anchor_y
+            )
+
+            marker_x = (
+                node_item.pos().x()
+                - anchor_x * marker_scale
+            )
+
+            marker_y = (
+                node_item.pos().y()
+                - anchor_y * marker_scale
+                - self.display_style.marker_node_gap
             )
 
             marker_item.setPos(
-                node_item.pos().x() - 5,
-                node_item.pos().y() - 12
+                marker_x,
+                marker_y
             )
 
             marker_item.setParentItem(
@@ -374,7 +434,7 @@ class SceneRenderer:
         )
 
         connection_item.setZValue(
-            self.CONNECTION_Z_VALUE
+            self.display_style.normal_connection_z
         )
 
         connection_item.setAcceptedMouseButtons(
