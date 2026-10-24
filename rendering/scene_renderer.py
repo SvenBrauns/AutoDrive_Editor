@@ -268,9 +268,10 @@ class SceneRenderer:
             zoom_level >= self.marker_min_zoom
         )
 
-        # Der Detailrenderer bleibt deaktiviert,
-        # bis dessen Paint-Performance optimiert ist.
-        show_detailed_connections = False
+        show_detailed_connections = (
+            zoom_level
+            >= self.connection_detail_min_zoom
+        )
 
         if (
             self.node_layer is not None
