@@ -1,6 +1,11 @@
+import math
+
 from collections.abc import Callable
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import (
+    QPointF,
+    Qt
+)
 from PySide6.QtGui import (
     QColor,
     QPainterPath,
@@ -268,14 +273,24 @@ class SceneRenderer:
                     ]
                 )
 
+                geometry = (
+                    self._calculate_connection_geometry(
+                        source_node,
+                        target_node
+                    )
+                )
+
+                if geometry is None:
+                    continue
+
+                start_point, end_point = geometry
+
                 connection_path.moveTo(
-                    source_node.x,
-                    source_node.z
+                    start_point
                 )
 
                 connection_path.lineTo(
-                    target_node.x,
-                    target_node.z
+                    end_point
                 )
 
         connection_pens = {
@@ -307,6 +322,63 @@ class SceneRenderer:
                 self.connection_items[
                     connection_type
                 ] = connection_item
+
+    def _calculate_connection_geometry(
+        self,
+        source_node: NodeData,
+        target_node: NodeData
+    ):
+        delta_x = (
+            target_node.x
+            - source_node.x
+        )
+
+        delta_z = (
+            target_node.z
+            - source_node.z
+        )
+
+        distance = math.hypot(
+            delta_x,
+            delta_z
+        )
+
+        if distance <= 0.000001:
+            return None
+
+        direction_x = delta_x / distance
+        direction_z = delta_z / distance
+
+        node_radius = (
+            self.display_style.node_diameter
+            / 2
+        )
+
+        maximum_offset = max(
+            0.0,
+            distance / 2 - 0.0001
+        )
+
+        endpoint_offset = min(
+            node_radius,
+            maximum_offset
+        )
+
+        start_point = QPointF(
+            source_node.x
+            + direction_x * endpoint_offset,
+            source_node.z
+            + direction_z * endpoint_offset
+        )
+
+        end_point = QPointF(
+            target_node.x
+            - direction_x * endpoint_offset,
+            target_node.z
+            - direction_z * endpoint_offset
+        )
+
+        return start_point, end_point
 
     def _create_layers(self):
         self.node_layer = GraphicsLayerItem()
