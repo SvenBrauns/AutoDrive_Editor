@@ -129,25 +129,8 @@ class MainWindowActions:
             self.window
         )
 
-        self.display_options_action.setEnabled(
-            False
-        )
-
-        self.debug_view_action = QAction(
-            "Debuganzeige",
-            self.window
-        )
-
-        self.debug_view_action.setCheckable(
-            True
-        )
-
-        self.debug_view_action.setChecked(
-            True
-        )
-
-        self.debug_view_action.setEnabled(
-            False
+        self.display_options_action.triggered.connect(
+            self.window.open_display_options
         )
 
         self.reset_view_action = QAction(
@@ -283,7 +266,7 @@ class MainWindowActions:
         view_menu.addSeparator()
 
         view_menu.addAction(
-            self.debug_view_action
+            self.window.debug_dock.toggleViewAction()
         )
 
         view_menu.addSeparator()

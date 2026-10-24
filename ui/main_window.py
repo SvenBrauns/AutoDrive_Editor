@@ -7,10 +7,8 @@ from PySide6.QtCore import (
 from PySide6.QtWidgets import (
     QFileDialog,
     QGraphicsScene,
-    QHBoxLayout,
     QLabel,
-    QMainWindow,
-    QWidget
+    QMainWindow
 )
 from PySide6.QtGui import QPainterPath
 
@@ -28,10 +26,15 @@ from map.heightmap_manager import HeightmapManager
 from project.project_manager import ProjectManager
 from rendering.items.node_item import NodeItem
 from rendering.scene_renderer import SceneRenderer
+from rendering.display_style import DisplayStyle
+from ui.display_options_dialog import (
+    DisplayOptionsDialog
+)
 from ui.interaction_mode import InteractionMode
 from ui.main_window_actions import MainWindowActions
 from ui.map_view import MapView
 from ui.node_info_formatter import NodeInfoFormatter
+from ui.debug_dock import DebugDock
 from selection.node_selection_manager import (
     NodeSelectionManager
 )
@@ -44,7 +47,7 @@ class MainWindow(QMainWindow):
     INITIAL_HEIGHT = 900
 
     NO_FILE_STATUS = "Keine Datei geladen"
-    NO_NODE_INFO = "Keine Node ausgewählt"
+    NO_SELECTION_INFO = "Keine Node ausgewählt"
 
     DEFAULT_MAP_SCALE = 1
 
@@ -66,6 +69,7 @@ class MainWindow(QMainWindow):
         self._create_managers()
         self._create_status_widgets()
         self._create_central_widget()
+        self._create_debug_dock()
 
         self.actions = MainWindowActions(
             self
@@ -255,6 +259,7 @@ class MainWindow(QMainWindow):
         self._set_status(
             f"{len(self.autodrive_data)} Waypoints geladen"
         )
+        self._refresh_debug_dock()
 
     def save_project(self):
         if not self.current_xml_path:
@@ -394,6 +399,90 @@ class MainWindow(QMainWindow):
             "Rotation zurückgesetzt"
         )
 
+    def open_display_options(self):
+        dialog = DisplayOptionsDialog(
+            display_style=(
+                self.scene_renderer.display_style
+            ),
+            parent=self
+        )
+
+        dialog.style_applied.connect(
+            self.apply_display_style
+        )
+
+        dialog.exec()
+
+    def apply_display_style(
+        self,
+        display_style: DisplayStyle
+    ):
+        if not isinstance(
+            display_style,
+            DisplayStyle
+        ):
+            raise TypeError(
+                "Der Darstellungsstil ist ungültig."
+            )
+
+        selected_node_ids = (
+            self.node_selection_manager.selected_node_ids
+        )
+
+        viewport_center = (
+            self.view.viewport()
+            .rect()
+            .center()
+        )
+
+        scene_center = self.view.mapToScene(
+            viewport_center
+        )
+
+        self.scene_renderer.set_display_style(
+            display_style
+        )
+
+        if self.autodrive_data is None:
+            self._set_status(
+                "Darstellungsoptionen übernommen"
+            )
+
+            self._refresh_debug_dock()
+            return
+
+        self._clear_scene_content()
+
+        self.background_manager.restore()
+
+        self.scene_renderer.render(
+            self.autodrive_data
+        )
+
+        self.scene_renderer.set_selected_node_ids(
+            selected_node_ids
+        )
+
+        self._update_scene_rect()
+
+        self.view.centerOn(
+            scene_center
+        )
+
+        self.scene_renderer.update_visibility_for_zoom(
+            self.view.zoom_level
+        )
+
+        self.scene_renderer.update_visible_scene_rect(
+            self.view.get_visible_scene_rect()
+        )
+
+        self._set_status(
+            "Darstellungsoptionen übernommen"
+        )
+
+        self._refresh_debug_dock()
+
     def handle_selection_click(
         self,
         view_position: QPoint,
@@ -515,6 +604,51 @@ class MainWindow(QMainWindow):
             self.node_selection_manager.selected_node_ids
         )
 
+    def _format_selection_info(
+        self,
+        selected_node_ids,
+        primary_node_id
+    ) -> str:
+        if not selected_node_ids:
+            return self.NO_SELECTION_INFO
+
+        selection_count = len(
+            selected_node_ids
+        )
+
+        if (
+            self.autodrive_data is None
+            or primary_node_id is None
+        ):
+            return (
+                f"{selection_count} Nodes ausgewählt"
+            )
+
+        primary_node = self.autodrive_data.get_node(
+            primary_node_id
+        )
+
+        if primary_node is None:
+            return (
+                f"{selection_count} Nodes ausgewählt"
+            )
+
+        node_info_text = (
+            self.node_info_formatter.format_node_info(
+                node_data=primary_node,
+                autodrive_data=self.autodrive_data
+            )
+        )
+
+        if selection_count == 1:
+            return node_info_text
+
+        return (
+            f"{selection_count} Nodes ausgewählt\n"
+            f"Primäre Auswahl: {primary_node_id}\n\n"
+            f"{node_info_text}"
+        )
+
     def _handle_node_selection_changed(
         self,
         selected_node_ids,
@@ -524,49 +658,16 @@ class MainWindow(QMainWindow):
             selected_node_ids
         )
 
-        if not selected_node_ids:
-            self.node_info.setText(
-                self.NO_NODE_INFO
-            )
-            return
-
-        if (
-            self.autodrive_data is None
-            or primary_node_id is None
-        ):
-            self.node_info.setText(
-                f"{len(selected_node_ids)} Nodes ausgewählt"
-            )
-            return
-
-        primary_node = self.autodrive_data.get_node(
+        selection_info = self._format_selection_info(
+            selected_node_ids,
             primary_node_id
         )
 
-        if primary_node is None:
-            self.node_info.setText(
-                f"{len(selected_node_ids)} Nodes ausgewählt"
-            )
-            return
-
-        node_info_text = (
-            self.node_info_formatter.format_node_info(
-                node_data=primary_node,
-                autodrive_data=self.autodrive_data
-            )
+        self.debug_dock.set_node_info(
+            selection_info
         )
 
-        if len(selected_node_ids) == 1:
-            self.node_info.setText(
-                node_info_text
-            )
-
-        else:
-            self.node_info.setText(
-                f"{len(selected_node_ids)} Nodes ausgewählt\n\n"
-                f"Primäre Auswahl:\n"
-                f"{node_info_text}"
-            )
+        self._refresh_debug_dock()
 
     def _configure_window(self):
         self.setWindowTitle(
@@ -623,35 +724,26 @@ class MainWindow(QMainWindow):
             1
         )
 
-        self.node_info = QLabel(
-            self.NO_NODE_INFO
-        )
-
-        self.node_info.setMinimumWidth(
-            250
-        )
-
     def _create_central_widget(self):
-        main_layout = QHBoxLayout()
-
-        main_layout.addWidget(
-            self.view,
-            1
-        )
-
-        main_layout.addWidget(
-            self.node_info
-        )
-
-        container = QWidget()
-
-        container.setLayout(
-            main_layout
-        )
-
         self.setCentralWidget(
-            container
+            self.view
         )
+
+    def _create_debug_dock(self):
+        self.debug_dock = DebugDock(
+            self
+        )
+
+        self.addDockWidget(
+            Qt.RightDockWidgetArea,
+            self.debug_dock
+        )
+
+        self.debug_dock.set_node_info(
+            self.NO_SELECTION_INFO
+        )
+
+        self.debug_dock.hide()
 
     def _connect_signals(self):
         self.view.zoom_changed.connect(
@@ -686,6 +778,30 @@ class MainWindow(QMainWindow):
             self._handle_node_selection_changed
         )
 
+        self.view.zoom_changed.connect(
+            self._refresh_debug_dock
+        )
+
+        self.view.rotation_changed.connect(
+            self._refresh_debug_dock
+        )
+
+        self.view.visible_scene_rect_changed.connect(
+            self._refresh_debug_dock
+        )
+
+        self.view.interaction_mode_changed.connect(
+            self._refresh_debug_dock
+        )
+
+        self.node_selection_manager.selection_changed.connect(
+            self._refresh_debug_dock
+        )
+
+        self.debug_dock.visibilityChanged.connect(
+            self._handle_debug_dock_visibility_changed
+        )
+
     def _handle_rotation_changed(
         self,
         rotation_angle: float
@@ -698,6 +814,36 @@ class MainWindow(QMainWindow):
         self.actions.reset_rotation_action.setEnabled(
             rotation_active
         )
+
+    def _refresh_debug_dock(
+        self,
+        *args
+    ):
+        if not self.debug_dock.isVisible():
+            return
+
+        self.debug_dock.set_interaction_mode(
+            self.view.interaction_mode
+        )
+
+        self.debug_dock.set_view_state(
+            zoom_level=self.view.zoom_level,
+            rotation_angle=self.view.rotation_angle,
+            visible_rect=(
+                self.scene_renderer.current_visible_rect
+            )
+        )
+
+        self.debug_dock.set_renderer_state(
+            self.scene_renderer.get_debug_state()
+        )
+
+    def _handle_debug_dock_visibility_changed(
+        self,
+        visible: bool
+    ):
+        if visible:
+            self._refresh_debug_dock()
 
     def _apply_project_data(
         self,
@@ -784,9 +930,13 @@ class MainWindow(QMainWindow):
         self.node_selection_manager.clear()
 
     def _refresh_selected_node_info(self):
-        self._handle_node_selection_changed(
+        selection_info = self._format_selection_info(
             self.node_selection_manager.selected_node_ids,
             self.node_selection_manager.primary_node_id
+        )
+
+        self.debug_dock.set_node_info(
+            selection_info
         )
 
     def _update_scene_rect(self):
