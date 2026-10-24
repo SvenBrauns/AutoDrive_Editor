@@ -49,6 +49,10 @@ from rendering.visible_node_manager import (
 
 
 class SceneRenderer:
+    
+    SPATIAL_TILE_SIZE = 256.0
+    VISIBILITY_PADDING = 128.0
+
     def __init__(
         self,
         scene: QGraphicsScene,
@@ -67,7 +71,7 @@ class SceneRenderer:
 
         self.node_spatial_index = (
             NodeSpatialIndex(
-                tile_size=256.0
+                tile_size=self.SPATIAL_TILE_SIZE
             )
         )
 
@@ -83,7 +87,7 @@ class SceneRenderer:
 
         self.connection_spatial_index = (
             ConnectionSpatialIndex(
-                tile_size=256.0
+                tile_size=self.SPATIAL_TILE_SIZE
             )
         )
 
@@ -165,7 +169,7 @@ class SceneRenderer:
                     self.node_spatial_index
                 ),
                 display_style=self.display_style,
-                padding=128.0
+                padding=self.VISIBILITY_PADDING
             )
         )
 
@@ -179,7 +183,7 @@ class SceneRenderer:
                     self.node_spatial_index
                 ),
                 display_style=self.display_style,
-                padding=128.0
+                padding=self.VISIBILITY_PADDING
             )
         )
 

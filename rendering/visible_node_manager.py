@@ -22,7 +22,7 @@ class VisibleNodeManager:
         node_layer: QGraphicsItem,
         node_spatial_index: NodeSpatialIndex,
         display_style: DisplayStyle,
-        padding=DEFAULT_PADDING
+        padding: float = DEFAULT_PADDING
     ):
         self.scene = scene
         self.node_layer = node_layer
@@ -37,7 +37,10 @@ class VisibleNodeManager:
             float(padding)
         )
 
-        self.node_items = {}
+        self.visible_node_items: dict[
+            int,
+            NodeItem
+        ] = {}
 
     def update(
         self,
@@ -60,7 +63,7 @@ class VisibleNodeManager:
         )
 
         existing_node_ids = set(
-            self.node_items
+            self.visible_node_items
         )
 
         node_ids_to_remove = (
@@ -87,7 +90,7 @@ class VisibleNodeManager:
 
     def clear(self):
         for node_id in list(
-            self.node_items
+            self.visible_node_items
         ):
             self._remove_node_item(
                 node_id
@@ -106,7 +109,7 @@ class VisibleNodeManager:
             self.node_layer
         )
 
-        self.node_items[
+        self.visible_node_items[
             node_data.node_id
         ] = node_item
 
@@ -114,7 +117,7 @@ class VisibleNodeManager:
         self,
         node_id: int
     ):
-        node_item = self.node_items.pop(
+        node_item = self.visible_node_items.pop(
             node_id,
             None
         )

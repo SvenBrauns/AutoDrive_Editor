@@ -1,3 +1,4 @@
+from pathlib import Path
 from PySide6.QtCore import QRectF
 from PySide6.QtWidgets import (
     QGraphicsItem,
@@ -21,11 +22,11 @@ class VisibleMarkerManager:
         self,
         scene: QGraphicsScene,
         marker_layer: QGraphicsItem,
-        marker_icon_path,
+        marker_icon_path: str | Path,
         autodrive_data: AutoDriveData,
         node_spatial_index: NodeSpatialIndex,
         display_style: DisplayStyle,
-        padding=DEFAULT_PADDING
+        padding: float = DEFAULT_PADDING
     ):
         self.scene = scene
         self.marker_layer = marker_layer
@@ -45,7 +46,10 @@ class VisibleMarkerManager:
             float(padding)
         )
 
-        self.marker_items = {}
+        self.visible_marker_items: dict[
+            int,
+            MarkerItem
+        ] = {}
 
     def update(
         self,
@@ -70,7 +74,7 @@ class VisibleMarkerManager:
         )
 
         existing_marker_ids = set(
-            self.marker_items
+            self.visible_marker_items
         )
 
         marker_ids_to_remove = (
@@ -97,7 +101,7 @@ class VisibleMarkerManager:
 
     def clear(self):
         for node_id in list(
-            self.marker_items
+            self.visible_marker_items
         ):
             self._remove_marker_item(
                 node_id
@@ -155,7 +159,7 @@ class VisibleMarkerManager:
             self.marker_layer
         )
 
-        self.marker_items[
+        self.visible_marker_items[
             node_data.node_id
         ] = marker_item
 
@@ -163,7 +167,7 @@ class VisibleMarkerManager:
         self,
         node_id: int
     ):
-        marker_item = self.marker_items.pop(
+        marker_item = self.visible_marker_items.pop(
             node_id,
             None
         )
