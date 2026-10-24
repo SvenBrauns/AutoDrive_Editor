@@ -571,6 +571,8 @@ class MainWindow(QMainWindow):
                     f"Unbekannte Kartengröße: {map_scale}"
                 )
 
+            self.selected_node_data = None
+
             self.set_map_scale(
                 map_scale
             )
@@ -589,9 +591,33 @@ class MainWindow(QMainWindow):
                     preserve_file_path=False
                 )
 
-            self.current_heightmap_path = (
-                project_data["heightmap"]
-            )
+            heightmap_path = project_data[
+                "heightmap"
+            ]
+
+            if heightmap_path:
+                heightmap_data = (
+                    self.heightmap_manager.load(
+                        heightmap_path
+                    )
+                )
+
+                self.current_heightmap_path = str(
+                    heightmap_data.file_path
+                )
+
+                self.remove_heightmap_action.setEnabled(
+                    True
+                )
+
+            else:
+                self.heightmap_manager.clear()
+
+                self.current_heightmap_path = None
+
+                self.remove_heightmap_action.setEnabled(
+                    False
+                )
 
             self.load_xml_file(
                 project_data["autodrive_xml"]
@@ -605,9 +631,20 @@ class MainWindow(QMainWindow):
 
         self.current_config_path = config_path
 
-        self.status.setText(
-            f"Projekt geladen: {Path(config_path).name}"
-        )
+        project_name = Path(
+            config_path
+        ).name
+
+        if self.heightmap_manager.has_heightmap():
+            self.status.setText(
+                f"Projekt geladen: {project_name} "
+                f"mit Heightmap"
+            )
+
+        else:
+            self.status.setText(
+                f"Projekt geladen: {project_name}"
+            )
 
     def _refresh_selected_node_info(self):
         if self.selected_node_data is None:
