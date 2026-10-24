@@ -69,6 +69,11 @@ class NodeItem(QGraphicsEllipseItem):
             node_pen
         )
 
+        self.setFlag(
+            QGraphicsEllipseItem.ItemIsSelectable,
+            True
+        )
+
         self.setAcceptedMouseButtons(
             Qt.LeftButton
         )
