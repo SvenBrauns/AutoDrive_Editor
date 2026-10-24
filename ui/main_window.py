@@ -23,6 +23,7 @@ from app_paths import (
 
 from autodrive.xml_parser import AutoDriveXmlParser
 from map.background_manager import BackgroundManager
+from map.heightmap_manager import HeightmapManager
 from project.project_manager import ProjectManager
 from rendering.scene_renderer import SceneRenderer
 from ui.map_view import MapView
@@ -40,11 +41,14 @@ class MainWindow(QMainWindow):
         self.view = MapView()
         self.view.setScene(self.scene)
         self.autodrive_data = None
+        self.selected_node_data = None
 
         self.background_manager = BackgroundManager(
             self.scene,
             map_scale=1
         )
+
+        self.heightmap_manager = HeightmapManager()
 
         self.scene_renderer = SceneRenderer(
             self.scene,
@@ -135,6 +139,62 @@ class MainWindow(QMainWindow):
             "DDS-Hintergrund geladen"
         )
 
+    def select_heightmap(self):
+        filename, _ = QFileDialog.getOpenFileName(
+            self,
+            "dem.png auswählen",
+            "",
+            "PNG-Heightmaps (*.png);;Alle Dateien (*)"
+        )
+
+        if not filename:
+            return
+
+        try:
+            heightmap_data = (
+                self.heightmap_manager.load(
+                    filename
+                )
+            )
+
+        except Exception as ex:
+            self.status.setText(
+                f"Heightmap konnte nicht geladen werden: {ex}"
+            )
+            return
+
+        self.current_heightmap_path = str(
+            heightmap_data.file_path
+        )
+
+        self.remove_heightmap_action.setEnabled(
+            True
+        )
+
+        self.status.setText(
+            f"Heightmap geladen: "
+            f"{heightmap_data.width} × "
+            f"{heightmap_data.height}, "
+            f"{heightmap_data.format_description}"
+        )
+
+        self._refresh_selected_node_info()
+
+    def remove_heightmap(self):
+        self.heightmap_manager.clear()
+
+        self.current_heightmap_path = None
+
+        self.remove_heightmap_action.setEnabled(
+            False
+        )
+
+        self.status.setText(
+            "Heightmap entfernt"
+        )
+
+        self._refresh_selected_node_info()
+
     def create_menu_bar(self):
         menu_bar = self.menuBar()
 
@@ -213,6 +273,38 @@ class MainWindow(QMainWindow):
 
         map_menu.addAction(
             select_dds_action
+        )
+
+        map_menu.addSeparator()
+
+        select_heightmap_action = QAction(
+            "Heightmap auswählen",
+            self
+        )
+
+        select_heightmap_action.triggered.connect(
+            self.select_heightmap
+        )
+
+        map_menu.addAction(
+            select_heightmap_action
+        )
+
+        self.remove_heightmap_action = QAction(
+            "Heightmap entfernen",
+            self
+        )
+
+        self.remove_heightmap_action.triggered.connect(
+            self.remove_heightmap
+        )
+
+        self.remove_heightmap_action.setEnabled(
+            False
+        )
+
+        map_menu.addAction(
+            self.remove_heightmap_action
         )
 
         map_menu.addSeparator()
@@ -317,6 +409,8 @@ class MainWindow(QMainWindow):
             f"{action.text() if action else map_scale}"
         )
 
+        self._refresh_selected_node_info()
+
     def load_xml(self):
         filename, _ = QFileDialog.getOpenFileName(
             self,
@@ -360,6 +454,11 @@ class MainWindow(QMainWindow):
         )
 
         self.autodrive_data = autodrive_data
+        self.selected_node_data = None
+
+        self.node_info.setText(
+            "Keine Node ausgewählt"
+        )
 
         self.background_manager.restore()
 
@@ -510,7 +609,17 @@ class MainWindow(QMainWindow):
             f"Projekt geladen: {Path(config_path).name}"
         )
 
+    def _refresh_selected_node_info(self):
+        if self.selected_node_data is None:
+            return
+
+        self.show_node_info(
+            self.selected_node_data
+        )
+
     def show_node_info(self, node_data):
+        self.selected_node_data = node_data
+
         node_type = (
             "Regular Node"
             if node_data.is_regular
@@ -526,24 +635,88 @@ class MainWindow(QMainWindow):
                 )
             )
 
-        marker_text = ""
+        marker_lines = []
 
         if marker_data is not None:
-            marker_text = (
-                f"\n\n"
-                f"Marker: {marker_data.name}\n\n"
-                f"Gruppe: {marker_data.group}"
+            marker_lines.extend(
+                [
+                    "",
+                    f"Marker: {marker_data.name}",
+                    f"Gruppe: {marker_data.group}"
+                ]
             )
 
+        heightmap_lines = []
+
+        if self.heightmap_manager.has_heightmap():
+            try:
+                height_sample = (
+                    self.heightmap_manager.get_height_at(
+                        world_x=node_data.x,
+                        world_z=node_data.z,
+                        map_scale=(
+                            self.background_manager.map_scale
+                        )
+                    )
+                )
+
+                height_difference = (
+                    height_sample.height
+                    - node_data.y
+                )
+
+                heightmap_lines.extend(
+                    [
+                        "",
+                        f"Y laut XML: {node_data.y:.3f}",
+                        (
+                            f"Y laut Heightmap: "
+                            f"{height_sample.height:.3f}"
+                        ),
+                        (
+                            f"Abweichung: "
+                            f"{height_difference:+.3f}"
+                        ),
+                        (
+                            f"Heightmap-Pixel: "
+                            f"{height_sample.pixel_x}, "
+                            f"{height_sample.pixel_y}"
+                        ),
+                        (
+                            f"Heightmap-Rohwert: "
+                            f"{height_sample.raw_value}"
+                        )
+                    ]
+                )
+
+            except ValueError as ex:
+                heightmap_lines.extend(
+                    [
+                        "",
+                        "Heightmap-Auswertung nicht möglich:",
+                        str(ex)
+                    ]
+                )
+
+        else:
+            heightmap_lines.extend(
+                [
+                    "",
+                    f"Y: {node_data.y:.3f}"
+                ]
+            )
+
+        info_lines = [
+            f"Node ID: {node_data.node_id}",
+            "",
+            f"Typ: {node_type}",
+            *marker_lines,
+            "",
+            f"X: {node_data.x:.3f}",
+            *heightmap_lines,
+            f"Z: {node_data.z:.3f}"
+        ]
+
         self.node_info.setText(
-            f"""
-    Node ID: {node_data.node_id}
-
-    Typ: {node_type}
-    {marker_text}
-
-    X: {node_data.x:.2f}
-    Y: {node_data.y:.2f}
-    Z: {node_data.z:.2f}
-    """
+            "\n".join(info_lines)
         )
