@@ -29,6 +29,7 @@ from project.project_manager import ProjectManager
 from rendering.scene_renderer import SceneRenderer
 from ui.map_view import MapView
 from ui.interaction_mode import InteractionMode
+from items.node_item import NodeItem
 
 class MainWindow(QMainWindow):
 
@@ -63,8 +64,12 @@ class MainWindow(QMainWindow):
 
         self.view.visible_scene_rect_changed.connect(
             self.scene_renderer.update_visible_scene_rect
-        )  
+        )
 
+        self.view.selection_click_requested.connect(
+            self.handle_selection_click
+        )
+  
         self.config_directory = CONFIG_DIRECTORY
 
         self.project_manager = ProjectManager(
@@ -1018,4 +1023,30 @@ class MainWindow(QMainWindow):
 
         self.editor_toolbar.addAction(
             placeholder_action
+        )
+
+    def handle_selection_click(
+        self,
+        view_position,
+        modifiers
+    ):
+        for item in self.view.items(
+            view_position
+        ):
+            if isinstance(
+                item,
+                NodeItem
+            ):
+                self.show_node_info(
+                    item.node_data
+                )
+
+                return
+
+        self.selected_node_data = None
+
+        self.scene_renderer.clear_selection()
+
+        self.node_info.setText(
+            "Keine Node ausgewählt"
         )
