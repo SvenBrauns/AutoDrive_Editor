@@ -24,8 +24,8 @@ Damit alle folgenden Funktionen mit echten Spieldaten getestet werden können.
 **Karten**
 
 - [x] Kartenname aus `routes.xml` (`map`) bzw. aus der Savegame-Config (`MapName`) lesen
-- [ ] Mod-Zip einer Karte importieren: Kartenbild und Heightmap auslesen und im Datenordner des Editors ablegen (z. B. `%APPDATA%\AutoDrive Editor\maps\<Kartenname>\`), zusammen mit der Kartengröße
-- [ ] Schaltfläche „Karten scannen“: `mods`-Ordner nach Kartenmods durchsuchen (Zips und entpackte Ordner) und zum Import anbieten; bereits importierte Karten kennzeichnen
+- [x] Mod-Zip einer Karte importieren: Kartenbild und Heightmap auslesen und im Datenordner des Editors ablegen (z. B. `%APPDATA%\AutoDrive Editor\maps\<Kartenname>\`), zusammen mit der Kartengröße
+- [x] Schaltfläche „Karten scannen“: `mods`-Ordner nach Kartenmods durchsuchen (Zips und entpackte Ordner) und zum Import anbieten; bereits importierte Karten kennzeichnen
 - [ ] beim Laden einer Route oder eines Savegames die passende importierte Karte automatisch laden
 - [ ] Savegame: `terrain.heightmap.png` neben der Config als Heightmap verwenden
 - [ ] Kartengröße aus der Kartenkonfiguration im Mod übernehmen statt sie von Hand zu wählen

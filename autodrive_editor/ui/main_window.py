@@ -1,5 +1,13 @@
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QFileDialog, QGraphicsScene, QLabel, QMainWindow, QMessageBox
+from PySide6.QtWidgets import (
+    QApplication,
+    QFileDialog,
+    QGraphicsScene,
+    QLabel,
+    QMainWindow,
+    QMessageBox,
+    QProgressDialog,
+)
 
 from autodrive_editor.editing.commands.edit_command import DataChange
 from autodrive_editor.editing.edit_history import EditHistory
@@ -9,8 +17,10 @@ from autodrive_editor.editing.operations.delete_nodes import DeleteNodesOperatio
 from autodrive_editor.editing.operations.move_nodes import MoveNodesOperation
 from autodrive_editor.editing.operations.node_types import NodeTypeOperation
 from autodrive_editor.editing.operations.rotate_selection import RotateSelectionOperation
+from autodrive_editor.file_io.map_mod import read_map_mod
 from autodrive_editor.file_io.project_file import ProjectFileStore
 from autodrive_editor.file_io.routes_index import read_routes_index
+from autodrive_editor.game.map_scanner import scan_for_map_mods
 from autodrive_editor.game.savegame_info import savegames_with_autodrive
 from autodrive_editor.measurement.controller import MeasurementController
 from autodrive_editor.measurement.coordinator import MeasurementCoordinator
@@ -31,9 +41,11 @@ from autodrive_editor.selection.selection_coordinator import SelectionCoordinato
 from autodrive_editor.settings.app_settings import AppSettings
 from autodrive_editor.terrain.background_map import BackgroundMap
 from autodrive_editor.terrain.heightmap import Heightmap
+from autodrive_editor.terrain.map_cache import MapCache
 from autodrive_editor.ui.actions.main_window_actions import MainWindowActions
 from autodrive_editor.ui.controls.grid_coordinator import GridCoordinator
 from autodrive_editor.ui.dialogs.list_choice_dialog import ListChoiceDialog
+from autodrive_editor.ui.dialogs.map_import_dialog import MapImportDialog
 from autodrive_editor.ui.dialogs.settings_dialog import SettingsDialog
 from autodrive_editor.ui.map_view.map_view import MapView
 from autodrive_editor.ui.map_view.rotation_controller import ViewRotationController
@@ -81,6 +93,9 @@ class MainWindow(QMainWindow):
         # Detects the FS25 folder on first start and keeps it afterwards.
         self.settings = AppSettings()
         self.settings.ensure_game_folder()
+
+        # Map images and heightmaps imported from map mods.
+        self.map_cache = MapCache()
 
         self._configure_window()
         self._create_scene_and_view()
@@ -148,6 +163,93 @@ class MainWindow(QMainWindow):
 
         except Exception as ex:
             self._set_status(f"Kartengröße konnte nicht geändert werden: {ex}")
+
+    def import_map_mod(self):
+        game_folder = self.settings.game_folder
+        start = str(game_folder.mods_directory) if game_folder is not None else ""
+
+        filename, _ = QFileDialog.getOpenFileName(
+            self, "Kartenmod importieren", start, "Mod-Archiv (*.zip)"
+        )
+
+        if not filename:
+            return
+
+        try:
+            map_mod = read_map_mod(filename)
+        except Exception as ex:
+            self._inform(f"Der Mod konnte nicht gelesen werden:\n{ex}")
+            return
+
+        if map_mod is None:
+            self._inform("Dieser Mod enthält keine Karte.")
+            return
+
+        self._import_maps([(map_mod, entry) for entry in map_mod.maps])
+
+    def scan_map_mods(self):
+        game_folder = self._valid_game_folder()
+
+        if game_folder is None:
+            return
+
+        result = scan_for_map_mods(game_folder.mods_directory)
+
+        if not result.map_mods:
+            self._inform(
+                f"Im Mods-Ordner wurden keine Kartenmods gefunden:\n{game_folder.mods_directory}"
+            )
+            return
+
+        chosen = self._choose_maps_to_import(result)
+
+        if chosen:
+            self._import_maps(chosen)
+
+    def _choose_maps_to_import(self, scan_result):
+        dialog = MapImportDialog(
+            scan_result.map_mods, self.map_cache, scan_result.skipped, parent=self
+        )
+
+        return dialog.chosen_maps if dialog.exec() else []
+
+    def _import_maps(self, chosen):
+        """Imports the given (mod, map) pairs into the map cache and reports
+        the result."""
+
+        progress = QProgressDialog("Karten werden importiert…", "Abbrechen", 0, len(chosen), self)
+        progress.setWindowTitle("Karten importieren")
+        progress.setMinimumDuration(300)
+
+        imported, failed = [], []
+
+        for index, (map_mod, entry) in enumerate(chosen):
+            if progress.wasCanceled():
+                break
+
+            progress.setLabelText(f"{entry.title} ({index + 1}/{len(chosen)})")
+            progress.setValue(index)
+            QApplication.processEvents()
+
+            try:
+                self.map_cache.import_map(map_mod.path, entry)
+                imported.append(entry.title)
+            except Exception as ex:
+                failed.append(f"{entry.title}: {ex}")
+
+        progress.setValue(len(chosen))
+
+        message = f"{len(imported)} Karte(n) importiert."
+
+        if failed:
+            message += "\n\nNicht importiert:\n" + "\n".join(failed)
+
+        self._set_status(f"{len(imported)} Karte(n) importiert")
+
+        if failed:
+            self._inform(message)
+
+        return imported
 
     def open_route(self):
         game_folder = self._valid_game_folder()

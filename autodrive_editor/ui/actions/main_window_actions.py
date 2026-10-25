@@ -141,6 +141,18 @@ class MainWindowActions:
 
         self.reset_rotation_action.triggered.connect(self.window.reset_view_rotation)
 
+        self.import_map_mod_action = QAction("Karte aus Mod importieren…", self.window)
+        self.import_map_mod_action.setStatusTip(
+            "Kartenbild und Heightmap aus einem Kartenmod (Zip) importieren"
+        )
+        self.import_map_mod_action.triggered.connect(self.window.import_map_mod)
+
+        self.scan_map_mods_action = QAction("Karten scannen…", self.window)
+        self.scan_map_mods_action.setStatusTip(
+            "Mods-Ordner nach Kartenmods durchsuchen und Karten importieren"
+        )
+        self.scan_map_mods_action.triggered.connect(self.window.scan_map_mods)
+
         self.select_background_action = QAction("DDS auswählen", self.window)
 
         self.select_background_action.triggered.connect(self.window.select_background)
@@ -313,6 +325,12 @@ class MainWindowActions:
         view_menu.addAction(self.reset_rotation_action)
 
         map_menu = menu_bar.addMenu("Karte")
+
+        map_menu.addAction(self.scan_map_mods_action)
+
+        map_menu.addAction(self.import_map_mod_action)
+
+        map_menu.addSeparator()
 
         map_menu.addAction(self.select_background_action)
 
