@@ -26,10 +26,12 @@ from autodrive_editor.rendering.display_style import DisplayStyle
 from autodrive_editor.rendering.scene_renderer import SceneRenderer
 from autodrive_editor.selection.node_selection import NodeSelection
 from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
+from autodrive_editor.settings.app_settings import AppSettings
 from autodrive_editor.terrain.background_map import BackgroundMap
 from autodrive_editor.terrain.heightmap import Heightmap
 from autodrive_editor.ui.actions.main_window_actions import MainWindowActions
 from autodrive_editor.ui.controls.grid_coordinator import GridCoordinator
+from autodrive_editor.ui.dialogs.settings_dialog import SettingsDialog
 from autodrive_editor.ui.map_view.map_view import MapView
 from autodrive_editor.ui.map_view.rotation_controller import ViewRotationController
 from autodrive_editor.ui.panels.debug_dock import DebugDock
@@ -72,6 +74,10 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         self.local_projects_directory = LOCAL_PROJECTS_DIRECTORY
+
+        # Detects the FS25 folder on first start and keeps it afterwards.
+        self.settings = AppSettings()
+        self.settings.ensure_game_folder()
 
         self._configure_window()
         self._create_scene_and_view()
@@ -237,6 +243,19 @@ class MainWindow(QMainWindow):
 
     def align_view_to_measurement(self):
         self.measurement_coordinator.align_view_to_measurement()
+
+    def open_settings(self):
+        dialog = SettingsDialog(self.settings, parent=self)
+
+        if dialog.exec():
+            folder = self.settings.game_folder
+
+            if folder is None:
+                self._set_status("Kein Spielordner gesetzt")
+            elif folder.is_valid:
+                self._set_status(f"Spielordner: {folder.path}")
+            else:
+                self._set_status(f"Spielordner ist kein FS25-Benutzerordner: {folder.path}")
 
     def open_display_options(self):
         dialog = DisplayOptionsDialog(display_style=self.scene_renderer.display_style, parent=self)

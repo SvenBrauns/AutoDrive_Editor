@@ -15,6 +15,30 @@ def qapp():
     yield app
 
 
+@pytest.fixture(autouse=True, scope="session")
+def test_user_data(tmp_path_factory):
+    r"""Settings and imported maps go to a temporary folder during the whole
+    test run, never to the real %APPDATA%\AutoDrive Editor."""
+    data_directory = tmp_path_factory.mktemp("user_data")
+    previous = os.environ.get("AUTODRIVE_EDITOR_DATA_DIR")
+    os.environ["AUTODRIVE_EDITOR_DATA_DIR"] = str(data_directory)
+
+    yield data_directory
+
+    if previous is None:
+        os.environ.pop("AUTODRIVE_EDITOR_DATA_DIR", None)
+    else:
+        os.environ["AUTODRIVE_EDITOR_DATA_DIR"] = previous
+
+
+@pytest.fixture
+def isolated_user_data(tmp_path, monkeypatch):
+    """A fresh, empty user data folder for tests that need clean settings."""
+    data_directory = tmp_path / "user_data"
+    monkeypatch.setenv("AUTODRIVE_EDITOR_DATA_DIR", str(data_directory))
+    return data_directory
+
+
 @pytest.fixture(autouse=True)
 def fail_on_slot_exceptions():
     """Qt only prints exceptions raised inside slots. Fail the test instead."""

@@ -12,7 +12,7 @@ Damit alle folgenden Funktionen mit echten Spieldaten getestet werden können.
 
 **Spielordner**
 
-- [ ] FS25-Benutzerordner (üblicherweise `Dokumente\My Games\FarmingSimulator2025`) automatisch finden und in den Einstellungen änderbar machen
+- [x] FS25-Benutzerordner (üblicherweise `Dokumente\My Games\FarmingSimulator2025`) automatisch finden und in den Einstellungen änderbar machen
 
 **Routen und Savegames**
 

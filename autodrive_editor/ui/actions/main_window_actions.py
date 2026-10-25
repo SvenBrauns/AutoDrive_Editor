@@ -111,6 +111,10 @@ class MainWindowActions:
 
         self.load_xml_action.triggered.connect(self.window.load_xml)
 
+        self.settings_action = QAction("Einstellungen…", self.window)
+
+        self.settings_action.triggered.connect(self.window.open_settings)
+
         self.exit_action = QAction("Beenden", self.window)
 
         self.exit_action.triggered.connect(self.window.close)
@@ -259,6 +263,10 @@ class MainWindowActions:
         file_menu.addSeparator()
 
         file_menu.addAction(self.load_xml_action)
+
+        file_menu.addSeparator()
+
+        file_menu.addAction(self.settings_action)
 
         file_menu.addSeparator()
 
