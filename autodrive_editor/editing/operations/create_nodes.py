@@ -23,6 +23,7 @@ class CreateNodesOperation(QObject):
         edit_history: EditHistory,
         autodrive_data_provider: Callable[[], AutoDriveData | None],
         terrain_height_at: TerrainHeightProvider | None = None,
+        snap_point: Callable[[float, float], tuple[float, float]] | None = None,
         parent=None,
     ):
         super().__init__(parent)
@@ -32,6 +33,7 @@ class CreateNodesOperation(QObject):
         self.edit_history = edit_history
         self.autodrive_data_provider = autodrive_data_provider
         self.terrain_height_at = terrain_height_at
+        self.snap_point = snap_point
 
     def create_node_at(self, view_position: QPoint, flag: int = REGULAR_FLAG) -> int | None:
         """Creates a node with the given flag (regular or subprio) at
@@ -55,6 +57,9 @@ class CreateNodesOperation(QObject):
 
         x = scene_position.x()
         z = scene_position.y()
+
+        if self.snap_point is not None:
+            x, z = self.snap_point(x, z)
 
         node_id = self.next_node_id(autodrive_data)
 

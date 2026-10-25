@@ -23,6 +23,8 @@ class GridControls(QToolButton):
 
     reset_requested = Signal()
 
+    snap_requested = Signal(bool)
+
     def __init__(
         self,
         grid_visible: bool = True,
@@ -52,6 +54,10 @@ class GridControls(QToolButton):
         self.visibility_input = QCheckBox("Raster anzeigen")
 
         self.visibility_input.toggled.connect(self._emit_visibility)
+
+        self.snap_input = QCheckBox("Am Raster einrasten (G)")
+
+        self.snap_input.toggled.connect(self._emit_snap)
 
         self.spacing_input = QDoubleSpinBox()
 
@@ -97,6 +103,8 @@ class GridControls(QToolButton):
 
         content_layout.addWidget(self.visibility_input)
 
+        content_layout.addWidget(self.snap_input)
+
         content_layout.addLayout(form_layout)
 
         content_layout.addWidget(reset_button)
@@ -125,6 +133,20 @@ class GridControls(QToolButton):
         self.visibility_input.blockSignals(False)
 
         self._update_button_text()
+
+    def set_grid_snap(self, enabled: bool):
+        self.snap_input.blockSignals(True)
+
+        self.snap_input.setChecked(bool(enabled))
+
+        self.snap_input.blockSignals(False)
+
+        self._update_button_text()
+
+    def _emit_snap(self, enabled: bool):
+        self._update_button_text()
+
+        self.snap_requested.emit(enabled)
 
     def set_grid_spacing(self, spacing: float):
         self.spacing_input.blockSignals(True)
@@ -170,8 +192,9 @@ class GridControls(QToolButton):
         self.grid_menu.close()
 
     def _update_button_text(self):
-        if self.visibility_input.isChecked():
-            self.setText("Raster an")
+        text = "Raster an" if self.visibility_input.isChecked() else "Raster aus"
 
-        else:
-            self.setText("Raster aus")
+        if self.snap_input.isChecked():
+            text += " · Einrasten"
+
+        self.setText(text)

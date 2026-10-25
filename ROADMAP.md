@@ -74,7 +74,7 @@ Für das spätere Speichern muss diese Phase schon beachten: Markergruppen sind 
 - [x] Werkzeug „Richtung umkehren“ (`U`): Connection anklicken; liegt sie in der Auswahl, werden alle Connections der Auswahl umgekehrt. Dual-Connections bleiben unverändert
 - [ ] Ausrichten: horizontal, vertikal und in der Höhe
 - [x] Position einer Node als Zahlen eingeben (Werkzeug „Position eingeben“, `P`: Node anklicken, X/Y/Z im Dialog)
-- [ ] Einrasten am Raster beim Erstellen und Verschieben
+- [x] Einrasten am Raster beim Erstellen und Verschieben (`G` oder Raster-Menü; beachtet Abstand und Drehung des Rasters, beim Verschieben rastet die gegriffene Node ein)
 - [ ] Freihand-Auswahl (Lasso)
 
 Hinweis zum Ausrichten: Die Werkzeuge müssen auch bei gedrehter Kartenansicht funktionieren. „Horizontal“ und „vertikal“ beziehen sich dann auf die Bildschirmachsen der aktuellen Ansicht, nicht auf die Kartenachsen. Das macht sie aufwendiger als die übrigen Punkte dieser Phase.

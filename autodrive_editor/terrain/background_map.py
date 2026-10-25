@@ -1,3 +1,5 @@
+from PySide6.QtCore import QPointF
+from PySide6.QtGui import QTransform
 from PySide6.QtWidgets import QGraphicsPixmapItem, QGraphicsScene
 
 from autodrive_editor.file_io.background_image import load_background_pixmap
@@ -19,6 +21,9 @@ class BackgroundMap:
         self.grid_visible = True
         self.grid_spacing = 10.0
         self.grid_rotation = 0.0
+
+        # Snapping works even while the grid is hidden.
+        self.grid_snap_enabled = False
 
     def load(self, file_path):
         pixmap = load_background_pixmap(file_path)
@@ -137,6 +142,18 @@ class BackgroundMap:
         if self.grid_item is not None:
             self.grid_item.set_rotation_angle(self.grid_rotation)
 
+    def set_grid_snap_enabled(self, enabled: bool):
+        self.grid_snap_enabled = bool(enabled)
+
+    def snap_point(self, x: float, z: float) -> tuple[float, float]:
+        """The nearest grid point while snapping is on, otherwise the
+        point itself."""
+
+        if not self.grid_snap_enabled:
+            return x, z
+
+        return snap_to_grid(x, z, self.grid_spacing, self.grid_rotation)
+
     def reset_grid(self):
         self.grid_visible = True
         self.grid_spacing = 10.0
@@ -182,3 +199,19 @@ class BackgroundMap:
         grid_rect = self.background_item.sceneBoundingRect()
 
         self.grid_item.set_grid_rect(grid_rect)
+
+
+def snap_to_grid(x: float, z: float, spacing: float, rotation_angle: float) -> tuple[float, float]:
+    """Nearest point of a grid with the given spacing, rotated around
+    the map center like the drawn grid (MapGridItem)."""
+
+    to_grid = QTransform().rotate(-rotation_angle)
+    grid_point = to_grid.map(QPointF(x, z))
+
+    snapped = QPointF(
+        round(grid_point.x() / spacing) * spacing, round(grid_point.y() / spacing) * spacing
+    )
+
+    scene_point = QTransform().rotate(rotation_angle).map(snapped)
+
+    return scene_point.x(), scene_point.y()

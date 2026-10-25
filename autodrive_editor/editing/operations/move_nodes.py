@@ -31,11 +31,15 @@ class MoveNodesOperation(QObject):
         edit_history: EditHistory,
         autodrive_data_provider: Callable[[], AutoDriveData | None],
         terrain_height_at: TerrainHeightProvider | None = None,
+        snap_point: Callable[[float, float], tuple[float, float]] | None = None,
         parent=None,
     ):
         super().__init__(parent)
 
         self.terrain_follower = TerrainFollower(terrain_height_at)
+
+        # Grid snapping; the grabbed node snaps, the others keep their offset.
+        self.snap_point = snap_point
 
         self.view = view
         self.selection_coordinator = selection_coordinator
@@ -79,6 +83,8 @@ class MoveNodesOperation(QObject):
 
         self._autodrive_data = autodrive_data
 
+        self._grabbed_node_id = pressed_node_id
+
         self._press_scene_position = QPointF(self.view.mapToScene(view_position))
 
         self._start_positions = self._read_positions(moving_node_ids)
@@ -101,6 +107,14 @@ class MoveNodesOperation(QObject):
         delta_x = scene_position.x() - self._press_scene_position.x()
 
         delta_z = scene_position.y() - self._press_scene_position.y()
+
+        if self.snap_point is not None:
+            grabbed_start = self._start_positions[self._grabbed_node_id]
+            snapped_x, snapped_z = self.snap_point(
+                grabbed_start[0] + delta_x, grabbed_start[2] + delta_z
+            )
+            delta_x = snapped_x - grabbed_start[0]
+            delta_z = snapped_z - grabbed_start[2]
 
         target_positions = {}
 
@@ -166,6 +180,7 @@ class MoveNodesOperation(QObject):
 
     def _reset_state(self):
         self._autodrive_data: AutoDriveData | None = None
+        self._grabbed_node_id: int | None = None
         self._press_scene_position = QPointF()
         self._start_positions: dict[int, NodePosition] = {}
         self._merge_key = None
