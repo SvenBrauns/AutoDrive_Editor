@@ -172,6 +172,13 @@ class MainWindowActions:
 
         self._create_clipboard_actions()
 
+        self.grid_snap_action = QAction("Am Raster einrasten", self.window)
+        self.grid_snap_action.setCheckable(True)
+        self.grid_snap_action.setShortcut(QKeySequence("G"))
+        self.grid_snap_action.toggled.connect(
+            lambda enabled: self.window.grid_coordinator.set_grid_snap_enabled(enabled)
+        )
+
         self._create_map_scale_actions()
 
     def _create_map_scale_actions(self):
@@ -339,6 +346,10 @@ class MainWindowActions:
 
         edit_menu.addAction(self.delete_selection_action)
 
+        edit_menu.addSeparator()
+
+        edit_menu.addAction(self.grid_snap_action)
+
         view_menu = menu_bar.addMenu("Ansicht")
 
         view_menu.addAction(self.display_options_action)
@@ -448,6 +459,8 @@ class MainWindowActions:
         )
 
         self.quick_access_toolbar.addWidget(self.grid_controls)
+
+        self.grid_controls.snap_requested.connect(self.grid_snap_action.setChecked)
 
         self.quick_access_toolbar.addSeparator()
 

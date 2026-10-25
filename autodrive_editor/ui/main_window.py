@@ -727,6 +727,7 @@ class MainWindow(QMainWindow):
             edit_history=self.edit_history,
             autodrive_data_provider=self._get_autodrive_data,
             terrain_height_at=self._get_terrain_height,
+            snap_point=self.background_map.snap_point,
             parent=self,
         )
 
@@ -759,6 +760,7 @@ class MainWindow(QMainWindow):
             edit_history=self.edit_history,
             autodrive_data_provider=self._get_autodrive_data,
             terrain_height_at=self._get_terrain_height,
+            snap_point=self.background_map.snap_point,
             parent=self,
         )
 
