@@ -1,16 +1,12 @@
 from pathlib import Path
 
-from PySide6.QtCore import (
-    QPoint,
-    Qt
-)
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QFileDialog,
     QGraphicsScene,
     QLabel,
     QMainWindow
 )
-from PySide6.QtGui import QPainterPath
 
 from app_paths import (
     LOCAL_PROJECTS_DIRECTORY,
@@ -24,7 +20,6 @@ from autodrive.xml_parser import AutoDriveXmlParser
 from map.background_manager import BackgroundManager
 from map.heightmap_manager import HeightmapManager
 from project.project_manager import ProjectManager
-from rendering.items.node_item import NodeItem
 from rendering.scene_renderer import SceneRenderer
 from rendering.display_style import DisplayStyle
 from ui.display_options_dialog import (
@@ -37,6 +32,9 @@ from ui.node_info_formatter import NodeInfoFormatter
 from ui.debug_dock import DebugDock
 from selection.node_selection_manager import (
     NodeSelectionManager
+)
+from selection.selection_coordinator import (
+    SelectionCoordinator
 )
 from measurement.measurement_controller import (
     MeasurementController
@@ -155,7 +153,7 @@ class MainWindow(QMainWindow):
             f"{heightmap_data.format_description}"
         )
 
-        self._refresh_selected_node_info()
+        self.selection_coordinator.refresh_info()
 
     def remove_heightmap(self):
         self.heightmap_manager.clear()
@@ -168,7 +166,7 @@ class MainWindow(QMainWindow):
             "Heightmap entfernt"
         )
 
-        self._refresh_selected_node_info()
+        self.selection_coordinator.refresh_info()
 
     def set_map_scale(
         self,
@@ -206,7 +204,7 @@ class MainWindow(QMainWindow):
             f"Kartengröße: {map_scale_label}"
         )
 
-        self._refresh_selected_node_info()
+        self.selection_coordinator.refresh_info()
 
     def load_xml(self):
         filename, _ = QFileDialog.getOpenFileName(
@@ -249,7 +247,7 @@ class MainWindow(QMainWindow):
 
         self.autodrive_data = autodrive_data
 
-        self._clear_node_selection()
+        self.selection_coordinator.clear()
 
         self.background_manager.restore()
 
@@ -257,9 +255,7 @@ class MainWindow(QMainWindow):
             self.autodrive_data
         )
 
-        self.scene_renderer.set_selected_node_ids(
-            self.node_selection_manager.selected_node_ids
-        )
+        self.selection_coordinator.synchronize()
 
         self._update_scene_rect()
         self._fit_scene_in_view()
@@ -380,9 +376,8 @@ class MainWindow(QMainWindow):
         self,
         node_data: NodeData
     ):
-        self.node_selection_manager.replace(
-            {node_data.node_id},
-            primary_node_id=node_data.node_id
+        self.selection_coordinator.show_node_info(
+            node_data
         )
 
     def set_interaction_mode(
@@ -465,10 +460,6 @@ class MainWindow(QMainWindow):
                 "Der Darstellungsstil ist ungültig."
             )
 
-        selected_node_ids = (
-            self.node_selection_manager.selected_node_ids
-        )
-
         viewport_center = (
             self.view.viewport()
             .rect()
@@ -499,10 +490,7 @@ class MainWindow(QMainWindow):
             self.autodrive_data
         )
 
-        self.scene_renderer.set_selected_node_ids(
-            selected_node_ids
-        )
-
+        self.selection_coordinator.synchronize()
         self.measurement_coordinator.restore_scene_items()
 
         self._update_scene_rect()
@@ -521,188 +509,6 @@ class MainWindow(QMainWindow):
 
         self._set_status(
             "Darstellungsoptionen übernommen"
-        )
-
-        self._refresh_debug_dock()
-
-    def handle_selection_click(
-        self,
-        view_position: QPoint,
-        modifiers
-    ):
-        clicked_node_item = self._get_node_item_at(
-            view_position
-        )
-
-        control_pressed = bool(
-            modifiers
-            & Qt.ControlModifier
-        )
-
-        if clicked_node_item is None:
-            if not control_pressed:
-                self.node_selection_manager.clear()
-
-            return
-
-        clicked_node = (
-            clicked_node_item.node_data
-        )
-
-        if control_pressed:
-            self.node_selection_manager.toggle(
-                clicked_node.node_id
-            )
-
-        else:
-            self.node_selection_manager.replace(
-                {clicked_node.node_id},
-                primary_node_id=clicked_node.node_id
-            )
-
-    def handle_selection_area(
-        self,
-        selection_path: QPainterPath,
-        modifiers
-    ):
-        selected_nodes = (
-            self.scene_renderer.get_nodes_in_selection_path(
-                selection_path
-            )
-        )
-
-        selected_node_ids = {
-            node_data.node_id
-            for node_data in selected_nodes
-        }
-
-        primary_node_id = (
-            min(selected_node_ids)
-            if selected_node_ids
-            else None
-        )
-
-        control_pressed = bool(
-            modifiers
-            & Qt.ControlModifier
-        )
-
-        if control_pressed:
-            self.node_selection_manager.toggle_many(
-                selected_node_ids,
-                primary_node_id=primary_node_id
-            )
-
-        else:
-            self.node_selection_manager.replace(
-                selected_node_ids,
-                primary_node_id=primary_node_id
-            )
-
-    def handle_selection_area_preview(
-        self,
-        selection_path: QPainterPath,
-        modifiers
-    ):
-        preview_nodes = (
-            self.scene_renderer.get_nodes_in_selection_path(
-                selection_path
-            )
-        )
-
-        area_node_ids = {
-            node_data.node_id
-            for node_data in preview_nodes
-        }
-
-        current_node_ids = (
-            self.node_selection_manager.selected_node_ids
-        )
-
-        control_pressed = bool(
-            modifiers
-            & Qt.ControlModifier
-        )
-
-        if control_pressed:
-            preview_node_ids = (
-                current_node_ids
-                ^ area_node_ids
-            )
-
-        else:
-            preview_node_ids = area_node_ids
-
-        self.scene_renderer.set_selected_node_ids(
-            preview_node_ids
-        )
-
-    def clear_selection_area_preview(self):
-        self.scene_renderer.set_selected_node_ids(
-            self.node_selection_manager.selected_node_ids
-        )
-
-    def _format_selection_info(
-        self,
-        selected_node_ids,
-        primary_node_id
-    ) -> str:
-        if not selected_node_ids:
-            return self.NO_SELECTION_INFO
-
-        selection_count = len(
-            selected_node_ids
-        )
-
-        if (
-            self.autodrive_data is None
-            or primary_node_id is None
-        ):
-            return (
-                f"{selection_count} Nodes ausgewählt"
-            )
-
-        primary_node = self.autodrive_data.get_node(
-            primary_node_id
-        )
-
-        if primary_node is None:
-            return (
-                f"{selection_count} Nodes ausgewählt"
-            )
-
-        node_info_text = (
-            self.node_info_formatter.format_node_info(
-                node_data=primary_node,
-                autodrive_data=self.autodrive_data
-            )
-        )
-
-        if selection_count == 1:
-            return node_info_text
-
-        return (
-            f"{selection_count} Nodes ausgewählt\n"
-            f"Primäre Auswahl: {primary_node_id}\n\n"
-            f"{node_info_text}"
-        )
-
-    def _handle_node_selection_changed(
-        self,
-        selected_node_ids,
-        primary_node_id
-    ):
-        self.scene_renderer.set_selected_node_ids(
-            selected_node_ids
-        )
-
-        selection_info = self._format_selection_info(
-            selected_node_ids,
-            primary_node_id
-        )
-
-        self.debug_dock.set_node_info(
-            selection_info
         )
 
         self._refresh_debug_dock()
@@ -752,6 +558,23 @@ class MainWindow(QMainWindow):
             NodeSelectionManager()
         )
 
+        self.selection_coordinator = (
+            SelectionCoordinator(
+                view=self.view,
+                renderer=self.scene_renderer,
+                selection_manager=(
+                    self.node_selection_manager
+                ),
+                node_info_formatter=(
+                    self.node_info_formatter
+                ),
+                autodrive_data_provider=(
+                    self._get_autodrive_data
+                ),
+                parent=self
+            )
+        )
+
         self.measurement_controller = (
             MeasurementController(
                 scene=self.scene,
@@ -766,11 +589,17 @@ class MainWindow(QMainWindow):
                     self.measurement_controller
                 ),
                 node_item_provider=(
-                    self._get_node_item_at
+                    self.selection_coordinator
+                    .get_node_item_at
                 ),
                 parent=self
             )
         )
+
+    def _get_autodrive_data(
+        self
+    ) -> AutoDriveData | None:
+        return self.autodrive_data
 
     def _create_status_widgets(self):
         self.status = QLabel(
@@ -813,7 +642,7 @@ class MainWindow(QMainWindow):
         )
 
         self.view.selection_click_requested.connect(
-            self.handle_selection_click
+            self.selection_coordinator.handle_click
         )
 
         self.view.rotation_changed.connect(
@@ -821,15 +650,15 @@ class MainWindow(QMainWindow):
         )
 
         self.view.selection_area_requested.connect(
-            self.handle_selection_area
+            self.selection_coordinator.handle_area
         )
 
         self.view.selection_area_preview_requested.connect(
-            self.handle_selection_area_preview
+            self.selection_coordinator.handle_area_preview
         )
 
         self.view.selection_area_preview_cleared.connect(
-            self.clear_selection_area_preview
+            self.selection_coordinator.clear_area_preview
         )
 
         self.view.measurement_press_requested.connect(
@@ -860,8 +689,12 @@ class MainWindow(QMainWindow):
             self.actions.set_measurement_alignment_enabled
         )
 
-        self.node_selection_manager.selection_changed.connect(
-            self._handle_node_selection_changed
+        self.selection_coordinator.selection_info_changed.connect(
+            self.debug_dock.set_node_info
+        )
+
+        self.selection_coordinator.selection_state_changed.connect(
+            self._refresh_debug_dock
         )
 
         self.view.zoom_changed.connect(
@@ -881,10 +714,6 @@ class MainWindow(QMainWindow):
         )
 
         self.view.interaction_mode_changed.connect(
-            self._refresh_debug_dock
-        )
-
-        self.node_selection_manager.selection_changed.connect(
             self._refresh_debug_dock
         )
 
@@ -916,21 +745,6 @@ class MainWindow(QMainWindow):
         self.actions.rotation_controls.set_rotation_step(
             rotation_step
         )
-
-    def _get_node_item_at(
-        self,
-        view_position: QPoint
-    ) -> NodeItem | None:
-        for item in self.view.items(
-            view_position
-        ):
-            if isinstance(
-                item,
-                NodeItem
-            ):
-                return item
-
-        return None
 
     def _refresh_debug_dock(
         self,
@@ -975,7 +789,7 @@ class MainWindow(QMainWindow):
                 f"Unbekannte Kartengröße: {map_scale}"
             )
 
-        self._clear_node_selection()
+        self.selection_coordinator.clear()
 
         self.set_map_scale(
             map_scale
@@ -1045,22 +859,17 @@ class MainWindow(QMainWindow):
         self.scene_renderer.reset()
         self.scene.clear()
 
-    def _clear_node_selection(self):
-        self.node_selection_manager.clear()
-
-    def _refresh_selected_node_info(self):
-        selection_info = self._format_selection_info(
-            self.node_selection_manager.selected_node_ids,
-            self.node_selection_manager.primary_node_id
-        )
-
-        self.debug_dock.set_node_info(
-            selection_info
-        )
-
     def _update_scene_rect(self):
-        self.scene.setSceneRect(
+        scene_rect = (
             self.scene.itemsBoundingRect()
+        )
+
+        self.scene.setSceneRect(
+            scene_rect
+        )
+
+        self.scene_renderer.update_scene_rect(
+            scene_rect
         )
 
     def _fit_scene_in_view(self):

@@ -248,6 +248,22 @@ class SceneRenderer:
                 self.current_visible_rect
             )
 
+    def update_scene_rect(
+        self,
+        scene_rect: QRectF
+    ):
+        scene_rect = QRectF(
+            scene_rect
+        )
+
+        if scene_rect.isEmpty():
+            return
+
+        if self.connection_render_item is not None:
+            self.connection_render_item.set_scene_rect(
+                scene_rect
+            )
+            
     def _update_virtualized_layer(
         self,
         layer,
