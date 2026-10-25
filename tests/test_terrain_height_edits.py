@@ -1,12 +1,11 @@
 """Moving and rotating nodes lets them follow the heightmap."""
 
 import pytest
-
+from mouse_helpers import drag, view_pos
 from PySide6.QtCore import QPoint, QRectF, Qt
 from PySide6.QtGui import QPainterPath
 
-from mouse_helpers import drag, view_pos
-from ui.interaction_mode import InteractionMode
+from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
 
 @pytest.fixture

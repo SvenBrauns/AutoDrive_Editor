@@ -2,8 +2,8 @@ import copy
 
 import pytest
 
-from autodrive.models import AutoDriveData, MarkerData, NodeData
-from editing.delete_nodes_command import DeleteNodesCommand
+from autodrive_editor.editing.commands.delete_nodes import DeleteNodesCommand
+from autodrive_editor.model.autodrive_data import AutoDriveData, MarkerData, NodeData
 
 
 @pytest.fixture

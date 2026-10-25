@@ -3,15 +3,14 @@ signal paths, so wiring mistakes between parts fail here instead of
 only showing up as console errors in the running app."""
 
 import pytest
-
+from mouse_helpers import click
 from PySide6.QtCore import QPoint, QRectF, Qt
 from PySide6.QtGui import QPainterPath
 
-from editing.move_nodes_command import MoveNodesCommand
-from mouse_helpers import click
-from measurement.measurement_mode import MeasurementMode
-from ui.interaction_mode import InteractionMode
-from ui.main_window import MainWindow
+from autodrive_editor.editing.commands.move_nodes import MoveNodesCommand
+from autodrive_editor.measurement.mode import MeasurementMode
+from autodrive_editor.ui.main_window import MainWindow
+from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
 
 def test_window_starts(window):

@@ -1,11 +1,10 @@
 import pytest
-
 from PySide6.QtCore import QPointF
 
-from autodrive.models import AutoDriveData, NodeData
-from editing.edit_coordinator import EditCoordinator
-from editing.selection_rotate_coordinator import SelectionRotateCoordinator
-from selection.node_selection_manager import NodeSelectionManager
+from autodrive_editor.editing.edit_history import EditCoordinator
+from autodrive_editor.editing.operations.rotate_selection import SelectionRotateCoordinator
+from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
+from autodrive_editor.selection.node_selection import NodeSelectionManager
 
 
 @pytest.fixture

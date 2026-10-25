@@ -1,6 +1,6 @@
 import pytest
 
-from selection.node_selection_manager import NodeSelectionManager
+from autodrive_editor.selection.node_selection import NodeSelectionManager
 
 
 @pytest.fixture

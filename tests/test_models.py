@@ -1,6 +1,6 @@
 import pytest
 
-from autodrive.models import AutoDriveData, MarkerData, NodeData
+from autodrive_editor.model.autodrive_data import AutoDriveData, MarkerData, NodeData
 
 
 def make_data(*node_ids):

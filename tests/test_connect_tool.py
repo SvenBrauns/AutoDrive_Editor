@@ -1,13 +1,16 @@
 """The three "Verbinden" tools, driven by real mouse and key input."""
 
 import pytest
-
+from mouse_helpers import click, cursor_shape, drag, hover, press_escape, view_pos
 from PySide6.QtCore import QPoint, QRectF, Qt
 
-from editing.set_connection_command import CONNECTION_STATES, NO_CONNECTION, read_connection_state
-from mouse_helpers import click, cursor_shape, drag, hover, press_escape, view_pos
-from rendering.connection_data import ConnectionType
-from ui.interaction_mode import InteractionMode
+from autodrive_editor.editing.commands.set_connection import (
+    CONNECTION_STATES,
+    NO_CONNECTION,
+    read_connection_state,
+)
+from autodrive_editor.rendering.connections.connection_data import ConnectionType
+from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
 # Test network from conftest: 1 -> 2 -> 3 (regular) on z=0 at x = 0, 10, 20.
 

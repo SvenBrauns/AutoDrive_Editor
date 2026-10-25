@@ -1,12 +1,11 @@
 """The "Rotieren" tool, driven by real mouse and key input."""
 
 import pytest
-
+from mouse_helpers import click, cursor_shape, drag, hover, press_escape, send_mouse, view_pos
 from PySide6.QtCore import QEvent, QPoint, QRectF, Qt
 from PySide6.QtGui import QPainterPath
 
-from mouse_helpers import click, cursor_shape, drag, hover, press_escape, send_mouse, view_pos
-from ui.interaction_mode import InteractionMode
+from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
 # Test network from conftest: nodes 1, 2, 3 on z=0 at x = 0, 10, 20.
 # Selecting all three gives the center (10, 0). At zoom 4 the ring

@@ -1,12 +1,10 @@
 import pytest
-
 from PySide6.QtCore import QRectF
 from PySide6.QtWidgets import QGraphicsScene
 
-from app_paths import MARKER_ICON_PATH
-from autodrive.models import AutoDriveData, MarkerData, NodeData
-from rendering.scene_renderer import SceneRenderer
-
+from autodrive_editor.model.autodrive_data import AutoDriveData, MarkerData, NodeData
+from autodrive_editor.paths import MARKER_ICON_PATH
+from autodrive_editor.rendering.scene_renderer import SceneRenderer
 
 VISIBLE_RECT = QRectF(-100, -100, 300, 200)
 

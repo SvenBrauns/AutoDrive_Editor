@@ -1,14 +1,12 @@
 """Each map tool driven by real mouse and key events."""
 
 import pytest
-
+from mouse_helpers import click, cursor_shape, drag, hover, press_escape, send_mouse, view_pos
 from PySide6.QtCore import QEvent, QPoint, Qt
 
-from measurement.measurement_mode import MeasurementMode
-from mouse_helpers import click, cursor_shape, drag, hover, press_escape, send_mouse, view_pos
-from ui.interaction_mode import InteractionMode
-from ui.map_tools.map_tool import MapTool
-
+from autodrive_editor.measurement.mode import MeasurementMode
+from autodrive_editor.ui.tools.interaction_mode import InteractionMode
+from autodrive_editor.ui.tools.map_tool import MapTool
 
 EMPTY = (5, 20)  # map position between the nodes, below the line
 

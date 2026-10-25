@@ -1,7 +1,7 @@
 import pytest
 
-from autodrive.models import AutoDriveData, NodeData
-from editing.move_nodes_command import MoveNodesCommand
+from autodrive_editor.editing.commands.move_nodes import MoveNodesCommand
+from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
 
 
 @pytest.fixture

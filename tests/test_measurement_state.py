@@ -1,10 +1,9 @@
 import pytest
-
 from PySide6.QtCore import QPointF
 
-from measurement.measurement_mode import MeasurementMode
-from measurement.measurement_point import MeasurementPoint
-from measurement.measurement_state import MeasurementState
+from autodrive_editor.measurement.mode import MeasurementMode
+from autodrive_editor.measurement.point import MeasurementPoint
+from autodrive_editor.measurement.state import MeasurementState
 
 
 def free(x, z):

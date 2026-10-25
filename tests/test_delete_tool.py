@@ -1,13 +1,12 @@
 """The "Löschen" tool and the Del shortcut, driven by real input."""
 
 import pytest
-
+from mouse_helpers import click, cursor_shape, drag, hover, view_pos
 from PySide6.QtCore import QPoint, QRectF, Qt
 from PySide6.QtGui import QPainterPath
 from PySide6.QtTest import QTest
 
-from mouse_helpers import click, cursor_shape, drag, hover, view_pos
-from ui.interaction_mode import InteractionMode
+from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
 # Test network from conftest: 1 -> 2 -> 3 on the line z=0 at x = 0, 10, 20.
 

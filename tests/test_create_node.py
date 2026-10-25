@@ -1,14 +1,13 @@
 """Creating nodes: the command and the "Erstellen" tool."""
 
 import pytest
-
+from mouse_helpers import click, cursor_shape, drag, hover, view_pos
 from PySide6.QtCore import QPoint, Qt
 
-from autodrive.models import AutoDriveData, NodeData
-from editing.create_node_command import CreateNodeCommand
-from editing.node_create_coordinator import NodeCreateCoordinator
-from mouse_helpers import click, cursor_shape, drag, hover, view_pos
-from ui.interaction_mode import InteractionMode
+from autodrive_editor.editing.commands.create_node import CreateNodeCommand
+from autodrive_editor.editing.operations.create_nodes import NodeCreateCoordinator
+from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
+from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
 # Test network from conftest: nodes 1, 2, 3 on z=0 at x = 0, 10, 20, y = 0.
 

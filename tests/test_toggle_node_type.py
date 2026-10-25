@@ -1,14 +1,18 @@
 """Switching nodes between regular and subprio."""
 
 import pytest
-
+from mouse_helpers import click, cursor_shape, drag, hover, view_pos
 from PySide6.QtCore import QPoint, QRectF, Qt
 from PySide6.QtGui import QPainterPath
 
-from autodrive.models import REGULAR_FLAG, SUBPRIO_FLAG, AutoDriveData, NodeData
-from editing.set_node_flags_command import SetNodeFlagsCommand
-from mouse_helpers import click, cursor_shape, drag, hover, view_pos
-from ui.interaction_mode import InteractionMode
+from autodrive_editor.editing.commands.set_node_flags import SetNodeFlagsCommand
+from autodrive_editor.model.autodrive_data import (
+    REGULAR_FLAG,
+    SUBPRIO_FLAG,
+    AutoDriveData,
+    NodeData,
+)
+from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
 ORANGE = "#ffa500"
 RED = "#ff0000"

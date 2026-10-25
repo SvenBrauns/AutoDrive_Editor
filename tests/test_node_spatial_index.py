@@ -1,10 +1,9 @@
 import pytest
-
 from PySide6.QtCore import QPointF, QRectF
 from PySide6.QtGui import QPainterPath, QPolygonF
 
-from autodrive.models import AutoDriveData, NodeData
-from rendering.node_spatial_index import NodeSpatialIndex
+from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
+from autodrive_editor.rendering.spatial.node_index import NodeSpatialIndex
 
 
 def build_index(positions, tile_size=100.0):

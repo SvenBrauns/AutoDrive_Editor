@@ -1,15 +1,13 @@
 import pytest
-
 from PySide6.QtCore import QPointF
 
-from measurement.measurement_math import (
+from autodrive_editor.measurement.calculations import (
     calculate_distance,
     calculate_horizontal_alignment_rotation,
     calculate_map_angle,
     calculate_measurement,
 )
-from measurement.measurement_mode import MeasurementMode
-
+from autodrive_editor.measurement.mode import MeasurementMode
 
 ORIGIN = QPointF(0, 0)
 

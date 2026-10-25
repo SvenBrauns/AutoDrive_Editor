@@ -1,12 +1,11 @@
 """Node dragging driven by real mouse events on the map view."""
 
 import pytest
-
+from mouse_helpers import drag, press_escape, send_mouse, view_pos
 from PySide6.QtCore import QEvent, QPoint, QRectF, Qt
 from PySide6.QtGui import QPainterPath
 
-from mouse_helpers import drag, press_escape, send_mouse, view_pos
-from ui.interaction_mode import InteractionMode
+from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
 
 @pytest.fixture

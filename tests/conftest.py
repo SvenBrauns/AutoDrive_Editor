@@ -6,7 +6,6 @@ import traceback
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
-
 from PySide6.QtWidgets import QApplication
 
 
@@ -77,7 +76,7 @@ def write_xml(tmp_path):
 
 @pytest.fixture
 def window(qapp):
-    from ui.main_window import MainWindow
+    from autodrive_editor.ui.main_window import MainWindow
 
     main_window = MainWindow()
     main_window.show()

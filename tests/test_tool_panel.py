@@ -1,9 +1,9 @@
+import pytest
 from PySide6.QtCore import QEvent, QPoint, Qt
 from PySide6.QtWidgets import QToolButton
-import pytest
 
-from measurement.measurement_mode import MeasurementMode
-from ui.interaction_mode import InteractionMode
+from autodrive_editor.measurement.mode import MeasurementMode
+from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
 
 def tool_button(window, text):

@@ -1,8 +1,8 @@
 from PySide6.QtCore import QRectF
 
-from autodrive.models import AutoDriveData, NodeData
-from rendering.connection_data import ConnectionType
-from rendering.connection_spatial_index import ConnectionSpatialIndex
+from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
+from autodrive_editor.rendering.connections.connection_data import ConnectionType
+from autodrive_editor.rendering.spatial.connection_index import ConnectionSpatialIndex
 
 
 def build_data():
@@ -158,7 +158,8 @@ def test_incremental_updates_match_a_fresh_build():
     """Random connection edits: the incrementally updated index must
     always equal an index built from scratch."""
     import random
-    from editing.set_connection_command import (
+
+    from autodrive_editor.editing.commands.set_connection import (
         CONNECTION_STATES,
         NO_CONNECTION,
         SetConnectionCommand,

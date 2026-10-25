@@ -1,6 +1,6 @@
 import pytest
 
-from editing.terrain_follower import TerrainFollower
+from autodrive_editor.terrain.terrain_follower import TerrainFollower
 
 
 def slope(x, z):

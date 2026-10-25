@@ -1,6 +1,6 @@
 import pytest
 
-from autodrive.xml_parser import AutoDriveXmlParser
+from autodrive_editor.file_io.autodrive_xml import AutoDriveXmlParser
 
 
 def test_loads_coordinates_with_one_based_ids(write_xml):
