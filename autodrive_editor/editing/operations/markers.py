@@ -15,10 +15,12 @@ from autodrive_editor.model.autodrive_data import AutoDriveData, MarkerData
 from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
 
 # Asks the user for a marker's name and group. Arguments: dialog title,
-# the marker being edited (None for a new one) or the suggested group,
-# all group names, and the names other markers already use. Returns
-# (name, group), or None if cancelled.
-MarkerRequest = Callable[[str, MarkerData | None, str, list[str], set[str]], tuple[str, str] | None]
+# the marker being edited (None for a new one), the suggested group,
+# all group names, and the (name, group) pairs other markers already
+# use. Returns (name, group), or None if cancelled.
+MarkerRequest = Callable[
+    [str, MarkerData | None, str, list[str], set[tuple[str, str]]], tuple[str, str] | None
+]
 
 
 class MarkerOperation(QObject):
@@ -253,9 +255,13 @@ class MarkerOperation(QObject):
         return self.DEFAULT_GROUP if self.DEFAULT_GROUP in groups else groups[0]
 
     @staticmethod
-    def _taken_names(autodrive_data: AutoDriveData, except_node_id: int | None = None) -> set[str]:
+    def _taken_names(
+        autodrive_data: AutoDriveData, except_node_id: int | None = None
+    ) -> set[tuple[str, str]]:
+        """Names are unique within a group, not across groups."""
+
         return {
-            marker.name
+            (marker.name, marker.group)
             for node_id, marker in autodrive_data.markers.items()
             if node_id != except_node_id
         }

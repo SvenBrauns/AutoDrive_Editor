@@ -50,8 +50,18 @@ def test_add_marker_asks_and_adds_at_the_end(marker_window):
 
     assert names(marker_window) == ["Hof", "Silo"]
     title, _, group, taken = marker_window.questions[0]
-    assert (title, group, taken) == ("Marker hinzufügen", "All", {"Hof"})
+    assert (title, group, taken) == ("Marker hinzufügen", "All", {("Hof", "All")})
     assert "Silo" in marker_window.status.text()
+
+
+def test_same_name_in_another_group_can_be_added(marker_window):
+    marker_window.answer = ("Hof", "Felder")
+    use(marker_window, InteractionMode.ADD_MARKER)
+
+    click(marker_window, at(marker_window, 10))
+
+    assert names(marker_window) == ["Hof", "Hof"]
+    assert group_texts(marker_window) == ["All (1)", "Felder (1)"]
 
 
 def test_add_on_marked_node_does_not_ask(marker_window):

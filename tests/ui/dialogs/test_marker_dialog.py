@@ -1,7 +1,7 @@
 from autodrive_editor.ui.dialogs.marker_dialog import MarkerDialog
 
 
-def dialog(name="", group="All", groups=("All", "Felder"), taken=("Hof",)):
+def dialog(name="", group="All", groups=("All", "Felder"), taken=(("Hof", "All"),)):
     return MarkerDialog("Marker hinzufügen", name, group, list(groups), set(taken))
 
 
@@ -12,13 +12,22 @@ def test_name_is_required(qapp):
     assert marker_dialog.hint_label.text() == MarkerDialog.EMPTY_NAME_TEXT
 
 
-def test_names_of_other_markers_are_refused(qapp):
+def test_same_name_in_the_same_group_is_refused(qapp):
     marker_dialog = dialog()
 
     marker_dialog.name_input.setText("Hof")
 
     assert not marker_dialog.is_valid
     assert marker_dialog.hint_label.text() == MarkerDialog.TAKEN_NAME_TEXT
+
+
+def test_same_name_in_another_group_is_allowed(qapp):
+    marker_dialog = dialog()
+
+    marker_dialog.name_input.setText("Hof")
+    marker_dialog.group_input.setCurrentText("Felder")
+
+    assert marker_dialog.is_valid
 
 
 def test_values_are_trimmed(qapp):

@@ -11,10 +11,13 @@ from PySide6.QtWidgets import (
 
 class MarkerDialog(QDialog):
     """Asks for a marker's name and group. The group list can be typed
-    into; a new name creates that group."""
+    into; a new name creates that group.
+
+    The same name may appear in different groups (e.g. "Tankstelle"),
+    but not twice in one group."""
 
     EMPTY_NAME_TEXT = "Bitte einen Namen eingeben."
-    TAKEN_NAME_TEXT = "Ein anderer Marker heißt bereits so."
+    TAKEN_NAME_TEXT = "In dieser Gruppe heißt bereits ein Marker so."
     EMPTY_GROUP_TEXT = "Bitte eine Gruppe wählen oder eingeben."
     NEW_GROUP_TEXT = "Die Gruppe „{}“ wird neu angelegt."
 
@@ -24,7 +27,7 @@ class MarkerDialog(QDialog):
         name: str,
         group: str,
         groups: list[str],
-        taken_names: set[str],
+        taken_names: set[tuple[str, str]],
         parent=None,
     ):
         super().__init__(parent)
@@ -82,7 +85,7 @@ class MarkerDialog(QDialog):
         problem = None
         if not name:
             problem = self.EMPTY_NAME_TEXT
-        elif name in self.taken_names:
+        elif (name, group) in self.taken_names:
             problem = self.TAKEN_NAME_TEXT
         elif not group:
             problem = self.EMPTY_GROUP_TEXT
