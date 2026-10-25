@@ -1,11 +1,9 @@
-import math
 from dataclasses import dataclass, field
 
 from PySide6.QtCore import (
     QPoint,
     QRect,
     QRectF,
-    QTimer,
     Qt,
     Signal
 )
@@ -27,6 +25,9 @@ from PySide6.QtWidgets import (
 from ui.interaction_mode import InteractionMode
 from ui.view_rotation_controller import (
     ViewRotationController
+)
+from ui.view_zoom_controller import (
+    ViewZoomController
 )
 
 
@@ -124,12 +125,27 @@ class MapView(QGraphicsView):
 
     measurement_cancel_requested = Signal()
 
-    ZOOM_FACTOR = 1.15
-    MIN_ZOOM = 0.02
-    MAX_ZOOM = 50.0
+    ZOOM_FACTOR = (
+        ViewZoomController.ZOOM_FACTOR
+    )
 
-    VIEWPORT_UPDATE_DELAY_MS = 50
-    ZOOM_COMPARISON_TOLERANCE = 0.000001
+    MIN_ZOOM = (
+        ViewZoomController.MIN_ZOOM
+    )
+
+    MAX_ZOOM = (
+        ViewZoomController.MAX_ZOOM
+    )
+
+    VIEWPORT_UPDATE_DELAY_MS = (
+        ViewZoomController
+        .VIEWPORT_UPDATE_DELAY_MS
+    )
+
+    ZOOM_COMPARISON_TOLERANCE = (
+        ViewZoomController
+        .ZOOM_COMPARISON_TOLERANCE
+    )
 
     ROTATION_DEGREES_PER_PIXEL = (
         ViewRotationController
@@ -167,11 +183,29 @@ class MapView(QGraphicsView):
 
         self._selection_rubber_band.hide()
 
+        self._configure_view()
+
+        self._zoom_controller = (
+            ViewZoomController(
+                view=self,
+                parent=self
+            )
+        )
+
+        self._zoom_controller.zoom_changed.connect(
+            self.zoom_changed.emit
+        )
+
+        self._zoom_controller.visible_scene_rect_changed.connect(
+            self.visible_scene_rect_changed.emit
+        )
+
         self._rotation_controller = (
             ViewRotationController(
                 view=self,
                 viewport_update_callback=(
-                    self._schedule_viewport_update
+                    self._zoom_controller
+                    .schedule_viewport_update
                 ),
                 parent=self
             )
@@ -185,19 +219,13 @@ class MapView(QGraphicsView):
             self.rotation_step_changed.emit
         )
 
-        self._configure_view()
-        self._create_viewport_update_timer()
-        self._connect_scrollbars()
-
         self._apply_interaction_mode()
 
     @property
     def zoom_level(self) -> float:
-        view_transform = self.transform()
-
-        return math.hypot(
-            view_transform.m11(),
-            view_transform.m12()
+        return (
+            self._zoom_controller
+            .zoom_level
         )
 
     @property
@@ -228,37 +256,9 @@ class MapView(QGraphicsView):
         self,
         zoom_level
     ):
-        target_zoom = self._clamp_zoom(
+        self._zoom_controller.set_zoom_level(
             zoom_level
         )
-
-        current_zoom = self.zoom_level
-
-        if current_zoom <= 0:
-            raise ValueError(
-                "Der aktuelle Zoomfaktor ist ungültig."
-            )
-
-        scale_factor = (
-            target_zoom
-            / current_zoom
-        )
-
-        if self._is_neutral_scale(
-            scale_factor
-        ):
-            return
-
-        self._scale_at_view_position(
-            scale_factor=scale_factor,
-            view_position=(
-                self.viewport()
-                .rect()
-                .center()
-            )
-        )
-
-        self._notify_view_transform_changed()
 
     def set_rotation_angle(
         self,
@@ -345,9 +345,10 @@ class MapView(QGraphicsView):
     def get_visible_scene_rect(
         self
     ) -> QRectF:
-        return self.mapToScene(
-            self.viewport().rect()
-        ).boundingRect()
+        return (
+            self._zoom_controller
+            .get_visible_scene_rect()
+        )
 
     def fitInView(
         self,
@@ -357,60 +358,29 @@ class MapView(QGraphicsView):
             *args
         )
 
-        self._notify_view_transform_changed()
+        self._zoom_controller.notify_transform_changed()
 
     def wheelEvent(
         self,
         event: QWheelEvent
     ):
-        wheel_delta = event.angleDelta().y()
-
-        if wheel_delta == 0:
-            event.ignore()
-            return
-
-        current_zoom = self.zoom_level
-
-        if current_zoom <= 0:
-            event.ignore()
-            return
-
-        if wheel_delta > 0:
-            requested_factor = (
-                self.ZOOM_FACTOR
+        zoom_handled = (
+            self._zoom_controller
+            .zoom_by_wheel_delta(
+                wheel_delta=(
+                    event.angleDelta().y()
+                ),
+                view_position=(
+                    event.position().toPoint()
+                )
             )
+        )
+
+        if zoom_handled:
+            event.accept()
 
         else:
-            requested_factor = (
-                1.0 / self.ZOOM_FACTOR
-            )
-
-        target_zoom = self._clamp_zoom(
-            current_zoom
-            * requested_factor
-        )
-
-        scale_factor = (
-            target_zoom
-            / current_zoom
-        )
-
-        if self._is_neutral_scale(
-            scale_factor
-        ):
-            event.accept()
-            return
-
-        self._scale_at_view_position(
-            scale_factor=scale_factor,
-            view_position=(
-                event.position().toPoint()
-            )
-        )
-
-        self._notify_view_transform_changed()
-
-        event.accept()
+            event.ignore()
 
     def resizeEvent(
         self,
@@ -420,7 +390,7 @@ class MapView(QGraphicsView):
             event
         )
 
-        self._schedule_viewport_update()
+        self._zoom_controller.schedule_viewport_update()
 
     def mousePressEvent(
         self,
@@ -722,96 +692,8 @@ class MapView(QGraphicsView):
             QGraphicsView.AnchorViewCenter
         )
 
-    def _create_viewport_update_timer(self):
-        self._viewport_update_timer = QTimer(
-            self
-        )
-
-        self._viewport_update_timer.setSingleShot(
-            True
-        )
-
-        self._viewport_update_timer.setInterval(
-            self.VIEWPORT_UPDATE_DELAY_MS
-        )
-
-        self._viewport_update_timer.timeout.connect(
-            self._emit_visible_scene_rect
-        )
-
-    def _connect_scrollbars(self):
-        self.horizontalScrollBar().valueChanged.connect(
-            self._schedule_viewport_update
-        )
-
-        self.verticalScrollBar().valueChanged.connect(
-            self._schedule_viewport_update
-        )
-
     def _apply_interaction_mode(self):
         self._restore_interaction_cursor()
-
-    def _clamp_zoom(
-        self,
-        zoom_level
-    ) -> float:
-        zoom_level = float(
-            zoom_level
-        )
-
-        return max(
-            self.MIN_ZOOM,
-            min(
-                zoom_level,
-                self.MAX_ZOOM
-            )
-        )
-
-    def _is_neutral_scale(
-        self,
-        scale_factor: float
-    ) -> bool:
-        return (
-            abs(
-                scale_factor - 1.0
-            )
-            < self.ZOOM_COMPARISON_TOLERANCE
-        )
-
-    def _scale_at_view_position(
-        self,
-        scale_factor: float,
-        view_position: QPoint
-    ):
-        scene_position_before = self.mapToScene(
-            view_position
-        )
-
-        self.scale(
-            scale_factor,
-            scale_factor
-        )
-
-        scene_position_after = self.mapToScene(
-            view_position
-        )
-
-        scene_delta = (
-            scene_position_after
-            - scene_position_before
-        )
-
-        self.translate(
-            scene_delta.x(),
-            scene_delta.y()
-        )
-
-    def _notify_view_transform_changed(self):
-        self.zoom_changed.emit(
-            self.zoom_level
-        )
-
-        self._schedule_viewport_update()
 
     def _is_button_drag(
         self,
@@ -1120,14 +1002,3 @@ class MapView(QGraphicsView):
                 return True
 
         return False
-
-    def _schedule_viewport_update(
-        self,
-        *args
-    ):
-        self._viewport_update_timer.start()
-
-    def _emit_visible_scene_rect(self):
-        self.visible_scene_rect_changed.emit(
-            self.get_visible_scene_rect()
-        )
