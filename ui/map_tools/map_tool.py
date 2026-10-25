@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import shiboken6
+
 from PySide6.QtCore import (
     QPoint,
     Qt
@@ -11,6 +13,17 @@ from PySide6.QtWidgets import QApplication
 
 if TYPE_CHECKING:
     from ui.map_view import MapView
+
+
+def is_alive_in_scene(item, scene) -> bool:
+    """True if a tool's overlay item still exists in the scene.
+    Loading data clears the scene, which deletes such items."""
+
+    return (
+        item is not None
+        and shiboken6.isValid(item)
+        and item.scene() is scene
+    )
 
 
 class DragGesture:
@@ -148,6 +161,12 @@ class MapTool:
         """Called on Esc. Returns True if something was cancelled."""
 
         return False
+
+    def status_hint(self) -> str | None:
+        """Optional hint shown in the status bar when the tool is
+        selected, e.g. what has to be done first."""
+
+        return None
 
     def cursor_at(
         self,

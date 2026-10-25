@@ -34,6 +34,12 @@ class MainWindowActions:
                     "Node oder Auswahl per Linkes Ziehen verschieben"
                 ),
                 (
+                    InteractionMode.ROTATE_SELECTION,
+                    "Rotieren",
+                    "Auswahl am Ring um ihren Mittelpunkt drehen "
+                    "(Umschalt: 15°-Schritte)"
+                ),
+                (
                     InteractionMode.DELETE_NODES,
                     "Löschen",
                     "Node oder Auswahl per Linksklick löschen"

@@ -23,16 +23,22 @@ class MoveNodesCommand(EditCommand):
         autodrive_data: AutoDriveData,
         old_positions: dict[int, NodePosition],
         new_positions: dict[int, NodePosition],
-        merge_key=None
+        merge_key=None,
+        text: str | None = None
     ):
         node_count = len(
             new_positions
         )
 
+        if text is None:
+            text = (
+                "Node verschieben"
+                if node_count == 1
+                else f"{node_count} Nodes verschieben"
+            )
+
         super().__init__(
-            "Node verschieben"
-            if node_count == 1
-            else f"{node_count} Nodes verschieben",
+            text,
             autodrive_data
         )
 

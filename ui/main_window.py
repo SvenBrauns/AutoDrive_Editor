@@ -31,6 +31,7 @@ from rendering.connection_data import ConnectionType
 from ui.map_tools.connect_nodes_tool import ConnectNodesTool
 from ui.map_tools.delete_nodes_tool import DeleteNodesTool
 from ui.map_tools.measure_tool import MeasureTool
+from ui.map_tools.rotate_selection_tool import RotateSelectionTool
 from ui.map_tools.move_nodes_tool import MoveNodesTool
 from ui.map_tools.select_tool import SelectTool
 from ui.map_view import MapView
@@ -44,6 +45,7 @@ from editing.edit_coordinator import EditCoordinator
 from editing.node_connect_coordinator import NodeConnectCoordinator
 from editing.node_delete_coordinator import NodeDeleteCoordinator
 from editing.node_drag_coordinator import NodeDragCoordinator
+from editing.selection_rotate_coordinator import SelectionRotateCoordinator
 from selection.node_selection_manager import (
     NodeSelectionManager
 )
@@ -299,8 +301,15 @@ class MainWindow(QMainWindow):
             interaction_mode
         )
 
+        status_text = f"Modus: {interaction_mode.display_name}"
+
+        status_hint = self.view.active_tool.status_hint()
+
+        if status_hint:
+            status_text += f" – {status_hint}"
+
         self._set_status(
-            f"Modus: {interaction_mode.display_name}"
+            status_text
         )
 
     def set_view_rotation(
@@ -494,6 +503,13 @@ class MainWindow(QMainWindow):
             parent=self
         )
 
+        self.selection_rotate_coordinator = SelectionRotateCoordinator(
+            selection_manager=self.node_selection_manager,
+            edit_coordinator=self.edit_coordinator,
+            autodrive_data_provider=self._get_autodrive_data,
+            parent=self
+        )
+
         self._register_map_tools()
 
         self.project_coordinator = (
@@ -536,6 +552,18 @@ class MainWindow(QMainWindow):
             MoveNodesTool(
                 self.view,
                 self.node_drag_coordinator
+            )
+        )
+
+        self.view.register_tool(
+            InteractionMode.ROTATE_SELECTION,
+            RotateSelectionTool(
+                self.view,
+                self.selection_rotate_coordinator,
+                z_value=(
+                    self.scene_renderer.display_style
+                    .selected_node_z + 1
+                )
             )
         )
 
@@ -697,6 +725,10 @@ class MainWindow(QMainWindow):
         )
 
         self.node_connect_coordinator.status_changed.connect(
+            self._set_status
+        )
+
+        self.selection_rotate_coordinator.status_changed.connect(
             self._set_status
         )
 

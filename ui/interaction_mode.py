@@ -7,6 +7,7 @@ class InteractionMode(Enum):
     NAVIGATE = auto()
     SELECT = auto()
     MOVE_NODES = auto()
+    ROTATE_SELECTION = auto()
     DELETE_NODES = auto()
     CONNECT_REGULAR = auto()
     CONNECT_DUAL = auto()
@@ -18,6 +19,7 @@ class InteractionMode(Enum):
             InteractionMode.NAVIGATE: "Navigation",
             InteractionMode.SELECT: "Auswahl",
             InteractionMode.MOVE_NODES: "Nodes verschieben",
+            InteractionMode.ROTATE_SELECTION: "Auswahl rotieren",
             InteractionMode.DELETE_NODES: "Nodes löschen",
             InteractionMode.CONNECT_REGULAR: "Verbinden (Regular)",
             InteractionMode.CONNECT_DUAL: "Verbinden (Dual)",

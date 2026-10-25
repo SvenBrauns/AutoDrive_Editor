@@ -1,7 +1,5 @@
 from collections.abc import Callable
 
-import shiboken6
-
 from PySide6.QtCore import (
     QLineF,
     QPoint,
@@ -18,7 +16,10 @@ from editing.node_connect_coordinator import (
     NodeConnectCoordinator
 )
 from rendering.connection_data import ConnectionType
-from ui.map_tools.map_tool import MapTool
+from ui.map_tools.map_tool import (
+    MapTool,
+    is_alive_in_scene
+)
 
 
 class ConnectNodesTool(MapTool):
@@ -186,11 +187,9 @@ class ConnectNodesTool(MapTool):
             )
 
     def _valid_preview_item(self) -> QGraphicsLineItem | None:
-        # Loading data clears the scene, which deletes the item.
-        if (
-            self._preview_item is None
-            or not shiboken6.isValid(self._preview_item)
-            or self._preview_item.scene() is not self.view.scene()
+        if not is_alive_in_scene(
+            self._preview_item,
+            self.view.scene()
         ):
             self._preview_item = None
 
