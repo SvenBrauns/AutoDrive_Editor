@@ -67,7 +67,7 @@ class SelectionCoordinator(QObject):
         if not isinstance(node_data, NodeData):
             raise TypeError("Die Node-Daten sind ungültig.")
 
-        self.node_selection.replace({node_data.node_id}, primary_node_id=(node_data.node_id))
+        self.node_selection.replace({node_data.node_id}, primary_node_id=node_data.node_id)
 
     def handle_click(self, view_position: QPoint, modifiers):
         clicked_node_item = self.get_node_item_at(view_position)
@@ -100,10 +100,10 @@ class SelectionCoordinator(QObject):
         control_pressed = bool(modifiers & Qt.ControlModifier)
 
         if control_pressed:
-            self.node_selection.toggle_many(selected_node_ids, primary_node_id=(primary_node_id))
+            self.node_selection.toggle_many(selected_node_ids, primary_node_id=primary_node_id)
 
         else:
-            self.node_selection.replace(selected_node_ids, primary_node_id=(primary_node_id))
+            self.node_selection.replace(selected_node_ids, primary_node_id=primary_node_id)
 
     def handle_area_preview(self, selection_path: QPainterPath, modifiers):
         preview_nodes = self.renderer.get_nodes_in_selection_path(selection_path)

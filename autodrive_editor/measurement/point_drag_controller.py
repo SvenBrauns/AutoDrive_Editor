@@ -90,8 +90,8 @@ class PointDragController(QObject):
 
         self._state.begin(
             point_index=point_index,
-            press_scene_position=(press_scene_position),
-            original_point_position=(original_point_position),
+            press_scene_position=press_scene_position,
+            original_point_position=original_point_position,
         )
 
         self.drag_started.emit(point_index, QPointF(original_point_position))

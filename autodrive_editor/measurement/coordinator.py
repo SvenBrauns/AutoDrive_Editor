@@ -220,7 +220,7 @@ class MeasurementCoordinator(QObject):
 
         try:
             target_rotation = calculate_horizontal_alignment_rotation(
-                start_position=(start_point.position), end_position=(end_point.position)
+                start_position=start_point.position, end_position=(end_point.position)
             )
 
         except ValueError as ex:

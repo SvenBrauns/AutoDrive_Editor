@@ -345,8 +345,8 @@ class MainWindowActions:
         self.quick_access_toolbar.addWidget(spacer)
 
         self.rotation_controls = RotationControls(
-            rotation_angle=(self.window.view.rotation_angle),
-            rotation_step=(self.window.view.rotation_step),
+            rotation_angle=self.window.view.rotation_angle,
+            rotation_step=self.window.view.rotation_step,
             parent=self.quick_access_toolbar,
         )
 
@@ -359,9 +359,9 @@ class MainWindowActions:
         self.quick_access_toolbar.addWidget(self.rotation_controls)
 
         self.grid_controls = GridControls(
-            grid_visible=(self.window.background_map.grid_visible),
-            grid_spacing=(self.window.background_map.grid_spacing),
-            grid_rotation=(self.window.background_map.grid_rotation),
+            grid_visible=self.window.background_map.grid_visible,
+            grid_spacing=self.window.background_map.grid_spacing,
+            grid_rotation=self.window.background_map.grid_rotation,
             parent=self.quick_access_toolbar,
         )
 

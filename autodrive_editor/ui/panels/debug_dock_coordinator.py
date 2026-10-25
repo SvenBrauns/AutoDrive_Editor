@@ -34,7 +34,7 @@ class DebugDockCoordinator(QObject):
         self.debug_dock.set_view_state(
             zoom_level=self.view.zoom_level,
             rotation_angle=self.view.rotation_angle,
-            visible_rect=(self.scene_renderer.current_visible_rect),
+            visible_rect=self.scene_renderer.current_visible_rect,
         )
 
         self.debug_dock.set_renderer_state(self.scene_renderer.get_debug_state())

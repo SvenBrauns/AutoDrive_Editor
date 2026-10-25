@@ -307,9 +307,9 @@ class DisplayOptionsDialog(QDialog):
             node_min_zoom=(self.node_min_zoom_input.value()),
             marker_min_zoom=(self.marker_min_zoom_input.value()),
             connection_detail_min_zoom=(self.connection_detail_min_zoom_input.value()),
-            regular_connection_color=(self.regular_connection_color_button.color),
-            dual_connection_color=(self.dual_connection_color_button.color),
-            reverse_connection_color=(self.reverse_connection_color_button.color),
+            regular_connection_color=self.regular_connection_color_button.color,
+            dual_connection_color=self.dual_connection_color_button.color,
+            reverse_connection_color=self.reverse_connection_color_button.color,
         )
 
     def _apply_changes(self):

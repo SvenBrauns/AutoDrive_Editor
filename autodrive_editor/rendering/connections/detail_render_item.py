@@ -125,7 +125,7 @@ class ConnectionRenderItem(QGraphicsItem):
             source_z=connection.source_z,
             target_x=connection.target_x,
             target_z=connection.target_z,
-            node_diameter=(self.display_style.node_diameter),
+            node_diameter=self.display_style.node_diameter,
         )
 
         if geometry is None:

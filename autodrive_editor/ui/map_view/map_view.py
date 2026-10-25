@@ -50,7 +50,7 @@ class MapView(QGraphicsView):
 
         self._rotation_controller = ViewRotationController(
             view=self,
-            viewport_update_callback=(self._zoom_controller.schedule_viewport_update),
+            viewport_update_callback=self._zoom_controller.schedule_viewport_update,
             parent=self,
         )
 

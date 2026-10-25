@@ -48,6 +48,17 @@ from autodrive_editor.ui.tools.toggle_node_type_tool import ToggleNodeTypeTool
 
 
 class MainWindow(QMainWindow):
+    """The editor window. It creates all parts of the editor and wires
+    them together:
+
+    1. scene and map view
+    2. map layers: background, heightmap, renderer, project files
+    3. selection and measurement
+    4. edit history and edit operations, then the map tools using them
+    5. project coordinator, which loads data into all of the above
+    6. widgets, actions, menus and toolbars, then the signal wiring
+    """
+
     WINDOW_TITLE = "AutoDrive FS25 Editor"
     INITIAL_WIDTH = 1400
     INITIAL_HEIGHT = 900
@@ -64,39 +75,26 @@ class MainWindow(QMainWindow):
 
         self._configure_window()
         self._create_scene_and_view()
-        self._create_managers()
+
+        self._create_map_layers()
+        self._create_selection_and_measurement()
+        self._create_edit_operations()
+        self._register_map_tools()
+        self._create_project_coordinator()
+
         self._create_status_widgets()
         self._create_central_widget()
         self._create_debug_dock()
 
         self.actions = MainWindowActions(self)
-
         self.actions.set_current_map_scale(self.background_map.map_scale)
 
-        self.grid_coordinator = GridCoordinator(
-            background_map=self.background_map,
-            grid_controls=self.actions.grid_controls,
-            parent=self,
-        )
-
+        self._create_grid_coordinator()
         self._connect_signals()
 
         # Created after the renderer is connected to the view, so the
         # dock reads the renderer state after it has been updated.
-        self.debug_dock_coordinator = DebugDockCoordinator(
-            debug_dock=self.debug_dock,
-            view=self.view,
-            scene_renderer=self.scene_renderer,
-            parent=self,
-        )
-
-        self.selection_coordinator.selection_state_changed.connect(
-            self.debug_dock_coordinator.refresh
-        )
-
-        self.project_coordinator.debug_refresh_requested.connect(
-            self.debug_dock_coordinator.refresh
-        )
+        self._create_debug_dock_coordinator()
 
     def select_background(self):
         filename, _ = QFileDialog.getOpenFileName(
@@ -241,9 +239,7 @@ class MainWindow(QMainWindow):
         self.measurement_coordinator.align_view_to_measurement()
 
     def open_display_options(self):
-        dialog = DisplayOptionsDialog(
-            display_style=(self.scene_renderer.display_style), parent=self
-        )
+        dialog = DisplayOptionsDialog(display_style=self.scene_renderer.display_style, parent=self)
 
         dialog.style_applied.connect(self.apply_display_style)
 
@@ -270,7 +266,9 @@ class MainWindow(QMainWindow):
 
         self.view.setScene(self.scene)
 
-    def _create_managers(self):
+    def _create_map_layers(self):
+        """Background map, heightmap, node rendering and project files."""
+
         self.background_map = BackgroundMap(self.scene, map_scale=self.DEFAULT_MAP_SCALE)
 
         self.heightmap = Heightmap()
@@ -283,14 +281,15 @@ class MainWindow(QMainWindow):
 
         self.project_files = ProjectFileStore(self.local_projects_directory)
 
+    def _create_selection_and_measurement(self):
         self.node_selection = NodeSelection()
 
         self.selection_coordinator = SelectionCoordinator(
             view=self.view,
             renderer=self.scene_renderer,
-            node_selection=(self.node_selection),
-            node_info_formatter=(self.node_info_formatter),
-            autodrive_data_provider=(self._get_autodrive_data),
+            node_selection=self.node_selection,
+            node_info_formatter=self.node_info_formatter,
+            autodrive_data_provider=self._get_autodrive_data,
             parent=self,
         )
 
@@ -298,10 +297,13 @@ class MainWindow(QMainWindow):
 
         self.measurement_coordinator = MeasurementCoordinator(
             view=self.view,
-            controller=(self.measurement_controller),
-            node_item_provider=(self.selection_coordinator.get_node_item_at),
+            controller=self.measurement_controller,
+            node_item_provider=self.selection_coordinator.get_node_item_at,
             parent=self,
         )
+
+    def _create_edit_operations(self):
+        """The undo history and every operation that changes the data."""
 
         self.edit_history = EditHistory(parent=self)
 
@@ -355,17 +357,16 @@ class MainWindow(QMainWindow):
             parent=self,
         )
 
-        self._register_map_tools()
-
+    def _create_project_coordinator(self):
         self.project_coordinator = ProjectCoordinator(
             scene=self.scene,
             view=self.view,
-            project_files=(self.project_files),
-            background_map=(self.background_map),
-            heightmap=(self.heightmap),
-            scene_renderer=(self.scene_renderer),
-            selection_coordinator=(self.selection_coordinator),
-            measurement_coordinator=(self.measurement_coordinator),
+            project_files=self.project_files,
+            background_map=self.background_map,
+            heightmap=self.heightmap,
+            scene_renderer=self.scene_renderer,
+            selection_coordinator=self.selection_coordinator,
+            measurement_coordinator=self.measurement_coordinator,
             parent=self,
         )
 
@@ -425,6 +426,29 @@ class MainWindow(QMainWindow):
             )
 
         self.view.register_measure_tool(MeasureTool(self.view, self.measurement_coordinator))
+
+    def _create_grid_coordinator(self):
+        self.grid_coordinator = GridCoordinator(
+            background_map=self.background_map,
+            grid_controls=self.actions.grid_controls,
+            parent=self,
+        )
+
+    def _create_debug_dock_coordinator(self):
+        self.debug_dock_coordinator = DebugDockCoordinator(
+            debug_dock=self.debug_dock,
+            view=self.view,
+            scene_renderer=self.scene_renderer,
+            parent=self,
+        )
+
+        self.selection_coordinator.selection_state_changed.connect(
+            self.debug_dock_coordinator.refresh
+        )
+
+        self.project_coordinator.debug_refresh_requested.connect(
+            self.debug_dock_coordinator.refresh
+        )
 
     def _get_terrain_height(self, x: float, z: float) -> float | None:
         """Terrain height from the loaded heightmap, or None without

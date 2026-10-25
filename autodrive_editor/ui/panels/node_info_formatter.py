@@ -58,7 +58,7 @@ class NodeInfoFormatter:
             height_sample = self.heightmap.get_height_at(
                 world_x=node_data.x,
                 world_z=node_data.z,
-                map_scale=(self.background_map.map_scale),
+                map_scale=self.background_map.map_scale,
             )
 
         except ValueError as ex:

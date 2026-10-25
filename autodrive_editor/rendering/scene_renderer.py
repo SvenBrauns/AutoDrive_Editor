@@ -182,7 +182,7 @@ class SceneRenderer:
         self.visible_node_manager = VisibleNodeManager(
             scene=self.scene,
             node_layer=self.node_layer,
-            node_spatial_index=(self.node_spatial_index),
+            node_spatial_index=self.node_spatial_index,
             display_style=self.display_style,
             padding=self.VISIBILITY_PADDING,
         )
@@ -192,7 +192,7 @@ class SceneRenderer:
             marker_layer=self.marker_layer,
             marker_icon_path=self.marker_icon_path,
             autodrive_data=autodrive_data,
-            node_spatial_index=(self.node_spatial_index),
+            node_spatial_index=self.node_spatial_index,
             display_style=self.display_style,
             padding=self.VISIBILITY_PADDING,
         )
@@ -200,7 +200,7 @@ class SceneRenderer:
         self.visible_node_selection_manager = VisibleNodeSelectionManager(
             scene=self.scene,
             selection_layer=self.selection_layer,
-            node_spatial_index=(self.node_spatial_index),
+            node_spatial_index=self.node_spatial_index,
             display_style=self.display_style,
             padding=self.VISIBILITY_PADDING,
         )
@@ -309,7 +309,7 @@ class SceneRenderer:
 
             self._update_virtualized_layer(
                 layer=self.selection_layer,
-                manager=(self.visible_node_selection_manager),
+                manager=self.visible_node_selection_manager,
                 should_be_visible=show_nodes,
             )
 
@@ -365,7 +365,7 @@ class SceneRenderer:
                     source_z=source_node.z,
                     target_x=target_node.x,
                     target_z=target_node.z,
-                    node_diameter=(self.display_style.node_diameter),
+                    node_diameter=self.display_style.node_diameter,
                 )
 
                 if endpoints is None:
@@ -397,7 +397,7 @@ class SceneRenderer:
             connection_scene_rect = self.scene.itemsBoundingRect()
 
         self.connection_render_item = ConnectionRenderItem(
-            spatial_index=(self.connection_spatial_index),
+            spatial_index=self.connection_spatial_index,
             scene_rect=connection_scene_rect,
             display_style=self.display_style,
         )

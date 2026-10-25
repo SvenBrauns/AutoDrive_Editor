@@ -146,9 +146,9 @@ class ProjectCoordinator(QObject):
         saved_path = self.project_files.save_project(
             config_path=config_path,
             xml_path=self.current_xml_path,
-            background_path=(self.background_map.file_path),
-            map_scale=(self.background_map.map_scale),
-            heightmap_path=(self.current_heightmap_path),
+            background_path=self.background_map.file_path,
+            map_scale=self.background_map.map_scale,
+            heightmap_path=self.current_heightmap_path,
         )
 
         self.current_config_path = str(saved_path)

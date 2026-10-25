@@ -151,7 +151,7 @@ class MeasurementState:
         try:
             return calculate_measurement(
                 measurement_mode=self.mode,
-                start_position=(self.start_point.position),
+                start_position=self.start_point.position,
                 end_position=end_position,
             )
 

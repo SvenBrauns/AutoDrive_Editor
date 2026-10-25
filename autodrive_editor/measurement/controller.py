@@ -129,8 +129,8 @@ class MeasurementController(QObject):
 
         self.drag_controller.begin_drag(
             point_index=point_index,
-            press_scene_position=(press_scene_position),
-            original_point_position=(measurement_point.position),
+            press_scene_position=press_scene_position,
+            original_point_position=measurement_point.position,
         )
 
         return True

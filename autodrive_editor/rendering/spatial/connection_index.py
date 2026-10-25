@@ -89,7 +89,7 @@ class ConnectionSpatialIndex:
                     source_z=source_node.z,
                     target_x=target_node.x,
                     target_z=target_node.z,
-                    connection_type=(old_connection.connection_type),
+                    connection_type=old_connection.connection_type,
                 )
             )
 
