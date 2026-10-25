@@ -11,6 +11,8 @@ from app_paths import (
     MARKER_ICON_PATH
 )
 from autodrive.models import (
+    REGULAR_FLAG,
+    SUBPRIO_FLAG,
     AutoDriveData,
     NodeData
 )
@@ -27,12 +29,29 @@ from ui.display_options_dialog import (
 )
 from ui.interaction_mode import InteractionMode
 from ui.main_window_actions import MainWindowActions
+from rendering.connection_data import ConnectionType
+from ui.map_tools.connect_nodes_tool import ConnectNodesTool
+from ui.map_tools.create_node_tool import CreateNodeTool
+from ui.map_tools.delete_nodes_tool import DeleteNodesTool
+from ui.map_tools.measure_tool import MeasureTool
+from ui.map_tools.rotate_selection_tool import RotateSelectionTool
+from ui.map_tools.toggle_node_type_tool import ToggleNodeTypeTool
+from ui.map_tools.move_nodes_tool import MoveNodesTool
+from ui.map_tools.select_tool import SelectTool
 from ui.map_view import MapView
 from ui.node_info_formatter import NodeInfoFormatter
 from ui.view_rotation_controller import ViewRotationController
 from ui.debug_dock import DebugDock
 from ui.debug_dock_coordinator import DebugDockCoordinator
 from ui.grid_coordinator import GridCoordinator
+from editing.edit_command import DataChange
+from editing.edit_coordinator import EditCoordinator
+from editing.node_connect_coordinator import NodeConnectCoordinator
+from editing.node_create_coordinator import NodeCreateCoordinator
+from editing.node_delete_coordinator import NodeDeleteCoordinator
+from editing.node_drag_coordinator import NodeDragCoordinator
+from editing.node_flag_coordinator import NodeFlagCoordinator
+from editing.selection_rotate_coordinator import SelectionRotateCoordinator
 from selection.node_selection_manager import (
     NodeSelectionManager
 )
@@ -288,15 +307,16 @@ class MainWindow(QMainWindow):
             interaction_mode
         )
 
-        if interaction_mode == InteractionMode.NAVIGATE:
-            self._set_status(
-                "Modus: Navigation"
-            )
+        status_text = f"Modus: {interaction_mode.display_name}"
 
-        elif interaction_mode == InteractionMode.SELECT:
-            self._set_status(
-                "Modus: Auswahl"
-            )
+        status_hint = self.view.active_tool.status_hint()
+
+        if status_hint:
+            status_text += f" – {status_hint}"
+
+        self._set_status(
+            status_text
+        )
 
     def set_view_rotation(
         self,
@@ -339,6 +359,9 @@ class MainWindow(QMainWindow):
             measurement_mode
         )
 
+    def delete_selection(self):
+        self.node_delete_coordinator.delete_selection()
+
     def align_view_to_measurement(self):
         self.measurement_coordinator.align_view_to_measurement()
 
@@ -375,8 +398,9 @@ class MainWindow(QMainWindow):
         self.project_coordinator.rebuild_scene_after_style_change()
 
     def _configure_window(self):
+        # Qt shows "*" in place of "[*]" while the window is modified.
         self.setWindowTitle(
-            self.WINDOW_TITLE
+            f"{self.WINDOW_TITLE}[*]"
         )
 
         self.resize(
@@ -457,6 +481,62 @@ class MainWindow(QMainWindow):
             )
         )
 
+        self.edit_coordinator = EditCoordinator(
+            parent=self
+        )
+
+        self.node_drag_coordinator = NodeDragCoordinator(
+            view=self.view,
+            selection_coordinator=self.selection_coordinator,
+            selection_manager=self.node_selection_manager,
+            edit_coordinator=self.edit_coordinator,
+            autodrive_data_provider=self._get_autodrive_data,
+            terrain_height_at=self._get_terrain_height,
+            parent=self
+        )
+
+        self.node_delete_coordinator = NodeDeleteCoordinator(
+            selection_coordinator=self.selection_coordinator,
+            selection_manager=self.node_selection_manager,
+            edit_coordinator=self.edit_coordinator,
+            autodrive_data_provider=self._get_autodrive_data,
+            parent=self
+        )
+
+        self.node_connect_coordinator = NodeConnectCoordinator(
+            selection_coordinator=self.selection_coordinator,
+            edit_coordinator=self.edit_coordinator,
+            autodrive_data_provider=self._get_autodrive_data,
+            parent=self
+        )
+
+        self.selection_rotate_coordinator = SelectionRotateCoordinator(
+            selection_manager=self.node_selection_manager,
+            edit_coordinator=self.edit_coordinator,
+            autodrive_data_provider=self._get_autodrive_data,
+            terrain_height_at=self._get_terrain_height,
+            parent=self
+        )
+
+        self.node_create_coordinator = NodeCreateCoordinator(
+            view=self.view,
+            selection_coordinator=self.selection_coordinator,
+            edit_coordinator=self.edit_coordinator,
+            autodrive_data_provider=self._get_autodrive_data,
+            terrain_height_at=self._get_terrain_height,
+            parent=self
+        )
+
+        self.node_flag_coordinator = NodeFlagCoordinator(
+            selection_coordinator=self.selection_coordinator,
+            selection_manager=self.node_selection_manager,
+            edit_coordinator=self.edit_coordinator,
+            autodrive_data_provider=self._get_autodrive_data,
+            parent=self
+        )
+
+        self._register_map_tools()
+
         self.project_coordinator = (
             ProjectCoordinator(
                 scene=self.scene,
@@ -482,6 +562,130 @@ class MainWindow(QMainWindow):
                 parent=self
             )
         )
+
+    def _register_map_tools(self):
+        self.view.register_tool(
+            InteractionMode.SELECT,
+            SelectTool(
+                self.view,
+                self.selection_coordinator
+            )
+        )
+
+        for interaction_mode, flag in (
+            (InteractionMode.CREATE_NODES, REGULAR_FLAG),
+            (InteractionMode.CREATE_SUBPRIO_NODES, SUBPRIO_FLAG)
+        ):
+            self.view.register_tool(
+                interaction_mode,
+                CreateNodeTool(
+                    self.view,
+                    self.node_create_coordinator,
+                    flag
+                )
+            )
+
+        self.view.register_tool(
+            InteractionMode.TOGGLE_NODE_TYPE,
+            ToggleNodeTypeTool(
+                self.view,
+                self.node_flag_coordinator
+            )
+        )
+
+        self.view.register_tool(
+            InteractionMode.MOVE_NODES,
+            MoveNodesTool(
+                self.view,
+                self.node_drag_coordinator
+            )
+        )
+
+        self.view.register_tool(
+            InteractionMode.ROTATE_SELECTION,
+            RotateSelectionTool(
+                self.view,
+                self.selection_rotate_coordinator,
+                z_value=(
+                    self.scene_renderer.display_style
+                    .selected_node_z + 1
+                )
+            )
+        )
+
+        self.view.register_tool(
+            InteractionMode.DELETE_NODES,
+            DeleteNodesTool(
+                self.view,
+                self.node_delete_coordinator
+            )
+        )
+
+        connect_tools = (
+            (
+                InteractionMode.CONNECT_REGULAR,
+                ConnectionType.REGULAR,
+                "regular_connection_color"
+            ),
+            (
+                InteractionMode.CONNECT_DUAL,
+                ConnectionType.DUAL,
+                "dual_connection_color"
+            ),
+            (
+                InteractionMode.CONNECT_REVERSE,
+                ConnectionType.REVERSE,
+                "reverse_connection_color"
+            )
+        )
+
+        for interaction_mode, connection_type, color_name in connect_tools:
+            self.view.register_tool(
+                interaction_mode,
+                ConnectNodesTool(
+                    self.view,
+                    self.node_connect_coordinator,
+                    connection_type,
+                    color_provider=(
+                        lambda name=color_name: getattr(
+                            self.scene_renderer.display_style,
+                            name
+                        )
+                    ),
+                    z_value=(
+                        self.scene_renderer.display_style
+                        .selected_node_z + 1
+                    )
+                )
+            )
+
+        self.view.register_measure_tool(
+            MeasureTool(
+                self.view,
+                self.measurement_coordinator
+            )
+        )
+
+    def _get_terrain_height(
+        self,
+        x: float,
+        z: float
+    ) -> float | None:
+        """Terrain height from the loaded heightmap, or None without
+        heightmap or outside the map."""
+
+        if not self.heightmap_manager.has_heightmap():
+            return None
+
+        try:
+            return self.heightmap_manager.get_height_at(
+                world_x=x,
+                world_z=z,
+                map_scale=self.background_manager.map_scale
+            ).height
+
+        except ValueError:
+            return None
 
     def _get_autodrive_data(
         self
@@ -531,40 +735,8 @@ class MainWindow(QMainWindow):
             self.scene_renderer.update_visible_scene_rect
         )
 
-        self.view.selection_click_requested.connect(
-            self.selection_coordinator.handle_click
-        )
-
         self.view.rotation_changed.connect(
             self._handle_rotation_changed
-        )
-
-        self.view.selection_area_requested.connect(
-            self.selection_coordinator.handle_area
-        )
-
-        self.view.selection_area_preview_requested.connect(
-            self.selection_coordinator.handle_area_preview
-        )
-
-        self.view.selection_area_preview_cleared.connect(
-            self.selection_coordinator.clear_area_preview
-        )
-
-        self.view.measurement_press_requested.connect(
-            self.measurement_coordinator.handle_press
-        )
-
-        self.view.measurement_move_requested.connect(
-            self.measurement_coordinator.handle_move
-        )
-
-        self.view.measurement_release_requested.connect(
-            self.measurement_coordinator.handle_release
-        )
-
-        self.view.measurement_cancel_requested.connect(
-            self.measurement_coordinator.cancel
         )
 
         self.measurement_coordinator.status_changed.connect(
@@ -597,6 +769,55 @@ class MainWindow(QMainWindow):
 
         self.project_coordinator.heightmap_path_changed.connect(
             self._handle_heightmap_path_changed
+        )
+
+        self.project_coordinator.autodrive_data_loaded.connect(
+            self._handle_autodrive_data_loaded
+        )
+
+        self.edit_coordinator.clean_changed.connect(
+            self._handle_edit_clean_changed
+        )
+
+        self.edit_coordinator.data_changed.connect(
+            self._handle_data_changed
+        )
+
+        self.node_drag_coordinator.status_changed.connect(
+            self._set_status
+        )
+
+        self.node_delete_coordinator.status_changed.connect(
+            self._set_status
+        )
+
+        self.node_connect_coordinator.status_changed.connect(
+            self._set_status
+        )
+
+        self.node_create_coordinator.status_changed.connect(
+            self._set_status
+        )
+
+        self.node_flag_coordinator.status_changed.connect(
+            self._set_status
+        )
+
+        self.selection_rotate_coordinator.status_changed.connect(
+            self._set_status
+        )
+
+        # Keeps the tool buttons right even when the mode is changed
+        # without clicking a button.
+        self.view.interaction_mode_changed.connect(
+            lambda interaction_mode: self.actions.sync_tool_actions()
+        )
+
+        self.node_selection_manager.selection_changed.connect(
+            lambda node_ids, primary_node_id:
+            self.actions.delete_selection_action.setEnabled(
+                bool(node_ids)
+            )
         )
 
         self.view.rotation_step_changed.connect(
@@ -642,6 +863,47 @@ class MainWindow(QMainWindow):
     ):
         self.actions.set_current_map_scale(
             map_scale
+        )
+
+    def _handle_autodrive_data_loaded(
+        self,
+        autodrive_data
+    ):
+        # Edits of the previous data cannot be undone on new data.
+        self.edit_coordinator.clear()
+
+        self.node_connect_coordinator.end_chain()
+
+        self.setWindowModified(
+            False
+        )
+
+    def _handle_data_changed(
+        self,
+        data_change: DataChange
+    ):
+        self.scene_renderer.apply_changes(
+            moved_node_ids=data_change.moved_node_ids,
+            added_node_ids=data_change.added_node_ids,
+            removed_node_ids=data_change.removed_node_ids,
+            connection_node_ids=data_change.connection_node_ids,
+            changed_flag_node_ids=data_change.changed_flag_node_ids
+        )
+
+        if data_change.removed_node_ids:
+            self.node_selection_manager.remove(
+                data_change.removed_node_ids
+            )
+
+        # Node coordinates in the info panel may have changed.
+        self.selection_coordinator.refresh_info()
+
+    def _handle_edit_clean_changed(
+        self,
+        clean: bool
+    ):
+        self.setWindowModified(
+            not clean
         )
 
     def _set_status(

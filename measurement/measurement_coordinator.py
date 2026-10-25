@@ -98,6 +98,12 @@ class MeasurementCoordinator(QObject):
     def is_complete(self) -> bool:
         return self.controller.is_complete
 
+    @property
+    def is_point_dragging(self) -> bool:
+        """True while a measurement point is being dragged."""
+
+        return self._measurement_drag_active
+
     def set_mode(
         self,
         measurement_mode: MeasurementMode
@@ -488,10 +494,6 @@ class MeasurementCoordinator(QObject):
     ):
         self._measurement_drag_active = bool(
             active
-        )
-
-        self.view.set_measurement_point_drag_active(
-            self._measurement_drag_active
         )
 
     def _reset_drag_state(self):

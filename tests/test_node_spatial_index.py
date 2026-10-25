@@ -82,7 +82,46 @@ def test_path_query_uses_exact_shape_not_bounding_box():
     assert ids(index.get_nodes_in_path(path)) == [1]
 
 
+def test_update_nodes_moves_node_to_new_tile():
+    data = AutoDriveData()
+    data.add_node(NodeData(node_id=1, x=10, y=0, z=10))
+    data.add_node(NodeData(node_id=2, x=20, y=0, z=20))
+    index = NodeSpatialIndex(tile_size=100.0)
+    index.build(data)
+
+    data.nodes[1].x, data.nodes[1].z = 550, 550
+    index.update_nodes([data.nodes[1]])
+
+    assert ids(index.get_nodes_in_rect(QRectF(0, 0, 100, 100))) == [2]
+    assert ids(index.get_nodes_in_rect(QRectF(500, 500, 100, 100))) == [1]
+    assert index.node_count == 2
+
+
+def test_update_nodes_ignores_unknown_nodes():
+    index = build_index([(0, 0)])
+
+    index.update_nodes([NodeData(node_id=99, x=5, y=0, z=5)])
+
+    assert index.get_nodes_in_rect(QRectF(0, 0, 100, 100))[0].node_id == 1
+
+
 def test_empty_path_returns_nothing():
     index = build_index([(0, 0)])
 
     assert index.get_nodes_in_path(QPainterPath()) == []
+
+
+def test_remove_and_add_nodes():
+    data = AutoDriveData()
+    data.add_node(NodeData(node_id=1, x=10, y=0, z=10))
+    data.add_node(NodeData(node_id=2, x=20, y=0, z=20))
+    index = NodeSpatialIndex(tile_size=100.0)
+    index.build(data)
+
+    index.remove_nodes([1, 99])
+    assert ids(index.get_nodes_in_rect(QRectF(0, 0, 100, 100))) == [2]
+    assert index.node_count == 1
+
+    index.add_nodes([data.nodes[1]])
+    assert ids(index.get_nodes_in_rect(QRectF(0, 0, 100, 100))) == [1, 2]
+    assert index.node_count == 2

@@ -88,6 +88,41 @@ class VisibleNodeManager:
                 ]
             )
 
+    def refresh_positions(
+        self,
+        nodes
+    ):
+        for node_data in nodes:
+            node_item = self.visible_node_items.get(
+                node_data.node_id
+            )
+
+            if node_item is None:
+                continue
+
+            node_item.setPos(
+                node_data.x,
+                node_data.z
+            )
+
+    def recreate_items(
+        self,
+        nodes
+    ):
+        """Redraws visible nodes, e.g. after their flag changed."""
+
+        for node_data in nodes:
+            if node_data.node_id not in self.visible_node_items:
+                continue
+
+            self._remove_node_item(
+                node_data.node_id
+            )
+
+            self._add_node_item(
+                node_data
+            )
+
     def clear(self):
         for node_id in list(
             self.visible_node_items

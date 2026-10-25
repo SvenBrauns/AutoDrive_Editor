@@ -112,3 +112,20 @@ def test_signal_emitted_only_on_change(manager, emitted):
     manager.clear()
 
     assert emitted == [({1, 2}, 1), (set(), None)]
+
+
+def test_remove_deselects_and_picks_new_primary(manager):
+    manager.replace([1, 2, 3], primary_node_id=2)
+
+    manager.remove([2, 99])
+
+    assert manager.selected_node_ids == {1, 3}
+    assert manager.primary_node_id == 1
+
+
+def test_remove_keeps_primary_if_still_selected(manager):
+    manager.replace([1, 2, 3], primary_node_id=3)
+
+    manager.remove([1])
+
+    assert manager.primary_node_id == 3

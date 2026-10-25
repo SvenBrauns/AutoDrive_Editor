@@ -76,3 +76,56 @@ def write_xml(tmp_path):
         return path
 
     return _write
+
+
+@pytest.fixture
+def window(qapp):
+    from ui.main_window import MainWindow
+
+    main_window = MainWindow()
+    main_window.show()
+    qapp.processEvents()
+
+    yield main_window
+
+    main_window.close()
+    main_window.deleteLater()
+    qapp.processEvents()
+
+
+@pytest.fixture
+def loaded_window(window, write_xml, qapp):
+    path = write_xml(x="0;10;20", z="0;0;0", out="2;3;", incoming=";1;2")
+    window.project_coordinator.load_xml_file(path)
+    qapp.processEvents()
+    return window
+
+
+@pytest.fixture
+def zoomed_window(loaded_window, qapp):
+    """Loaded window zoomed in so nodes 1 (x=0), 2 (x=10) and 3 (x=20)
+    on the line z=0 are drawn as clickable items."""
+
+    window = loaded_window
+    window.view.set_zoom_level(4.0)
+    window.view.centerOn(10, 0)
+    qapp.processEvents()
+
+    window.scene_renderer.update_visible_scene_rect(window.view.get_visible_scene_rect())
+    assert set(window.scene_renderer.visible_node_manager.visible_node_items) == {1, 2, 3}
+
+    return window
+
+
+@pytest.fixture
+def sloped_heightmap(tmp_path):
+    """16-bit heightmap that rises from west to east, so the terrain
+    height depends on x only."""
+    from PIL import Image
+
+    size = 257
+    image = Image.new("I;16", (size, size))
+    image.putdata([column * 200 for row in range(size) for column in range(size)])
+    path = tmp_path / "dem.png"
+    image.save(path)
+    return path

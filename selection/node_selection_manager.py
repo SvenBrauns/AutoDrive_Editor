@@ -176,6 +176,27 @@ class NodeSelectionManager(QObject):
             updated_primary_id
         )
 
+    def remove(
+        self,
+        node_ids
+    ):
+        """Deselects the given nodes, e.g. after they were deleted."""
+
+        updated_ids = (
+            self._selected_node_ids
+            - self._normalize_node_ids(
+                node_ids
+            )
+        )
+
+        self._apply_selection(
+            updated_ids,
+            self._determine_primary_node_id(
+                updated_ids,
+                self._primary_node_id
+            )
+        )
+
     def clear(self):
         self._apply_selection(
             set(),

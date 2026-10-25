@@ -1,24 +1,171 @@
-from PySide6.QtCore import Qt
+from dataclasses import dataclass
+
+from PySide6.QtCore import (
+    QSize,
+    Qt
+)
 from PySide6.QtGui import (
     QAction,
-    QActionGroup
+    QActionGroup,
+    QIcon,
+    QKeySequence
 )
 from PySide6.QtWidgets import (
     QMainWindow,
     QSizePolicy,
     QToolBar,
+    QToolButton,
     QWidget
 )
+
+from app_paths import TOOL_ICON_DIRECTORY
 
 from ui.interaction_mode import InteractionMode
 from ui.rotation_controls import RotationControls
 from ui.grid_controls import GridControls
+from ui.tool_panel import ToolPanel
 from measurement.measurement_mode import (
     MeasurementMode
 )
 
 
+@dataclass(frozen=True)
+class ToolDefinition:
+
+    interaction_mode: InteractionMode
+    text: str
+    description: str
+    icon: str
+    shortcut: str
+
+
+def tool_icon(name: str) -> QIcon:
+    return QIcon(
+        str(TOOL_ICON_DIRECTORY / f"{name}.svg")
+    )
+
+
+def tool_tooltip(
+    text: str,
+    shortcut: str,
+    description: str
+) -> str:
+    return (
+        f"<b>{text}</b> ({shortcut})<br>{description}"
+    )
+
+
+NAVIGATION_TOOL = ToolDefinition(
+    InteractionMode.NAVIGATE,
+    "Navigation",
+    "Kartenansicht verschieben und drehen",
+    "navigate",
+    "N"
+)
+
+SELECTION_TOOL = ToolDefinition(
+    InteractionMode.SELECT,
+    "Auswahl",
+    "Nodes per Klick oder Rechtsziehen auswählen",
+    "select",
+    "A"
+)
+
+MOVE_TOOL = ToolDefinition(
+    InteractionMode.MOVE_NODES,
+    "Verschieben",
+    "Node oder Auswahl per Linkes Ziehen verschieben",
+    "move",
+    "V"
+)
+
+CREATE_REGULAR_TOOL = ToolDefinition(
+    InteractionMode.CREATE_NODES,
+    "Erstellen (Regular)",
+    "Per Linksklick auf freie Fläche eine Regular-Node erstellen",
+    "create_regular",
+    "E"
+)
+
+CREATE_SUBPRIO_TOOL = ToolDefinition(
+    InteractionMode.CREATE_SUBPRIO_NODES,
+    "Erstellen (Subprio)",
+    "Per Linksklick auf freie Fläche eine Subprio-Node erstellen",
+    "create_subprio",
+    "Shift+E"
+)
+
+TOGGLE_TYPE_TOOL = ToolDefinition(
+    InteractionMode.TOGGLE_NODE_TYPE,
+    "Typ wechseln",
+    "Node oder Auswahl per Linksklick zwischen Regular und "
+    "Subprio umschalten",
+    "toggle_type",
+    "T"
+)
+
+ROTATE_TOOL = ToolDefinition(
+    InteractionMode.ROTATE_SELECTION,
+    "Rotieren",
+    "Auswahl am Ring um ihren Mittelpunkt drehen "
+    "(Umschalt: 15°-Schritte)",
+    "rotate",
+    "R"
+)
+
+DELETE_TOOL = ToolDefinition(
+    InteractionMode.DELETE_NODES,
+    "Löschen",
+    "Node oder Auswahl per Linksklick löschen",
+    "delete",
+    "L"
+)
+
+CONNECT_REGULAR_TOOL = ToolDefinition(
+    InteractionMode.CONNECT_REGULAR,
+    "Verbinden (Regular)",
+    "Nodes nacheinander anklicken, um sie mit "
+    "Regular-Connections zu verbinden",
+    "connect_regular",
+    "1"
+)
+
+CONNECT_DUAL_TOOL = ToolDefinition(
+    InteractionMode.CONNECT_DUAL,
+    "Verbinden (Dual)",
+    "Nodes nacheinander anklicken, um sie mit "
+    "Dual-Connections zu verbinden",
+    "connect_dual",
+    "2"
+)
+
+CONNECT_REVERSE_TOOL = ToolDefinition(
+    InteractionMode.CONNECT_REVERSE,
+    "Verbinden (Reverse)",
+    "Nodes nacheinander anklicken, um sie mit "
+    "Reverse-Connections zu verbinden",
+    "connect_reverse",
+    "3"
+)
+
+
 class MainWindowActions:
+
+    # Tool groups in the left tool panel. Each row holds two tools:
+    # node actions on the left, connection actions on the right.
+    # None leaves a cell empty.
+    TOOL_GROUPS = (
+        (
+            "Nodes",
+            (
+                (MOVE_TOOL, CONNECT_REGULAR_TOOL),
+                (CREATE_REGULAR_TOOL, CONNECT_DUAL_TOOL),
+                (CREATE_SUBPRIO_TOOL, CONNECT_REVERSE_TOOL),
+                (TOGGLE_TYPE_TOOL, None),
+                (ROTATE_TOOL, DELETE_TOOL),
+            )
+        ),
+    )
 
     MAP_SCALES = (
         ("Originalgröße", 1),
@@ -36,44 +183,30 @@ class MainWindowActions:
         self.map_scale_actions = {}
 
         self._create_actions()
+        self._create_tool_panel()
         self._create_menu_bar()
         self._create_quick_access_toolbar()
-        self._create_editor_toolbar()
 
     def _create_actions(self):
-        self.navigation_action = QAction(
-            "Navigation",
-            self.window
+        # One exclusive group for all map tools, so exactly one tool
+        # is active. The measuring tools un-check it while measuring.
+        self.tool_actions: dict[InteractionMode, QAction] = {}
+
+        self.navigation_action = self._create_tool_action(
+            NAVIGATION_TOOL
         )
 
-        self.navigation_action.setCheckable(
-            True
+        self.selection_action = self._create_tool_action(
+            SELECTION_TOOL
         )
 
-        self.navigation_action.setToolTip(
-            "Kartenansicht verschieben und drehen"
-        )
-
-        self.navigation_action.triggered.connect(
-            self._activate_navigation_mode
-        )
-
-        self.selection_action = QAction(
-            "Auswahl",
-            self.window
-        )
-
-        self.selection_action.setCheckable(
-            True
-        )
-
-        self.selection_action.setToolTip(
-            "Nodes und Connections auswählen"
-        )
-
-        self.selection_action.triggered.connect(
-            self._activate_selection_mode
-        )
+        for _, rows in self.TOOL_GROUPS:
+            for row in rows:
+                for definition in row:
+                    if definition is not None:
+                        self._create_tool_action(
+                            definition
+                        )
 
         self.interaction_action_group = QActionGroup(
             self.window
@@ -83,13 +216,15 @@ class MainWindowActions:
             True
         )
 
-        self.interaction_action_group.addAction(
-            self.navigation_action
-        )
+        for interaction_mode, action in self.tool_actions.items():
+            self.interaction_action_group.addAction(
+                action
+            )
 
-        self.interaction_action_group.addAction(
-            self.selection_action
-        )
+            action.triggered.connect(
+                lambda checked, mode=interaction_mode:
+                self._activate_tool(mode, checked)
+            )
 
         self.navigation_action.setChecked(
             True
@@ -259,6 +394,9 @@ class MainWindowActions:
             False
         )
 
+        self._create_undo_actions()
+        self._create_delete_selection_action()
+
         self._create_map_scale_actions()
 
     def _create_map_scale_actions(self):
@@ -301,6 +439,133 @@ class MainWindowActions:
                 map_scale
             ] = action
 
+    UNDO_TEXT = "Rückgängig"
+    REDO_TEXT = "Wiederholen"
+
+    def _create_tool_action(
+        self,
+        definition: ToolDefinition
+    ) -> QAction:
+        action = QAction(
+            tool_icon(definition.icon),
+            definition.text,
+            self.window
+        )
+
+        action.setCheckable(
+            True
+        )
+
+        action.setShortcut(
+            QKeySequence(definition.shortcut)
+        )
+
+        action.setToolTip(
+            tool_tooltip(
+                definition.text,
+                definition.shortcut,
+                definition.description
+            )
+        )
+
+        action.setStatusTip(
+            definition.description
+        )
+
+        # Added to the window so the shortcut also works while the
+        # tool panel is hidden.
+        self.window.addAction(
+            action
+        )
+
+        self.tool_actions[
+            definition.interaction_mode
+        ] = action
+
+        return action
+
+    def _create_undo_actions(self):
+        edit_coordinator = self.window.edit_coordinator
+        undo_stack = edit_coordinator.undo_stack
+
+        self.undo_action = self._create_history_action(
+            icon="undo",
+            base_text=self.UNDO_TEXT,
+            shortcut=QKeySequence.Undo,
+            trigger=edit_coordinator.undo,
+            can_run_changed=undo_stack.canUndoChanged,
+            text_changed=undo_stack.undoTextChanged
+        )
+
+        self.redo_action = self._create_history_action(
+            icon="redo",
+            base_text=self.REDO_TEXT,
+            shortcut=QKeySequence.Redo,
+            trigger=edit_coordinator.redo,
+            can_run_changed=undo_stack.canRedoChanged,
+            text_changed=undo_stack.redoTextChanged
+        )
+
+    def _create_delete_selection_action(self):
+        self.delete_selection_action = QAction(
+            "Auswahl löschen",
+            self.window
+        )
+
+        self.delete_selection_action.setShortcut(
+            QKeySequence.Delete
+        )
+
+        self.delete_selection_action.setEnabled(
+            False
+        )
+
+        self.delete_selection_action.triggered.connect(
+            self.window.delete_selection
+        )
+
+    def _create_history_action(
+        self,
+        icon: str,
+        base_text: str,
+        shortcut,
+        trigger,
+        can_run_changed,
+        text_changed
+    ) -> QAction:
+        action = QAction(
+            tool_icon(icon),
+            base_text,
+            self.window
+        )
+
+        action.setShortcuts(
+            shortcut
+        )
+
+        action.setEnabled(
+            False
+        )
+
+        action.triggered.connect(
+            trigger
+        )
+
+        can_run_changed.connect(
+            action.setEnabled
+        )
+
+        # Shows e.g. "Rückgängig: Node verschieben".
+        text_changed.connect(
+            lambda command_text: action.setText(
+                f"{base_text}: {command_text}"
+                if command_text
+                else base_text
+            )
+        )
+
+        return action
+
     def _create_menu_bar(self):
         menu_bar = self.window.menuBar()
 
@@ -328,6 +593,24 @@ class MainWindowActions:
             self.exit_action
         )
 
+        edit_menu = menu_bar.addMenu(
+            "Bearbeiten"
+        )
+
+        edit_menu.addAction(
+            self.undo_action
+        )
+
+        edit_menu.addAction(
+            self.redo_action
+        )
+
+        edit_menu.addSeparator()
+
+        edit_menu.addAction(
+            self.delete_selection_action
+        )
+
         view_menu = menu_bar.addMenu(
             "Ansicht"
         )
@@ -337,6 +620,14 @@ class MainWindowActions:
         )
 
         view_menu.addSeparator()
+
+        view_menu.addAction(
+            self.tool_panel.toggleViewAction()
+        )
+
+        view_menu.addAction(
+            self.tool_labels_action
+        )
 
         view_menu.addAction(
             self.window.debug_dock.toggleViewAction()
@@ -409,6 +700,38 @@ class MainWindowActions:
             Qt.TopToolBarArea,
             self.quick_access_toolbar
         )
+
+        # Icon only: the action text grows to e.g. "Rückgängig: 3 Nodes
+        # verschieben", which is shown as tooltip instead.
+        for action in (
+            self.undo_action,
+            self.redo_action
+        ):
+            button = QToolButton(
+                self.quick_access_toolbar
+            )
+
+            button.setDefaultAction(
+                action
+            )
+
+            button.setToolButtonStyle(
+                Qt.ToolButtonIconOnly
+            )
+
+            button.setIconSize(
+                QSize(20, 20)
+            )
+
+            button.setAutoRaise(
+                True
+            )
+
+            self.quick_access_toolbar.addWidget(
+                button
+            )
+
+        self.quick_access_toolbar.addSeparator()
 
         self.quick_access_toolbar.addAction(
             self.navigation_action
@@ -488,48 +811,41 @@ class MainWindowActions:
             self.align_measurement_action
         )
 
-    def _create_editor_toolbar(self):
-        self.editor_toolbar = QToolBar(
-            "Editor-Werkzeuge",
+    def _create_tool_panel(self):
+        self.tool_panel = ToolPanel(
             self.window
         )
 
-        self.editor_toolbar.setObjectName(
-            "editor_toolbar"
-        )
+        for group_title, rows in self.TOOL_GROUPS:
+            self.tool_panel.add_tool_group(
+                group_title,
+                [
+                    tuple(
+                        self.tool_actions[definition.interaction_mode]
+                        if definition is not None
+                        else None
+                        for definition in row
+                    )
+                    for row in rows
+                ]
+            )
 
-        self.editor_toolbar.setMovable(
-            False
-        )
-
-        self.editor_toolbar.setFloatable(
-            False
-        )
-
-        self.editor_toolbar.setToolButtonStyle(
-            Qt.ToolButtonTextUnderIcon
-        )
-
-        self.window.addToolBar(
-            Qt.LeftToolBarArea,
-            self.editor_toolbar
-        )
-
-        self.editor_placeholder_action = QAction(
-            "Editor",
+        self.tool_labels_action = QAction(
+            "Werkzeugbeschriftungen anzeigen",
             self.window
         )
 
-        self.editor_placeholder_action.setEnabled(
-            False
+        self.tool_labels_action.setCheckable(
+            True
         )
 
-        self.editor_placeholder_action.setToolTip(
-            "Editor-Werkzeuge werden später ergänzt"
+        self.tool_labels_action.toggled.connect(
+            self.tool_panel.set_labels_visible
         )
 
-        self.editor_toolbar.addAction(
-            self.editor_placeholder_action
+        self.window.addDockWidget(
+            Qt.LeftDockWidgetArea,
+            self.tool_panel
         )
 
     def set_current_map_scale(
@@ -597,66 +913,57 @@ class MainWindowActions:
         )
 
         if measurement_active:
-            self._set_interaction_actions_checked(
-                navigation_checked=False,
-                selection_checked=False
+            self._check_tool_action(
+                None
             )
 
         else:
             self._restore_interaction_action()
 
-    def _set_interaction_actions_checked(
+    def _check_tool_action(
         self,
-        navigation_checked: bool,
-        selection_checked: bool
+        interaction_mode: InteractionMode | None
     ):
+        """Checks the action of the given tool, or none for None,
+        without triggering it."""
+
         self.interaction_action_group.setExclusive(
             False
         )
 
-        self.navigation_action.blockSignals(
-            True
-        )
+        for mode, action in self.tool_actions.items():
+            action.blockSignals(
+                True
+            )
 
-        self.selection_action.blockSignals(
-            True
-        )
+            action.setChecked(
+                mode == interaction_mode
+            )
 
-        self.navigation_action.setChecked(
-            navigation_checked
-        )
-
-        self.selection_action.setChecked(
-            selection_checked
-        )
-
-        self.navigation_action.blockSignals(
-            False
-        )
-
-        self.selection_action.blockSignals(
-            False
-        )
+            action.blockSignals(
+                False
+            )
 
         self.interaction_action_group.setExclusive(
             True
         )
 
     def _restore_interaction_action(self):
-        interaction_mode = (
+        self._check_tool_action(
             self.window.view.interaction_mode
         )
 
-        self._set_interaction_actions_checked(
-            navigation_checked=(
-                interaction_mode
-                == InteractionMode.NAVIGATE
-            ),
-            selection_checked=(
-                interaction_mode
-                == InteractionMode.SELECT
+    def sync_tool_actions(self):
+        """Checks the button of the active tool, or none while
+        measuring."""
+
+        if self.window.view.measurement_active:
+            self._check_tool_action(
+                None
             )
-        )
+
+        else:
+            self._restore_interaction_action()
 
     def set_measurement_alignment_enabled(
         self,
@@ -666,35 +973,28 @@ class MainWindowActions:
             bool(enabled)
         )
 
-    def _activate_navigation_mode(
+    def _activate_tool(
         self,
+        interaction_mode: InteractionMode,
         checked: bool
     ):
         if not checked:
             return
 
-        self.window.set_interaction_mode(
-            InteractionMode.NAVIGATE
+        was_measuring = (
+            self.window.view.measurement_active
         )
-
-        self.window.set_measurement_mode(
-            MeasurementMode.INACTIVE
-        )
-
-    def _activate_selection_mode(
-        self,
-        checked: bool
-    ):
-        if not checked:
-            return
 
         self.window.set_interaction_mode(
-            InteractionMode.SELECT
+            interaction_mode
         )
 
-        self.window.set_measurement_mode(
-            MeasurementMode.INACTIVE
-        )
+        # Only end measuring if it was on, so the status bar keeps
+        # showing the newly selected tool otherwise.
+        if was_measuring:
+            self.window.set_measurement_mode(
+                MeasurementMode.INACTIVE
+            )
 
     def _toggle_distance_measurement(
         self,

@@ -40,6 +40,10 @@ class ProjectCoordinator(QObject):
         object
     )
 
+    autodrive_data_loaded = Signal(
+        object
+    )
+
     def __init__(
         self,
         scene: QGraphicsScene,
@@ -194,6 +198,10 @@ class ProjectCoordinator(QObject):
         self.fit_scene_in_view()
 
         self.measurement_coordinator.restore_scene_items()
+
+        self.autodrive_data_loaded.emit(
+            self.autodrive_data
+        )
 
         self.status_changed.emit(
             f"{len(self.autodrive_data)} "
