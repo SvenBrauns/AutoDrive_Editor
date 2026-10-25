@@ -17,6 +17,10 @@ class InteractionMode(Enum):
     CONNECT_REGULAR = auto()
     CONNECT_DUAL = auto()
     CONNECT_REVERSE = auto()
+    ALIGN_HORIZONTAL = auto()
+    ALIGN_VERTICAL = auto()
+    ALIGN_HEIGHT = auto()
+    HEIGHT_FROM_TERRAIN = auto()
     ADD_MARKER = auto()
     EDIT_MARKER = auto()
     MOVE_MARKER = auto()
@@ -38,6 +42,10 @@ class InteractionMode(Enum):
             InteractionMode.CONNECT_REGULAR: "Verbinden (Regular)",
             InteractionMode.CONNECT_DUAL: "Verbinden (Dual)",
             InteractionMode.CONNECT_REVERSE: "Verbinden (Reverse)",
+            InteractionMode.ALIGN_HORIZONTAL: "Horizontal ausrichten",
+            InteractionMode.ALIGN_VERTICAL: "Vertikal ausrichten",
+            InteractionMode.ALIGN_HEIGHT: "Höhe wie Referenz",
+            InteractionMode.HEIGHT_FROM_TERRAIN: "Höhe aus Heightmap",
             InteractionMode.ADD_MARKER: "Marker hinzufügen",
             InteractionMode.EDIT_MARKER: "Marker bearbeiten",
             InteractionMode.MOVE_MARKER: "Marker verschieben",

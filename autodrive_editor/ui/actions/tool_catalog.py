@@ -162,6 +162,38 @@ CONNECT_REVERSE_TOOL = ToolDefinition(
 )
 
 
+ALIGN_HORIZONTAL_TOOL = ToolDefinition(
+    InteractionMode.ALIGN_HORIZONTAL,
+    "Horizontal ausrichten",
+    "Auswahl auf die waagerechte Bildschirmlinie durch die angeklickte Node legen",
+    "align_horizontal",
+    "H",
+)
+
+ALIGN_VERTICAL_TOOL = ToolDefinition(
+    InteractionMode.ALIGN_VERTICAL,
+    "Vertikal ausrichten",
+    "Auswahl auf die senkrechte Bildschirmlinie durch die angeklickte Node legen",
+    "align_vertical",
+    "J",
+)
+
+ALIGN_HEIGHT_TOOL = ToolDefinition(
+    InteractionMode.ALIGN_HEIGHT,
+    "Höhe wie Referenz",
+    "Auswahl auf die Höhe der angeklickten Node setzen",
+    "align_height",
+    "Y",
+)
+
+HEIGHT_FROM_TERRAIN_TOOL = ToolDefinition(
+    InteractionMode.HEIGHT_FROM_TERRAIN,
+    "Höhe aus Heightmap",
+    "Node der Auswahl anklicken: jede Node der Auswahl bekommt die Geländehöhe an ihrer Position",
+    "terrain_height",
+    "Shift+Y",
+)
+
 ADD_MARKER_TOOL = ToolDefinition(
     InteractionMode.ADD_MARKER,
     "Marker hinzufügen",
@@ -208,6 +240,13 @@ TOOL_GROUPS = (
             (TOGGLE_TYPE_TOOL, REVERSE_DIRECTION_TOOL),
             (ROTATE_TOOL, DELETE_TOOL),
             (NODE_POSITION_TOOL, None),
+        ),
+    ),
+    (
+        "Ausrichten",
+        (
+            (ALIGN_HORIZONTAL_TOOL, ALIGN_VERTICAL_TOOL),
+            (ALIGN_HEIGHT_TOOL, HEIGHT_FROM_TERRAIN_TOOL),
         ),
     ),
     (

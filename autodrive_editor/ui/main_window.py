@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 
 from autodrive_editor.editing.commands.edit_command import DataChange
 from autodrive_editor.editing.edit_history import EditHistory
+from autodrive_editor.editing.operations.align_nodes import AlignNodesOperation
 from autodrive_editor.editing.operations.clipboard import ClipboardOperation
 from autodrive_editor.editing.operations.connect_nodes import ConnectNodesOperation
 from autodrive_editor.editing.operations.create_nodes import CreateNodesOperation
@@ -783,6 +784,16 @@ class MainWindow(QMainWindow):
             parent=self,
         )
 
+        self.align_nodes_operation = AlignNodesOperation(
+            view=self.view,
+            selection_coordinator=self.selection_coordinator,
+            node_selection=self.node_selection,
+            edit_history=self.edit_history,
+            autodrive_data_provider=self._get_autodrive_data,
+            terrain_height_at=self._get_terrain_height,
+            parent=self,
+        )
+
         self.node_position_operation = NodePositionOperation(
             selection_coordinator=self.selection_coordinator,
             edit_history=self.edit_history,
@@ -898,9 +909,29 @@ class MainWindow(QMainWindow):
                 ),
             )
 
+        self._register_align_tools()
+
         self._register_marker_tools()
 
         self.view.register_measure_tool(MeasureTool(self.view, self.measurement_coordinator))
+
+    def _register_align_tools(self):
+        operation = self.align_nodes_operation
+        reference_hint = "Nodes auswählen, dann die Referenz-Node anklicken"
+
+        tools = (
+            (InteractionMode.ALIGN_HORIZONTAL, operation.align_horizontal_at, reference_hint),
+            (InteractionMode.ALIGN_VERTICAL, operation.align_vertical_at, reference_hint),
+            (InteractionMode.ALIGN_HEIGHT, operation.align_height_at, reference_hint),
+            (
+                InteractionMode.HEIGHT_FROM_TERRAIN,
+                operation.height_from_terrain_at,
+                "Nodes auswählen, dann eine Node anklicken",
+            ),
+        )
+
+        for interaction_mode, click, hint in tools:
+            self.view.register_tool(interaction_mode, NodeClickTool(self.view, click, hint))
 
     def _register_marker_tools(self):
         operation = self.marker_operation
@@ -1066,6 +1097,8 @@ class MainWindow(QMainWindow):
         self.clipboard_operation.status_changed.connect(self._set_status)
 
         self.node_position_operation.status_changed.connect(self._set_status)
+
+        self.align_nodes_operation.status_changed.connect(self._set_status)
 
         self.rotate_selection_operation.status_changed.connect(self._set_status)
 
