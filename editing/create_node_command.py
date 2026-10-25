@@ -1,4 +1,5 @@
 from autodrive.models import (
+    REGULAR_FLAG,
     AutoDriveData,
     NodeData
 )
@@ -22,7 +23,9 @@ class CreateNodeCommand(EditCommand):
         flag: int = 0
     ):
         super().__init__(
-            "Node erstellen",
+            "Node erstellen"
+            if int(flag) == REGULAR_FLAG
+            else "Subprio-Node erstellen",
             autodrive_data
         )
 

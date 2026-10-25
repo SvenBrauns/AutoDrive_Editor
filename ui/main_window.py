@@ -11,6 +11,8 @@ from app_paths import (
     MARKER_ICON_PATH
 )
 from autodrive.models import (
+    REGULAR_FLAG,
+    SUBPRIO_FLAG,
     AutoDriveData,
     NodeData
 )
@@ -560,13 +562,18 @@ class MainWindow(QMainWindow):
             )
         )
 
-        self.view.register_tool(
-            InteractionMode.CREATE_NODES,
-            CreateNodeTool(
-                self.view,
-                self.node_create_coordinator
+        for interaction_mode, flag in (
+            (InteractionMode.CREATE_NODES, REGULAR_FLAG),
+            (InteractionMode.CREATE_SUBPRIO_NODES, SUBPRIO_FLAG)
+        ):
+            self.view.register_tool(
+                interaction_mode,
+                CreateNodeTool(
+                    self.view,
+                    self.node_create_coordinator,
+                    flag
+                )
             )
-        )
 
         self.view.register_tool(
             InteractionMode.MOVE_NODES,

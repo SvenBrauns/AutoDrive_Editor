@@ -8,7 +8,10 @@ from PySide6.QtCore import (
     Signal
 )
 
-from autodrive.models import AutoDriveData
+from autodrive.models import (
+    REGULAR_FLAG,
+    AutoDriveData
+)
 from editing.create_node_command import CreateNodeCommand
 from editing.edit_coordinator import EditCoordinator
 from editing.terrain_follower import TerrainHeightProvider
@@ -51,10 +54,12 @@ class NodeCreateCoordinator(QObject):
 
     def create_node_at(
         self,
-        view_position: QPoint
+        view_position: QPoint,
+        flag: int = REGULAR_FLAG
     ) -> int | None:
-        """Creates a regular node at the view position. Returns the new
-        node id, or None if nothing was created."""
+        """Creates a node with the given flag (regular or subprio) at
+        the view position. Returns the new node id, or None if nothing
+        was created."""
 
         autodrive_data = self.autodrive_data_provider()
 
@@ -97,12 +102,15 @@ class NodeCreateCoordinator(QObject):
                     x,
                     z
                 ),
-                z=z
+                z=z,
+                flag=flag
             )
         )
 
         self.status_changed.emit(
             f"Node {node_id} erstellt"
+            if flag == REGULAR_FLAG
+            else f"Subprio-Node {node_id} erstellt"
         )
 
         return node_id

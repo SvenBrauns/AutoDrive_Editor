@@ -75,7 +75,8 @@ def test_node_group_lists_all_node_tools_in_order(window):
     texts = [action.text() for action in window.actions.tool_panel.tool_buttons]
 
     assert texts == [
-        "Erstellen", "Verschieben", "Rotieren", "Löschen",
+        "Erstellen (Regular)", "Erstellen (Subprio)",
+        "Verschieben", "Rotieren", "Löschen",
         "Verbinden (Regular)", "Verbinden (Dual)", "Verbinden (Reverse)",
     ]
 

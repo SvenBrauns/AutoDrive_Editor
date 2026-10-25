@@ -3,6 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 
+# AutoDrive node flags.
+REGULAR_FLAG = 0
+SUBPRIO_FLAG = 1
+
+
 @dataclass
 class NodeData:
     node_id: int

@@ -163,3 +163,34 @@ def test_without_loaded_data_nothing_is_created(window):
 
     assert window.project_coordinator.autodrive_data is None
     assert window.status.text() == "Zuerst eine AutoDrive-XML laden"
+
+
+# --- subprio ------------------------------------------------------------
+
+def test_subprio_tool_creates_subprio_node(zoomed_window):
+    zoomed_window.set_interaction_mode(InteractionMode.CREATE_SUBPRIO_NODES)
+
+    click(zoomed_window, view_pos(zoomed_window, *EMPTY))
+
+    node = data(zoomed_window).get_node(4)
+    assert node.flag == 1
+    assert node.is_subprio
+    assert zoomed_window.status.text() == "Subprio-Node 4 erstellt"
+    assert zoomed_window.actions.undo_action.text() == "Rückgängig: Subprio-Node erstellen"
+
+
+def test_subprio_node_is_drawn_orange(zoomed_window):
+    zoomed_window.set_interaction_mode(InteractionMode.CREATE_SUBPRIO_NODES)
+
+    click(zoomed_window, view_pos(zoomed_window, *EMPTY))
+
+    item = zoomed_window.scene_renderer.visible_node_manager.visible_node_items[4]
+    assert item.brush().color().name() == "#ffa500"
+
+
+def test_regular_tool_still_creates_regular_nodes(creating):
+    click(creating, view_pos(creating, *EMPTY))
+
+    assert data(creating).get_node(4).flag == 0
+    item = creating.scene_renderer.visible_node_manager.visible_node_items[4]
+    assert item.brush().color().name() == "#ff0000"

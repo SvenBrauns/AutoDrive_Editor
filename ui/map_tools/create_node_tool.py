@@ -11,19 +11,22 @@ from ui.map_tools.map_tool import MapTool
 
 
 class CreateNodeTool(MapTool):
-    """Left click on empty map creates an unconnected node there.
-    Clicking an existing node does nothing. Left dragging pans."""
+    """Left click on empty map creates an unconnected node with the
+    tool's flag (regular or subprio). Clicking an existing node does
+    nothing. Left dragging pans."""
 
     def __init__(
         self,
         view,
-        node_create_coordinator: NodeCreateCoordinator
+        node_create_coordinator: NodeCreateCoordinator,
+        flag: int
     ):
         super().__init__(
             view
         )
 
         self.node_create_coordinator = node_create_coordinator
+        self.flag = flag
 
     def mouse_release(
         self,
@@ -35,7 +38,8 @@ class CreateNodeTool(MapTool):
         # Only a click creates. Releasing after a pan does nothing.
         if not self._end_pan():
             self.node_create_coordinator.create_node_at(
-                event.position().toPoint()
+                event.position().toPoint(),
+                self.flag
             )
 
         return True

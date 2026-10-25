@@ -30,8 +30,15 @@ class MainWindowActions:
             [
                 (
                     InteractionMode.CREATE_NODES,
-                    "Erstellen",
-                    "Per Linksklick auf freie Fläche eine Node erstellen"
+                    "Erstellen (Regular)",
+                    "Per Linksklick auf freie Fläche eine "
+                    "Regular-Node erstellen"
+                ),
+                (
+                    InteractionMode.CREATE_SUBPRIO_NODES,
+                    "Erstellen (Subprio)",
+                    "Per Linksklick auf freie Fläche eine "
+                    "Subprio-Node erstellen"
                 ),
                 (
                     InteractionMode.MOVE_NODES,
