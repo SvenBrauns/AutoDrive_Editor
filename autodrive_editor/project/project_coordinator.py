@@ -15,6 +15,8 @@ from autodrive_editor.ui.map_view.map_view import MapView
 
 
 class ProjectCoordinator(QObject):
+    """Loads XML, background, heightmap and project files and rebuilds the scene from them."""
+
     status_changed = Signal(str)
 
     debug_refresh_requested = Signal()

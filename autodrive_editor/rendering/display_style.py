@@ -3,6 +3,8 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class DisplayStyle:
+    """Sizes, colors and zoom thresholds of everything drawn on the map."""
+
     node_diameter: float = 2.0
     node_border_width: float = 0.2
 

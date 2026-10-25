@@ -5,6 +5,8 @@ from PySide6.QtWidgets import QGraphicsView
 
 
 class ViewZoomController(QObject):
+    """Zooms the view at the mouse position and reports the visible scene area."""
+
     zoom_changed = Signal(float)
 
     visible_scene_rect_changed = Signal(QRectF)

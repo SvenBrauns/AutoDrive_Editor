@@ -12,6 +12,8 @@ from PySide6.QtWidgets import (
 
 
 class RotationControls(QToolButton):
+    """Toolbar menu for the view rotation angle and rotation step."""
+
     rotation_angle_requested = Signal(float)
 
     rotation_step_requested = Signal(float)

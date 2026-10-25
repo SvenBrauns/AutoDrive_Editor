@@ -2,6 +2,8 @@ from enum import Enum
 
 
 class MeasurementMode(Enum):
+    """Which measuring tool is active."""
+
     INACTIVE = "inactive"
     DISTANCE = "distance"
     ANGLE = "angle"

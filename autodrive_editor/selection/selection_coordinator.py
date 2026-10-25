@@ -12,6 +12,10 @@ from autodrive_editor.ui.panels.node_info_formatter import NodeInfoFormatter
 
 
 class SelectionCoordinator(QObject):
+    """Applies clicks and area selections to the node selection and keeps the selection rings and
+    the node info up to date.
+    """
+
     NO_SELECTION_INFO = "Keine Node ausgewählt"
 
     selection_info_changed = Signal(str)

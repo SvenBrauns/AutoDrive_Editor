@@ -13,6 +13,8 @@ from PySide6.QtWidgets import (
 
 
 class GridControls(QToolButton):
+    """Toolbar menu for grid visibility, spacing and rotation."""
+
     visibility_requested = Signal(bool)
 
     spacing_requested = Signal(float)

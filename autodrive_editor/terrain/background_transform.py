@@ -1,4 +1,6 @@
 class BackgroundTransform:
+    """Scale and position of the background image for a map size."""
+
     @staticmethod
     def calculate_background_scale(map_scale):
         return float(map_scale)

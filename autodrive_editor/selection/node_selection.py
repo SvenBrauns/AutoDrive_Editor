@@ -2,6 +2,8 @@ from PySide6.QtCore import QObject, Signal
 
 
 class NodeSelection(QObject):
+    """Which nodes are selected and which of them is the primary one, shown in the info panel."""
+
     selection_changed = Signal(object, object)
 
     def __init__(self):

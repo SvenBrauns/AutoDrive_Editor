@@ -4,6 +4,10 @@ from pathlib import Path
 
 
 class ProjectFileStore:
+    """Saves and loads project files (JSON). Paths to the XML, background and heightmap are stored
+    relative to the project file, so projects can be moved.
+    """
+
     FORMAT_VERSION = 1
     VALID_MAP_SCALES = (1, 2, 4, 8)
 

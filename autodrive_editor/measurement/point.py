@@ -5,6 +5,8 @@ from PySide6.QtCore import QPointF
 
 @dataclass
 class MeasurementPoint:
+    """A measurement point: either a free map position or anchored to a node."""
+
     position: QPointF
     node_id: int | None = None
 

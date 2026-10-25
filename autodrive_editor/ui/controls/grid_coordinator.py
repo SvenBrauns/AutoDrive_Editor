@@ -5,6 +5,8 @@ from autodrive_editor.ui.controls.grid_controls import GridControls
 
 
 class GridCoordinator(QObject):
+    """Applies the grid controls to the background map's grid."""
+
     status_changed = Signal(str)
 
     def __init__(self, background_map: BackgroundMap, grid_controls: GridControls, parent=None):

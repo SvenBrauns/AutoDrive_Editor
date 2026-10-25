@@ -18,6 +18,12 @@ from autodrive_editor.rendering.visible.visible_selection import VisibleNodeSele
 
 
 class SceneRenderer:
+    """Draws the AutoDrive network. Only nodes, markers and selection rings in the visible area
+    exist as items; connections are drawn as bundled overview paths when zoomed out and by a
+    detail item with arrows when zoomed in. After edits, apply_changes updates only the affected
+    nodes.
+    """
+
     SPATIAL_TILE_SIZE = 256.0
     VISIBILITY_PADDING = 128.0
     OVERVIEW_REBUILD_DELAY_MS = 300

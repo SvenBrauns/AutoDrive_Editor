@@ -1,3 +1,7 @@
+"""Loads overview.dds as a pixmap. Only the middle half of the image shows the map, so the outer
+border is cut off.
+"""
+
 from PIL import Image
 from PySide6.QtGui import QImage, QPixmap
 

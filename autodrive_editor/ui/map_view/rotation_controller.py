@@ -5,6 +5,8 @@ from PySide6.QtWidgets import QGraphicsView
 
 
 class ViewRotationController(QObject):
+    """Rotates the view around its center, optionally in fixed steps."""
+
     rotation_changed = Signal(float)
 
     rotation_step_changed = Signal(float)

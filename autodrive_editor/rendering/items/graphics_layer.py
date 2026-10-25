@@ -3,6 +3,8 @@ from PySide6.QtWidgets import QGraphicsItem
 
 
 class GraphicsLayerItem(QGraphicsItem):
+    """An invisible parent item that groups items into a layer with its own z order."""
+
     def __init__(self):
         super().__init__()
 

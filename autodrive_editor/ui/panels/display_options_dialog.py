@@ -20,6 +20,8 @@ from autodrive_editor.rendering.display_style import DisplayStyle
 
 
 class ColorButton(QPushButton):
+    """A button that shows a color and opens a color picker."""
+
     color_changed = Signal(tuple)
 
     def __init__(self, color: tuple[int, int, int], parent=None):
@@ -78,6 +80,8 @@ class ColorButton(QPushButton):
 
 
 class DisplayOptionsDialog(QDialog):
+    """Dialog for editing the DisplayStyle."""
+
     style_applied = Signal(object)
 
     def __init__(self, display_style: DisplayStyle, parent=None):

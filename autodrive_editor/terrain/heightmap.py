@@ -6,6 +6,8 @@ from autodrive_editor.terrain.heightmap_transform import HeightmapTransform
 
 @dataclass(frozen=True)
 class HeightSample:
+    """The terrain height at a map position and the pixel it was read from."""
+
     world_x: float
     world_z: float
 
@@ -18,6 +20,8 @@ class HeightSample:
 
 
 class Heightmap:
+    """Reads terrain heights from a loaded dem.png."""
+
     DEFAULT_HEIGHT_SCALE = 255.0
     MAX_16_BIT_VALUE = 65535
 

@@ -7,6 +7,8 @@ from autodrive_editor.rendering.display_style import DisplayStyle
 
 
 class NodeItem(QGraphicsEllipseItem):
+    """A node circle: red for regular, orange for subprio."""
+
     def __init__(self, node_data: NodeData, display_style: DisplayStyle):
         self.display_style = display_style
 

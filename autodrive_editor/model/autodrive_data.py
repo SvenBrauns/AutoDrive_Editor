@@ -9,6 +9,10 @@ SUBPRIO_FLAG = 1
 
 @dataclass
 class NodeData:
+    """One AutoDrive waypoint. x and z are the map position, y the height. incoming and outgoing
+    hold the ids of connected nodes.
+    """
+
     node_id: int
     x: float
     y: float
@@ -30,6 +34,8 @@ class NodeData:
 
 @dataclass
 class MarkerData:
+    """A named destination attached to a node."""
+
     node_id: int
     name: str = ""
     group: str = ""
@@ -37,6 +43,8 @@ class MarkerData:
 
 @dataclass
 class AutoDriveData:
+    """All nodes and markers of an AutoDrive network, by node id."""
+
     nodes: dict[int, NodeData] = field(default_factory=dict)
 
     markers: dict[int, MarkerData] = field(default_factory=dict)

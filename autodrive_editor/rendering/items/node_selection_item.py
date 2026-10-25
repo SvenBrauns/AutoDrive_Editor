@@ -7,6 +7,8 @@ from autodrive_editor.rendering.display_style import DisplayStyle
 
 
 class NodeSelectionItem(QGraphicsEllipseItem):
+    """The ring drawn around a selected node."""
+
     def __init__(self, node_data: NodeData, display_style: DisplayStyle):
         node_diameter = display_style.node_diameter
 

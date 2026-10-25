@@ -7,6 +7,8 @@ from autodrive_editor.model.connections import ConnectionType
 
 @dataclass(frozen=True)
 class ConnectionData:
+    """A connection with the positions of both nodes, as stored in the connection index."""
+
     source_id: int
     target_id: int
 

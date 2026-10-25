@@ -1,3 +1,5 @@
+"""Distance and map angle calculations for the measuring tools."""
+
 import math
 from dataclasses import dataclass
 
@@ -8,6 +10,8 @@ from autodrive_editor.measurement.mode import MeasurementMode
 
 @dataclass(frozen=True)
 class MeasurementResult:
+    """A measured distance or angle with its unit."""
+
     mode: MeasurementMode
     value: float
 

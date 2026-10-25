@@ -5,6 +5,10 @@ from autodrive_editor.model.autodrive_data import AutoDriveData, MarkerData, Nod
 
 
 class AutoDriveXmlReader:
+    """Reads an AutoDrive config XML into AutoDriveData. Node ids are the 1-based positions in the
+    XML lists.
+    """
+
     @classmethod
     def load(cls, file_path) -> AutoDriveData:
         xml_path = Path(file_path).resolve()

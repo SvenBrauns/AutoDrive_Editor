@@ -5,6 +5,8 @@ from PySide6.QtCore import QObject, QPointF, Signal
 
 @dataclass
 class PointDragState:
+    """Where a dragged point started and where it is now."""
+
     point_index: int | None = None
 
     press_scene_position: QPointF | None = None
@@ -61,6 +63,8 @@ class PointDragState:
 
 
 class PointDragController(QObject):
+    """Drags a single point by the mouse movement since the press."""
+
     drag_started = Signal(int, QPointF)
 
     position_requested = Signal(int, QPointF)

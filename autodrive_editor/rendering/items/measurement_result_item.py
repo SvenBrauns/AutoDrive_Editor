@@ -4,6 +4,8 @@ from PySide6.QtWidgets import QGraphicsItem, QGraphicsObject, QStyleOptionGraphi
 
 
 class MeasurementResultItem(QGraphicsObject):
+    """The label showing the measured distance or angle."""
+
     HORIZONTAL_PADDING = 8.0
     VERTICAL_PADDING = 4.0
 

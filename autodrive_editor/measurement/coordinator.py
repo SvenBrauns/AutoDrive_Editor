@@ -12,6 +12,10 @@ from autodrive_editor.ui.map_view.zoom_controller import ViewZoomController
 
 
 class MeasurementCoordinator(QObject):
+    """Turns map clicks into measurement points, snaps them to nodes and reports results in the
+    status bar.
+    """
+
     status_changed = Signal(str)
 
     measurement_mode_changed = Signal(object)

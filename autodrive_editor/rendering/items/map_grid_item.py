@@ -6,6 +6,8 @@ from PySide6.QtWidgets import QGraphicsItem, QStyleOptionGraphicsItem, QWidget
 
 
 class MapGridItem(QGraphicsItem):
+    """The configurable grid drawn over the map."""
+
     Z_VALUE = -900.0
 
     GRID_COLOR = QColor(255, 255, 255, 90)

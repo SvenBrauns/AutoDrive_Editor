@@ -6,6 +6,8 @@ from autodrive_editor.terrain.background_transform import BackgroundTransform
 
 
 class BackgroundMap:
+    """The map image (overview.dds) under the network, scaled to the map size, plus the grid."""
+
     def __init__(self, scene: QGraphicsScene, map_scale: int = 1):
         self.scene = scene
         self.map_scale = map_scale

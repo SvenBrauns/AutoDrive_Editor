@@ -14,6 +14,8 @@ from autodrive_editor.rendering.spatial.connection_index import ConnectionSpatia
 
 
 class ConnectionRenderItem(QGraphicsItem):
+    """Draws the connections in the visible area with direction arrows when zoomed in."""
+
     def __init__(
         self, spatial_index: ConnectionSpatialIndex, scene_rect: QRectF, display_style: DisplayStyle
     ):

@@ -8,6 +8,8 @@ from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
 
 
 class NodeSpatialIndex:
+    """Finds nodes in a map area quickly by sorting them into square tiles."""
+
     DEFAULT_TILE_SIZE = 256.0
 
     def __init__(self, tile_size=DEFAULT_TILE_SIZE):

@@ -4,6 +4,8 @@ from PySide6.QtWidgets import QGraphicsItem, QGraphicsObject, QStyleOptionGraphi
 
 
 class MeasurementHandleItem(QGraphicsObject):
+    """A draggable handle for measurement point A or B."""
+
     HANDLE_DIAMETER = 18.0
     HANDLE_RADIUS = HANDLE_DIAMETER / 2.0
 

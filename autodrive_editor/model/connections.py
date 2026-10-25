@@ -11,6 +11,8 @@ from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
 
 
 class ConnectionType(StrEnum):
+    """The three kinds of AutoDrive connections."""
+
     REGULAR = "regular"
     DUAL = "dual"
     REVERSE = "reverse"

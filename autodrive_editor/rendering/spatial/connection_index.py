@@ -9,6 +9,8 @@ from autodrive_editor.rendering.connections.connection_data import ConnectionDat
 
 
 class ConnectionSpatialIndex:
+    """Finds connections in a map area quickly by sorting them into square tiles."""
+
     DEFAULT_TILE_SIZE = 256.0
 
     def __init__(self, tile_size=DEFAULT_TILE_SIZE):

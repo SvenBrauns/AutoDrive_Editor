@@ -1,4 +1,6 @@
 class HeightmapTransform:
+    """Converts between map positions and heightmap pixels."""
+
     BASE_MAP_SIZE = 2048
 
     @classmethod

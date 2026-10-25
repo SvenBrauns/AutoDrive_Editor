@@ -4,6 +4,8 @@ from autodrive_editor.terrain.heightmap import Heightmap
 
 
 class NodeInfoFormatter:
+    """Builds the node info text, including the heightmap height when available."""
+
     def __init__(self, background_map: BackgroundMap, heightmap: Heightmap):
         self.background_map = background_map
         self.heightmap = heightmap

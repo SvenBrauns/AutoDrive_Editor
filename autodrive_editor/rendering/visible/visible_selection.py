@@ -8,6 +8,8 @@ from autodrive_editor.rendering.spatial.node_index import NodeSpatialIndex
 
 
 class VisibleNodeSelectionManager:
+    """Keeps selection rings only for selected nodes in the visible area."""
+
     DEFAULT_PADDING = 128.0
 
     def __init__(

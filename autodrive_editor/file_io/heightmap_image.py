@@ -6,6 +6,8 @@ from PIL import Image
 
 
 class HeightmapFormat(Enum):
+    """Pixel formats a dem.png can have."""
+
     GRAYSCALE_8 = "8-Bit-Graustufen"
     GRAYSCALE_16 = "16-Bit-Graustufen"
     RGB_ENCODED_8 = "8-Bit-RGB-kodiert"
@@ -13,6 +15,8 @@ class HeightmapFormat(Enum):
 
 @dataclass
 class HeightmapData:
+    """A loaded heightmap image and its detected format."""
+
     file_path: Path
     image: Image.Image
     heightmap_format: HeightmapFormat

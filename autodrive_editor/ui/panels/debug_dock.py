@@ -5,6 +5,8 @@ from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
 
 class DebugDock(QDockWidget):
+    """Dock with view, renderer and selection details for debugging."""
+
     EMPTY_VALUE = "-"
 
     def __init__(self, parent=None):

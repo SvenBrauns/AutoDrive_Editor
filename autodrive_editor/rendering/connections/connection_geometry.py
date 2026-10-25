@@ -1,3 +1,5 @@
+"""Geometry for drawing connections: line endpoints between node circles and arrow shapes."""
+
 import math
 from dataclasses import dataclass
 
@@ -10,6 +12,8 @@ MINIMUM_VISIBLE_LENGTH = 0.0001
 
 @dataclass(frozen=True)
 class ConnectionGeometry:
+    """Where a connection line starts and ends between two node circles."""
+
     source_tip: QPointF
     target_tip: QPointF
 

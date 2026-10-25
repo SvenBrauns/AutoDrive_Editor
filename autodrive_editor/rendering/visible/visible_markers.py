@@ -10,6 +10,8 @@ from autodrive_editor.rendering.spatial.node_index import NodeSpatialIndex
 
 
 class VisibleMarkerManager:
+    """Keeps marker items only for nodes in the visible area."""
+
     DEFAULT_PADDING = 128.0
 
     def __init__(

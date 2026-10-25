@@ -4,6 +4,8 @@ from PySide6.QtWidgets import QGraphicsItem, QStyleOptionGraphicsItem, QWidget
 
 
 class MeasurementLineItem(QGraphicsItem):
+    """The line between the two measurement points."""
+
     LINE_COLOR = QColor(255, 255, 0, 230)
 
     LINE_WIDTH = 2.0

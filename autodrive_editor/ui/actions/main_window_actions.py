@@ -18,6 +18,10 @@ from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
 
 class MainWindowActions:
+    """Creates the window's actions, menus, toolbars and tool panel, and keeps the tool buttons in
+    sync with the active tool.
+    """
+
     MAP_SCALES = (("Originalgröße", 1), ("4x-Karte", 2), ("16x-Karte", 4), ("64x-Karte", 8))
 
     def __init__(self, window: QMainWindow):

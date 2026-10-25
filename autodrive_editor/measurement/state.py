@@ -9,6 +9,8 @@ from autodrive_editor.measurement.point import MeasurementPoint
 
 @dataclass
 class MeasurementState:
+    """The points of the current measurement and the rules for setting them."""
+
     mode: MeasurementMode = MeasurementMode.INACTIVE
 
     start_point: MeasurementPoint | None = None

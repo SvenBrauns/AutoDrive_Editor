@@ -11,6 +11,10 @@ from autodrive_editor.rendering.items.measurement_result_item import Measurement
 
 
 class MeasurementController(QObject):
+    """Holds the measurement state and its scene items: points A and B, the line and the result
+    label. Knows nothing about mouse input.
+    """
+
     mode_changed = Signal(object)
 
     measurement_changed = Signal(object)

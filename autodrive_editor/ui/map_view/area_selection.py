@@ -4,6 +4,10 @@ from PySide6.QtWidgets import QApplication, QGraphicsView, QRubberBand
 
 
 class AreaSelectionController(QObject):
+    """Draws the box while right dragging and reports the selected area as a scene path, so
+    selection also works with a rotated view.
+    """
+
     area_requested = Signal(object, object)
 
     area_preview_requested = Signal(object, object)

@@ -6,6 +6,8 @@ from autodrive_editor.ui.panels.debug_dock import DebugDock
 
 
 class DebugDockCoordinator(QObject):
+    """Refreshes the debug dock while it is visible."""
+
     def __init__(
         self, debug_dock: DebugDock, view: MapView, scene_renderer: SceneRenderer, parent=None
     ):
