@@ -21,6 +21,7 @@ from measurement.measurement_point import (
 )
 from rendering.items.node_item import NodeItem
 from ui.map_view import MapView
+from ui.view_zoom_controller import ViewZoomController
 
 
 class MeasurementCoordinator(QObject):
@@ -176,7 +177,7 @@ class MeasurementCoordinator(QObject):
             12.0
             / max(
                 self.view.zoom_level,
-                self.view.MIN_ZOOM
+                ViewZoomController.MIN_ZOOM
             )
         )
 

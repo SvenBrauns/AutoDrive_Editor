@@ -29,6 +29,7 @@ from ui.interaction_mode import InteractionMode
 from ui.main_window_actions import MainWindowActions
 from ui.map_view import MapView
 from ui.node_info_formatter import NodeInfoFormatter
+from ui.view_rotation_controller import ViewRotationController
 from ui.debug_dock import DebugDock
 from selection.node_selection_manager import (
     NodeSelectionManager
@@ -599,7 +600,7 @@ class MainWindow(QMainWindow):
     ):
         rotation_active = (
             abs(rotation_angle)
-            >= self.view.ROTATION_COMPARISON_TOLERANCE
+            >= ViewRotationController.ROTATION_COMPARISON_TOLERANCE
         )
 
         self.actions.reset_rotation_action.setEnabled(

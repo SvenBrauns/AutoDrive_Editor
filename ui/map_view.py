@@ -125,43 +125,6 @@ class MapView(QGraphicsView):
 
     measurement_cancel_requested = Signal()
 
-    ZOOM_FACTOR = (
-        ViewZoomController.ZOOM_FACTOR
-    )
-
-    MIN_ZOOM = (
-        ViewZoomController.MIN_ZOOM
-    )
-
-    MAX_ZOOM = (
-        ViewZoomController.MAX_ZOOM
-    )
-
-    VIEWPORT_UPDATE_DELAY_MS = (
-        ViewZoomController
-        .VIEWPORT_UPDATE_DELAY_MS
-    )
-
-    ZOOM_COMPARISON_TOLERANCE = (
-        ViewZoomController
-        .ZOOM_COMPARISON_TOLERANCE
-    )
-
-    ROTATION_DEGREES_PER_PIXEL = (
-        ViewRotationController
-        .ROTATION_DEGREES_PER_PIXEL
-    )
-
-    ROTATION_COMPARISON_TOLERANCE = (
-        ViewRotationController
-        .ROTATION_COMPARISON_TOLERANCE
-    )
-
-    DEFAULT_ROTATION_STEP = (
-        ViewRotationController
-        .DEFAULT_ROTATION_STEP
-    )
-
     def __init__(self):
         super().__init__()
 
@@ -425,14 +388,7 @@ class MapView(QGraphicsView):
             self._measurement_active
             and pressed_button == Qt.LeftButton
         ):
-            self._pointer_state.begin(
-                button=pressed_button,
-                position=mouse_position
-            )
-
-            self._measurement_point_drag_active = False
-
-            self.measurement_press_requested.emit(
+            self._handle_measurement_press(
                 mouse_position,
                 event.modifiers()
             )
@@ -501,47 +457,8 @@ class MapView(QGraphicsView):
             return
 
         if self._measurement_active:
-            if self._is_button_drag(
+            self._handle_measurement_move(
                 event,
-                Qt.LeftButton
-            ):
-                if self._measurement_point_drag_active:
-                    if (
-                        not self._pointer_state.drag_active
-                        and not self._drag_threshold_reached(
-                            mouse_position
-                        )
-                    ):
-                        event.accept()
-                        return
-
-                    self._pointer_state.drag_active = True
-
-                    self.measurement_move_requested.emit(
-                        mouse_position,
-                        event.modifiers()
-                    )
-
-                    self._update_hover_cursor(
-                        mouse_position
-                    )
-
-                    event.accept()
-                    return
-
-                self._handle_pan_drag(
-                    mouse_position
-                )
-
-                event.accept()
-                return
-
-            self.measurement_move_requested.emit(
-                mouse_position,
-                event.modifiers()
-            )
-
-            self._update_hover_cursor(
                 mouse_position
             )
 
@@ -605,32 +522,9 @@ class MapView(QGraphicsView):
             and self._pointer_state.pressed_button
             == Qt.LeftButton
         ):
-            was_dragging = (
-                self._pointer_state.drag_active
-            )
-
-            measurement_point_drag = (
-                self._measurement_point_drag_active
-            )
-
-            if measurement_point_drag:
-                self.measurement_release_requested.emit(
-                    mouse_position,
-                    event.modifiers()
-                )
-
-            elif not was_dragging:
-                self.measurement_release_requested.emit(
-                    mouse_position,
-                    event.modifiers()
-                )
-
-            self._measurement_point_drag_active = False
-
-            self._pointer_state.reset()
-
-            self._restore_interaction_cursor(
-                mouse_position
+            self._handle_measurement_release(
+                mouse_position,
+                event.modifiers()
             )
 
             event.accept()
@@ -725,6 +619,101 @@ class MapView(QGraphicsView):
 
     def _apply_interaction_mode(self):
         self._restore_interaction_cursor()
+
+    def _handle_measurement_press(
+        self,
+        mouse_position: QPoint,
+        modifiers
+    ):
+        self._pointer_state.begin(
+            button=Qt.LeftButton,
+            position=mouse_position
+        )
+
+        # The coordinator re-enables this while handling the press
+        # if the press hit a draggable measurement point.
+        self._measurement_point_drag_active = False
+
+        self.measurement_press_requested.emit(
+            mouse_position,
+            modifiers
+        )
+
+    def _handle_measurement_move(
+        self,
+        event: QMouseEvent,
+        mouse_position: QPoint
+    ):
+        if not self._is_button_drag(
+            event,
+            Qt.LeftButton
+        ):
+            self._emit_measurement_move(
+                mouse_position,
+                event.modifiers()
+            )
+            return
+
+        # Left drag on free space pans the map.
+        if not self._measurement_point_drag_active:
+            self._handle_pan_drag(
+                mouse_position
+            )
+            return
+
+        if (
+            not self._pointer_state.drag_active
+            and not self._drag_threshold_reached(
+                mouse_position
+            )
+        ):
+            return
+
+        self._pointer_state.drag_active = True
+
+        self._emit_measurement_move(
+            mouse_position,
+            event.modifiers()
+        )
+
+    def _emit_measurement_move(
+        self,
+        mouse_position: QPoint,
+        modifiers
+    ):
+        self.measurement_move_requested.emit(
+            mouse_position,
+            modifiers
+        )
+
+        self._update_hover_cursor(
+            mouse_position
+        )
+
+    def _handle_measurement_release(
+        self,
+        mouse_position: QPoint,
+        modifiers
+    ):
+        # Releasing after panning the map is not a measurement click.
+        panned_map = (
+            self._pointer_state.drag_active
+            and not self._measurement_point_drag_active
+        )
+
+        if not panned_map:
+            self.measurement_release_requested.emit(
+                mouse_position,
+                modifiers
+            )
+
+        self._measurement_point_drag_active = False
+
+        self._pointer_state.reset()
+
+        self._restore_interaction_cursor(
+            mouse_position
+        )
 
     def _is_button_drag(
         self,
