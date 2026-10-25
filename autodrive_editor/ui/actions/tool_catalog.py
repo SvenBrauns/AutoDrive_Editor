@@ -104,6 +104,15 @@ TOGGLE_TYPE_TOOL = ToolDefinition(
     "T",
 )
 
+REVERSE_DIRECTION_TOOL = ToolDefinition(
+    InteractionMode.REVERSE_DIRECTION,
+    "Richtung umkehren",
+    "Connection anklicken, um ihre Richtung umzukehren; liegt sie in der Auswahl, "
+    "werden alle Connections der Auswahl umgekehrt",
+    "reverse_direction",
+    "U",
+)
+
 ROTATE_TOOL = ToolDefinition(
     InteractionMode.ROTATE_SELECTION,
     "Rotieren",
@@ -188,7 +197,7 @@ TOOL_GROUPS = (
             (MOVE_TOOL, CONNECT_REGULAR_TOOL),
             (CREATE_REGULAR_TOOL, CONNECT_DUAL_TOOL),
             (CREATE_SUBPRIO_TOOL, CONNECT_REVERSE_TOOL),
-            (TOGGLE_TYPE_TOOL, None),
+            (TOGGLE_TYPE_TOOL, REVERSE_DIRECTION_TOOL),
             (ROTATE_TOOL, DELETE_TOOL),
         ),
     ),

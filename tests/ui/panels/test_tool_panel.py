@@ -99,7 +99,7 @@ def test_node_tools_are_paired_in_two_columns(window):
         ["Verschieben", "Verbinden (Regular)"],
         ["Erstellen (Regular)", "Verbinden (Dual)"],
         ["Erstellen (Subprio)", "Verbinden (Reverse)"],
-        ["Typ wechseln", None],
+        ["Typ wechseln", "Richtung umkehren"],
         ["Rotieren", "Löschen"],
     ]
 

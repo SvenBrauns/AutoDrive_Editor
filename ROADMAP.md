@@ -71,7 +71,7 @@ Für das spätere Speichern muss diese Phase schon beachten: Markergruppen sind 
 ## 3. Schneller bearbeiten — hohe Priorität
 
 - [ ] Kopieren, Ausschneiden, Einfügen (auch an der ursprünglichen Position)
-- [ ] Werkzeug „Richtung umkehren“ (freier Platz neben „Typ wechseln“ im Panel)
+- [x] Werkzeug „Richtung umkehren“ (`U`): Connection anklicken; liegt sie in der Auswahl, werden alle Connections der Auswahl umgekehrt. Dual-Connections bleiben unverändert
 - [ ] Ausrichten: horizontal, vertikal und in der Höhe
 - [ ] Position einer Node als Zahlen eingeben
 - [ ] Einrasten am Raster beim Erstellen und Verschieben

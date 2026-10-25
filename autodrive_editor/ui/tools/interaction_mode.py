@@ -9,6 +9,7 @@ class InteractionMode(Enum):
     CREATE_NODES = auto()
     CREATE_SUBPRIO_NODES = auto()
     TOGGLE_NODE_TYPE = auto()
+    REVERSE_DIRECTION = auto()
     MOVE_NODES = auto()
     ROTATE_SELECTION = auto()
     DELETE_NODES = auto()
@@ -28,6 +29,7 @@ class InteractionMode(Enum):
             InteractionMode.CREATE_NODES: "Nodes erstellen (Regular)",
             InteractionMode.CREATE_SUBPRIO_NODES: "Nodes erstellen (Subprio)",
             InteractionMode.TOGGLE_NODE_TYPE: "Node-Typ wechseln",
+            InteractionMode.REVERSE_DIRECTION: "Richtung umkehren",
             InteractionMode.MOVE_NODES: "Nodes verschieben",
             InteractionMode.ROTATE_SELECTION: "Auswahl rotieren",
             InteractionMode.DELETE_NODES: "Nodes löschen",

@@ -18,6 +18,7 @@ from autodrive_editor.editing.operations.delete_nodes import DeleteNodesOperatio
 from autodrive_editor.editing.operations.markers import MarkerOperation
 from autodrive_editor.editing.operations.move_nodes import MoveNodesOperation
 from autodrive_editor.editing.operations.node_types import NodeTypeOperation
+from autodrive_editor.editing.operations.reverse_direction import ReverseDirectionOperation
 from autodrive_editor.editing.operations.rotate_selection import RotateSelectionOperation
 from autodrive_editor.file_io.base_game_maps import read_base_game_maps
 from autodrive_editor.file_io.map_mod import read_map_mod
@@ -91,6 +92,9 @@ class MainWindow(QMainWindow):
     NO_SELECTION_INFO = "Keine Node ausgewählt"
 
     DEFAULT_MAP_SCALE = 1
+
+    # How far from a connection line a click still hits it, in pixels.
+    CONNECTION_CLICK_TOLERANCE = 6.0
 
     MISSING_MAP_SCAN = "scan"
     MISSING_MAP_IMPORT = "import"
@@ -757,6 +761,14 @@ class MainWindow(QMainWindow):
             parent=self,
         )
 
+        self.reverse_direction_operation = ReverseDirectionOperation(
+            connection_at=self._get_connection_at,
+            node_selection=self.node_selection,
+            edit_history=self.edit_history,
+            autodrive_data_provider=self._get_autodrive_data,
+            parent=self,
+        )
+
         self.marker_operation = MarkerOperation(
             selection_coordinator=self.selection_coordinator,
             node_selection=self.node_selection,
@@ -797,6 +809,16 @@ class MainWindow(QMainWindow):
         self.view.register_tool(
             InteractionMode.TOGGLE_NODE_TYPE,
             ToggleNodeTypeTool(self.view, self.node_type_operation),
+        )
+
+        self.view.register_tool(
+            InteractionMode.REVERSE_DIRECTION,
+            NodeClickTool(
+                self.view,
+                self.reverse_direction_operation.reverse_at,
+                "Connection anklicken, um ihre Richtung umzukehren",
+                is_target=lambda view_position: self._get_connection_at(view_position) is not None,
+            ),
         )
 
         self.view.register_tool(
@@ -899,6 +921,15 @@ class MainWindow(QMainWindow):
         except ValueError:
             return None
 
+    def _get_connection_at(self, view_position):
+        scene_position = self.view.mapToScene(view_position)
+
+        return self.scene_renderer.get_connection_at(
+            scene_position.x(),
+            scene_position.y(),
+            tolerance=self.CONNECTION_CLICK_TOLERANCE / self.view.zoom_level,
+        )
+
     def _get_autodrive_data(self) -> AutoDriveData | None:
         return self.project_coordinator.autodrive_data
 
@@ -975,6 +1006,8 @@ class MainWindow(QMainWindow):
         self.node_type_operation.status_changed.connect(self._set_status)
 
         self.marker_operation.status_changed.connect(self._set_status)
+
+        self.reverse_direction_operation.status_changed.connect(self._set_status)
 
         self.rotate_selection_operation.status_changed.connect(self._set_status)
 
