@@ -115,6 +115,8 @@ def window(qapp):
     from autodrive_editor.ui.main_window import MainWindow
 
     main_window = MainWindow()
+    # Tests that need the missing-map question replace this again.
+    main_window._ask_missing_map = lambda map_name: None
     main_window.show()
     qapp.processEvents()
 

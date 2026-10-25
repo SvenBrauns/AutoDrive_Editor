@@ -37,6 +37,9 @@ class ProjectCoordinator(QObject):
 
     autodrive_data_loaded = Signal(object)
 
+    # A loaded config names a map that is not imported (AutoDrive map name).
+    map_missing = Signal(str)
+
     def __init__(
         self,
         scene: QGraphicsScene,
@@ -186,6 +189,31 @@ class ProjectCoordinator(QObject):
         )
 
         self.debug_refresh_requested.emit()
+
+        if detect_map and not map_loaded and self._map_is_missing(source):
+            self.map_missing.emit(source.map_name)
+
+    def load_map_for_current_config(self) -> bool:
+        """Loads the imported map of the current config, e.g. after it was
+        imported. The nodes stay as they are."""
+
+        if self.config_source is None:
+            return False
+
+        map_loaded, map_note = self._load_detected_map(self.config_source)
+
+        if map_loaded:
+            self.update_scene_rect()
+            self.status_changed.emit(f"Karte geladen{map_note}")
+
+        return map_loaded
+
+    def _map_is_missing(self, source: ConfigSource) -> bool:
+        return (
+            self.map_cache is not None
+            and bool(source.map_name)
+            and self.map_cache.find(source.map_name) is None
+        )
 
     def save_project_file(self, config_path) -> Path:
         if not self.current_xml_path:

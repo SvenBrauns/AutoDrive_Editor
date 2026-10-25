@@ -13,6 +13,8 @@ Damit alle folgenden Funktionen mit echten Spieldaten getestet werden können.
 **Spielordner**
 
 - [x] FS25-Benutzerordner (üblicherweise `Dokumente\My Games\FarmingSimulator2025`) automatisch finden und in den Einstellungen änderbar machen
+- [x] Einrichtungsdialog beim ersten Start: erkannte Ordner prüfen und auf Wunsch gleich Karten scannen; erscheint erneut, wenn ein gespeicherter Ordner nicht mehr existiert
+- [x] fehlt beim Öffnen einer Route oder eines Savegames die Karte, Scan oder Mod-Import anbieten und die Karte danach sofort laden
 
 **Routen und Savegames**
 

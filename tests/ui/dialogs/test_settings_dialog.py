@@ -5,6 +5,7 @@ from game_folder_helpers import make_game_folder
 from autodrive_editor.game.game_folder import GameFolder
 from autodrive_editor.game.game_installation import GameInstallation
 from autodrive_editor.settings.app_settings import AppSettings
+from autodrive_editor.ui.dialogs.folder_settings_widget import FolderSettingsWidget
 from autodrive_editor.ui.dialogs.settings_dialog import SettingsDialog
 
 pytestmark = pytest.mark.usefixtures("isolated_user_data")
@@ -17,18 +18,18 @@ def test_dialog_shows_configured_folder_and_status(qapp, tmp_path):
 
     dialog = SettingsDialog(settings)
 
-    assert dialog.game_folder_input.text() == str(folder)
-    assert dialog.status_label.text() == SettingsDialog.VALID_TEXT
+    assert dialog.folders.game_folder_input.text() == str(folder)
+    assert dialog.folders.status_label.text() == FolderSettingsWidget.VALID_TEXT
 
 
 def test_status_reports_wrong_and_empty_folders(qapp, tmp_path):
     dialog = SettingsDialog(AppSettings())
 
-    dialog.game_folder_input.setText(str(tmp_path))
-    assert dialog.status_label.text() == SettingsDialog.INVALID_TEXT
+    dialog.folders.game_folder_input.setText(str(tmp_path))
+    assert dialog.folders.status_label.text() == FolderSettingsWidget.INVALID_TEXT
 
-    dialog.game_folder_input.setText("")
-    assert dialog.status_label.text() == SettingsDialog.EMPTY_TEXT
+    dialog.folders.game_folder_input.setText("")
+    assert dialog.folders.status_label.text() == FolderSettingsWidget.EMPTY_TEXT
 
 
 def test_ok_stores_the_folder(qapp, tmp_path):
@@ -36,7 +37,7 @@ def test_ok_stores_the_folder(qapp, tmp_path):
     settings = AppSettings()
     dialog = SettingsDialog(settings)
 
-    dialog.game_folder_input.setText(str(folder))
+    dialog.folders.game_folder_input.setText(str(folder))
     dialog.accept()
 
     assert AppSettings().game_folder.path == folder
@@ -47,7 +48,7 @@ def test_cancel_keeps_the_old_folder(qapp, tmp_path):
     settings.set_game_folder(tmp_path / "old")
     dialog = SettingsDialog(settings)
 
-    dialog.game_folder_input.setText(str(tmp_path / "new"))
+    dialog.folders.game_folder_input.setText(str(tmp_path / "new"))
     dialog.reject()
 
     assert AppSettings().game_folder.path == tmp_path / "old"
@@ -58,9 +59,9 @@ def test_detect_button_fills_in_default_folder(qapp, tmp_path, monkeypatch):
     monkeypatch.setattr(GameFolder, "default_path", staticmethod(lambda: fake))
     dialog = SettingsDialog(AppSettings())
 
-    dialog._detect()
+    dialog.folders._detect()
 
-    assert dialog.game_folder_input.text() == str(fake)
+    assert dialog.folders.game_folder_input.text() == str(fake)
 
 
 def test_settings_menu_entry_exists(window, isolated_user_data):
@@ -72,13 +73,13 @@ def test_install_folder_is_shown_checked_and_stored(qapp, tmp_path):
     install = make_installation(tmp_path / "FS25")
     settings = AppSettings()
     dialog = SettingsDialog(settings)
-    assert dialog.install_status_label.text() == SettingsDialog.EMPTY_TEXT
+    assert dialog.folders.install_status_label.text() == FolderSettingsWidget.EMPTY_TEXT
 
-    dialog.install_folder_input.setText(str(tmp_path))
-    assert dialog.install_status_label.text() == SettingsDialog.INSTALL_INVALID_TEXT
+    dialog.folders.install_folder_input.setText(str(tmp_path))
+    assert dialog.folders.install_status_label.text() == FolderSettingsWidget.INSTALL_INVALID_TEXT
 
-    dialog.install_folder_input.setText(str(install))
-    assert dialog.install_status_label.text() == SettingsDialog.INSTALL_VALID_TEXT
+    dialog.folders.install_folder_input.setText(str(install))
+    assert dialog.folders.install_status_label.text() == FolderSettingsWidget.INSTALL_VALID_TEXT
 
     dialog.accept()
     assert AppSettings().install_folder.path == install
@@ -91,6 +92,6 @@ def test_detect_install_button_fills_in_the_folder(qapp, tmp_path, monkeypatch):
     )
     dialog = SettingsDialog(AppSettings())
 
-    dialog._detect_install()
+    dialog.folders._detect_install()
 
-    assert dialog.install_folder_input.text() == str(install)
+    assert dialog.folders.install_folder_input.text() == str(install)

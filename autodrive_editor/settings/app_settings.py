@@ -14,6 +14,7 @@ class AppSettings:
 
     GAME_FOLDER_KEY = "game/folder"
     INSTALL_FOLDER_KEY = "game/install_folder"
+    SETUP_DONE_KEY = "app/setup_done"
 
     def __init__(self, settings_path: Path | None = None):
         if settings_path is None:
@@ -50,6 +51,25 @@ class AppSettings:
         else:
             self._settings.remove(self.INSTALL_FOLDER_KEY)
 
+        self._settings.sync()
+
+    @property
+    def needs_setup(self) -> bool:
+        """True on the first start, and when a stored folder no longer
+        exists (e.g. the game was moved to another drive)."""
+
+        if not self._settings.value(self.SETUP_DONE_KEY, False, type=bool):
+            return True
+
+        game_folder = self.game_folder
+        installation = self.install_folder
+
+        return (game_folder is not None and not game_folder.is_valid) or (
+            installation is not None and not installation.is_valid
+        )
+
+    def mark_setup_done(self):
+        self._settings.setValue(self.SETUP_DONE_KEY, True)
         self._settings.sync()
 
     def ensure_install_folder(self) -> GameInstallation | None:
