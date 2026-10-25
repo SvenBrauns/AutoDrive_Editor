@@ -1,7 +1,8 @@
 """Reversing connection directions."""
 
 import pytest
-from mouse_helpers import click, view_pos
+from mouse_helpers import click, cursor_shape, hover, view_pos
+from PySide6.QtCore import Qt
 
 from autodrive_editor.editing.commands.reverse_connections import ReverseConnectionsCommand
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
@@ -130,3 +131,11 @@ def test_connection_outside_selection_reverses_only_itself(reverse_window):
 
     assert connection(reverse_window.data, 2, 1) == ConnectionType.REGULAR
     assert connection(reverse_window.data, 3, 4) == ConnectionType.REGULAR
+
+
+def test_cursor_shows_when_a_connection_is_hit(reverse_window):
+    hover(reverse_window, view_pos(reverse_window, 5, 0))
+    assert cursor_shape(reverse_window) == Qt.PointingHandCursor
+
+    hover(reverse_window, view_pos(reverse_window, 5, 8))
+    assert cursor_shape(reverse_window) == Qt.OpenHandCursor

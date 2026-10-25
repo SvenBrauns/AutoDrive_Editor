@@ -817,6 +817,7 @@ class MainWindow(QMainWindow):
                 self.view,
                 self.reverse_direction_operation.reverse_at,
                 "Connection anklicken, um ihre Richtung umzukehren",
+                is_target=lambda view_position: self._get_connection_at(view_position) is not None,
             ),
         )
 
