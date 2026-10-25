@@ -148,6 +148,85 @@ class ConnectionSpatialIndex:
                 )
             )
 
+    def rebuild_node_connections(
+        self,
+        autodrive_data: AutoDriveData,
+        node_ids
+    ):
+        """Re-creates all connections touching the given nodes from
+        the current data. Nodes that no longer exist lose all their
+        connections. Pass every node whose incoming or outgoing set
+        changed, so one-way connections are found from both ends."""
+
+        node_ids = set(
+            node_ids
+        )
+
+        for node_id in node_ids:
+            for connection_key in list(
+                self._connection_keys_by_node_id.get(
+                    node_id,
+                    ()
+                )
+            ):
+                self._remove_connection(
+                    self._connections_by_key[
+                        connection_key
+                    ]
+                )
+
+        for node_id in node_ids:
+            node = autodrive_data.get_node(
+                node_id
+            )
+
+            if node is None:
+                continue
+
+            candidate_pairs = [
+                (node, autodrive_data.get_node(target_id))
+                for target_id in node.outgoing
+            ] + [
+                (autodrive_data.get_node(source_id), node)
+                for source_id in node.incoming
+            ]
+
+            for source_node, target_node in candidate_pairs:
+                if (
+                    source_node is None
+                    or target_node is None
+                    or target_node.node_id
+                    not in source_node.outgoing
+                ):
+                    continue
+
+                connection_data = ConnectionData(
+                    source_id=source_node.node_id,
+                    target_id=target_node.node_id,
+                    source_x=source_node.x,
+                    source_z=source_node.z,
+                    target_x=target_node.x,
+                    target_z=target_node.z,
+                    connection_type=get_connection_type(
+                        source_node,
+                        target_node
+                    )
+                )
+
+                if (
+                    connection_data.key
+                    in self._connections_by_key
+                ):
+                    continue
+
+                self._add_connection(
+                    connection_data
+                )
+
+        self.connection_count = len(
+            self._connections_by_key
+        )
+
     def get_connections_in_rect(
         self,
         visible_rect: QRectF
@@ -281,6 +360,26 @@ class ConnectionSpatialIndex:
             connection_key,
             None
         )
+
+        for node_id in (
+            connection_data.source_id,
+            connection_data.target_id
+        ):
+            node_keys = self._connection_keys_by_node_id.get(
+                node_id
+            )
+
+            if node_keys is None:
+                continue
+
+            node_keys.discard(
+                connection_key
+            )
+
+            if not node_keys:
+                del self._connection_keys_by_node_id[
+                    node_id
+                ]
 
     def _get_tile_keys(
         self,

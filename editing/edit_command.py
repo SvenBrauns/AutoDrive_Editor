@@ -10,7 +10,22 @@ from autodrive.models import AutoDriveData
 class DataChange:
     """Describes which parts of the AutoDrive data an edit changed."""
 
-    changed_node_ids: frozenset[int] = field(
+    # Nodes whose position changed.
+    moved_node_ids: frozenset[int] = field(
+        default_factory=frozenset
+    )
+
+    # Nodes that were added to or removed from the data.
+    added_node_ids: frozenset[int] = field(
+        default_factory=frozenset
+    )
+
+    removed_node_ids: frozenset[int] = field(
+        default_factory=frozenset
+    )
+
+    # Existing nodes whose incoming or outgoing connections changed.
+    connection_node_ids: frozenset[int] = field(
         default_factory=frozenset
     )
 

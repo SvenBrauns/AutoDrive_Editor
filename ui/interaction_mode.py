@@ -7,13 +7,15 @@ class InteractionMode(Enum):
     NAVIGATE = auto()
     SELECT = auto()
     MOVE_NODES = auto()
+    DELETE_NODES = auto()
 
     @property
     def display_name(self) -> str:
         display_names = {
             InteractionMode.NAVIGATE: "Navigation",
             InteractionMode.SELECT: "Auswahl",
-            InteractionMode.MOVE_NODES: "Nodes verschieben"
+            InteractionMode.MOVE_NODES: "Nodes verschieben",
+            InteractionMode.DELETE_NODES: "Nodes löschen"
         }
 
         return display_names[self]

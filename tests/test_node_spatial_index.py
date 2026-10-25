@@ -109,3 +109,19 @@ def test_empty_path_returns_nothing():
     index = build_index([(0, 0)])
 
     assert index.get_nodes_in_path(QPainterPath()) == []
+
+
+def test_remove_and_add_nodes():
+    data = AutoDriveData()
+    data.add_node(NodeData(node_id=1, x=10, y=0, z=10))
+    data.add_node(NodeData(node_id=2, x=20, y=0, z=20))
+    index = NodeSpatialIndex(tile_size=100.0)
+    index.build(data)
+
+    index.remove_nodes([1, 99])
+    assert ids(index.get_nodes_in_rect(QRectF(0, 0, 100, 100))) == [2]
+    assert index.node_count == 1
+
+    index.add_nodes([data.nodes[1]])
+    assert ids(index.get_nodes_in_rect(QRectF(0, 0, 100, 100))) == [1, 2]
+    assert index.node_count == 2

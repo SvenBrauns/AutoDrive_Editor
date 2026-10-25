@@ -41,7 +41,7 @@ def test_moves_several_nodes_together(data):
     assert command.text() == "2 Nodes verschieben"
 
 
-def test_reports_changed_node_ids(data):
+def test_reports_moved_node_ids(data):
     changes = []
     command = MoveNodesCommand(data, {2: (10, 5, 0)}, {2: (20, 5, 0)})
     command.set_change_listener(changes.append)
@@ -49,7 +49,7 @@ def test_reports_changed_node_ids(data):
     command.redo()
     command.undo()
 
-    assert [change.changed_node_ids for change in changes] == [{2}, {2}]
+    assert [change.moved_node_ids for change in changes] == [{2}, {2}]
 
 
 def test_rejects_unknown_node(data):

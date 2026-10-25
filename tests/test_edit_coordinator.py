@@ -68,7 +68,7 @@ def test_data_changed_is_emitted_for_push_undo_and_redo(coordinator, data):
     coordinator.redo()
 
     assert len(changes) == 3
-    assert all(change.changed_node_ids == {1} for change in changes)
+    assert all(change.moved_node_ids == {1} for change in changes)
 
 
 def test_merged_drag_is_one_undo_step(coordinator, data):

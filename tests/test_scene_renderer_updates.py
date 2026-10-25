@@ -83,3 +83,39 @@ def test_reset_forgets_data(renderer):
     renderer.update_node_positions({1})   # must not fail without data
 
     assert renderer.autodrive_data is None
+
+
+def delete_node(renderer, node_id):
+    data = renderer.autodrive_data
+    node = data.nodes.pop(node_id)
+    data.markers.pop(node_id, None)
+    neighbors = set()
+    for other in data.nodes.values():
+        for attribute in ("incoming", "outgoing"):
+            if node_id in getattr(other, attribute):
+                getattr(other, attribute).discard(node_id)
+                neighbors.add(other.node_id)
+    renderer.apply_changes(removed_node_ids={node_id}, connection_node_ids=neighbors)
+    return node
+
+
+def test_removed_node_loses_items_and_connections(renderer):
+    delete_node(renderer, 1)
+
+    assert 1 not in renderer.visible_node_manager.visible_node_items
+    assert 1 not in renderer.visible_marker_manager.visible_marker_items
+    assert renderer.connection_spatial_index.get_connections_in_rect(VISIBLE_RECT) == []
+    assert renderer.node_spatial_index.node_count == 1
+    assert renderer.overview_connections_outdated
+
+
+def test_re_added_node_gets_items_and_connections_back(renderer):
+    node = delete_node(renderer, 2)
+
+    data = renderer.autodrive_data
+    data.add_node(node)
+    data.nodes[1].outgoing.add(2)
+    renderer.apply_changes(added_node_ids={2}, connection_node_ids={1})
+
+    assert 2 in renderer.visible_node_manager.visible_node_items
+    assert len(renderer.connection_spatial_index.get_connections_in_rect(VISIBLE_RECT)) == 1

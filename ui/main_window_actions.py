@@ -33,6 +33,11 @@ class MainWindowActions:
                     "Verschieben",
                     "Node oder Auswahl per Linkes Ziehen verschieben"
                 ),
+                (
+                    InteractionMode.DELETE_NODES,
+                    "Löschen",
+                    "Node oder Auswahl per Linksklick löschen"
+                ),
             ]
         ),
     )
@@ -299,6 +304,7 @@ class MainWindowActions:
         )
 
         self._create_undo_actions()
+        self._create_delete_selection_action()
 
         self._create_map_scale_actions()
 
@@ -363,6 +369,24 @@ class MainWindowActions:
             trigger=edit_coordinator.redo,
             can_run_changed=undo_stack.canRedoChanged,
             text_changed=undo_stack.redoTextChanged
+        )
+
+    def _create_delete_selection_action(self):
+        self.delete_selection_action = QAction(
+            "Auswahl löschen",
+            self.window
+        )
+
+        self.delete_selection_action.setShortcut(
+            QKeySequence.Delete
+        )
+
+        self.delete_selection_action.setEnabled(
+            False
+        )
+
+        self.delete_selection_action.triggered.connect(
+            self.window.delete_selection
         )
 
     def _create_history_action(
@@ -442,6 +466,12 @@ class MainWindowActions:
 
         edit_menu.addAction(
             self.redo_action
+        )
+
+        edit_menu.addSeparator()
+
+        edit_menu.addAction(
+            self.delete_selection_action
         )
 
         view_menu = menu_bar.addMenu(

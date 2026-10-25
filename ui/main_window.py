@@ -27,6 +27,7 @@ from ui.display_options_dialog import (
 )
 from ui.interaction_mode import InteractionMode
 from ui.main_window_actions import MainWindowActions
+from ui.map_tools.delete_nodes_tool import DeleteNodesTool
 from ui.map_tools.measure_tool import MeasureTool
 from ui.map_tools.move_nodes_tool import MoveNodesTool
 from ui.map_tools.select_tool import SelectTool
@@ -38,6 +39,7 @@ from ui.debug_dock_coordinator import DebugDockCoordinator
 from ui.grid_coordinator import GridCoordinator
 from editing.edit_command import DataChange
 from editing.edit_coordinator import EditCoordinator
+from editing.node_delete_coordinator import NodeDeleteCoordinator
 from editing.node_drag_coordinator import NodeDragCoordinator
 from selection.node_selection_manager import (
     NodeSelectionManager
@@ -339,6 +341,9 @@ class MainWindow(QMainWindow):
             measurement_mode
         )
 
+    def delete_selection(self):
+        self.node_delete_coordinator.delete_selection()
+
     def align_view_to_measurement(self):
         self.measurement_coordinator.align_view_to_measurement()
 
@@ -471,6 +476,14 @@ class MainWindow(QMainWindow):
             parent=self
         )
 
+        self.node_delete_coordinator = NodeDeleteCoordinator(
+            selection_coordinator=self.selection_coordinator,
+            selection_manager=self.node_selection_manager,
+            edit_coordinator=self.edit_coordinator,
+            autodrive_data_provider=self._get_autodrive_data,
+            parent=self
+        )
+
         self._register_map_tools()
 
         self.project_coordinator = (
@@ -513,6 +526,14 @@ class MainWindow(QMainWindow):
             MoveNodesTool(
                 self.view,
                 self.node_drag_coordinator
+            )
+        )
+
+        self.view.register_tool(
+            InteractionMode.DELETE_NODES,
+            DeleteNodesTool(
+                self.view,
+                self.node_delete_coordinator
             )
         )
 
@@ -623,6 +644,17 @@ class MainWindow(QMainWindow):
             self._set_status
         )
 
+        self.node_delete_coordinator.status_changed.connect(
+            self._set_status
+        )
+
+        self.node_selection_manager.selection_changed.connect(
+            lambda node_ids, primary_node_id:
+            self.actions.delete_selection_action.setEnabled(
+                bool(node_ids)
+            )
+        )
+
         self.view.rotation_step_changed.connect(
             self._handle_rotation_step_changed
         )
@@ -683,9 +715,17 @@ class MainWindow(QMainWindow):
         self,
         data_change: DataChange
     ):
-        self.scene_renderer.update_node_positions(
-            data_change.changed_node_ids
+        self.scene_renderer.apply_changes(
+            moved_node_ids=data_change.moved_node_ids,
+            added_node_ids=data_change.added_node_ids,
+            removed_node_ids=data_change.removed_node_ids,
+            connection_node_ids=data_change.connection_node_ids
         )
+
+        if data_change.removed_node_ids:
+            self.node_selection_manager.remove(
+                data_change.removed_node_ids
+            )
 
         # Node coordinates in the info panel may have changed.
         self.selection_coordinator.refresh_info()

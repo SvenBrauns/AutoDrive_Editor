@@ -124,7 +124,7 @@ class MoveNodesCommand(EditCommand):
             node.z = z
 
         return DataChange(
-            changed_node_ids=frozenset(
+            moved_node_ids=frozenset(
                 positions
             )
         )

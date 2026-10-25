@@ -79,3 +79,63 @@ def test_update_ignores_nodes_without_connections():
     index.update_node_positions(data, [4, 99])
 
     assert index.connection_count == 2
+
+
+def connection_pairs(index):
+    return sorted(
+        (c.connection_type.value, min(c.source_id, c.target_id), max(c.source_id, c.target_id))
+        for c in index.get_connections_in_rect(everything())
+    )
+
+
+def test_rebuild_removes_connections_of_deleted_node():
+    data = build_data()
+    index = build_index(data)
+
+    del data.nodes[2]
+    data.nodes[1].outgoing.discard(2)
+    data.nodes[3].incoming.discard(2)
+    data.nodes[3].outgoing.discard(2)
+    index.rebuild_node_connections(data, {2, 1, 3})
+
+    assert index.connection_count == 0
+    assert connection_pairs(index) == []
+
+
+def test_rebuild_restores_connections_of_re_added_node():
+    data = build_data()
+    index = build_index(data)
+    before = connection_pairs(index)
+    node_2 = data.nodes.pop(2)
+    index.rebuild_node_connections(data, {2})
+
+    data.nodes[2] = node_2
+    index.rebuild_node_connections(data, {2, 1, 3})
+
+    assert connection_pairs(index) == before
+    assert index.connection_count == 2
+
+
+def test_rebuild_finds_one_way_reverse_connection_from_source():
+    # 4 -> 2 is stored only in 4.outgoing
+    data = build_data()
+    data.add_node(NodeData(node_id=4, x=50, y=0, z=50, outgoing={2}))
+    index = build_index(data)
+    assert ("reverse", 2, 4) in connection_pairs(index)
+
+    index.rebuild_node_connections(data, {4})
+
+    assert ("reverse", 2, 4) in connection_pairs(index)
+    assert index.connection_count == 3
+
+
+def test_moving_after_rebuild_keeps_index_consistent():
+    data = build_data()
+    index = build_index(data)
+    index.rebuild_node_connections(data, {1, 2, 3})
+
+    data.nodes[1].x = 400
+    index.update_node_positions(data, [1])
+
+    assert index.connection_count == 2
+    assert len(index.get_connections_in_rect(everything())) == 2

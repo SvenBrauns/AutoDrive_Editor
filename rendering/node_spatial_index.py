@@ -102,6 +102,50 @@ class NodeSpatialIndex:
                 node_data
             )
 
+    def add_nodes(
+        self,
+        nodes
+    ):
+        for node_data in nodes:
+            self._insert_node(
+                node_data
+            )
+
+        self.node_count = len(
+            self._tile_key_by_node_id
+        )
+
+    def remove_nodes(
+        self,
+        node_ids
+    ):
+        for node_id in node_ids:
+            tile_key = self._tile_key_by_node_id.pop(
+                node_id,
+                None
+            )
+
+            if tile_key is None:
+                continue
+
+            tile = self.nodes_by_tile[
+                tile_key
+            ]
+
+            tile.pop(
+                node_id,
+                None
+            )
+
+            if not tile:
+                del self.nodes_by_tile[
+                    tile_key
+                ]
+
+        self.node_count = len(
+            self._tile_key_by_node_id
+        )
+
     def _insert_node(
         self,
         node_data: NodeData
