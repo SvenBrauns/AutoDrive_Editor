@@ -16,6 +16,7 @@ RED = "#ff0000"
 
 # --- command ------------------------------------------------------------
 
+
 @pytest.fixture
 def data():
     autodrive_data = AutoDriveData()
@@ -53,6 +54,7 @@ def test_command_without_change_is_obsolete(data):
 # --- tool ---------------------------------------------------------------
 # Test network from conftest: nodes 1, 2, 3 on z=0 at x = 0, 10, 20, all regular.
 
+
 @pytest.fixture
 def toggling(zoomed_window):
     zoomed_window.set_interaction_mode(InteractionMode.TOGGLE_NODE_TYPE)
@@ -86,7 +88,7 @@ def test_click_switches_node_and_redraws_it(toggling):
 
 
 def test_click_on_selected_node_switches_whole_selection(toggling):
-    select(toggling, QRectF(-5, -5, 20, 10))   # nodes 1 and 2
+    select(toggling, QRectF(-5, -5, 20, 10))  # nodes 1 and 2
 
     click(toggling, view_pos(toggling, 0, 0))
 
@@ -97,16 +99,16 @@ def test_click_on_selected_node_switches_whole_selection(toggling):
 
 def test_mixed_selection_gets_opposite_of_clicked_node(toggling):
     toggling.project_coordinator.autodrive_data.get_node(1).flag = SUBPRIO_FLAG
-    select(toggling, QRectF(-5, -5, 30, 10))   # 1 subprio, 2 and 3 regular
+    select(toggling, QRectF(-5, -5, 30, 10))  # 1 subprio, 2 and 3 regular
 
-    click(toggling, view_pos(toggling, 10, 0))   # clicked node is regular
+    click(toggling, view_pos(toggling, 10, 0))  # clicked node is regular
 
     assert (flag(toggling, 1), flag(toggling, 2), flag(toggling, 3)) == (1, 1, 1)
     assert toggling.status.text() == "2 Nodes auf Subprio gesetzt"
 
 
 def test_selection_rings_are_redrawn_too(toggling):
-    select(toggling, QRectF(-5, -5, 10, 10))   # node 1
+    select(toggling, QRectF(-5, -5, 10, 10))  # node 1
     ring = toggling.scene_renderer.visible_node_selection_manager.visible_selection_items[1]
     assert ring.brush().color().name() == RED
 
@@ -117,7 +119,7 @@ def test_selection_rings_are_redrawn_too(toggling):
 
 
 def test_click_on_unselected_node_keeps_selection(toggling):
-    select(toggling, QRectF(-5, -5, 10, 10))   # node 1
+    select(toggling, QRectF(-5, -5, 10, 10))  # node 1
 
     click(toggling, view_pos(toggling, 20, 0))
 
@@ -135,7 +137,7 @@ def test_undo_restores_type_and_color(toggling):
 
 
 def test_node_info_shows_new_type(toggling):
-    select(toggling, QRectF(5, -5, 10, 10))   # node 2
+    select(toggling, QRectF(5, -5, 10, 10))  # node 2
     assert "Regular Node" in toggling.debug_dock.node_info_value.text()
 
     click(toggling, view_pos(toggling, 10, 0))

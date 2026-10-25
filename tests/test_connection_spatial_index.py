@@ -158,7 +158,11 @@ def test_incremental_updates_match_a_fresh_build():
     """Random connection edits: the incrementally updated index must
     always equal an index built from scratch."""
     import random
-    from editing.set_connection_command import CONNECTION_STATES, NO_CONNECTION, SetConnectionCommand
+    from editing.set_connection_command import (
+        CONNECTION_STATES,
+        NO_CONNECTION,
+        SetConnectionCommand,
+    )
 
     rng = random.Random(7)
     data = AutoDriveData()

@@ -16,13 +16,9 @@ class NodeData:
     z: float
     flag: int = 0
 
-    incoming: set[int] = field(
-        default_factory=set
-    )
+    incoming: set[int] = field(default_factory=set)
 
-    outgoing: set[int] = field(
-        default_factory=set
-    )
+    outgoing: set[int] = field(default_factory=set)
 
     @property
     def is_regular(self) -> bool:
@@ -42,70 +38,35 @@ class MarkerData:
 
 @dataclass
 class AutoDriveData:
-    nodes: dict[int, NodeData] = field(
-        default_factory=dict
-    )
+    nodes: dict[int, NodeData] = field(default_factory=dict)
 
-    markers: dict[int, MarkerData] = field(
-        default_factory=dict
-    )
+    markers: dict[int, MarkerData] = field(default_factory=dict)
 
-    def add_node(
-        self,
-        node: NodeData
-    ) -> None:
+    def add_node(self, node: NodeData) -> None:
         if node.node_id <= 0:
-            raise ValueError(
-                "Eine Node-ID muss größer als 0 sein."
-            )
+            raise ValueError("Eine Node-ID muss größer als 0 sein.")
 
         if node.node_id in self.nodes:
-            raise ValueError(
-                f"Die Node-ID {node.node_id} "
-                f"ist bereits vorhanden."
-            )
+            raise ValueError(f"Die Node-ID {node.node_id} ist bereits vorhanden.")
 
         self.nodes[node.node_id] = node
 
-    def add_marker(
-        self,
-        marker: MarkerData
-    ) -> None:
+    def add_marker(self, marker: MarkerData) -> None:
         if marker.node_id not in self.nodes:
-            raise ValueError(
-                f"Der Marker verweist auf die "
-                f"unbekannte Node-ID {marker.node_id}."
-            )
+            raise ValueError(f"Der Marker verweist auf die unbekannte Node-ID {marker.node_id}.")
 
         self.markers[marker.node_id] = marker
 
-    def get_node(
-        self,
-        node_id: int
-    ) -> NodeData | None:
-        return self.nodes.get(
-            node_id
-        )
+    def get_node(self, node_id: int) -> NodeData | None:
+        return self.nodes.get(node_id)
 
-    def get_marker(
-        self,
-        node_id: int
-    ) -> MarkerData | None:
-        return self.markers.get(
-            node_id
-        )
+    def get_marker(self, node_id: int) -> MarkerData | None:
+        return self.markers.get(node_id)
 
-    def get_sorted_nodes(
-        self
-    ) -> list[NodeData]:
-        return [
-            self.nodes[node_id]
-            for node_id in sorted(self.nodes)
-        ]
+    def get_sorted_nodes(self) -> list[NodeData]:
+        return [self.nodes[node_id] for node_id in sorted(self.nodes)]
 
-    def validate_connections(
-        self
-    ) -> list[str]:
+    def validate_connections(self) -> list[str]:
         errors = []
 
         for node in self.nodes.values():

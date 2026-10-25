@@ -17,6 +17,7 @@ EMPTY = (5, 20)
 
 # --- command ------------------------------------------------------------
 
+
 def test_command_adds_and_removes_node():
     data = AutoDriveData()
     command = CreateNodeCommand(data, 7, 1.5, 2.5, 3.5)
@@ -61,6 +62,7 @@ def test_next_id_follows_the_highest_id_even_with_gaps():
 
 
 # --- tool ---------------------------------------------------------------
+
 
 @pytest.fixture
 def creating(zoomed_window):
@@ -141,7 +143,7 @@ def test_height_comes_from_the_heightmap(creating, sloped_heightmap):
 
 
 def test_without_heightmap_height_of_nearest_node_is_used(creating):
-    data(creating).get_node(3).y = 42.0   # nearest to (22, 3)
+    data(creating).get_node(3).y = 42.0  # nearest to (22, 3)
 
     click(creating, view_pos(creating, 22, 3))
 
@@ -166,6 +168,7 @@ def test_without_loaded_data_nothing_is_created(window):
 
 
 # --- subprio ------------------------------------------------------------
+
 
 def test_subprio_tool_creates_subprio_node(zoomed_window):
     zoomed_window.set_interaction_mode(InteractionMode.CREATE_SUBPRIO_NODES)

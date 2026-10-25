@@ -6,7 +6,7 @@ from measurement.measurement_math import (
     calculate_distance,
     calculate_horizontal_alignment_rotation,
     calculate_map_angle,
-    calculate_measurement
+    calculate_measurement,
 )
 from measurement.measurement_mode import MeasurementMode
 
@@ -26,12 +26,12 @@ def test_distance_of_identical_points_is_zero():
 @pytest.mark.parametrize(
     ("end", "expected_angle"),
     [
-        (QPointF(0, -10), 0.0),     # north
-        (QPointF(10, 0), 90.0),     # east
-        (QPointF(0, 10), 180.0),    # south
-        (QPointF(-10, 0), 270.0),   # west
-        (QPointF(10, -10), 45.0),   # north-east
-    ]
+        (QPointF(0, -10), 0.0),  # north
+        (QPointF(10, 0), 90.0),  # east
+        (QPointF(0, 10), 180.0),  # south
+        (QPointF(-10, 0), 270.0),  # west
+        (QPointF(10, -10), 45.0),  # north-east
+    ],
 )
 def test_map_angle_is_clockwise_from_north(end, expected_angle):
     assert calculate_map_angle(ORIGIN, end) == pytest.approx(expected_angle)
@@ -51,11 +51,11 @@ def test_map_angle_just_west_of_north_does_not_return_360():
 @pytest.mark.parametrize(
     ("end", "expected_rotation"),
     [
-        (QPointF(10, 0), 0.0),      # already horizontal (east)
-        (QPointF(0, -10), 90.0),    # north
-        (QPointF(0, 10), 270.0),    # south
-        (QPointF(-10, 0), 180.0),   # west
-    ]
+        (QPointF(10, 0), 0.0),  # already horizontal (east)
+        (QPointF(0, -10), 90.0),  # north
+        (QPointF(0, 10), 270.0),  # south
+        (QPointF(-10, 0), 180.0),  # west
+    ],
 )
 def test_horizontal_alignment_rotation(end, expected_rotation):
     rotation = calculate_horizontal_alignment_rotation(ORIGIN, end)

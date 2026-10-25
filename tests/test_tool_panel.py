@@ -95,10 +95,7 @@ def grid_text(window, row, column):
 
 
 def test_node_tools_are_paired_in_two_columns(window):
-    layout = [
-        [grid_text(window, row, column) for column in (0, 1)]
-        for row in range(5)
-    ]
+    layout = [[grid_text(window, row, column) for column in (0, 1)] for row in range(5)]
 
     assert layout == [
         ["Verschieben", "Verbinden (Regular)"],
@@ -151,17 +148,20 @@ def test_group_can_be_collapsed(window, qapp):
     assert button.isVisible()
 
 
-@pytest.mark.parametrize(("keys", "mode"), [
-    ("V", InteractionMode.MOVE_NODES),
-    ("R", InteractionMode.ROTATE_SELECTION),
-    ("L", InteractionMode.DELETE_NODES),
-    ("E", InteractionMode.CREATE_NODES),
-    ("T", InteractionMode.TOGGLE_NODE_TYPE),
-    ("1", InteractionMode.CONNECT_REGULAR),
-    ("2", InteractionMode.CONNECT_DUAL),
-    ("3", InteractionMode.CONNECT_REVERSE),
-    ("A", InteractionMode.SELECT),
-])
+@pytest.mark.parametrize(
+    ("keys", "mode"),
+    [
+        ("V", InteractionMode.MOVE_NODES),
+        ("R", InteractionMode.ROTATE_SELECTION),
+        ("L", InteractionMode.DELETE_NODES),
+        ("E", InteractionMode.CREATE_NODES),
+        ("T", InteractionMode.TOGGLE_NODE_TYPE),
+        ("1", InteractionMode.CONNECT_REGULAR),
+        ("2", InteractionMode.CONNECT_DUAL),
+        ("3", InteractionMode.CONNECT_REVERSE),
+        ("A", InteractionMode.SELECT),
+    ],
+)
 def test_keyboard_shortcuts_pick_tools(window, qapp, keys, mode):
     window.activateWindow()
     window.view.setFocus()
@@ -197,7 +197,8 @@ def test_shortcuts_work_with_hidden_panel(window, qapp):
 
 def test_undo_and_redo_are_icon_buttons_in_top_toolbar(window):
     buttons = [
-        widget for widget in window.actions.quick_access_toolbar.findChildren(QToolButton)
+        widget
+        for widget in window.actions.quick_access_toolbar.findChildren(QToolButton)
         if widget.defaultAction() in (window.actions.undo_action, window.actions.redo_action)
     ]
 

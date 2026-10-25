@@ -66,8 +66,13 @@ def test_dragging_the_ring_rotates_the_selection(rotating):
 
 
 def test_shift_snaps_while_dragging(rotating):
-    drag(rotating, on_ring(rotating, 1, 0), on_ring(rotating, 0.64, 0.77),
-         steps=4, modifiers=Qt.ShiftModifier)   # ~50°
+    drag(
+        rotating,
+        on_ring(rotating, 1, 0),
+        on_ring(rotating, 0.64, 0.77),
+        steps=4,
+        modifiers=Qt.ShiftModifier,
+    )  # ~50°
 
     assert rotating.status.text() == "3 Nodes um 45.0° rotiert"
 
@@ -75,7 +80,7 @@ def test_shift_snaps_while_dragging(rotating):
 def test_dragging_off_the_ring_pans(rotating):
     before = rotating.view.horizontalScrollBar().value()
     rotating.view.setSceneRect(-1000, -1000, 2000, 2000)
-    start = view_pos(rotating, 10, 0)   # the center, inside the ring
+    start = view_pos(rotating, 10, 0)  # the center, inside the ring
 
     drag(rotating, start, start + QPoint(60, 0))
 
@@ -87,8 +92,9 @@ def test_escape_cancels_rotation(rotating):
     drag(rotating, on_ring(rotating, 1, 0), on_ring(rotating, 0, 1), release=False)
 
     press_escape(rotating)
-    send_mouse(rotating, QEvent.MouseButtonRelease, on_ring(rotating, 0, 1),
-               Qt.LeftButton, Qt.NoButton)
+    send_mouse(
+        rotating, QEvent.MouseButtonRelease, on_ring(rotating, 0, 1), Qt.LeftButton, Qt.NoButton
+    )
 
     assert xz(rotating, 1) == pytest.approx((0, 0))
     assert rotating.edit_coordinator.undo_stack.count() == 0
@@ -113,7 +119,7 @@ def test_cursor_points_at_the_ring(rotating):
 
 
 def test_no_ring_with_fewer_than_two_nodes(zoomed_window):
-    select(zoomed_window, QRectF(-5, -5, 10, 10))   # node 1 only
+    select(zoomed_window, QRectF(-5, -5, 10, 10))  # node 1 only
 
     zoomed_window.set_interaction_mode(InteractionMode.ROTATE_SELECTION)
 
@@ -124,7 +130,7 @@ def test_no_ring_with_fewer_than_two_nodes(zoomed_window):
 
 
 def test_ring_follows_selection_changes(rotating):
-    select(rotating, QRectF(5, -5, 20, 10))   # nodes 2 and 3
+    select(rotating, QRectF(5, -5, 20, 10))  # nodes 2 and 3
     center, _ = tool(rotating).ring
     assert center.toTuple() == (15, 0)
 

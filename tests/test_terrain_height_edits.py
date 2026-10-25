@@ -48,7 +48,7 @@ def test_moved_node_follows_the_terrain(terrain_window):
 
 def test_node_above_terrain_keeps_its_distance_when_moved(terrain_window):
     lifted = node(terrain_window, 1)
-    lifted.y = terrain(terrain_window, 0, 0) + 8.0     # like a bridge
+    lifted.y = terrain(terrain_window, 0, 0) + 8.0  # like a bridge
     terrain_window.set_interaction_mode(InteractionMode.MOVE_NODES)
     start = view_pos(terrain_window, 0, 0)
 
@@ -68,14 +68,16 @@ def test_undo_restores_the_old_height(terrain_window):
 
 
 def test_rotated_nodes_follow_the_terrain(terrain_window):
-    select_all(terrain_window)          # center (10, 0), ring radius 16 at zoom 4
+    select_all(terrain_window)  # center (10, 0), ring radius 16 at zoom 4
     terrain_window.set_interaction_mode(InteractionMode.ROTATE_SELECTION)
 
     drag(terrain_window, view_pos(terrain_window, 26, 0), view_pos(terrain_window, 10, 16), steps=8)
 
     for node_id, start_x in ((1, 0), (3, 20)):
         rotated = node(terrain_window, node_id)
-        expected = terrain(terrain_window, rotated.x, rotated.z) - terrain(terrain_window, start_x, 0)
+        expected = terrain(terrain_window, rotated.x, rotated.z) - terrain(
+            terrain_window, start_x, 0
+        )
         assert rotated.y == pytest.approx(expected)
 
 

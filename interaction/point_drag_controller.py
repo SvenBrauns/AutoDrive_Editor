@@ -1,15 +1,10 @@
 from dataclasses import dataclass
 
-from PySide6.QtCore import (
-    QObject,
-    QPointF,
-    Signal
-)
+from PySide6.QtCore import QObject, QPointF, Signal
 
 
 @dataclass
 class PointDragState:
-
     point_index: int | None = None
 
     press_scene_position: QPointF | None = None
@@ -26,82 +21,37 @@ class PointDragState:
         )
 
     def begin(
-        self,
-        point_index: int,
-        press_scene_position: QPointF,
-        original_point_position: QPointF
+        self, point_index: int, press_scene_position: QPointF, original_point_position: QPointF
     ):
         if point_index < 0:
-            raise ValueError(
-                "Der Punktindex darf nicht "
-                "negativ sein."
-            )
+            raise ValueError("Der Punktindex darf nicht negativ sein.")
 
-        if not isinstance(
-            press_scene_position,
-            QPointF
-        ):
-            raise TypeError(
-                "Die Scene-Position des Klicks "
-                "ist ungültig."
-            )
+        if not isinstance(press_scene_position, QPointF):
+            raise TypeError("Die Scene-Position des Klicks ist ungültig.")
 
-        if not isinstance(
-            original_point_position,
-            QPointF
-        ):
-            raise TypeError(
-                "Die Ausgangsposition des Punkts "
-                "ist ungültig."
-            )
+        if not isinstance(original_point_position, QPointF):
+            raise TypeError("Die Ausgangsposition des Punkts ist ungültig.")
 
-        self.point_index = int(
-            point_index
-        )
+        self.point_index = int(point_index)
 
-        self.press_scene_position = QPointF(
-            press_scene_position
-        )
+        self.press_scene_position = QPointF(press_scene_position)
 
-        self.original_point_position = QPointF(
-            original_point_position
-        )
+        self.original_point_position = QPointF(original_point_position)
 
-        self.current_point_position = QPointF(
-            original_point_position
-        )
+        self.current_point_position = QPointF(original_point_position)
 
-    def update(
-        self,
-        current_scene_position: QPointF
-    ) -> QPointF:
+    def update(self, current_scene_position: QPointF) -> QPointF:
         if not self.is_active:
-            raise RuntimeError(
-                "Es ist kein Point-Drag aktiv."
-            )
+            raise RuntimeError("Es ist kein Point-Drag aktiv.")
 
-        if not isinstance(
-            current_scene_position,
-            QPointF
-        ):
-            raise TypeError(
-                "Die aktuelle Scene-Position "
-                "ist ungültig."
-            )
+        if not isinstance(current_scene_position, QPointF):
+            raise TypeError("Die aktuelle Scene-Position ist ungültig.")
 
-        movement = (
-            current_scene_position
-            - self.press_scene_position
-        )
+        movement = current_scene_position - self.press_scene_position
 
-        self.current_point_position = (
-            self.original_point_position
-            + movement
-        )
+        self.current_point_position = self.original_point_position + movement
 
-        return QPointF(
-            self.current_point_position
-        )
+        return QPointF(self.current_point_position)
 
     def reset(self):
         self.point_index = None
@@ -111,34 +61,16 @@ class PointDragState:
 
 
 class PointDragController(QObject):
+    drag_started = Signal(int, QPointF)
 
-    drag_started = Signal(
-        int,
-        QPointF
-    )
+    position_requested = Signal(int, QPointF)
 
-    position_requested = Signal(
-        int,
-        QPointF
-    )
+    drag_finished = Signal(int, QPointF)
 
-    drag_finished = Signal(
-        int,
-        QPointF
-    )
+    drag_cancelled = Signal(int, QPointF)
 
-    drag_cancelled = Signal(
-        int,
-        QPointF
-    )
-
-    def __init__(
-        self,
-        parent=None
-    ):
-        super().__init__(
-            parent
-        )
+    def __init__(self, parent=None):
+        super().__init__(parent)
 
         self._state = PointDragState()
 
@@ -147,105 +79,57 @@ class PointDragController(QObject):
         return self._state.is_active
 
     @property
-    def active_point_index(
-        self
-    ) -> int | None:
+    def active_point_index(self) -> int | None:
         return self._state.point_index
 
     def begin_drag(
-        self,
-        point_index: int,
-        press_scene_position: QPointF,
-        original_point_position: QPointF
+        self, point_index: int, press_scene_position: QPointF, original_point_position: QPointF
     ):
         if self.is_active:
             self.cancel_drag()
 
         self._state.begin(
             point_index=point_index,
-            press_scene_position=(
-                press_scene_position
-            ),
-            original_point_position=(
-                original_point_position
-            )
+            press_scene_position=(press_scene_position),
+            original_point_position=(original_point_position),
         )
 
-        self.drag_started.emit(
-            point_index,
-            QPointF(
-                original_point_position
-            )
-        )
+        self.drag_started.emit(point_index, QPointF(original_point_position))
 
-    def update_drag(
-        self,
-        current_scene_position: QPointF
-    ) -> QPointF | None:
+    def update_drag(self, current_scene_position: QPointF) -> QPointF | None:
         if not self.is_active:
             return None
 
-        requested_position = (
-            self._state.update(
-                current_scene_position
-            )
-        )
+        requested_position = self._state.update(current_scene_position)
 
-        self.position_requested.emit(
-            self._state.point_index,
-            QPointF(
-                requested_position
-            )
-        )
+        self.position_requested.emit(self._state.point_index, QPointF(requested_position))
 
         return requested_position
 
-    def finish_drag(
-        self
-    ) -> QPointF | None:
+    def finish_drag(self) -> QPointF | None:
         if not self.is_active:
             return None
 
-        point_index = (
-            self._state.point_index
-        )
+        point_index = self._state.point_index
 
-        final_position = QPointF(
-            self._state.current_point_position
-        )
+        final_position = QPointF(self._state.current_point_position)
 
         self._state.reset()
 
-        self.drag_finished.emit(
-            point_index,
-            QPointF(
-                final_position
-            )
-        )
+        self.drag_finished.emit(point_index, QPointF(final_position))
 
         return final_position
 
-    def cancel_drag(
-        self
-    ) -> QPointF | None:
+    def cancel_drag(self) -> QPointF | None:
         if not self.is_active:
             return None
 
-        point_index = (
-            self._state.point_index
-        )
+        point_index = self._state.point_index
 
-        original_position = QPointF(
-            self._state.original_point_position
-        )
+        original_position = QPointF(self._state.original_point_position)
 
         self._state.reset()
 
-        self.drag_cancelled.emit(
-            point_index,
-            QPointF(
-                original_position
-            )
-        )
+        self.drag_cancelled.emit(point_index, QPointF(original_position))
 
         return original_position

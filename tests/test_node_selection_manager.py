@@ -11,9 +11,7 @@ def manager():
 @pytest.fixture
 def emitted(manager):
     events = []
-    manager.selection_changed.connect(
-        lambda ids, primary: events.append((ids, primary))
-    )
+    manager.selection_changed.connect(lambda ids, primary: events.append((ids, primary)))
     return events
 
 

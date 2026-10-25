@@ -32,7 +32,7 @@ def select_area(window, rect):
 
 
 def test_dragging_unselected_node_moves_only_that_node(editor):
-    select_area(editor, QRectF(5, -5, 20, 10))   # nodes 2 and 3
+    select_area(editor, QRectF(5, -5, 20, 10))  # nodes 2 and 3
     start = view_pos(editor, 0, 0)
     end = start + QPoint(40, 20)
     dx, dz = scene_delta(editor, start, end)
@@ -47,7 +47,7 @@ def test_dragging_unselected_node_moves_only_that_node(editor):
 
 
 def test_dragging_selected_node_moves_whole_selection(editor):
-    select_area(editor, QRectF(-5, -5, 20, 10))   # nodes 1 and 2
+    select_area(editor, QRectF(-5, -5, 20, 10))  # nodes 1 and 2
     start = view_pos(editor, 10, 0)
     end = start + QPoint(0, 40)
     dx, dz = scene_delta(editor, start, end)
@@ -146,7 +146,7 @@ def test_undo_is_blocked_while_dragging(editor):
 
 
 def test_dragging_empty_space_pans_instead(editor):
-    start = view_pos(editor, 5, 20)   # between nodes, below the line
+    start = view_pos(editor, 5, 20)  # between nodes, below the line
 
     drag(editor, start, start + QPoint(60, 0))
 

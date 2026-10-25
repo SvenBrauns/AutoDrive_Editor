@@ -1,47 +1,20 @@
-from PySide6.QtCore import (
-    QObject,
-    QPoint,
-    QRect,
-    Signal
-)
+from PySide6.QtCore import QObject, QPoint, QRect, Signal
 from PySide6.QtGui import QPainterPath
-from PySide6.QtWidgets import (
-    QApplication,
-    QGraphicsView,
-    QRubberBand
-)
+from PySide6.QtWidgets import QApplication, QGraphicsView, QRubberBand
 
 
 class ViewSelectionController(QObject):
+    area_requested = Signal(object, object)
 
-    area_requested = Signal(
-        object,
-        object
-    )
-
-    area_preview_requested = Signal(
-        object,
-        object
-    )
+    area_preview_requested = Signal(object, object)
 
     area_preview_cleared = Signal()
 
-    def __init__(
-        self,
-        view: QGraphicsView,
-        parent=None
-    ):
-        super().__init__(
-            parent
-        )
+    def __init__(self, view: QGraphicsView, parent=None):
+        super().__init__(parent)
 
-        if not isinstance(
-            view,
-            QGraphicsView
-        ):
-            raise TypeError(
-                "Die Kartenansicht ist ungültig."
-            )
+        if not isinstance(view, QGraphicsView):
+            raise TypeError("Die Kartenansicht ist ungültig.")
 
         self.view = view
 
@@ -50,10 +23,7 @@ class ViewSelectionController(QObject):
         self._press_position = QPoint()
         self._current_position = QPoint()
 
-        self._rubber_band = QRubberBand(
-            QRubberBand.Rectangle,
-            self.view.viewport()
-        )
+        self._rubber_band = QRubberBand(QRubberBand.Rectangle, self.view.viewport())
 
         self._rubber_band.hide()
 
@@ -61,48 +31,21 @@ class ViewSelectionController(QObject):
     def drag_active(self) -> bool:
         return self._drag_active
 
-    def begin(
-        self,
-        press_position: QPoint
-    ):
-        if not isinstance(
-            press_position,
-            QPoint
-        ):
-            raise TypeError(
-                "Die Startposition der "
-                "Bereichsauswahl ist ungültig."
-            )
+    def begin(self, press_position: QPoint):
+        if not isinstance(press_position, QPoint):
+            raise TypeError("Die Startposition der Bereichsauswahl ist ungültig.")
 
-        self.cancel(
-            emit_preview_cleared=False
-        )
+        self.cancel(emit_preview_cleared=False)
 
-        self._press_position = QPoint(
-            press_position
-        )
+        self._press_position = QPoint(press_position)
 
-        self._current_position = QPoint(
-            press_position
-        )
+        self._current_position = QPoint(press_position)
 
-    def handle_drag(
-        self,
-        current_position: QPoint,
-        modifiers
-    ) -> bool:
-        if not isinstance(
-            current_position,
-            QPoint
-        ):
-            raise TypeError(
-                "Die aktuelle Position der "
-                "Bereichsauswahl ist ungültig."
-            )
+    def handle_drag(self, current_position: QPoint, modifiers) -> bool:
+        if not isinstance(current_position, QPoint):
+            raise TypeError("Die aktuelle Position der Bereichsauswahl ist ungültig.")
 
-        self._current_position = QPoint(
-            current_position
-        )
+        self._current_position = QPoint(current_position)
 
         if not self._drag_active:
             if not self._drag_threshold_reached():
@@ -114,52 +57,33 @@ class ViewSelectionController(QObject):
 
         self._update_rubber_band()
 
-        selection_path = (
-            self._create_selection_path()
-        )
+        selection_path = self._create_selection_path()
 
         if selection_path is not None:
-            self.area_preview_requested.emit(
-                selection_path,
-                modifiers
-            )
+            self.area_preview_requested.emit(selection_path, modifiers)
 
         return True
 
-    def finish(
-        self,
-        modifiers
-    ):
+    def finish(self, modifiers):
         if not self._drag_active:
             self.cancel()
             return
 
-        selection_path = (
-            self._create_selection_path()
-        )
+        selection_path = self._create_selection_path()
 
         self._rubber_band.hide()
 
         self._drag_active = False
 
         if selection_path is not None:
-            self.area_requested.emit(
-                selection_path,
-                modifiers
-            )
+            self.area_requested.emit(selection_path, modifiers)
 
         self.area_preview_cleared.emit()
 
         self._reset_positions()
 
-    def cancel(
-        self,
-        emit_preview_cleared: bool = True
-    ):
-        had_active_preview = (
-            self._drag_active
-            or self._rubber_band.isVisible()
-        )
+    def cancel(self, emit_preview_cleared: bool = True):
+        had_active_preview = self._drag_active or self._rubber_band.isVisible()
 
         self._rubber_band.hide()
 
@@ -167,55 +91,30 @@ class ViewSelectionController(QObject):
 
         self._reset_positions()
 
-        if (
-            emit_preview_cleared
-            and had_active_preview
-        ):
+        if emit_preview_cleared and had_active_preview:
             self.area_preview_cleared.emit()
 
     def _drag_threshold_reached(self) -> bool:
-        drag_distance = (
-            self._current_position
-            - self._press_position
-        ).manhattanLength()
+        drag_distance = (self._current_position - self._press_position).manhattanLength()
 
-        return (
-            drag_distance
-            >= QApplication.startDragDistance()
-        )
+        return drag_distance >= QApplication.startDragDistance()
 
     def _update_rubber_band(self):
-        selection_rect = QRect(
-            self._press_position,
-            self._current_position
-        ).normalized()
+        selection_rect = QRect(self._press_position, self._current_position).normalized()
 
-        self._rubber_band.setGeometry(
-            selection_rect
-        )
+        self._rubber_band.setGeometry(selection_rect)
 
-    def _create_selection_path(
-        self
-    ) -> QPainterPath | None:
-        selection_rect = (
-            self._rubber_band.geometry()
-        )
+    def _create_selection_path(self) -> QPainterPath | None:
+        selection_rect = self._rubber_band.geometry()
 
-        if (
-            selection_rect.width() <= 0
-            or selection_rect.height() <= 0
-        ):
+        if selection_rect.width() <= 0 or selection_rect.height() <= 0:
             return None
 
-        scene_polygon = self.view.mapToScene(
-            selection_rect
-        )
+        scene_polygon = self.view.mapToScene(selection_rect)
 
         selection_path = QPainterPath()
 
-        selection_path.addPolygon(
-            scene_polygon
-        )
+        selection_path.addPolygon(scene_polygon)
 
         selection_path.closeSubpath()
 

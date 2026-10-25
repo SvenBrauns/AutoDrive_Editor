@@ -12,8 +12,7 @@ def view_pos(window, x, z) -> QPoint:
 def send_mouse(window, event_type, pos, button, buttons, modifiers=Qt.NoModifier):
     viewport = window.view.viewport()
     event = QMouseEvent(
-        event_type, QPointF(pos), QPointF(viewport.mapToGlobal(pos)),
-        button, buttons, modifiers
+        event_type, QPointF(pos), QPointF(viewport.mapToGlobal(pos)), button, buttons, modifiers
     )
     QApplication.sendEvent(viewport, event)
 
@@ -23,8 +22,7 @@ def click(window, pos, button=Qt.LeftButton, modifiers=Qt.NoModifier):
     send_mouse(window, QEvent.MouseButtonRelease, pos, button, Qt.NoButton, modifiers)
 
 
-def drag(window, start, end, button=Qt.LeftButton, steps=5,
-         modifiers=Qt.NoModifier, release=True):
+def drag(window, start, end, button=Qt.LeftButton, steps=5, modifiers=Qt.NoModifier, release=True):
     send_mouse(window, QEvent.MouseButtonPress, start, button, button, modifiers)
 
     for step in range(1, steps + 1):

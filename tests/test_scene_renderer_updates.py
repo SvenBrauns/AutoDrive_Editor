@@ -21,7 +21,7 @@ def renderer(qapp):
     scene = QGraphicsScene()
     scene_renderer = SceneRenderer(scene, MARKER_ICON_PATH)
     scene_renderer.render(data)
-    scene_renderer.update_visibility_for_zoom(2.0)   # detail view, nodes visible
+    scene_renderer.update_visibility_for_zoom(2.0)  # detail view, nodes visible
     scene_renderer.update_visible_scene_rect(VISIBLE_RECT)
     scene_renderer.set_selected_node_ids({1})
 
@@ -43,7 +43,10 @@ def test_node_marker_and_selection_items_follow_the_node(renderer):
     move_node(renderer, 1, 10, 20)
 
     assert renderer.visible_node_manager.visible_node_items[1].pos().toTuple() == (10, 20)
-    assert renderer.visible_node_selection_manager.visible_selection_items[1].pos().toTuple() == (10, 20)
+    assert renderer.visible_node_selection_manager.visible_selection_items[1].pos().toTuple() == (
+        10,
+        20,
+    )
     assert (marker_item.pos() - marker_offset).toTuple() == pytest.approx((10, 20))
 
 
@@ -71,7 +74,7 @@ def test_overview_is_rebuilt_when_shown(renderer):
     move_node(renderer, 2, 80, 40)
     assert renderer.overview_connections_outdated
 
-    renderer.update_visibility_for_zoom(0.1)   # switch to the overview
+    renderer.update_visibility_for_zoom(0.1)  # switch to the overview
 
     assert not renderer.overview_connections_outdated
     assert all(item.isVisible() for item in renderer.connection_items.values())
@@ -80,7 +83,7 @@ def test_overview_is_rebuilt_when_shown(renderer):
 def test_reset_forgets_data(renderer):
     renderer.reset()
 
-    renderer.update_node_positions({1})   # must not fail without data
+    renderer.update_node_positions({1})  # must not fail without data
 
     assert renderer.autodrive_data is None
 

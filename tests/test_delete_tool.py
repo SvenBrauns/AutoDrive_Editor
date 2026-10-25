@@ -43,7 +43,7 @@ def test_click_on_node_deletes_it(deleting):
 
 
 def test_click_on_selected_node_deletes_whole_selection(deleting):
-    select_area(deleting, QRectF(-5, -5, 20, 10))   # nodes 1 and 2
+    select_area(deleting, QRectF(-5, -5, 20, 10))  # nodes 1 and 2
 
     click(deleting, view_pos(deleting, 0, 0))
 
@@ -53,7 +53,7 @@ def test_click_on_selected_node_deletes_whole_selection(deleting):
 
 
 def test_click_on_unselected_node_keeps_selection(deleting):
-    select_area(deleting, QRectF(-5, -5, 10, 10))   # node 1
+    select_area(deleting, QRectF(-5, -5, 10, 10))  # node 1
 
     click(deleting, view_pos(deleting, 20, 0))
 
@@ -106,6 +106,7 @@ def test_panel_has_delete_tool(window):
 
 # --- Bearbeiten > Auswahl löschen (Entf) --------------------------------
 
+
 def press_delete_key(window, qapp):
     window.activateWindow()
     window.view.setFocus()
@@ -127,7 +128,7 @@ def test_delete_selection_action_follows_selection(zoomed_window):
 
 def test_delete_key_deletes_selection_in_any_tool(zoomed_window, qapp):
     zoomed_window.set_interaction_mode(InteractionMode.SELECT)
-    select_area(zoomed_window, QRectF(5, -5, 20, 10))   # nodes 2 and 3
+    select_area(zoomed_window, QRectF(5, -5, 20, 10))  # nodes 2 and 3
 
     press_delete_key(zoomed_window, qapp)
 
@@ -137,7 +138,7 @@ def test_delete_key_deletes_selection_in_any_tool(zoomed_window, qapp):
 
 def test_delete_is_blocked_during_a_node_drag(zoomed_window, qapp):
     zoomed_window.set_interaction_mode(InteractionMode.MOVE_NODES)
-    select_area(zoomed_window, QRectF(15, -5, 10, 10))   # node 3
+    select_area(zoomed_window, QRectF(15, -5, 10, 10))  # node 3
     start = view_pos(zoomed_window, 0, 0)
     drag(zoomed_window, start, start + QPoint(40, 0), release=False)
 

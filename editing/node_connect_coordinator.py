@@ -1,32 +1,23 @@
 from collections.abc import Callable
 
-from PySide6.QtCore import (
-    QObject,
-    QPoint,
-    Signal
-)
+from PySide6.QtCore import QObject, QPoint, Signal
 
-from autodrive.models import (
-    AutoDriveData,
-    NodeData
-)
+from autodrive.models import AutoDriveData, NodeData
 from editing.edit_coordinator import EditCoordinator
 from editing.set_connection_command import (
     CONNECTION_STATES,
     NO_CONNECTION,
     SetConnectionCommand,
-    read_connection_state
+    read_connection_state,
 )
 from rendering.connection_data import ConnectionType
-from selection.selection_coordinator import (
-    SelectionCoordinator
-)
+from selection.selection_coordinator import SelectionCoordinator
 
 
 CONNECTION_TYPE_NAMES = {
     ConnectionType.REGULAR: "Regular",
     ConnectionType.DUAL: "Dual",
-    ConnectionType.REVERSE: "Reverse"
+    ConnectionType.REVERSE: "Reverse",
 }
 
 
@@ -40,33 +31,22 @@ class NodeConnectCoordinator(QObject):
     ends the chain.
     """
 
-    status_changed = Signal(
-        str
-    )
+    status_changed = Signal(str)
 
-    start_node_changed = Signal(
-        object
-    )
+    start_node_changed = Signal(object)
 
     def __init__(
         self,
         selection_coordinator: SelectionCoordinator,
         edit_coordinator: EditCoordinator,
-        autodrive_data_provider: Callable[
-            [],
-            AutoDriveData | None
-        ],
-        parent=None
+        autodrive_data_provider: Callable[[], AutoDriveData | None],
+        parent=None,
     ):
-        super().__init__(
-            parent
-        )
+        super().__init__(parent)
 
         self.selection_coordinator = selection_coordinator
         self.edit_coordinator = edit_coordinator
-        self.autodrive_data_provider = (
-            autodrive_data_provider
-        )
+        self.autodrive_data_provider = autodrive_data_provider
 
         self._start_node_id: int | None = None
 
@@ -83,29 +63,16 @@ class NodeConnectCoordinator(QObject):
         if autodrive_data is None:
             return None
 
-        return autodrive_data.get_node(
-            self._start_node_id
-        )
+        return autodrive_data.get_node(self._start_node_id)
 
-    def click(
-        self,
-        view_position: QPoint,
-        connection_type: ConnectionType
-    ):
+    def click(self, view_position: QPoint, connection_type: ConnectionType):
         autodrive_data = self.autodrive_data_provider()
 
-        node_item = (
-            self.selection_coordinator
-            .get_node_item_at(
-                view_position
-            )
-        )
+        node_item = self.selection_coordinator.get_node_item_at(view_position)
 
         if autodrive_data is None or node_item is None:
             if self.start_node is not None:
-                self.status_changed.emit(
-                    "Verbinden beendet"
-                )
+                self.status_changed.emit("Verbinden beendet")
 
             self.end_chain()
             return
@@ -114,14 +81,9 @@ class NodeConnectCoordinator(QObject):
         start_node = self.start_node
 
         if start_node is None:
-            self._set_start(
-                clicked_id
-            )
+            self._set_start(clicked_id)
 
-            self.status_changed.emit(
-                f"Start: Node {clicked_id}. "
-                f"Ziel-Node anklicken"
-            )
+            self.status_changed.emit(f"Start: Node {clicked_id}. Ziel-Node anklicken")
             return
 
         if clicked_id == start_node.node_id:
@@ -130,25 +92,16 @@ class NodeConnectCoordinator(QObject):
         if self.edit_coordinator.history_locked:
             return
 
-        self._connect(
-            autodrive_data,
-            start_node.node_id,
-            clicked_id,
-            connection_type
-        )
+        self._connect(autodrive_data, start_node.node_id, clicked_id, connection_type)
 
-        self._set_start(
-            clicked_id
-        )
+        self._set_start(clicked_id)
 
     def end_chain(self) -> bool:
         """Forgets the start node. Returns True if there was one."""
 
         had_start = self._start_node_id is not None
 
-        self._set_start(
-            None
-        )
+        self._set_start(None)
 
         return had_start
 
@@ -157,55 +110,33 @@ class NodeConnectCoordinator(QObject):
         autodrive_data: AutoDriveData,
         source_id: int,
         target_id: int,
-        connection_type: ConnectionType
+        connection_type: ConnectionType,
     ):
-        wanted_state = CONNECTION_STATES[
-            connection_type
-        ]
+        wanted_state = CONNECTION_STATES[connection_type]
 
-        current_state = read_connection_state(
-            autodrive_data,
-            source_id,
-            target_id
-        )
+        current_state = read_connection_state(autodrive_data, source_id, target_id)
 
         # Clicking with the type the connection already has removes it.
         removing = current_state == wanted_state
 
         self.edit_coordinator.push(
             SetConnectionCommand(
-                autodrive_data,
-                source_id,
-                target_id,
-                NO_CONNECTION if removing else wanted_state
+                autodrive_data, source_id, target_id, NO_CONNECTION if removing else wanted_state
             )
         )
 
-        type_name = CONNECTION_TYPE_NAMES[
-            connection_type
-        ]
+        type_name = CONNECTION_TYPE_NAMES[connection_type]
 
         if removing:
-            self.status_changed.emit(
-                f"{type_name}-Connection "
-                f"{source_id} → {target_id} entfernt"
-            )
+            self.status_changed.emit(f"{type_name}-Connection {source_id} → {target_id} entfernt")
 
         else:
-            self.status_changed.emit(
-                f"{type_name}-Connection "
-                f"{source_id} → {target_id} gesetzt"
-            )
+            self.status_changed.emit(f"{type_name}-Connection {source_id} → {target_id} gesetzt")
 
-    def _set_start(
-        self,
-        node_id: int | None
-    ):
+    def _set_start(self, node_id: int | None):
         if node_id == self._start_node_id:
             return
 
         self._start_node_id = node_id
 
-        self.start_node_changed.emit(
-            node_id
-        )
+        self.start_node_changed.emit(node_id)

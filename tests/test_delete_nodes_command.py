@@ -32,7 +32,7 @@ def test_delete_removes_node_marker_and_all_references(data):
     assert data.get_node(1).outgoing == set()
     assert data.get_node(3).incoming == set()
     assert data.get_node(3).outgoing == set()
-    assert data.get_node(4).outgoing == set()   # reverse connection found too
+    assert data.get_node(4).outgoing == set()  # reverse connection found too
     assert data.validate_connections() == []
 
 

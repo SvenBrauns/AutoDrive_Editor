@@ -34,7 +34,8 @@ def tool(window):
 
 def connections_between(window, a, b):
     return [
-        c for c in window.scene_renderer.connection_spatial_index.get_connections_in_rect(
+        c
+        for c in window.scene_renderer.connection_spatial_index.get_connections_in_rect(
             QRectF(-100, -100, 200, 200)
         )
         if {c.source_id, c.target_id} == {a, b}
@@ -46,6 +47,7 @@ def connecting(zoomed_window):
     def use(connection_type):
         zoomed_window.set_interaction_mode(MODES[connection_type])
         return zoomed_window
+
     return use
 
 
@@ -74,7 +76,7 @@ def test_chain_continues_from_last_node(connecting):
 
 
 def test_same_type_removes_existing_connection(connecting):
-    window = connecting(ConnectionType.REGULAR)   # 1 -> 2 is regular already
+    window = connecting(ConnectionType.REGULAR)  # 1 -> 2 is regular already
 
     click(window, view_pos(window, 0, 0))
     click(window, view_pos(window, 10, 0))
@@ -111,7 +113,9 @@ def test_undo_restores_connection_and_drawing(connecting):
     window.actions.undo_action.trigger()
 
     assert state(window, 1, 2) == CONNECTION_STATES[ConnectionType.REGULAR]
-    assert [c.connection_type for c in connections_between(window, 1, 2)] == [ConnectionType.REGULAR]
+    assert [c.connection_type for c in connections_between(window, 1, 2)] == [
+        ConnectionType.REGULAR
+    ]
 
 
 def test_click_on_empty_map_ends_chain(connecting):
@@ -197,7 +201,7 @@ def test_loading_data_ends_chain(connecting, write_xml):
     window.project_coordinator.load_xml_file(write_xml())
 
     assert window.node_connect_coordinator.start_node is None
-    hover(window, QPoint(100, 100))   # must not touch the deleted preview item
+    hover(window, QPoint(100, 100))  # must not touch the deleted preview item
 
 
 @pytest.mark.parametrize("connection_type", list(ConnectionType))
@@ -206,8 +210,8 @@ def test_chaining_keeps_previous_connection_drawn(connecting, connection_type):
     # because B does not list A for a reverse connection.
     window = connecting(connection_type)
     click(window, view_pos(window, 0, 0))
-    click(window, view_pos(window, 20, 0))   # 1 -> 3
-    click(window, view_pos(window, 10, 0))   # 3 -> 2
+    click(window, view_pos(window, 20, 0))  # 1 -> 3
+    click(window, view_pos(window, 10, 0))  # 3 -> 2
 
     assert state(window, 1, 3) == CONNECTION_STATES[connection_type]
     assert [c.connection_type for c in connections_between(window, 1, 3)] == [connection_type]

@@ -5,14 +5,12 @@ import pytest
 from PySide6.QtCore import QEvent, QPoint, Qt
 
 from measurement.measurement_mode import MeasurementMode
-from mouse_helpers import (
-    click, cursor_shape, drag, hover, press_escape, send_mouse, view_pos
-)
+from mouse_helpers import click, cursor_shape, drag, hover, press_escape, send_mouse, view_pos
 from ui.interaction_mode import InteractionMode
 from ui.map_tools.map_tool import MapTool
 
 
-EMPTY = (5, 20)   # map position between the nodes, below the line
+EMPTY = (5, 20)  # map position between the nodes, below the line
 
 
 def selected(window):
@@ -30,6 +28,7 @@ def select_mode(zoomed_window):
 
 
 # --- MapView -----------------------------------------------------------
+
 
 def test_each_mode_has_its_own_tool(window):
     tools = {mode: window.view._tools[mode] for mode in InteractionMode}
@@ -56,8 +55,13 @@ def test_middle_drag_rotates_in_every_tool(zoomed_window, mode):
 
     drag(zoomed_window, start, start + QPoint(80, 0), button=Qt.MiddleButton, release=False)
     assert cursor_shape(zoomed_window) == Qt.SizeAllCursor
-    send_mouse(zoomed_window, QEvent.MouseButtonRelease, start + QPoint(80, 0),
-               Qt.MiddleButton, Qt.NoButton)
+    send_mouse(
+        zoomed_window,
+        QEvent.MouseButtonRelease,
+        start + QPoint(80, 0),
+        Qt.MiddleButton,
+        Qt.NoButton,
+    )
 
     assert zoomed_window.view.rotation_angle != 0
 
@@ -78,6 +82,7 @@ def test_left_drag_on_empty_map_pans_in_every_tool(zoomed_window, mode):
 
 # --- Navigation --------------------------------------------------------
 
+
 def test_navigation_click_does_not_select(zoomed_window):
     click(zoomed_window, view_pos(zoomed_window, 10, 0))
 
@@ -86,6 +91,7 @@ def test_navigation_click_does_not_select(zoomed_window):
 
 
 # --- Auswahl -----------------------------------------------------------
+
 
 def test_click_selects_and_ctrl_click_toggles(select_mode):
     click(select_mode, view_pos(select_mode, 0, 0))
@@ -116,31 +122,55 @@ def test_left_drag_does_not_change_selection(select_mode):
 
 
 def test_right_drag_box_selects(select_mode):
-    drag(select_mode, view_pos(select_mode, -5, -5), view_pos(select_mode, 15, 5),
-         button=Qt.RightButton)
+    drag(
+        select_mode,
+        view_pos(select_mode, -5, -5),
+        view_pos(select_mode, 15, 5),
+        button=Qt.RightButton,
+    )
 
     assert selected(select_mode) == {1, 2}
 
 
 def test_escape_cancels_box_selection(select_mode):
-    drag(select_mode, view_pos(select_mode, -5, -5), view_pos(select_mode, 25, 5),
-         button=Qt.RightButton, release=False)
+    drag(
+        select_mode,
+        view_pos(select_mode, -5, -5),
+        view_pos(select_mode, 25, 5),
+        button=Qt.RightButton,
+        release=False,
+    )
     assert cursor_shape(select_mode) == Qt.CrossCursor
 
     press_escape(select_mode)
-    send_mouse(select_mode, QEvent.MouseButtonRelease, view_pos(select_mode, 25, 5),
-               Qt.RightButton, Qt.NoButton)
+    send_mouse(
+        select_mode,
+        QEvent.MouseButtonRelease,
+        view_pos(select_mode, 25, 5),
+        Qt.RightButton,
+        Qt.NoButton,
+    )
 
     assert selected(select_mode) == set()
 
 
 def test_switching_tool_cancels_box_selection(select_mode):
-    drag(select_mode, view_pos(select_mode, -5, -5), view_pos(select_mode, 25, 5),
-         button=Qt.RightButton, release=False)
+    drag(
+        select_mode,
+        view_pos(select_mode, -5, -5),
+        view_pos(select_mode, 25, 5),
+        button=Qt.RightButton,
+        release=False,
+    )
 
     select_mode.set_interaction_mode(InteractionMode.NAVIGATE)
-    send_mouse(select_mode, QEvent.MouseButtonRelease, view_pos(select_mode, 25, 5),
-               Qt.RightButton, Qt.NoButton)
+    send_mouse(
+        select_mode,
+        QEvent.MouseButtonRelease,
+        view_pos(select_mode, 25, 5),
+        Qt.RightButton,
+        Qt.NoButton,
+    )
 
     assert selected(select_mode) == set()
 
@@ -155,6 +185,7 @@ def test_select_cursor_is_arrow_over_node(select_mode):
 
 # --- Verschieben -------------------------------------------------------
 
+
 def test_move_cursor_is_move_arrow_over_node(zoomed_window):
     zoomed_window.set_interaction_mode(InteractionMode.MOVE_NODES)
 
@@ -164,6 +195,7 @@ def test_move_cursor_is_move_arrow_over_node(zoomed_window):
 
 
 # --- Messen ------------------------------------------------------------
+
 
 @pytest.fixture
 def measuring(zoomed_window):
@@ -202,8 +234,9 @@ def test_dragging_a_free_point_moves_it(measuring):
 
     drag(measuring, start, start + QPoint(40, 0), release=False)
     assert cursor_shape(measuring) == Qt.SizeAllCursor
-    send_mouse(measuring, QEvent.MouseButtonRelease, start + QPoint(40, 0),
-               Qt.LeftButton, Qt.NoButton)
+    send_mouse(
+        measuring, QEvent.MouseButtonRelease, start + QPoint(40, 0), Qt.LeftButton, Qt.NoButton
+    )
 
     end_point = measuring.measurement_controller.state.end_point
     assert end_point.x == pytest.approx(25, abs=0.5)

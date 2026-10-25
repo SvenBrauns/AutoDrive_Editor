@@ -28,10 +28,7 @@ def fail_on_slot_exceptions():
     sys.excepthook = previous_hook
 
     if caught:
-        details = "".join(
-            "".join(traceback.format_exception(*exc_info))
-            for exc_info in caught
-        )
+        details = "".join("".join(traceback.format_exception(*exc_info)) for exc_info in caught)
         pytest.fail(f"Unhandled exception in a Qt slot:\n{details}", pytrace=False)
 
 
@@ -47,7 +44,7 @@ def write_xml(tmp_path):
         incoming=";1;2",
         flags="0;0;0",
         markers="",
-        raw=None
+        raw=None,
     ):
         if raw is None:
             optional = ""

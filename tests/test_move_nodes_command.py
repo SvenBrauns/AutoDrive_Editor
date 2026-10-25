@@ -28,11 +28,7 @@ def test_redo_moves_and_undo_restores(data):
 
 
 def test_moves_several_nodes_together(data):
-    command = MoveNodesCommand(
-        data,
-        {1: (0, 5, 0), 2: (10, 5, 0)},
-        {1: (1, 5, 1), 2: (11, 5, 1)}
-    )
+    command = MoveNodesCommand(data, {1: (0, 5, 0), 2: (10, 5, 0)}, {1: (1, 5, 1), 2: (11, 5, 1)})
 
     command.redo()
 

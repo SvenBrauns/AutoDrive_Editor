@@ -5,7 +5,6 @@ from PySide6.QtCore import QRectF
 
 
 class ConnectionType(str, Enum):
-
     REGULAR = "regular"
     DUAL = "dual"
     REVERSE = "reverse"
@@ -13,7 +12,6 @@ class ConnectionType(str, Enum):
 
 @dataclass(frozen=True)
 class ConnectionData:
-
     source_id: int
     target_id: int
 
@@ -26,60 +24,33 @@ class ConnectionData:
     connection_type: ConnectionType
 
     @property
-    def key(
-        self
-    ) -> tuple[ConnectionType, int, int]:
+    def key(self) -> tuple[ConnectionType, int, int]:
         if self.connection_type == ConnectionType.DUAL:
             return (
                 self.connection_type,
-                min(
-                    self.source_id,
-                    self.target_id
-                ),
-                max(
-                    self.source_id,
-                    self.target_id
-                )
+                min(self.source_id, self.target_id),
+                max(self.source_id, self.target_id),
             )
 
-        return (
-            self.connection_type,
-            self.source_id,
-            self.target_id
-        )
+        return (self.connection_type, self.source_id, self.target_id)
 
     @property
     def minimum_x(self) -> float:
-        return min(
-            self.source_x,
-            self.target_x
-        )
+        return min(self.source_x, self.target_x)
 
     @property
     def maximum_x(self) -> float:
-        return max(
-            self.source_x,
-            self.target_x
-        )
+        return max(self.source_x, self.target_x)
 
     @property
     def minimum_z(self) -> float:
-        return min(
-            self.source_z,
-            self.target_z
-        )
+        return min(self.source_z, self.target_z)
 
     @property
     def maximum_z(self) -> float:
-        return max(
-            self.source_z,
-            self.target_z
-        )
+        return max(self.source_z, self.target_z)
 
-    def intersects_rect(
-        self,
-        rect: QRectF
-    ) -> bool:
+    def intersects_rect(self, rect: QRectF) -> bool:
         return not (
             self.maximum_x < rect.left()
             or self.minimum_x > rect.right()

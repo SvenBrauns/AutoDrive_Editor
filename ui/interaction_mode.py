@@ -29,7 +29,7 @@ class InteractionMode(Enum):
             InteractionMode.DELETE_NODES: "Nodes löschen",
             InteractionMode.CONNECT_REGULAR: "Verbinden (Regular)",
             InteractionMode.CONNECT_DUAL: "Verbinden (Dual)",
-            InteractionMode.CONNECT_REVERSE: "Verbinden (Reverse)"
+            InteractionMode.CONNECT_REVERSE: "Verbinden (Reverse)",
         }
 
         return display_names[self]

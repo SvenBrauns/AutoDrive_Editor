@@ -2,7 +2,6 @@ from enum import Enum
 
 
 class MeasurementMode(Enum):
-
     INACTIVE = "inactive"
     DISTANCE = "distance"
     ANGLE = "angle"
@@ -12,7 +11,7 @@ class MeasurementMode(Enum):
         display_names = {
             MeasurementMode.INACTIVE: "Inaktiv",
             MeasurementMode.DISTANCE: "Abstand",
-            MeasurementMode.ANGLE: "Winkel"
+            MeasurementMode.ANGLE: "Winkel",
         }
 
         return display_names[self]
@@ -22,7 +21,7 @@ class MeasurementMode(Enum):
         units = {
             MeasurementMode.INACTIVE: "",
             MeasurementMode.DISTANCE: "m",
-            MeasurementMode.ANGLE: "°"
+            MeasurementMode.ANGLE: "°",
         }
 
         return units[self]

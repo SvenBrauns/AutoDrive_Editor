@@ -55,13 +55,13 @@ def test_target_is_average_center_and_largest_distance(setup):
 
 def test_quarter_turn_around_center(setup):
     data, selection, edits, coordinator = setup
-    selection.replace([1, 2])   # center (10, 0)
+    selection.replace([1, 2])  # center (10, 0)
 
-    rotate(coordinator, [(30, 0), (10, 20)])   # grab right of center, drag below it
+    rotate(coordinator, [(30, 0), (10, 20)])  # grab right of center, drag below it
 
     assert xz(data, 1) == pytest.approx((10, -10))
     assert xz(data, 2) == pytest.approx((10, 10))
-    assert xz(data, 3) == (100, 100)            # not selected
+    assert xz(data, 3) == (100, 100)  # not selected
 
 
 def test_height_is_kept(setup):
@@ -103,7 +103,7 @@ def test_shift_snaps_to_15_degree_steps(setup):
     selection.replace([1, 2])
     assert coordinator.begin_rotation(QPointF(30, 0))
 
-    angle = coordinator.update_rotation(QPointF(10 + 20 * 0.64, 20 * 0.77), snap=True)   # ~50°
+    angle = coordinator.update_rotation(QPointF(10 + 20 * 0.64, 20 * 0.77), snap=True)  # ~50°
 
     assert angle == 45
     coordinator.finish_rotation()
@@ -114,7 +114,7 @@ def test_angle_is_reported_between_minus_180_and_180(setup):
     selection.replace([1, 2])
     assert coordinator.begin_rotation(QPointF(30, 0))
 
-    angle = coordinator.update_rotation(QPointF(10, -20))   # quarter turn the other way
+    angle = coordinator.update_rotation(QPointF(10, -20))  # quarter turn the other way
 
     assert angle == pytest.approx(-90)
     coordinator.cancel_rotation()

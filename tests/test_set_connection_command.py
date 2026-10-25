@@ -2,7 +2,10 @@ import pytest
 
 from autodrive.models import AutoDriveData, NodeData
 from editing.set_connection_command import (
-    CONNECTION_STATES, NO_CONNECTION, SetConnectionCommand, read_connection_state
+    CONNECTION_STATES,
+    NO_CONNECTION,
+    SetConnectionCommand,
+    read_connection_state,
 )
 from rendering.connection_data import ConnectionType
 from rendering.connection_geometry import get_connection_type
