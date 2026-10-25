@@ -6,7 +6,6 @@ import traceback
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
-
 from PySide6.QtWidgets import QApplication
 
 
@@ -28,10 +27,7 @@ def fail_on_slot_exceptions():
     sys.excepthook = previous_hook
 
     if caught:
-        details = "".join(
-            "".join(traceback.format_exception(*exc_info))
-            for exc_info in caught
-        )
+        details = "".join("".join(traceback.format_exception(*exc_info)) for exc_info in caught)
         pytest.fail(f"Unhandled exception in a Qt slot:\n{details}", pytrace=False)
 
 
@@ -47,7 +43,7 @@ def write_xml(tmp_path):
         incoming=";1;2",
         flags="0;0;0",
         markers="",
-        raw=None
+        raw=None,
     ):
         if raw is None:
             optional = ""
@@ -80,7 +76,7 @@ def write_xml(tmp_path):
 
 @pytest.fixture
 def window(qapp):
-    from ui.main_window import MainWindow
+    from autodrive_editor.ui.main_window import MainWindow
 
     main_window = MainWindow()
     main_window.show()
