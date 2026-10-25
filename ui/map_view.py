@@ -14,7 +14,8 @@ from PySide6.QtGui import (
     QMouseEvent,
     QPainterPath,
     QResizeEvent,
-    QWheelEvent
+    QWheelEvent,
+    QKeyEvent
 )
 from PySide6.QtWidgets import (
     QApplication,
@@ -103,6 +104,23 @@ class MapView(QGraphicsView):
 
     selection_area_preview_cleared = Signal()
 
+    measurement_press_requested = Signal(
+        QPoint,
+        object
+    )
+
+    measurement_move_requested = Signal(
+        QPoint,
+        object
+    )
+
+    measurement_release_requested = Signal(
+        QPoint,
+        object
+    )
+
+    measurement_cancel_requested = Signal()
+
     ZOOM_FACTOR = 1.15
     MIN_ZOOM = 0.02
     MAX_ZOOM = 50.0
@@ -120,6 +138,9 @@ class MapView(QGraphicsView):
         self._interaction_mode = (
             InteractionMode.NAVIGATE
         )
+
+        self._measurement_active = False
+        self._measurement_point_drag_active = False
 
         self._rotation_angle = 0.0
         self._raw_rotation_angle = 0.0
@@ -167,6 +188,10 @@ class MapView(QGraphicsView):
         self
     ) -> InteractionMode:
         return self._interaction_mode
+
+    @property
+    def measurement_active(self) -> bool:
+        return self._measurement_active
 
     def set_zoom_level(
         self,
@@ -217,6 +242,22 @@ class MapView(QGraphicsView):
         target_angle = self._snap_rotation_angle(
             self._raw_rotation_angle
         )
+
+        self._apply_rotation_angle(
+            target_angle
+        )
+
+    def set_exact_rotation_angle(
+        self,
+        rotation_angle: float
+    ):
+        target_angle = (
+            self._normalize_rotation_angle(
+                rotation_angle
+            )
+        )
+
+        self._raw_rotation_angle = target_angle
 
         self._apply_rotation_angle(
             target_angle
@@ -298,6 +339,33 @@ class MapView(QGraphicsView):
 
         self.interaction_mode_changed.emit(
             interaction_mode
+        )
+
+    def set_measurement_active(
+        self,
+        active: bool
+    ):
+        active = bool(
+            active
+        )
+
+        if active == self._measurement_active:
+            return
+
+        self._measurement_active = active
+        self._measurement_point_drag_active = False
+
+        self._selection_rubber_band.hide()
+        self._pointer_state.reset()
+
+        self._restore_interaction_cursor()
+
+    def set_measurement_point_drag_active(
+        self,
+        active: bool
+    ):
+        self._measurement_point_drag_active = bool(
+            active
         )
 
     def get_visible_scene_rect(
@@ -386,6 +454,29 @@ class MapView(QGraphicsView):
     ):
         pressed_button = event.button()
 
+        mouse_position = (
+            event.position().toPoint()
+        )
+
+        if (
+            self._measurement_active
+            and pressed_button == Qt.LeftButton
+        ):
+            self._pointer_state.begin(
+                button=pressed_button,
+                position=mouse_position
+            )
+
+            self._measurement_point_drag_active = False
+
+            self.measurement_press_requested.emit(
+                mouse_position,
+                event.modifiers()
+            )
+
+            event.accept()
+            return
+
         supported_button = (
             pressed_button
             in (
@@ -398,6 +489,7 @@ class MapView(QGraphicsView):
             pressed_button == Qt.RightButton
             and self._interaction_mode
             == InteractionMode.SELECT
+            and not self._measurement_active
         )
 
         if (
@@ -408,10 +500,6 @@ class MapView(QGraphicsView):
                 event
             )
             return
-
-        mouse_position = (
-            event.position().toPoint()
-        )
 
         self._pointer_state.begin(
             button=pressed_button,
@@ -438,6 +526,54 @@ class MapView(QGraphicsView):
             Qt.MiddleButton
         ):
             self._handle_rotation_drag(
+                mouse_position
+            )
+
+            event.accept()
+            return
+
+        if self._measurement_active:
+            if self._is_button_drag(
+                event,
+                Qt.LeftButton
+            ):
+                if self._measurement_point_drag_active:
+                    if (
+                        not self._pointer_state.drag_active
+                        and not self._drag_threshold_reached(
+                            mouse_position
+                        )
+                    ):
+                        event.accept()
+                        return
+
+                    self._pointer_state.drag_active = True
+
+                    self.measurement_move_requested.emit(
+                        mouse_position,
+                        event.modifiers()
+                    )
+
+                    self._update_hover_cursor(
+                        mouse_position
+                    )
+
+                    event.accept()
+                    return
+
+                self._handle_pan_drag(
+                    mouse_position
+                )
+
+                event.accept()
+                return
+
+            self.measurement_move_requested.emit(
+                mouse_position,
+                event.modifiers()
+            )
+
+            self._update_hover_cursor(
                 mouse_position
             )
 
@@ -479,6 +615,47 @@ class MapView(QGraphicsView):
         self,
         event: QMouseEvent
     ):
+        mouse_position = (
+            event.position().toPoint()
+        )
+
+        if (
+            self._measurement_active
+            and event.button() == Qt.LeftButton
+            and self._pointer_state.pressed_button
+            == Qt.LeftButton
+        ):
+            was_dragging = (
+                self._pointer_state.drag_active
+            )
+
+            measurement_point_drag = (
+                self._measurement_point_drag_active
+            )
+
+            if measurement_point_drag:
+                self.measurement_release_requested.emit(
+                    mouse_position,
+                    event.modifiers()
+                )
+
+            elif not was_dragging:
+                self.measurement_release_requested.emit(
+                    mouse_position,
+                    event.modifiers()
+                )
+
+            self._measurement_point_drag_active = False
+
+            self._pointer_state.reset()
+
+            self._restore_interaction_cursor(
+                mouse_position
+            )
+
+            event.accept()
+            return
+
         if (
             event.button()
             != self._pointer_state.pressed_button
@@ -490,10 +667,6 @@ class MapView(QGraphicsView):
 
         released_button = (
             self._pointer_state.pressed_button
-        )
-
-        mouse_position = (
-            event.position().toPoint()
         )
 
         was_dragging = (
@@ -532,6 +705,23 @@ class MapView(QGraphicsView):
             )
 
         event.accept()
+
+    def keyPressEvent(
+        self,
+        event: QKeyEvent
+    ):
+        if (
+            self._measurement_active
+            and event.key() == Qt.Key_Escape
+        ):
+            self.measurement_cancel_requested.emit()
+
+            event.accept()
+            return
+
+        super().keyPressEvent(
+            event
+        )
 
     def _configure_view(self):
         self.setMouseTracking(
@@ -1015,10 +1205,25 @@ class MapView(QGraphicsView):
                     Qt.CrossCursor
                 )
 
+            elif (
+                self._measurement_active
+                and self._measurement_point_drag_active
+            ):
+                self.viewport().setCursor(
+                    Qt.SizeAllCursor
+                )
+
             else:
                 self.viewport().setCursor(
                     Qt.ClosedHandCursor
                 )
+
+            return
+
+        if self._measurement_active:
+            self.viewport().setCursor(
+                Qt.CrossCursor
+            )
 
             return
 

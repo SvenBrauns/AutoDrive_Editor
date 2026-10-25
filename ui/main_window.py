@@ -38,6 +38,18 @@ from ui.debug_dock import DebugDock
 from selection.node_selection_manager import (
     NodeSelectionManager
 )
+from measurement.measurement_controller import (
+    MeasurementController
+)
+from measurement.measurement_mode import (
+    MeasurementMode
+)
+from measurement.measurement_point import (
+    MeasurementPoint
+)
+from measurement.measurement_math import (
+    calculate_horizontal_alignment_rotation
+)
 
 
 class MainWindow(QMainWindow):
@@ -256,6 +268,8 @@ class MainWindow(QMainWindow):
         self._update_scene_rect()
         self._fit_scene_in_view()
 
+        self.measurement_controller.restore_scene_items()
+
         self._set_status(
             f"{len(self.autodrive_data)} Waypoints geladen"
         )
@@ -425,6 +439,65 @@ class MainWindow(QMainWindow):
             "Rotation zurückgesetzt"
         )
 
+    def align_view_to_measurement(self):
+        measurement_state = (
+            self.measurement_controller.state
+        )
+
+        if not measurement_state.is_complete:
+            self.actions.set_measurement_alignment_enabled(
+                False
+            )
+
+            self._set_status(
+                "Für die Ausrichtung müssen "
+                "Messpunkt A und B gesetzt sein"
+            )
+
+            return
+
+        start_point = measurement_state.start_point
+        end_point = measurement_state.end_point
+
+        if (
+            start_point is None
+            or end_point is None
+        ):
+            self.actions.set_measurement_alignment_enabled(
+                False
+            )
+
+            return
+
+        try:
+            target_rotation = (
+                calculate_horizontal_alignment_rotation(
+                    start_position=(
+                        start_point.position
+                    ),
+                    end_position=(
+                        end_point.position
+                    )
+                )
+            )
+
+        except ValueError as ex:
+            self._set_status(
+                f"Messlinie konnte nicht "
+                f"ausgerichtet werden: {ex}"
+            )
+
+            return
+
+        self.view.set_exact_rotation_angle(
+            target_rotation
+        )
+
+        self._set_status(
+            "Messlinie horizontal ausgerichtet: "
+            f"Rotation {target_rotation:.2f}°"
+        )
+
     def open_display_options(self):
         dialog = DisplayOptionsDialog(
             display_style=(
@@ -489,6 +562,8 @@ class MainWindow(QMainWindow):
             selected_node_ids
         )
 
+        self.measurement_controller.restore_scene_items()
+
         self._update_scene_rect()
 
         self.view.centerOn(
@@ -514,28 +589,24 @@ class MainWindow(QMainWindow):
         view_position: QPoint,
         modifiers
     ):
-        clicked_node = None
-
-        for item in self.view.items(
+        clicked_node_item = self._get_node_item_at(
             view_position
-        ):
-            if isinstance(
-                item,
-                NodeItem
-            ):
-                clicked_node = item.node_data
-                break
+        )
 
         control_pressed = bool(
             modifiers
             & Qt.ControlModifier
         )
 
-        if clicked_node is None:
+        if clicked_node_item is None:
             if not control_pressed:
                 self.node_selection_manager.clear()
 
             return
+
+        clicked_node = (
+            clicked_node_item.node_data
+        )
 
         if control_pressed:
             self.node_selection_manager.toggle(
@@ -740,6 +811,15 @@ class MainWindow(QMainWindow):
             NodeSelectionManager()
         )
 
+        self.measurement_controller = (
+            MeasurementController(
+                scene=self.scene,
+                parent=self
+            )
+        )
+
+        self._measurement_drag_active = False
+
     def _create_status_widgets(self):
         self.status = QLabel(
             self.NO_FILE_STATUS
@@ -800,6 +880,34 @@ class MainWindow(QMainWindow):
             self.clear_selection_area_preview
         )
 
+        self.view.measurement_press_requested.connect(
+            self.handle_measurement_press
+        )
+
+        self.view.measurement_move_requested.connect(
+            self.handle_measurement_move
+        )
+
+        self.view.measurement_release_requested.connect(
+            self.handle_measurement_release
+        )
+
+        self.view.measurement_cancel_requested.connect(
+            self.cancel_measurement
+        )
+
+        self.measurement_controller.measurement_changed.connect(
+            self._update_measurement_alignment_action
+        )
+
+        self.measurement_controller.measurement_cleared.connect(
+            self._update_measurement_alignment_action
+        )
+
+        self.measurement_controller.mode_changed.connect(
+            self._update_measurement_alignment_action
+        )
+
         self.node_selection_manager.selection_changed.connect(
             self._handle_node_selection_changed
         )
@@ -856,6 +964,270 @@ class MainWindow(QMainWindow):
         self.actions.rotation_controls.set_rotation_step(
             rotation_step
         )
+
+    def handle_measurement_press(
+        self,
+        view_position: QPoint,
+        modifiers
+    ):
+        if not self.measurement_controller.is_active:
+            return
+
+        scene_position = self.view.mapToScene(
+            view_position
+        )
+
+        scene_tolerance = (
+            12.0
+            / max(
+                self.view.zoom_level,
+                self.view.MIN_ZOOM
+            )
+        )
+
+        handle_index = (
+            self.measurement_controller
+            .get_handle_at_scene_position(
+                scene_position=scene_position,
+                scene_tolerance=scene_tolerance
+            )
+        )
+
+        if handle_index is None:
+            self._measurement_drag_active = False
+
+            self.view.set_measurement_point_drag_active(
+                False
+            )
+
+            return
+
+        drag_started = (
+            self.measurement_controller
+            .begin_point_drag(
+                point_index=handle_index,
+                press_scene_position=scene_position
+            )
+        )
+
+        self._measurement_drag_active = (
+            drag_started
+        )
+
+        self.view.set_measurement_point_drag_active(
+            drag_started
+        )
+
+    def handle_measurement_move(
+        self,
+        view_position: QPoint,
+        modifiers
+    ):
+        if not self.measurement_controller.is_active:
+            return
+
+        scene_position = self.view.mapToScene(
+            view_position
+        )
+
+        if self._measurement_drag_active:
+            self.measurement_controller.update_point_drag(
+                scene_position
+            )
+
+            return
+
+        if (
+            self.measurement_controller
+            .state
+            .is_awaiting_end_point
+        ):
+            preview_position = (
+                self._get_measurement_preview_position(
+                    view_position=view_position,
+                    scene_position=scene_position
+                )
+            )
+
+            self.measurement_controller.set_preview_position(
+                preview_position
+            )
+
+    def handle_measurement_release(
+        self,
+        view_position: QPoint,
+        modifiers
+    ):
+        if not self.measurement_controller.is_active:
+            return
+
+        scene_position = self.view.mapToScene(
+            view_position
+        )
+
+        if self._measurement_drag_active:
+            self.measurement_controller.update_point_drag(
+                scene_position
+            )
+
+            self.measurement_controller.finish_point_drag()
+
+            self._measurement_drag_active = False
+
+            self.view.set_measurement_point_drag_active(
+                False
+            )
+
+            self._set_status(
+                "Messpunkt verschoben"
+            )
+
+            return
+
+        measurement_point = (
+            self._create_measurement_point(
+                view_position=view_position,
+                scene_position=scene_position
+            )
+        )
+
+        measurement_state = (
+            self.measurement_controller.state
+        )
+
+        if (
+            measurement_state.is_awaiting_start_point
+            or measurement_state.is_complete
+        ):
+            self.measurement_controller.set_start_point(
+                measurement_point
+            )
+
+            self._set_status(
+                "Messpunkt A gesetzt"
+            )
+
+            return
+
+        if measurement_state.is_awaiting_end_point:
+            self.measurement_controller.set_end_point(
+                measurement_point
+            )
+
+            measurement_result = (
+                self.measurement_controller
+                .state
+                .calculate_result()
+            )
+
+            if measurement_result is not None:
+                self._set_status(
+                    f"Messung: "
+                    f"{measurement_result.display_text}"
+                )
+
+            else:
+                self._set_status(
+                    "Messpunkt B gesetzt"
+                )
+
+    def cancel_measurement(self):
+        if not self.measurement_controller.is_active:
+            return
+
+        if self.measurement_controller.is_dragging:
+            self.measurement_controller.cancel_drag()
+
+            self._measurement_drag_active = False
+
+            self.view.set_measurement_point_drag_active(
+                False
+            )
+
+            self._set_status(
+                "Verschieben des Messpunkts abgebrochen"
+            )
+
+            return
+
+        if (
+            self.measurement_controller
+            .state
+            .has_start_point
+        ):
+            self.measurement_controller.clear_measurement()
+
+            self._set_status(
+                "Messung gelöscht: "
+                "Messpunkt A setzen"
+            )
+
+            return
+
+        self.set_measurement_mode(
+            MeasurementMode.INACTIVE
+        )
+
+    def _update_measurement_alignment_action(
+        self,
+        *args
+    ):
+        alignment_available = (
+            self.measurement_controller.is_active
+            and self.measurement_controller.is_complete
+        )
+
+        self.actions.set_measurement_alignment_enabled(
+            alignment_available
+        )
+
+    def _create_measurement_point(
+        self,
+        view_position: QPoint,
+        scene_position
+    ) -> MeasurementPoint:
+        node_item = self._get_node_item_at(
+            view_position
+        )
+
+        if node_item is not None:
+            return MeasurementPoint.create_node_anchor(
+                node_id=node_item.node_data.node_id,
+                position=node_item.scenePos()
+            )
+
+        return MeasurementPoint.create_free(
+            scene_position
+        )
+
+    def _get_measurement_preview_position(
+        self,
+        view_position: QPoint,
+        scene_position
+    ):
+        node_item = self._get_node_item_at(
+            view_position
+        )
+
+        if node_item is not None:
+            return node_item.scenePos()
+
+        return scene_position
+
+    def _get_node_item_at(
+        self,
+        view_position: QPoint
+    ) -> NodeItem | None:
+        for item in self.view.items(
+            view_position
+        ):
+            if isinstance(
+                item,
+                NodeItem
+            ):
+                return item
+
+        return None
 
     def _refresh_debug_dock(
         self,
@@ -961,6 +1333,8 @@ class MainWindow(QMainWindow):
         )
 
     def _clear_scene_content(self):
+        self.measurement_controller.remove_scene_items()
+
         self.background_manager.remove_from_scene(
             preserve_file_path=True
         )
@@ -1026,6 +1400,73 @@ class MainWindow(QMainWindow):
         self._set_status(
             status_text
         )
+
+    def set_measurement_mode(
+        self,
+        measurement_mode: MeasurementMode
+    ):
+        if not isinstance(
+            measurement_mode,
+            MeasurementMode
+        ):
+            raise TypeError(
+                "Der Messmodus ist ungültig."
+            )
+
+        self._measurement_drag_active = False
+
+        self.view.set_measurement_point_drag_active(
+            False
+        )
+
+        if measurement_mode == MeasurementMode.INACTIVE:
+            self.measurement_controller.deactivate()
+
+            self.view.set_measurement_active(
+                False
+            )
+
+            self.actions.set_measurement_mode(
+                MeasurementMode.INACTIVE
+            )
+
+            self.actions.set_measurement_alignment_enabled(
+                False
+            )
+
+            self._set_status(
+                "Messwerkzeug deaktiviert"
+            )
+
+            return
+
+        self.measurement_controller.activate(
+            measurement_mode
+        )
+
+        self.view.set_measurement_active(
+            True
+        )
+
+        self.actions.set_measurement_mode(
+            measurement_mode
+        )
+
+        self.actions.set_measurement_alignment_enabled(
+            False
+        )
+
+        if measurement_mode == MeasurementMode.DISTANCE:
+            self._set_status(
+                "Abstandsmessung aktiv: "
+                "Messpunkt A setzen"
+            )
+
+        elif measurement_mode == MeasurementMode.ANGLE:
+            self._set_status(
+                "Winkelmessung aktiv: "
+                "Messpunkt A setzen"
+            )
 
     def set_grid_spacing(
         self,
