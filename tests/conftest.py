@@ -115,3 +115,17 @@ def zoomed_window(loaded_window, qapp):
     assert set(window.scene_renderer.visible_node_manager.visible_node_items) == {1, 2, 3}
 
     return window
+
+
+@pytest.fixture
+def sloped_heightmap(tmp_path):
+    """16-bit heightmap that rises from west to east, so the terrain
+    height depends on x only."""
+    from PIL import Image
+
+    size = 257
+    image = Image.new("I;16", (size, size))
+    image.putdata([column * 200 for row in range(size) for column in range(size)])
+    path = tmp_path / "dem.png"
+    image.save(path)
+    return path

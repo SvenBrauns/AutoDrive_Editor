@@ -485,6 +485,7 @@ class MainWindow(QMainWindow):
             selection_manager=self.node_selection_manager,
             edit_coordinator=self.edit_coordinator,
             autodrive_data_provider=self._get_autodrive_data,
+            terrain_height_at=self._get_terrain_height,
             parent=self
         )
 
@@ -507,6 +508,7 @@ class MainWindow(QMainWindow):
             selection_manager=self.node_selection_manager,
             edit_coordinator=self.edit_coordinator,
             autodrive_data_provider=self._get_autodrive_data,
+            terrain_height_at=self._get_terrain_height,
             parent=self
         )
 
@@ -619,6 +621,27 @@ class MainWindow(QMainWindow):
                 self.measurement_coordinator
             )
         )
+
+    def _get_terrain_height(
+        self,
+        x: float,
+        z: float
+    ) -> float | None:
+        """Terrain height from the loaded heightmap, or None without
+        heightmap or outside the map."""
+
+        if not self.heightmap_manager.has_heightmap():
+            return None
+
+        try:
+            return self.heightmap_manager.get_height_at(
+                world_x=x,
+                world_z=z,
+                map_scale=self.background_manager.map_scale
+            ).height
+
+        except ValueError:
+            return None
 
     def _get_autodrive_data(
         self

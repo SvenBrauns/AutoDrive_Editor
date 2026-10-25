@@ -11,6 +11,10 @@ from PySide6.QtCore import (
 
 from autodrive.models import AutoDriveData
 from editing.edit_coordinator import EditCoordinator
+from editing.terrain_follower import (
+    TerrainFollower,
+    TerrainHeightProvider
+)
 from editing.move_nodes_command import (
     MoveNodesCommand,
     NodePosition
@@ -46,10 +50,15 @@ class SelectionRotateCoordinator(QObject):
             [],
             AutoDriveData | None
         ],
+        terrain_height_at: TerrainHeightProvider | None = None,
         parent=None
     ):
         super().__init__(
             parent
+        )
+
+        self.terrain_follower = TerrainFollower(
+            terrain_height_at
         )
 
         self.selection_manager = selection_manager
@@ -158,6 +167,10 @@ class SelectionRotateCoordinator(QObject):
             ) is not None
         }
 
+        self.terrain_follower.begin(
+            self._start_positions
+        )
+
         self._merge_key = next(
             self._merge_keys
         )
@@ -251,18 +264,31 @@ class SelectionRotateCoordinator(QObject):
 
         rotated = {}
 
-        for node_id, (x, y, z) in self._start_positions.items():
-            offset_x = x - center_x
-            offset_z = z - center_z
+        for node_id, start in self._start_positions.items():
+            offset_x = start[0] - center_x
+            offset_z = start[2] - center_z
 
-            rotated[node_id] = (
+            new_x = (
                 center_x
                 + offset_x * cos_angle
-                - offset_z * sin_angle,
-                y,
+                - offset_z * sin_angle
+            )
+
+            new_z = (
                 center_z
                 + offset_x * sin_angle
                 + offset_z * cos_angle
+            )
+
+            rotated[node_id] = (
+                new_x,
+                self.terrain_follower.height_at(
+                    node_id,
+                    start,
+                    new_x,
+                    new_z
+                ),
+                new_z
             )
 
         return rotated

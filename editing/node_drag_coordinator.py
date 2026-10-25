@@ -11,6 +11,10 @@ from PySide6.QtCore import (
 
 from autodrive.models import AutoDriveData
 from editing.edit_coordinator import EditCoordinator
+from editing.terrain_follower import (
+    TerrainFollower,
+    TerrainHeightProvider
+)
 from editing.move_nodes_command import (
     MoveNodesCommand,
     NodePosition
@@ -47,10 +51,15 @@ class NodeDragCoordinator(QObject):
             [],
             AutoDriveData | None
         ],
+        terrain_height_at: TerrainHeightProvider | None = None,
         parent=None
     ):
         super().__init__(
             parent
+        )
+
+        self.terrain_follower = TerrainFollower(
+            terrain_height_at
         )
 
         self.view = view
@@ -121,6 +130,10 @@ class NodeDragCoordinator(QObject):
             moving_node_ids
         )
 
+        self.terrain_follower.begin(
+            self._start_positions
+        )
+
         self._merge_key = next(
             self._merge_keys
         )
@@ -151,16 +164,25 @@ class NodeDragCoordinator(QObject):
             - self._press_scene_position.y()
         )
 
+        target_positions = {}
+
+        for node_id, start in self._start_positions.items():
+            new_x = start[0] + delta_x
+            new_z = start[2] + delta_z
+
+            target_positions[node_id] = (
+                new_x,
+                self.terrain_follower.height_at(
+                    node_id,
+                    start,
+                    new_x,
+                    new_z
+                ),
+                new_z
+            )
+
         self._push_positions(
-            {
-                node_id: (
-                    x + delta_x,
-                    y,
-                    z + delta_z
-                )
-                for node_id, (x, y, z)
-                in self._start_positions.items()
-            }
+            target_positions
         )
 
     def finish_drag(self):
