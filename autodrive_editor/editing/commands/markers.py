@@ -18,7 +18,7 @@ def _require_marker(autodrive_data: AutoDriveData, node_id: int) -> MarkerData:
     return marker
 
 
-class _GroupCreation:
+class GroupCreation:
     """Adds a marker group if it does not exist yet, and removes it again
     on undo."""
 
@@ -62,7 +62,7 @@ class AddMarkerCommand(EditCommand):
             raise ValueError(f"Node {node_id} hat bereits einen Marker.")
 
         self.marker = MarkerData(node_id=node_id, name=name, group=group)
-        self._group = _GroupCreation(autodrive_data, group)
+        self._group = GroupCreation(autodrive_data, group)
 
     def apply(self) -> DataChange:
         self.autodrive_data.add_marker(self.marker)
@@ -94,7 +94,7 @@ class EditMarkerCommand(EditCommand):
         self.old_values = (self.marker.name, self.marker.group)
         self.new_values = (name, group)
 
-        self._group = _GroupCreation(autodrive_data, group)
+        self._group = GroupCreation(autodrive_data, group)
 
         self.setObsolete(self.old_values == self.new_values)
 

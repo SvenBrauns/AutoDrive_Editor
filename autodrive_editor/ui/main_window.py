@@ -1,4 +1,5 @@
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -12,6 +13,7 @@ from PySide6.QtWidgets import (
 
 from autodrive_editor.editing.commands.edit_command import DataChange
 from autodrive_editor.editing.edit_history import EditHistory
+from autodrive_editor.editing.operations.clipboard import ClipboardOperation
 from autodrive_editor.editing.operations.connect_nodes import ConnectNodesOperation
 from autodrive_editor.editing.operations.create_nodes import CreateNodesOperation
 from autodrive_editor.editing.operations.delete_nodes import DeleteNodesOperation
@@ -761,6 +763,17 @@ class MainWindow(QMainWindow):
             parent=self,
         )
 
+        self.clipboard_operation = ClipboardOperation(
+            node_selection=self.node_selection,
+            edit_history=self.edit_history,
+            autodrive_data_provider=self._get_autodrive_data,
+            delete_nodes=self.delete_nodes_operation.delete_nodes,
+            # Looked up on each call, so tests can replace it.
+            paste_position=lambda: self._get_paste_position(),
+            terrain_height_at=self._get_terrain_height,
+            parent=self,
+        )
+
         self.reverse_direction_operation = ReverseDirectionOperation(
             connection_at=self._get_connection_at,
             node_selection=self.node_selection,
@@ -921,6 +934,20 @@ class MainWindow(QMainWindow):
         except ValueError:
             return None
 
+    def _get_paste_position(self) -> tuple[float, float]:
+        """Scene position of the mouse, or the view center if the mouse
+        is outside the map."""
+
+        viewport = self.view.viewport()
+        view_position = viewport.mapFromGlobal(QCursor.pos())
+
+        if not viewport.rect().contains(view_position):
+            view_position = viewport.rect().center()
+
+        scene_position = self.view.mapToScene(view_position)
+
+        return scene_position.x(), scene_position.y()
+
     def _get_connection_at(self, view_position):
         scene_position = self.view.mapToScene(view_position)
 
@@ -1008,6 +1035,8 @@ class MainWindow(QMainWindow):
         self.marker_operation.status_changed.connect(self._set_status)
 
         self.reverse_direction_operation.status_changed.connect(self._set_status)
+
+        self.clipboard_operation.status_changed.connect(self._set_status)
 
         self.rotate_selection_operation.status_changed.connect(self._set_status)
 
