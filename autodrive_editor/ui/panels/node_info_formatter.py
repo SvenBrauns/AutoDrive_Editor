@@ -35,10 +35,16 @@ class NodeInfoFormatter:
 
     @staticmethod
     def _get_node_type(node_data: NodeData) -> str:
-        if node_data.is_regular:
-            return "Regular Node"
+        if node_data.is_subprio:
+            return "Subprio Node"
 
-        return "Subprio Node"
+        if node_data.is_from_map_scan:
+            return "Regular Node (aus Karten-Scan)"
+
+        if not node_data.has_known_flag:
+            return f"Regular Node (Flag {node_data.flag})"
+
+        return "Regular Node"
 
     @staticmethod
     def _get_marker_lines(node_data: NodeData, autodrive_data: AutoDriveData | None) -> list[str]:
