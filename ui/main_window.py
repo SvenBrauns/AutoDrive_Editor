@@ -1,16 +1,10 @@
-from pathlib import Path
-
-from PySide6.QtCore import (
-    QPoint,
-    Qt
-)
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QFileDialog,
     QGraphicsScene,
     QLabel,
     QMainWindow
 )
-from PySide6.QtGui import QPainterPath
 
 from app_paths import (
     LOCAL_PROJECTS_DIRECTORY,
@@ -20,11 +14,12 @@ from autodrive.models import (
     AutoDriveData,
     NodeData
 )
-from autodrive.xml_parser import AutoDriveXmlParser
 from map.background_manager import BackgroundManager
 from map.heightmap_manager import HeightmapManager
 from project.project_manager import ProjectManager
-from rendering.items.node_item import NodeItem
+from project.project_coordinator import (
+    ProjectCoordinator
+)
 from rendering.scene_renderer import SceneRenderer
 from rendering.display_style import DisplayStyle
 from ui.display_options_dialog import (
@@ -34,9 +29,15 @@ from ui.interaction_mode import InteractionMode
 from ui.main_window_actions import MainWindowActions
 from ui.map_view import MapView
 from ui.node_info_formatter import NodeInfoFormatter
+from ui.view_rotation_controller import ViewRotationController
 from ui.debug_dock import DebugDock
+from ui.debug_dock_coordinator import DebugDockCoordinator
+from ui.grid_coordinator import GridCoordinator
 from selection.node_selection_manager import (
     NodeSelectionManager
+)
+from selection.selection_coordinator import (
+    SelectionCoordinator
 )
 from measurement.measurement_controller import (
     MeasurementController
@@ -44,13 +45,9 @@ from measurement.measurement_controller import (
 from measurement.measurement_mode import (
     MeasurementMode
 )
-from measurement.measurement_point import (
-    MeasurementPoint
+from measurement.measurement_coordinator import (
+    MeasurementCoordinator
 )
-from measurement.measurement_math import (
-    calculate_horizontal_alignment_rotation
-)
-
 
 class MainWindow(QMainWindow):
 
@@ -65,12 +62,6 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-
-        self.autodrive_data: AutoDriveData | None = None
-
-        self.current_xml_path: str | None = None
-        self.current_config_path: str | None = None
-        self.current_heightmap_path: str | None = None
 
         self.local_projects_directory = (
             LOCAL_PROJECTS_DIRECTORY
@@ -91,7 +82,30 @@ class MainWindow(QMainWindow):
             self.background_manager.map_scale
         )
 
+        self.grid_coordinator = GridCoordinator(
+            background_manager=self.background_manager,
+            grid_controls=self.actions.grid_controls,
+            parent=self
+        )
+
         self._connect_signals()
+
+        # Created after the renderer is connected to the view, so the
+        # dock reads the renderer state after it has been updated.
+        self.debug_dock_coordinator = DebugDockCoordinator(
+            debug_dock=self.debug_dock,
+            view=self.view,
+            scene_renderer=self.scene_renderer,
+            parent=self
+        )
+
+        self.selection_coordinator.selection_state_changed.connect(
+            self.debug_dock_coordinator.refresh
+        )
+
+        self.project_coordinator.debug_refresh_requested.connect(
+            self.debug_dock_coordinator.refresh
+        )
 
     def select_background(self):
         filename, _ = QFileDialog.getOpenFileName(
@@ -105,7 +119,7 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            self.background_manager.load(
+            self.project_coordinator.load_background_file(
                 filename
             )
 
@@ -113,16 +127,6 @@ class MainWindow(QMainWindow):
             self._set_status(
                 f"DDS konnte nicht geladen werden: {ex}"
             )
-            return
-
-        self._update_scene_rect()
-
-        if self.autodrive_data is None:
-            self._fit_scene_in_view()
-
-        self._set_status(
-            "DDS-Hintergrund geladen"
-        )
 
     def select_heightmap(self):
         filename, _ = QFileDialog.getOpenFileName(
@@ -136,66 +140,22 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            heightmap_data = (
-                self.heightmap_manager.load(
-                    filename
-                )
+            self.project_coordinator.load_heightmap_file(
+                filename
             )
 
         except Exception as ex:
             self._set_status(
                 f"Heightmap konnte nicht geladen werden: {ex}"
             )
-            return
-
-        self._set_heightmap_path(
-            heightmap_data.file_path
-        )
-
-        self._set_status(
-            f"Heightmap geladen: "
-            f"{heightmap_data.width} × "
-            f"{heightmap_data.height}, "
-            f"{heightmap_data.format_description}"
-        )
-
-        self._refresh_selected_node_info()
 
     def remove_heightmap(self):
-        self.heightmap_manager.clear()
-
-        self._set_heightmap_path(
-            None
-        )
-
-        self._set_status(
-            "Heightmap entfernt"
-        )
-
-        self._refresh_selected_node_info()
+        self.project_coordinator.remove_heightmap()
 
     def set_map_scale(
         self,
         map_scale: int
     ):
-        try:
-            self.background_manager.set_map_scale(
-                map_scale
-            )
-
-        except Exception as ex:
-            self._set_status(
-                "Kartengröße konnte nicht geändert werden: "
-                f"{ex}"
-            )
-            return
-
-        self.actions.set_current_map_scale(
-            map_scale
-        )
-
-        self._update_scene_rect()
-
         action = self.actions.map_scale_actions.get(
             map_scale
         )
@@ -206,11 +166,17 @@ class MainWindow(QMainWindow):
             else str(map_scale)
         )
 
-        self._set_status(
-            f"Kartengröße: {map_scale_label}"
-        )
+        try:
+            self.project_coordinator.set_map_scale(
+                map_scale=map_scale,
+                map_scale_label=map_scale_label
+            )
 
-        self._refresh_selected_node_info()
+        except Exception as ex:
+            self._set_status(
+                "Kartengröße konnte nicht geändert werden: "
+                f"{ex}"
+            )
 
     def load_xml(self):
         filename, _ = QFileDialog.getOpenFileName(
@@ -224,7 +190,7 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            self.load_xml_file(
+            self.project_coordinator.load_xml_file(
                 filename
             )
 
@@ -237,55 +203,23 @@ class MainWindow(QMainWindow):
         self,
         filename
     ):
-        xml_path = Path(
+        self.project_coordinator.load_xml_file(
             filename
-        ).resolve()
-
-        autodrive_data = AutoDriveXmlParser.load(
-            xml_path
         )
-
-        self._clear_scene_content()
-
-        self.current_xml_path = str(
-            xml_path
-        )
-
-        self.autodrive_data = autodrive_data
-
-        self._clear_node_selection()
-
-        self.background_manager.restore()
-
-        self.scene_renderer.render(
-            self.autodrive_data
-        )
-
-        self.scene_renderer.set_selected_node_ids(
-            self.node_selection_manager.selected_node_ids
-        )
-
-        self._update_scene_rect()
-        self._fit_scene_in_view()
-
-        self.measurement_controller.restore_scene_items()
-
-        self._set_status(
-            f"{len(self.autodrive_data)} Waypoints geladen"
-        )
-        self._refresh_debug_dock()
 
     def save_project(self):
-        if not self.current_xml_path:
+        if not self.project_coordinator.current_xml_path:
             self._set_status(
                 "Bitte zuerst eine AutoDrive-XML laden"
             )
             return
 
         default_path = (
-            self.current_config_path
-            if self.current_config_path
-            else str(self.local_projects_directory)
+            self.project_coordinator.current_config_path
+            if self.project_coordinator.current_config_path
+            else str(
+                self.local_projects_directory
+            )
         )
 
         config_path, _ = QFileDialog.getSaveFileName(
@@ -304,41 +238,23 @@ class MainWindow(QMainWindow):
             config_path += ".json"
 
         try:
-            saved_path = (
-                self.project_manager.save_project(
-                    config_path=config_path,
-                    xml_path=self.current_xml_path,
-                    background_path=(
-                        self.background_manager.file_path
-                    ),
-                    map_scale=(
-                        self.background_manager.map_scale
-                    ),
-                    heightmap_path=(
-                        self.current_heightmap_path
-                    )
-                )
+            self.project_coordinator.save_project_file(
+                config_path
             )
 
         except Exception as ex:
             self._set_status(
-                f"Projekt konnte nicht gespeichert werden: {ex}"
+                f"Projekt konnte nicht gespeichert werden: "
+                f"{ex}"
             )
-            return
-
-        self.current_config_path = str(
-            saved_path
-        )
-
-        self._set_status(
-            f"Projekt gespeichert: {saved_path.name}"
-        )
 
     def load_project(self):
         config_path, _ = QFileDialog.getOpenFileName(
             self,
             "Projektkonfiguration öffnen",
-            str(self.local_projects_directory),
+            str(
+                self.local_projects_directory
+            ),
             "JSON-Konfiguration (*.json)"
         )
 
@@ -346,46 +262,22 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            project_data = (
-                self.project_manager.load_project(
-                    config_path
-                )
-            )
-
-            self._apply_project_data(
-                project_data
+            self.project_coordinator.load_project_file(
+                config_path
             )
 
         except Exception as ex:
             self._set_status(
-                f"Projekt konnte nicht geladen werden: {ex}"
+                f"Projekt konnte nicht geladen werden: "
+                f"{ex}"
             )
-            return
-
-        self.current_config_path = config_path
-
-        project_name = Path(
-            config_path
-        ).name
-
-        status_text = (
-            f"Projekt geladen: {project_name}"
-        )
-
-        if self.heightmap_manager.has_heightmap():
-            status_text += " mit Heightmap"
-
-        self._set_status(
-            status_text
-        )
 
     def show_node_info(
         self,
         node_data: NodeData
     ):
-        self.node_selection_manager.replace(
-            {node_data.node_id},
-            primary_node_id=node_data.node_id
+        self.selection_coordinator.show_node_info(
+            node_data
         )
 
     def set_interaction_mode(
@@ -439,64 +331,16 @@ class MainWindow(QMainWindow):
             "Rotation zurückgesetzt"
         )
 
+    def set_measurement_mode(
+        self,
+        measurement_mode: MeasurementMode
+    ):
+        self.measurement_coordinator.set_mode(
+            measurement_mode
+        )
+
     def align_view_to_measurement(self):
-        measurement_state = (
-            self.measurement_controller.state
-        )
-
-        if not measurement_state.is_complete:
-            self.actions.set_measurement_alignment_enabled(
-                False
-            )
-
-            self._set_status(
-                "Für die Ausrichtung müssen "
-                "Messpunkt A und B gesetzt sein"
-            )
-
-            return
-
-        start_point = measurement_state.start_point
-        end_point = measurement_state.end_point
-
-        if (
-            start_point is None
-            or end_point is None
-        ):
-            self.actions.set_measurement_alignment_enabled(
-                False
-            )
-
-            return
-
-        try:
-            target_rotation = (
-                calculate_horizontal_alignment_rotation(
-                    start_position=(
-                        start_point.position
-                    ),
-                    end_position=(
-                        end_point.position
-                    )
-                )
-            )
-
-        except ValueError as ex:
-            self._set_status(
-                f"Messlinie konnte nicht "
-                f"ausgerichtet werden: {ex}"
-            )
-
-            return
-
-        self.view.set_exact_rotation_angle(
-            target_rotation
-        )
-
-        self._set_status(
-            "Messlinie horizontal ausgerichtet: "
-            f"Rotation {target_rotation:.2f}°"
-        )
+        self.measurement_coordinator.align_view_to_measurement()
 
     def open_display_options(self):
         dialog = DisplayOptionsDialog(
@@ -524,247 +368,11 @@ class MainWindow(QMainWindow):
                 "Der Darstellungsstil ist ungültig."
             )
 
-        selected_node_ids = (
-            self.node_selection_manager.selected_node_ids
-        )
-
-        viewport_center = (
-            self.view.viewport()
-            .rect()
-            .center()
-        )
-
-        scene_center = self.view.mapToScene(
-            viewport_center
-        )
-
         self.scene_renderer.set_display_style(
             display_style
         )
 
-        if self.autodrive_data is None:
-            self._set_status(
-                "Darstellungsoptionen übernommen"
-            )
-
-            self._refresh_debug_dock()
-            return
-
-        self._clear_scene_content()
-
-        self.background_manager.restore()
-
-        self.scene_renderer.render(
-            self.autodrive_data
-        )
-
-        self.scene_renderer.set_selected_node_ids(
-            selected_node_ids
-        )
-
-        self.measurement_controller.restore_scene_items()
-
-        self._update_scene_rect()
-
-        self.view.centerOn(
-            scene_center
-        )
-
-        self.scene_renderer.update_visibility_for_zoom(
-            self.view.zoom_level
-        )
-
-        self.scene_renderer.update_visible_scene_rect(
-            self.view.get_visible_scene_rect()
-        )
-
-        self._set_status(
-            "Darstellungsoptionen übernommen"
-        )
-
-        self._refresh_debug_dock()
-
-    def handle_selection_click(
-        self,
-        view_position: QPoint,
-        modifiers
-    ):
-        clicked_node_item = self._get_node_item_at(
-            view_position
-        )
-
-        control_pressed = bool(
-            modifiers
-            & Qt.ControlModifier
-        )
-
-        if clicked_node_item is None:
-            if not control_pressed:
-                self.node_selection_manager.clear()
-
-            return
-
-        clicked_node = (
-            clicked_node_item.node_data
-        )
-
-        if control_pressed:
-            self.node_selection_manager.toggle(
-                clicked_node.node_id
-            )
-
-        else:
-            self.node_selection_manager.replace(
-                {clicked_node.node_id},
-                primary_node_id=clicked_node.node_id
-            )
-
-    def handle_selection_area(
-        self,
-        selection_path: QPainterPath,
-        modifiers
-    ):
-        selected_nodes = (
-            self.scene_renderer.get_nodes_in_selection_path(
-                selection_path
-            )
-        )
-
-        selected_node_ids = {
-            node_data.node_id
-            for node_data in selected_nodes
-        }
-
-        primary_node_id = (
-            min(selected_node_ids)
-            if selected_node_ids
-            else None
-        )
-
-        control_pressed = bool(
-            modifiers
-            & Qt.ControlModifier
-        )
-
-        if control_pressed:
-            self.node_selection_manager.toggle_many(
-                selected_node_ids,
-                primary_node_id=primary_node_id
-            )
-
-        else:
-            self.node_selection_manager.replace(
-                selected_node_ids,
-                primary_node_id=primary_node_id
-            )
-
-    def handle_selection_area_preview(
-        self,
-        selection_path: QPainterPath,
-        modifiers
-    ):
-        preview_nodes = (
-            self.scene_renderer.get_nodes_in_selection_path(
-                selection_path
-            )
-        )
-
-        area_node_ids = {
-            node_data.node_id
-            for node_data in preview_nodes
-        }
-
-        current_node_ids = (
-            self.node_selection_manager.selected_node_ids
-        )
-
-        control_pressed = bool(
-            modifiers
-            & Qt.ControlModifier
-        )
-
-        if control_pressed:
-            preview_node_ids = (
-                current_node_ids
-                ^ area_node_ids
-            )
-
-        else:
-            preview_node_ids = area_node_ids
-
-        self.scene_renderer.set_selected_node_ids(
-            preview_node_ids
-        )
-
-    def clear_selection_area_preview(self):
-        self.scene_renderer.set_selected_node_ids(
-            self.node_selection_manager.selected_node_ids
-        )
-
-    def _format_selection_info(
-        self,
-        selected_node_ids,
-        primary_node_id
-    ) -> str:
-        if not selected_node_ids:
-            return self.NO_SELECTION_INFO
-
-        selection_count = len(
-            selected_node_ids
-        )
-
-        if (
-            self.autodrive_data is None
-            or primary_node_id is None
-        ):
-            return (
-                f"{selection_count} Nodes ausgewählt"
-            )
-
-        primary_node = self.autodrive_data.get_node(
-            primary_node_id
-        )
-
-        if primary_node is None:
-            return (
-                f"{selection_count} Nodes ausgewählt"
-            )
-
-        node_info_text = (
-            self.node_info_formatter.format_node_info(
-                node_data=primary_node,
-                autodrive_data=self.autodrive_data
-            )
-        )
-
-        if selection_count == 1:
-            return node_info_text
-
-        return (
-            f"{selection_count} Nodes ausgewählt\n"
-            f"Primäre Auswahl: {primary_node_id}\n\n"
-            f"{node_info_text}"
-        )
-
-    def _handle_node_selection_changed(
-        self,
-        selected_node_ids,
-        primary_node_id
-    ):
-        self.scene_renderer.set_selected_node_ids(
-            selected_node_ids
-        )
-
-        selection_info = self._format_selection_info(
-            selected_node_ids,
-            primary_node_id
-        )
-
-        self.debug_dock.set_node_info(
-            selection_info
-        )
-
-        self._refresh_debug_dock()
+        self.project_coordinator.rebuild_scene_after_style_change()
 
     def _configure_window(self):
         self.setWindowTitle(
@@ -811,6 +419,23 @@ class MainWindow(QMainWindow):
             NodeSelectionManager()
         )
 
+        self.selection_coordinator = (
+            SelectionCoordinator(
+                view=self.view,
+                renderer=self.scene_renderer,
+                selection_manager=(
+                    self.node_selection_manager
+                ),
+                node_info_formatter=(
+                    self.node_info_formatter
+                ),
+                autodrive_data_provider=(
+                    self._get_autodrive_data
+                ),
+                parent=self
+            )
+        )
+
         self.measurement_controller = (
             MeasurementController(
                 scene=self.scene,
@@ -818,7 +443,53 @@ class MainWindow(QMainWindow):
             )
         )
 
-        self._measurement_drag_active = False
+        self.measurement_coordinator = (
+            MeasurementCoordinator(
+                view=self.view,
+                controller=(
+                    self.measurement_controller
+                ),
+                node_item_provider=(
+                    self.selection_coordinator
+                    .get_node_item_at
+                ),
+                parent=self
+            )
+        )
+
+        self.project_coordinator = (
+            ProjectCoordinator(
+                scene=self.scene,
+                view=self.view,
+                project_manager=(
+                    self.project_manager
+                ),
+                background_manager=(
+                    self.background_manager
+                ),
+                heightmap_manager=(
+                    self.heightmap_manager
+                ),
+                scene_renderer=(
+                    self.scene_renderer
+                ),
+                selection_coordinator=(
+                    self.selection_coordinator
+                ),
+                measurement_coordinator=(
+                    self.measurement_coordinator
+                ),
+                parent=self
+            )
+        )
+
+    def _get_autodrive_data(
+        self
+    ) -> AutoDriveData | None:
+        return (
+            self.project_coordinator
+            .autodrive_data
+        )
 
     def _create_status_widgets(self):
         self.status = QLabel(
@@ -861,7 +532,7 @@ class MainWindow(QMainWindow):
         )
 
         self.view.selection_click_requested.connect(
-            self.handle_selection_click
+            self.selection_coordinator.handle_click
         )
 
         self.view.rotation_changed.connect(
@@ -869,75 +540,67 @@ class MainWindow(QMainWindow):
         )
 
         self.view.selection_area_requested.connect(
-            self.handle_selection_area
+            self.selection_coordinator.handle_area
         )
 
         self.view.selection_area_preview_requested.connect(
-            self.handle_selection_area_preview
+            self.selection_coordinator.handle_area_preview
         )
 
         self.view.selection_area_preview_cleared.connect(
-            self.clear_selection_area_preview
+            self.selection_coordinator.clear_area_preview
         )
 
         self.view.measurement_press_requested.connect(
-            self.handle_measurement_press
+            self.measurement_coordinator.handle_press
         )
 
         self.view.measurement_move_requested.connect(
-            self.handle_measurement_move
+            self.measurement_coordinator.handle_move
         )
 
         self.view.measurement_release_requested.connect(
-            self.handle_measurement_release
+            self.measurement_coordinator.handle_release
         )
 
         self.view.measurement_cancel_requested.connect(
-            self.cancel_measurement
+            self.measurement_coordinator.cancel
         )
 
-        self.measurement_controller.measurement_changed.connect(
-            self._update_measurement_alignment_action
+        self.measurement_coordinator.status_changed.connect(
+            self._set_status
         )
 
-        self.measurement_controller.measurement_cleared.connect(
-            self._update_measurement_alignment_action
+        self.measurement_coordinator.measurement_mode_changed.connect(
+            self.actions.set_measurement_mode
         )
 
-        self.measurement_controller.mode_changed.connect(
-            self._update_measurement_alignment_action
+        self.measurement_coordinator.alignment_available_changed.connect(
+            self.actions.set_measurement_alignment_enabled
         )
 
-        self.node_selection_manager.selection_changed.connect(
-            self._handle_node_selection_changed
+        self.selection_coordinator.selection_info_changed.connect(
+            self.debug_dock.set_node_info
         )
 
-        self.view.zoom_changed.connect(
-            self._refresh_debug_dock
+        self.project_coordinator.status_changed.connect(
+            self._set_status
         )
 
-        self.view.rotation_changed.connect(
-            self._refresh_debug_dock
+        self.grid_coordinator.status_changed.connect(
+            self._set_status
+        )
+
+        self.project_coordinator.map_scale_changed.connect(
+            self._handle_map_scale_changed
+        )
+
+        self.project_coordinator.heightmap_path_changed.connect(
+            self._handle_heightmap_path_changed
         )
 
         self.view.rotation_step_changed.connect(
             self._handle_rotation_step_changed
-        )
-
-        self.view.visible_scene_rect_changed.connect(
-            self._refresh_debug_dock
-        )
-
-        self.view.interaction_mode_changed.connect(
-            self._refresh_debug_dock
-        )
-
-        self.node_selection_manager.selection_changed.connect(
-            self._refresh_debug_dock
-        )
-
-        self.debug_dock.visibilityChanged.connect(
-            self._handle_debug_dock_visibility_changed
         )
 
     def _handle_rotation_changed(
@@ -946,7 +609,7 @@ class MainWindow(QMainWindow):
     ):
         rotation_active = (
             abs(rotation_angle)
-            >= self.view.ROTATION_COMPARISON_TOLERANCE
+            >= ViewRotationController.ROTATION_COMPARISON_TOLERANCE
         )
 
         self.actions.reset_rotation_action.setEnabled(
@@ -965,410 +628,20 @@ class MainWindow(QMainWindow):
             rotation_step
         )
 
-    def handle_measurement_press(
-        self,
-        view_position: QPoint,
-        modifiers
-    ):
-        if not self.measurement_controller.is_active:
-            return
-
-        scene_position = self.view.mapToScene(
-            view_position
-        )
-
-        scene_tolerance = (
-            12.0
-            / max(
-                self.view.zoom_level,
-                self.view.MIN_ZOOM
-            )
-        )
-
-        handle_index = (
-            self.measurement_controller
-            .get_handle_at_scene_position(
-                scene_position=scene_position,
-                scene_tolerance=scene_tolerance
-            )
-        )
-
-        if handle_index is None:
-            self._measurement_drag_active = False
-
-            self.view.set_measurement_point_drag_active(
-                False
-            )
-
-            return
-
-        drag_started = (
-            self.measurement_controller
-            .begin_point_drag(
-                point_index=handle_index,
-                press_scene_position=scene_position
-            )
-        )
-
-        self._measurement_drag_active = (
-            drag_started
-        )
-
-        self.view.set_measurement_point_drag_active(
-            drag_started
-        )
-
-    def handle_measurement_move(
-        self,
-        view_position: QPoint,
-        modifiers
-    ):
-        if not self.measurement_controller.is_active:
-            return
-
-        scene_position = self.view.mapToScene(
-            view_position
-        )
-
-        if self._measurement_drag_active:
-            self.measurement_controller.update_point_drag(
-                scene_position
-            )
-
-            return
-
-        if (
-            self.measurement_controller
-            .state
-            .is_awaiting_end_point
-        ):
-            preview_position = (
-                self._get_measurement_preview_position(
-                    view_position=view_position,
-                    scene_position=scene_position
-                )
-            )
-
-            self.measurement_controller.set_preview_position(
-                preview_position
-            )
-
-    def handle_measurement_release(
-        self,
-        view_position: QPoint,
-        modifiers
-    ):
-        if not self.measurement_controller.is_active:
-            return
-
-        scene_position = self.view.mapToScene(
-            view_position
-        )
-
-        if self._measurement_drag_active:
-            self.measurement_controller.update_point_drag(
-                scene_position
-            )
-
-            self.measurement_controller.finish_point_drag()
-
-            self._measurement_drag_active = False
-
-            self.view.set_measurement_point_drag_active(
-                False
-            )
-
-            self._set_status(
-                "Messpunkt verschoben"
-            )
-
-            return
-
-        measurement_point = (
-            self._create_measurement_point(
-                view_position=view_position,
-                scene_position=scene_position
-            )
-        )
-
-        measurement_state = (
-            self.measurement_controller.state
-        )
-
-        if (
-            measurement_state.is_awaiting_start_point
-            or measurement_state.is_complete
-        ):
-            self.measurement_controller.set_start_point(
-                measurement_point
-            )
-
-            self._set_status(
-                "Messpunkt A gesetzt"
-            )
-
-            return
-
-        if measurement_state.is_awaiting_end_point:
-            self.measurement_controller.set_end_point(
-                measurement_point
-            )
-
-            measurement_result = (
-                self.measurement_controller
-                .state
-                .calculate_result()
-            )
-
-            if measurement_result is not None:
-                self._set_status(
-                    f"Messung: "
-                    f"{measurement_result.display_text}"
-                )
-
-            else:
-                self._set_status(
-                    "Messpunkt B gesetzt"
-                )
-
-    def cancel_measurement(self):
-        if not self.measurement_controller.is_active:
-            return
-
-        if self.measurement_controller.is_dragging:
-            self.measurement_controller.cancel_drag()
-
-            self._measurement_drag_active = False
-
-            self.view.set_measurement_point_drag_active(
-                False
-            )
-
-            self._set_status(
-                "Verschieben des Messpunkts abgebrochen"
-            )
-
-            return
-
-        if (
-            self.measurement_controller
-            .state
-            .has_start_point
-        ):
-            self.measurement_controller.clear_measurement()
-
-            self._set_status(
-                "Messung gelöscht: "
-                "Messpunkt A setzen"
-            )
-
-            return
-
-        self.set_measurement_mode(
-            MeasurementMode.INACTIVE
-        )
-
-    def _update_measurement_alignment_action(
-        self,
-        *args
-    ):
-        alignment_available = (
-            self.measurement_controller.is_active
-            and self.measurement_controller.is_complete
-        )
-
-        self.actions.set_measurement_alignment_enabled(
-            alignment_available
-        )
-
-    def _create_measurement_point(
-        self,
-        view_position: QPoint,
-        scene_position
-    ) -> MeasurementPoint:
-        node_item = self._get_node_item_at(
-            view_position
-        )
-
-        if node_item is not None:
-            return MeasurementPoint.create_node_anchor(
-                node_id=node_item.node_data.node_id,
-                position=node_item.scenePos()
-            )
-
-        return MeasurementPoint.create_free(
-            scene_position
-        )
-
-    def _get_measurement_preview_position(
-        self,
-        view_position: QPoint,
-        scene_position
-    ):
-        node_item = self._get_node_item_at(
-            view_position
-        )
-
-        if node_item is not None:
-            return node_item.scenePos()
-
-        return scene_position
-
-    def _get_node_item_at(
-        self,
-        view_position: QPoint
-    ) -> NodeItem | None:
-        for item in self.view.items(
-            view_position
-        ):
-            if isinstance(
-                item,
-                NodeItem
-            ):
-                return item
-
-        return None
-
-    def _refresh_debug_dock(
-        self,
-        *args
-    ):
-        if not self.debug_dock.isVisible():
-            return
-
-        self.debug_dock.set_interaction_mode(
-            self.view.interaction_mode
-        )
-
-        self.debug_dock.set_view_state(
-            zoom_level=self.view.zoom_level,
-            rotation_angle=self.view.rotation_angle,
-            visible_rect=(
-                self.scene_renderer.current_visible_rect
-            )
-        )
-
-        self.debug_dock.set_renderer_state(
-            self.scene_renderer.get_debug_state()
-        )
-
-    def _handle_debug_dock_visibility_changed(
-        self,
-        visible: bool
-    ):
-        if visible:
-            self._refresh_debug_dock()
-
-    def _apply_project_data(
-        self,
-        project_data: dict
-    ):
-        map_scale = project_data[
-            "map_scale"
-        ]
-
-        if map_scale not in self.actions.map_scale_actions:
-            raise ValueError(
-                f"Unbekannte Kartengröße: {map_scale}"
-            )
-
-        self._clear_node_selection()
-
-        self.set_map_scale(
-            map_scale
-        )
-
-        background_path = project_data[
-            "background_dds"
-        ]
-
-        if background_path:
-            self.background_manager.load(
-                background_path
-            )
-
-        else:
-            self.background_manager.remove_from_scene(
-                preserve_file_path=False
-            )
-
-        heightmap_path = project_data[
-            "heightmap"
-        ]
-
-        if heightmap_path:
-            heightmap_data = (
-                self.heightmap_manager.load(
-                    heightmap_path
-                )
-            )
-
-            self._set_heightmap_path(
-                heightmap_data.file_path
-            )
-
-        else:
-            self.heightmap_manager.clear()
-
-            self._set_heightmap_path(
-                None
-            )
-
-        self.load_xml_file(
-            project_data["autodrive_xml"]
-        )
-
-    def _set_heightmap_path(
+    def _handle_heightmap_path_changed(
         self,
         file_path
     ):
-        self.current_heightmap_path = (
-            str(file_path)
-            if file_path is not None
-            else None
-        )
-
         self.actions.remove_heightmap_action.setEnabled(
             file_path is not None
         )
 
-    def _clear_scene_content(self):
-        self.measurement_controller.remove_scene_items()
-
-        self.background_manager.remove_from_scene(
-            preserve_file_path=True
-        )
-
-        self.scene_renderer.reset()
-        self.scene.clear()
-
-    def _clear_node_selection(self):
-        self.node_selection_manager.clear()
-
-    def _refresh_selected_node_info(self):
-        selection_info = self._format_selection_info(
-            self.node_selection_manager.selected_node_ids,
-            self.node_selection_manager.primary_node_id
-        )
-
-        self.debug_dock.set_node_info(
-            selection_info
-        )
-
-    def _update_scene_rect(self):
-        self.scene.setSceneRect(
-            self.scene.itemsBoundingRect()
-        )
-
-    def _fit_scene_in_view(self):
-        scene_rect = self.scene.sceneRect()
-
-        if scene_rect.isEmpty():
-            return
-
-        self.view.fitInView(
-            scene_rect,
-            Qt.KeepAspectRatio
+    def _handle_map_scale_changed(
+        self,
+        map_scale: int
+    ):
+        self.actions.set_current_map_scale(
+            map_scale
         )
 
     def _set_status(
@@ -1377,154 +650,4 @@ class MainWindow(QMainWindow):
     ):
         self.status.setText(
             message
-        )
-
-    def set_grid_visible(
-        self,
-        visible: bool
-    ):
-        self.background_manager.set_grid_visible(
-            visible
-        )
-
-        self.actions.grid_controls.set_grid_visible(
-            self.background_manager.grid_visible
-        )
-
-        if self.background_manager.grid_visible:
-            status_text = "Raster eingeblendet"
-
-        else:
-            status_text = "Raster ausgeblendet"
-
-        self._set_status(
-            status_text
-        )
-
-    def set_measurement_mode(
-        self,
-        measurement_mode: MeasurementMode
-    ):
-        if not isinstance(
-            measurement_mode,
-            MeasurementMode
-        ):
-            raise TypeError(
-                "Der Messmodus ist ungültig."
-            )
-
-        self._measurement_drag_active = False
-
-        self.view.set_measurement_point_drag_active(
-            False
-        )
-
-        if measurement_mode == MeasurementMode.INACTIVE:
-            self.measurement_controller.deactivate()
-
-            self.view.set_measurement_active(
-                False
-            )
-
-            self.actions.set_measurement_mode(
-                MeasurementMode.INACTIVE
-            )
-
-            self.actions.set_measurement_alignment_enabled(
-                False
-            )
-
-            self._set_status(
-                "Messwerkzeug deaktiviert"
-            )
-
-            return
-
-        self.measurement_controller.activate(
-            measurement_mode
-        )
-
-        self.view.set_measurement_active(
-            True
-        )
-
-        self.actions.set_measurement_mode(
-            measurement_mode
-        )
-
-        self.actions.set_measurement_alignment_enabled(
-            False
-        )
-
-        if measurement_mode == MeasurementMode.DISTANCE:
-            self._set_status(
-                "Abstandsmessung aktiv: "
-                "Messpunkt A setzen"
-            )
-
-        elif measurement_mode == MeasurementMode.ANGLE:
-            self._set_status(
-                "Winkelmessung aktiv: "
-                "Messpunkt A setzen"
-            )
-
-    def set_grid_spacing(
-        self,
-        spacing: float
-    ):
-        try:
-            self.background_manager.set_grid_spacing(
-                spacing
-            )
-
-        except Exception as ex:
-            self._set_status(
-                f"Rasterabstand konnte nicht "
-                f"geändert werden: {ex}"
-            )
-            return
-
-        self.actions.grid_controls.set_grid_spacing(
-            self.background_manager.grid_spacing
-        )
-
-        self._set_status(
-            f"Rasterabstand: "
-            f"{self.background_manager.grid_spacing:.2f} m"
-        )
-
-    def set_grid_rotation(
-        self,
-        rotation_angle: float
-    ):
-        self.background_manager.set_grid_rotation(
-            rotation_angle
-        )
-
-        self.actions.grid_controls.set_grid_rotation(
-            self.background_manager.grid_rotation
-        )
-
-        self._set_status(
-            f"Rasterrotation: "
-            f"{self.background_manager.grid_rotation:.2f}°"
-        )
-
-    def reset_grid(self):
-        self.background_manager.reset_grid()
-
-        self.actions.grid_controls.set_grid_visible(
-            self.background_manager.grid_visible
-        )
-
-        self.actions.grid_controls.set_grid_spacing(
-            self.background_manager.grid_spacing
-        )
-
-        self.actions.grid_controls.set_grid_rotation(
-            self.background_manager.grid_rotation
-        )
-
-        self._set_status(
-            "Raster zurückgesetzt"
         )

@@ -1,18 +1,14 @@
-import math
 from dataclasses import dataclass, field
 
 from PySide6.QtCore import (
     QPoint,
-    QRect,
     QRectF,
-    QTimer,
     Qt,
     Signal
 )
 from PySide6.QtGui import (
     QCursor,
     QMouseEvent,
-    QPainterPath,
     QResizeEvent,
     QWheelEvent,
     QKeyEvent
@@ -20,11 +16,19 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import (
     QApplication,
     QGraphicsItem,
-    QGraphicsView,
-    QRubberBand
+    QGraphicsView
 )
 
 from ui.interaction_mode import InteractionMode
+from ui.view_rotation_controller import (
+    ViewRotationController
+)
+from ui.view_zoom_controller import (
+    ViewZoomController
+)
+from ui.view_selection_controller import (
+    ViewSelectionController
+)
 
 
 @dataclass
@@ -121,17 +125,6 @@ class MapView(QGraphicsView):
 
     measurement_cancel_requested = Signal()
 
-    ZOOM_FACTOR = 1.15
-    MIN_ZOOM = 0.02
-    MAX_ZOOM = 50.0
-
-    VIEWPORT_UPDATE_DELAY_MS = 50
-    ZOOM_COMPARISON_TOLERANCE = 0.000001
-
-    ROTATION_DEGREES_PER_PIXEL = 0.3
-    ROTATION_COMPARISON_TOLERANCE = 0.000001
-    DEFAULT_ROTATION_STEP = 1.0
-
     def __init__(self):
         super().__init__()
 
@@ -142,46 +135,87 @@ class MapView(QGraphicsView):
         self._measurement_active = False
         self._measurement_point_drag_active = False
 
-        self._rotation_angle = 0.0
-        self._raw_rotation_angle = 0.0
-
-        self._rotation_step = (
-            self.DEFAULT_ROTATION_STEP
-        )
-
         self._pointer_state = (
             PointerDragState()
         )
 
-        self._selection_rubber_band = QRubberBand(
-            QRubberBand.Rectangle,
-            self.viewport()
+        self._configure_view()
+
+        self._selection_controller = (
+            ViewSelectionController(
+                view=self,
+                parent=self
+            )
         )
 
-        self._selection_rubber_band.hide()
+        self._selection_controller.area_requested.connect(
+            self.selection_area_requested.emit
+        )
 
-        self._configure_view()
-        self._create_viewport_update_timer()
-        self._connect_scrollbars()
+        self._selection_controller.area_preview_requested.connect(
+            self.selection_area_preview_requested.emit
+        )
+
+        self._selection_controller.area_preview_cleared.connect(
+            self.selection_area_preview_cleared.emit
+        )
+
+        self._zoom_controller = (
+            ViewZoomController(
+                view=self,
+                parent=self
+            )
+        )
+
+        self._zoom_controller.zoom_changed.connect(
+            self.zoom_changed.emit
+        )
+
+        self._zoom_controller.visible_scene_rect_changed.connect(
+            self.visible_scene_rect_changed.emit
+        )
+
+        self._rotation_controller = (
+            ViewRotationController(
+                view=self,
+                viewport_update_callback=(
+                    self._zoom_controller
+                    .schedule_viewport_update
+                ),
+                parent=self
+            )
+        )
+
+        self._rotation_controller.rotation_changed.connect(
+            self.rotation_changed.emit
+        )
+
+        self._rotation_controller.rotation_step_changed.connect(
+            self.rotation_step_changed.emit
+        )
 
         self._apply_interaction_mode()
 
     @property
     def zoom_level(self) -> float:
-        view_transform = self.transform()
-
-        return math.hypot(
-            view_transform.m11(),
-            view_transform.m12()
+        return (
+            self._zoom_controller
+            .zoom_level
         )
 
     @property
     def rotation_angle(self) -> float:
-        return self._rotation_angle
+        return (
+            self._rotation_controller
+            .rotation_angle
+        )
 
     @property
     def rotation_step(self) -> float:
-        return self._rotation_step
+        return (
+            self._rotation_controller
+            .rotation_step
+        )
 
     @property
     def interaction_mode(
@@ -197,121 +231,36 @@ class MapView(QGraphicsView):
         self,
         zoom_level
     ):
-        target_zoom = self._clamp_zoom(
+        self._zoom_controller.set_zoom_level(
             zoom_level
         )
-
-        current_zoom = self.zoom_level
-
-        if current_zoom <= 0:
-            raise ValueError(
-                "Der aktuelle Zoomfaktor ist ungültig."
-            )
-
-        scale_factor = (
-            target_zoom
-            / current_zoom
-        )
-
-        if self._is_neutral_scale(
-            scale_factor
-        ):
-            return
-
-        self._scale_at_view_position(
-            scale_factor=scale_factor,
-            view_position=(
-                self.viewport()
-                .rect()
-                .center()
-            )
-        )
-
-        self._notify_view_transform_changed()
 
     def set_rotation_angle(
         self,
         rotation_angle: float
     ):
-        self._raw_rotation_angle = (
-            self._normalize_rotation_angle(
-                rotation_angle
-            )
-        )
-
-        target_angle = self._snap_rotation_angle(
-            self._raw_rotation_angle
-        )
-
-        self._apply_rotation_angle(
-            target_angle
+        self._rotation_controller.set_rotation_angle(
+            rotation_angle
         )
 
     def set_exact_rotation_angle(
         self,
         rotation_angle: float
     ):
-        target_angle = (
-            self._normalize_rotation_angle(
-                rotation_angle
-            )
-        )
-
-        self._raw_rotation_angle = target_angle
-
-        self._apply_rotation_angle(
-            target_angle
+        self._rotation_controller.set_exact_rotation_angle(
+            rotation_angle
         )
 
     def set_rotation_step(
         self,
         rotation_step: float
     ):
-        rotation_step = float(
+        self._rotation_controller.set_rotation_step(
             rotation_step
         )
 
-        if rotation_step < 0.0:
-            raise ValueError(
-                "Das Rotationsraster darf "
-                "nicht negativ sein."
-            )
-
-        if rotation_step > 90.0:
-            raise ValueError(
-                "Das Rotationsraster darf "
-                "höchstens 90 Grad betragen."
-            )
-
-        if (
-            abs(
-                rotation_step
-                - self._rotation_step
-            )
-            < self.ROTATION_COMPARISON_TOLERANCE
-        ):
-            return
-
-        self._rotation_step = rotation_step
-
-        target_angle = self._snap_rotation_angle(
-            self._raw_rotation_angle
-        )
-
-        self._apply_rotation_angle(
-            target_angle
-        )
-
-        self.rotation_step_changed.emit(
-            self._rotation_step
-        )
-
     def reset_view_rotation(self):
-        self._raw_rotation_angle = 0.0
-
-        self._apply_rotation_angle(
-            0.0
-        )
+        self._rotation_controller.reset_rotation()
 
     def set_interaction_mode(
         self,
@@ -330,6 +279,12 @@ class MapView(QGraphicsView):
             == self._interaction_mode
         ):
             return
+
+        if (
+            interaction_mode
+            != InteractionMode.SELECT
+        ):
+            self._selection_controller.cancel()
 
         self._interaction_mode = (
             interaction_mode
@@ -355,7 +310,8 @@ class MapView(QGraphicsView):
         self._measurement_active = active
         self._measurement_point_drag_active = False
 
-        self._selection_rubber_band.hide()
+        self._selection_controller.cancel()
+
         self._pointer_state.reset()
 
         self._restore_interaction_cursor()
@@ -371,9 +327,10 @@ class MapView(QGraphicsView):
     def get_visible_scene_rect(
         self
     ) -> QRectF:
-        return self.mapToScene(
-            self.viewport().rect()
-        ).boundingRect()
+        return (
+            self._zoom_controller
+            .get_visible_scene_rect()
+        )
 
     def fitInView(
         self,
@@ -383,60 +340,29 @@ class MapView(QGraphicsView):
             *args
         )
 
-        self._notify_view_transform_changed()
+        self._zoom_controller.notify_transform_changed()
 
     def wheelEvent(
         self,
         event: QWheelEvent
     ):
-        wheel_delta = event.angleDelta().y()
-
-        if wheel_delta == 0:
-            event.ignore()
-            return
-
-        current_zoom = self.zoom_level
-
-        if current_zoom <= 0:
-            event.ignore()
-            return
-
-        if wheel_delta > 0:
-            requested_factor = (
-                self.ZOOM_FACTOR
+        zoom_handled = (
+            self._zoom_controller
+            .zoom_by_wheel_delta(
+                wheel_delta=(
+                    event.angleDelta().y()
+                ),
+                view_position=(
+                    event.position().toPoint()
+                )
             )
+        )
+
+        if zoom_handled:
+            event.accept()
 
         else:
-            requested_factor = (
-                1.0 / self.ZOOM_FACTOR
-            )
-
-        target_zoom = self._clamp_zoom(
-            current_zoom
-            * requested_factor
-        )
-
-        scale_factor = (
-            target_zoom
-            / current_zoom
-        )
-
-        if self._is_neutral_scale(
-            scale_factor
-        ):
-            event.accept()
-            return
-
-        self._scale_at_view_position(
-            scale_factor=scale_factor,
-            view_position=(
-                event.position().toPoint()
-            )
-        )
-
-        self._notify_view_transform_changed()
-
-        event.accept()
+            event.ignore()
 
     def resizeEvent(
         self,
@@ -446,7 +372,7 @@ class MapView(QGraphicsView):
             event
         )
 
-        self._schedule_viewport_update()
+        self._zoom_controller.schedule_viewport_update()
 
     def mousePressEvent(
         self,
@@ -462,14 +388,7 @@ class MapView(QGraphicsView):
             self._measurement_active
             and pressed_button == Qt.LeftButton
         ):
-            self._pointer_state.begin(
-                button=pressed_button,
-                position=mouse_position
-            )
-
-            self._measurement_point_drag_active = False
-
-            self.measurement_press_requested.emit(
+            self._handle_measurement_press(
                 mouse_position,
                 event.modifiers()
             )
@@ -506,6 +425,11 @@ class MapView(QGraphicsView):
             position=mouse_position
         )
 
+        if right_selection_button:
+            self._selection_controller.begin(
+                mouse_position
+            )
+
         if pressed_button == Qt.MiddleButton:
             self.viewport().setCursor(
                 Qt.SizeAllCursor
@@ -533,47 +457,8 @@ class MapView(QGraphicsView):
             return
 
         if self._measurement_active:
-            if self._is_button_drag(
+            self._handle_measurement_move(
                 event,
-                Qt.LeftButton
-            ):
-                if self._measurement_point_drag_active:
-                    if (
-                        not self._pointer_state.drag_active
-                        and not self._drag_threshold_reached(
-                            mouse_position
-                        )
-                    ):
-                        event.accept()
-                        return
-
-                    self._pointer_state.drag_active = True
-
-                    self.measurement_move_requested.emit(
-                        mouse_position,
-                        event.modifiers()
-                    )
-
-                    self._update_hover_cursor(
-                        mouse_position
-                    )
-
-                    event.accept()
-                    return
-
-                self._handle_pan_drag(
-                    mouse_position
-                )
-
-                event.accept()
-                return
-
-            self.measurement_move_requested.emit(
-                mouse_position,
-                event.modifiers()
-            )
-
-            self._update_hover_cursor(
                 mouse_position
             )
 
@@ -584,10 +469,22 @@ class MapView(QGraphicsView):
             event,
             Qt.RightButton
         ):
-            self._handle_selection_area_drag(
-                mouse_position=mouse_position,
-                modifiers=event.modifiers()
+            selection_drag_active = (
+                self._selection_controller
+                .handle_drag(
+                    current_position=mouse_position,
+                    modifiers=event.modifiers()
+                )
             )
+
+            self._pointer_state.drag_active = (
+                selection_drag_active
+            )
+
+            if selection_drag_active:
+                self.viewport().setCursor(
+                    Qt.CrossCursor
+                )
 
             event.accept()
             return
@@ -625,32 +522,9 @@ class MapView(QGraphicsView):
             and self._pointer_state.pressed_button
             == Qt.LeftButton
         ):
-            was_dragging = (
-                self._pointer_state.drag_active
-            )
-
-            measurement_point_drag = (
-                self._measurement_point_drag_active
-            )
-
-            if measurement_point_drag:
-                self.measurement_release_requested.emit(
-                    mouse_position,
-                    event.modifiers()
-                )
-
-            elif not was_dragging:
-                self.measurement_release_requested.emit(
-                    mouse_position,
-                    event.modifiers()
-                )
-
-            self._measurement_point_drag_active = False
-
-            self._pointer_state.reset()
-
-            self._restore_interaction_cursor(
-                mouse_position
+            self._handle_measurement_release(
+                mouse_position,
+                event.modifiers()
             )
 
             event.accept()
@@ -673,19 +547,14 @@ class MapView(QGraphicsView):
             self._pointer_state.drag_active
         )
 
-        if (
-            released_button == Qt.RightButton
-            and was_dragging
-        ):
-            self._finish_selection_area(
-                event.modifiers()
-            )
+        if released_button == Qt.RightButton:
+            if was_dragging:
+                self._selection_controller.finish(
+                    event.modifiers()
+                )
 
-        else:
-            self._selection_rubber_band.hide()
-
-            if released_button == Qt.RightButton:
-                self.selection_area_preview_cleared.emit()
+            else:
+                self._selection_controller.cancel()
 
         self._pointer_state.reset()
 
@@ -748,96 +617,103 @@ class MapView(QGraphicsView):
             QGraphicsView.AnchorViewCenter
         )
 
-    def _create_viewport_update_timer(self):
-        self._viewport_update_timer = QTimer(
-            self
-        )
-
-        self._viewport_update_timer.setSingleShot(
-            True
-        )
-
-        self._viewport_update_timer.setInterval(
-            self.VIEWPORT_UPDATE_DELAY_MS
-        )
-
-        self._viewport_update_timer.timeout.connect(
-            self._emit_visible_scene_rect
-        )
-
-    def _connect_scrollbars(self):
-        self.horizontalScrollBar().valueChanged.connect(
-            self._schedule_viewport_update
-        )
-
-        self.verticalScrollBar().valueChanged.connect(
-            self._schedule_viewport_update
-        )
-
     def _apply_interaction_mode(self):
         self._restore_interaction_cursor()
 
-    def _clamp_zoom(
+    def _handle_measurement_press(
         self,
-        zoom_level
-    ) -> float:
-        zoom_level = float(
-            zoom_level
-        )
-
-        return max(
-            self.MIN_ZOOM,
-            min(
-                zoom_level,
-                self.MAX_ZOOM
-            )
-        )
-
-    def _is_neutral_scale(
-        self,
-        scale_factor: float
-    ) -> bool:
-        return (
-            abs(
-                scale_factor - 1.0
-            )
-            < self.ZOOM_COMPARISON_TOLERANCE
-        )
-
-    def _scale_at_view_position(
-        self,
-        scale_factor: float,
-        view_position: QPoint
+        mouse_position: QPoint,
+        modifiers
     ):
-        scene_position_before = self.mapToScene(
-            view_position
+        self._pointer_state.begin(
+            button=Qt.LeftButton,
+            position=mouse_position
         )
 
-        self.scale(
-            scale_factor,
-            scale_factor
+        # The coordinator re-enables this while handling the press
+        # if the press hit a draggable measurement point.
+        self._measurement_point_drag_active = False
+
+        self.measurement_press_requested.emit(
+            mouse_position,
+            modifiers
         )
 
-        scene_position_after = self.mapToScene(
-            view_position
+    def _handle_measurement_move(
+        self,
+        event: QMouseEvent,
+        mouse_position: QPoint
+    ):
+        if not self._is_button_drag(
+            event,
+            Qt.LeftButton
+        ):
+            self._emit_measurement_move(
+                mouse_position,
+                event.modifiers()
+            )
+            return
+
+        # Left drag on free space pans the map.
+        if not self._measurement_point_drag_active:
+            self._handle_pan_drag(
+                mouse_position
+            )
+            return
+
+        if (
+            not self._pointer_state.drag_active
+            and not self._drag_threshold_reached(
+                mouse_position
+            )
+        ):
+            return
+
+        self._pointer_state.drag_active = True
+
+        self._emit_measurement_move(
+            mouse_position,
+            event.modifiers()
         )
 
-        scene_delta = (
-            scene_position_after
-            - scene_position_before
+    def _emit_measurement_move(
+        self,
+        mouse_position: QPoint,
+        modifiers
+    ):
+        self.measurement_move_requested.emit(
+            mouse_position,
+            modifiers
         )
 
-        self.translate(
-            scene_delta.x(),
-            scene_delta.y()
+        self._update_hover_cursor(
+            mouse_position
         )
 
-    def _notify_view_transform_changed(self):
-        self.zoom_changed.emit(
-            self.zoom_level
+    def _handle_measurement_release(
+        self,
+        mouse_position: QPoint,
+        modifiers
+    ):
+        # Releasing after panning the map is not a measurement click.
+        panned_map = (
+            self._pointer_state.drag_active
+            and not self._measurement_point_drag_active
         )
 
-        self._schedule_viewport_update()
+        if not panned_map:
+            self.measurement_release_requested.emit(
+                mouse_position,
+                modifiers
+            )
+
+        self._measurement_point_drag_active = False
+
+        self._pointer_state.reset()
+
+        self._restore_interaction_cursor(
+            mouse_position
+        )
 
     def _is_button_drag(
         self,
@@ -886,99 +762,6 @@ class MapView(QGraphicsView):
             mouse_position
         )
 
-    def _handle_selection_area_drag(
-        self,
-        mouse_position: QPoint,
-        modifiers
-    ):
-        if not self._pointer_state.drag_active:
-            if not self._drag_threshold_reached(
-                mouse_position
-            ):
-                return
-
-            self._pointer_state.drag_active = True
-
-            self.viewport().setCursor(
-                Qt.CrossCursor
-            )
-
-            self._selection_rubber_band.show()
-
-        self._update_selection_rubber_band(
-            mouse_position
-        )
-
-        selection_path = (
-            self._create_selection_path()
-        )
-
-        if selection_path is None:
-            return
-
-        self.selection_area_preview_requested.emit(
-            selection_path,
-            modifiers
-        )
-
-    def _update_selection_rubber_band(
-        self,
-        mouse_position: QPoint
-    ):
-        selection_rect = QRect(
-            self._pointer_state.press_position,
-            mouse_position
-        ).normalized()
-
-        self._selection_rubber_band.setGeometry(
-            selection_rect
-        )
-
-    def _create_selection_path(
-        self
-    ) -> QPainterPath | None:
-        selection_rect = (
-            self._selection_rubber_band.geometry()
-        )
-
-        if (
-            selection_rect.width() <= 0
-            or selection_rect.height() <= 0
-        ):
-            return None
-
-        scene_polygon = self.mapToScene(
-            selection_rect
-        )
-
-        selection_path = QPainterPath()
-
-        selection_path.addPolygon(
-            scene_polygon
-        )
-
-        selection_path.closeSubpath()
-
-        return selection_path
-
-    def _finish_selection_area(
-        self,
-        modifiers
-    ):
-        selection_path = (
-            self._create_selection_path()
-        )
-
-        self._selection_rubber_band.hide()
-
-        if selection_path is not None:
-            self.selection_area_requested.emit(
-                selection_path,
-                modifiers
-            )
-
-        self.selection_area_preview_cleared.emit()
-
     def _handle_rotation_drag(
         self,
         mouse_position: QPoint
@@ -1006,129 +789,12 @@ class MapView(QGraphicsView):
             - self._pointer_state.last_position
         )
 
-        rotation_delta = (
-            movement.x()
-            * self.ROTATION_DEGREES_PER_PIXEL
-        )
-
         self._pointer_state.last_position = QPoint(
             mouse_position
         )
 
-        if (
-            abs(rotation_delta)
-            < self.ROTATION_COMPARISON_TOLERANCE
-        ):
-            return
-
-        self._raw_rotation_angle = (
-            self._normalize_rotation_angle(
-                self._raw_rotation_angle
-                + rotation_delta
-            )
-        )
-
-        target_angle = self._snap_rotation_angle(
-            self._raw_rotation_angle
-        )
-
-        self._apply_rotation_angle(
-            target_angle
-        )
-
-    def _apply_rotation_angle(
-        self,
-        target_angle: float
-    ):
-        target_angle = (
-            self._normalize_rotation_angle(
-                target_angle
-            )
-        )
-
-        rotation_delta = (
-            (
-                target_angle
-                - self._rotation_angle
-                + 180.0
-            )
-            % 360.0
-            - 180.0
-        )
-
-        if (
-            abs(rotation_delta)
-            < self.ROTATION_COMPARISON_TOLERANCE
-        ):
-            return
-
-        viewport_center = (
-            self.viewport()
-            .rect()
-            .center()
-        )
-
-        scene_center = self.mapToScene(
-            viewport_center
-        )
-
-        self.rotate(
-            rotation_delta
-        )
-
-        self._rotation_angle = target_angle
-
-        self.centerOn(
-            scene_center
-        )
-
-        self.rotation_changed.emit(
-            self._rotation_angle
-        )
-
-        self._schedule_viewport_update()
-
-    @staticmethod
-    def _normalize_rotation_angle(
-        rotation_angle: float
-    ) -> float:
-        normalized_angle = (
-            float(rotation_angle)
-            % 360.0
-        )
-
-        if (
-            abs(normalized_angle)
-            < 0.000001
-            or abs(normalized_angle - 360.0)
-            < 0.000001
-        ):
-            return 0.0
-
-        return normalized_angle
-
-    def _snap_rotation_angle(
-        self,
-        rotation_angle: float
-    ) -> float:
-        if (
-            self._rotation_step
-            <= self.ROTATION_COMPARISON_TOLERANCE
-        ):
-            return self._normalize_rotation_angle(
-                rotation_angle
-            )
-
-        snapped_angle = (
-            round(
-                rotation_angle
-                / self._rotation_step
-            )
-            * self._rotation_step
-        )
-
-        return self._normalize_rotation_angle(
-            snapped_angle
+        self._rotation_controller.rotate_by_horizontal_pixels(
+            movement.x()
         )
 
     def _begin_panning(
@@ -1263,14 +929,3 @@ class MapView(QGraphicsView):
                 return True
 
         return False
-
-    def _schedule_viewport_update(
-        self,
-        *args
-    ):
-        self._viewport_update_timer.start()
-
-    def _emit_visible_scene_rect(self):
-        self.visible_scene_rect_changed.emit(
-            self.get_visible_scene_rect()
-        )

@@ -97,12 +97,32 @@ class ConnectionRenderItem(QGraphicsItem):
             margin
         )
 
+    def set_scene_rect(
+        self,
+        scene_rect: QRectF
+    ):
+        scene_rect = QRectF(
+            scene_rect
+        )
+
+        if scene_rect == self.scene_rect:
+            return
+
+        self.prepareGeometryChange()
+
+        self.scene_rect = scene_rect
+
+        self.update()
+
     def paint(
         self,
         painter: QPainter,
         option,
         widget=None
     ):
+        if self.scene_rect.isEmpty():
+            return
+
         paint_margin = max(
             self.display_style.arrow_length,
             self.display_style.arrow_width,
@@ -117,6 +137,13 @@ class ConnectionRenderItem(QGraphicsItem):
             paint_margin,
             paint_margin
         )
+
+        visible_rect = visible_rect.intersected(
+            self.boundingRect()
+        )
+
+        if visible_rect.isEmpty():
+            return
 
         visible_connections = (
             self.spatial_index.get_connections_in_rect(
