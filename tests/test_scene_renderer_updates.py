@@ -120,3 +120,13 @@ def test_re_added_node_gets_items_and_connections_back(renderer):
 
     assert 2 in renderer.visible_node_manager.visible_node_items
     assert len(renderer.connection_spatial_index.get_connections_in_rect(VISIBLE_RECT)) == 1
+
+
+def test_rounded_zoom_just_below_threshold_still_shows_nodes(renderer):
+    renderer.update_visibility_for_zoom(0.5)
+    assert not renderer.nodes_visible
+
+    renderer.update_visibility_for_zoom(0.9999999999999999)  # set_zoom_level(1.0) result
+
+    assert renderer.nodes_visible
+    assert renderer.detailed_connections_visible

@@ -21,6 +21,7 @@ class SceneRenderer:
     SPATIAL_TILE_SIZE = 256.0
     VISIBILITY_PADDING = 128.0
     OVERVIEW_REBUILD_DELAY_MS = 300
+    ZOOM_TOLERANCE = 1e-6
 
     def __init__(
         self, scene: QGraphicsScene, marker_icon_path, display_style: DisplayStyle | None = None
@@ -290,6 +291,9 @@ class SceneRenderer:
 
         self.current_zoom = zoom_level
 
+        # Zoom values like 0.9999999 from rounding count as 1.0.
+        zoom_level += self.ZOOM_TOLERANCE
+
         show_nodes = zoom_level >= self.node_min_zoom
 
         show_markers = zoom_level >= self.marker_min_zoom
@@ -335,42 +339,6 @@ class SceneRenderer:
                 self.connection_render_item.setVisible(show_detailed_connections)
 
             self.detailed_connections_visible = show_detailed_connections
-
-    def set_visibility_thresholds(
-        self, node_min_zoom=None, marker_min_zoom=None, connection_detail_min_zoom=None
-    ):
-        if node_min_zoom is not None:
-            node_min_zoom = float(node_min_zoom)
-
-            if node_min_zoom < 0:
-                raise ValueError("Der Mindestzoom für Nodes darf nicht negativ sein.")
-
-            self.node_min_zoom = node_min_zoom
-
-        if marker_min_zoom is not None:
-            marker_min_zoom = float(marker_min_zoom)
-
-            if marker_min_zoom < 0:
-                raise ValueError("Der Mindestzoom für Marker darf nicht negativ sein.")
-
-            self.marker_min_zoom = marker_min_zoom
-
-        if connection_detail_min_zoom is not None:
-            connection_detail_min_zoom = float(connection_detail_min_zoom)
-
-            if connection_detail_min_zoom < 0:
-                raise ValueError(
-                    "Der Mindestzoom für detaillierte Connections darf nicht negativ sein."
-                )
-
-            self.connection_detail_min_zoom = connection_detail_min_zoom
-
-        if self.current_zoom is not None:
-            self.nodes_visible = None
-            self.markers_visible = None
-            self.detailed_connections_visible = None
-
-            self.update_visibility_for_zoom(self.current_zoom)
 
     def rebuild_connections(self, autodrive_data: AutoDriveData):
         self._remove_connection_items()
