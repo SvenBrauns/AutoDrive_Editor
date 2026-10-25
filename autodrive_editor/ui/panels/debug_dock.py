@@ -126,12 +126,10 @@ class DebugDock(QDockWidget):
             return
 
         self.visible_rect_value.setText(
-            (
-                f"X {visible_rect.left():.1f} bis "
-                f"{visible_rect.right():.1f}\n"
-                f"Z {visible_rect.top():.1f} bis "
-                f"{visible_rect.bottom():.1f}"
-            )
+            f"X {visible_rect.left():.1f} bis "
+            f"{visible_rect.right():.1f}\n"
+            f"Z {visible_rect.top():.1f} bis "
+            f"{visible_rect.bottom():.1f}"
         )
 
     def set_renderer_state(self, debug_state: dict):

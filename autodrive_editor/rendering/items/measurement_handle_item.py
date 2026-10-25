@@ -40,7 +40,7 @@ class MeasurementHandleItem(QGraphicsObject):
 
         self.setAcceptedMouseButtons(Qt.NoButton)
 
-        self.setCursor((Qt.SizeAllCursor if self._movable else Qt.ArrowCursor))
+        self.setCursor(Qt.SizeAllCursor if self._movable else Qt.ArrowCursor)
 
         self._border_pen = QPen(self.BORDER_COLOR)
 
@@ -121,7 +121,7 @@ class MeasurementHandleItem(QGraphicsObject):
 
         self._movable = movable
 
-        self.setCursor((Qt.SizeAllCursor if self._movable else Qt.ArrowCursor))
+        self.setCursor(Qt.SizeAllCursor if self._movable else Qt.ArrowCursor)
 
         self.update()
 

@@ -1,5 +1,6 @@
 import pytest
 from PySide6.QtCore import Qt
+from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QToolButton
 
 from autodrive_editor.measurement.mode import MeasurementMode
@@ -80,8 +81,6 @@ def test_tool_buttons_follow_mode_changes_from_code(window):
 
 
 # --- layout: icons, two columns, groups, labels, shortcuts --------------
-
-from PySide6.QtTest import QTest
 
 
 def nodes_group(window):

@@ -77,12 +77,13 @@ def test_shift_snaps_while_dragging(rotating):
 
 
 def test_dragging_off_the_ring_pans(rotating):
-    before = rotating.view.horizontalScrollBar().value()
     rotating.view.setSceneRect(-1000, -1000, 2000, 2000)
+    before = rotating.view.horizontalScrollBar().value()
     start = view_pos(rotating, 10, 0)  # the center, inside the ring
 
     drag(rotating, start, start + QPoint(60, 0))
 
+    assert rotating.view.horizontalScrollBar().value() != before
     assert xz(rotating, 1) == (0, 0)
     assert rotating.edit_history.undo_stack.count() == 0
 

@@ -66,7 +66,7 @@ class SetConnectionCommand(EditCommand):
             (target.incoming, self.source_id),
         )
 
-        for (connections, node_id), present in zip(entries, state):
+        for (connections, node_id), present in zip(entries, state, strict=True):
             if present:
                 connections.add(node_id)
 
