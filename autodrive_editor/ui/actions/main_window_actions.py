@@ -107,9 +107,21 @@ class MainWindowActions:
 
         self.save_project_action.triggered.connect(self.window.save_project)
 
-        self.load_xml_action = QAction("AutoDrive-XML laden", self.window)
+        self.open_route_action = QAction("Route öffnen…", self.window)
+        self.open_route_action.setStatusTip("Route aus dem RoutesManager des Spielordners öffnen")
+        self.open_route_action.triggered.connect(self.window.open_route)
+
+        self.open_savegame_action = QAction("Savegame öffnen…", self.window)
+        self.open_savegame_action.setStatusTip("AutoDrive-Daten eines Savegames öffnen")
+        self.open_savegame_action.triggered.connect(self.window.open_savegame)
+
+        self.load_xml_action = QAction("XML-Datei öffnen…", self.window)
 
         self.load_xml_action.triggered.connect(self.window.load_xml)
+
+        self.settings_action = QAction("Einstellungen…", self.window)
+
+        self.settings_action.triggered.connect(self.window.open_settings)
 
         self.exit_action = QAction("Beenden", self.window)
 
@@ -128,6 +140,18 @@ class MainWindowActions:
         self.reset_rotation_action.setEnabled(False)
 
         self.reset_rotation_action.triggered.connect(self.window.reset_view_rotation)
+
+        self.import_map_mod_action = QAction("Karte aus Mod importieren…", self.window)
+        self.import_map_mod_action.setStatusTip(
+            "Kartenbild und Heightmap aus einem Kartenmod (Zip) importieren"
+        )
+        self.import_map_mod_action.triggered.connect(self.window.import_map_mod)
+
+        self.scan_map_mods_action = QAction("Karten scannen…", self.window)
+        self.scan_map_mods_action.setStatusTip(
+            "Mods-Ordner nach Kartenmods durchsuchen und Karten importieren"
+        )
+        self.scan_map_mods_action.triggered.connect(self.window.scan_map_mods)
 
         self.select_background_action = QAction("DDS auswählen", self.window)
 
@@ -252,13 +276,21 @@ class MainWindowActions:
 
         file_menu = menu_bar.addMenu("Datei")
 
+        file_menu.addAction(self.open_route_action)
+
+        file_menu.addAction(self.open_savegame_action)
+
+        file_menu.addAction(self.load_xml_action)
+
+        file_menu.addSeparator()
+
         file_menu.addAction(self.load_project_action)
 
         file_menu.addAction(self.save_project_action)
 
         file_menu.addSeparator()
 
-        file_menu.addAction(self.load_xml_action)
+        file_menu.addAction(self.settings_action)
 
         file_menu.addSeparator()
 
@@ -293,6 +325,12 @@ class MainWindowActions:
         view_menu.addAction(self.reset_rotation_action)
 
         map_menu = menu_bar.addMenu("Karte")
+
+        map_menu.addAction(self.scan_map_mods_action)
+
+        map_menu.addAction(self.import_map_mod_action)
+
+        map_menu.addSeparator()
 
         map_menu.addAction(self.select_background_action)
 

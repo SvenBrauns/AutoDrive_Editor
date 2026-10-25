@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-# AutoDrive node flags.
+# AutoDrive node flags. Other values may exist in files; they are kept
+# unchanged and shown like regular nodes.
 REGULAR_FLAG = 0
 SUBPRIO_FLAG = 1
+KNOWN_FLAGS = (REGULAR_FLAG, SUBPRIO_FLAG)
 
 
 @dataclass
@@ -24,12 +26,18 @@ class NodeData:
     outgoing: set[int] = field(default_factory=set)
 
     @property
-    def is_regular(self) -> bool:
-        return self.flag == 0
+    def is_subprio(self) -> bool:
+        return self.flag == SUBPRIO_FLAG
 
     @property
-    def is_subprio(self) -> bool:
-        return self.flag != 0
+    def is_regular(self) -> bool:
+        """Regular nodes and nodes with an unknown flag."""
+
+        return not self.is_subprio
+
+    @property
+    def has_known_flag(self) -> bool:
+        return self.flag in KNOWN_FLAGS
 
 
 @dataclass
@@ -42,12 +50,28 @@ class MarkerData:
 
 
 @dataclass
+class MarkerGroup:
+    """A marker group. Route files list the groups with an id; savegame
+    configs only store group names on the markers, so group_id is None."""
+
+    name: str
+    group_id: int | None = None
+
+
+@dataclass
 class AutoDriveData:
-    """All nodes and markers of an AutoDrive network, by node id."""
+    """All nodes and markers of an AutoDrive network, by node id.
+
+    The order of `markers` is kept as in the file: in savegame configs
+    the position of a marker is its number, which vehicles use as parking
+    destination.
+    """
 
     nodes: dict[int, NodeData] = field(default_factory=dict)
 
     markers: dict[int, MarkerData] = field(default_factory=dict)
+
+    marker_groups: list[MarkerGroup] = field(default_factory=list)
 
     def add_node(self, node: NodeData) -> None:
         if node.node_id <= 0:
@@ -58,11 +82,29 @@ class AutoDriveData:
 
         self.nodes[node.node_id] = node
 
-    def add_marker(self, marker: MarkerData) -> None:
+    def add_marker(self, marker: MarkerData, position: int | None = None) -> None:
+        """Adds a marker at the end, or at the given position in the marker
+        order."""
+
         if marker.node_id not in self.nodes:
             raise ValueError(f"Der Marker verweist auf die unbekannte Node-ID {marker.node_id}.")
 
-        self.markers[marker.node_id] = marker
+        if position is None or position >= len(self.markers):
+            self.markers[marker.node_id] = marker
+            return
+
+        ordered = list(self.markers.items())
+        ordered.insert(position, (marker.node_id, marker))
+        self.markers = dict(ordered)
+
+    def marker_position(self, node_id: int) -> int | None:
+        """Position of a node's marker in the marker order."""
+
+        for position, marker_node_id in enumerate(self.markers):
+            if marker_node_id == node_id:
+                return position
+
+        return None
 
     def get_node(self, node_id: int) -> NodeData | None:
         return self.nodes.get(node_id)
@@ -98,6 +140,7 @@ class AutoDriveData:
     def clear(self) -> None:
         self.nodes.clear()
         self.markers.clear()
+        self.marker_groups.clear()
 
     def __len__(self) -> int:
         return len(self.nodes)

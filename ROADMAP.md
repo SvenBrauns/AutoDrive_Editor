@@ -12,32 +12,42 @@ Damit alle folgenden Funktionen mit echten Spieldaten getestet werden können.
 
 **Spielordner**
 
-- [ ] FS25-Benutzerordner (üblicherweise `Dokumente\My Games\FarmingSimulator2025`) automatisch finden und in den Einstellungen änderbar machen
-- [ ] Prüfen, wo AutoDrive den RoutesManager ablegt (vermutlich `modSettings\FS25_AutoDrive\routesManager\`)
+- [x] FS25-Benutzerordner (üblicherweise `Dokumente\My Games\FarmingSimulator2025`) automatisch finden und in den Einstellungen änderbar machen
 
 **Routen und Savegames**
 
-- [ ] RoutesManager: Routenliste direkt aus dem Spielordner anzeigen und eine Route laden (bevorzugter Weg, da AutoDrive Routen im laufenden Spiel neu laden kann)
-- [ ] Savegame-Config: Liste der Savegames anzeigen und `AutoDrive_config.xml` laden
-- [ ] einzelne XML-Datei weiterhin von Hand öffnen
-- [ ] nur FS25-Configs annehmen (`version` 3), sonst verständliche Meldung
+- [x] RoutesManager: Routenliste direkt aus dem Spielordner anzeigen und eine Route laden (bevorzugter Weg, da AutoDrive Routen im laufenden Spiel neu laden kann)
+- [x] Savegame-Config: Liste der Savegames anzeigen und `AutoDrive_config.xml` laden
+- [x] einzelne XML-Datei weiterhin von Hand öffnen
+- [x] nur FS25-Configs annehmen (`version` 3), sonst verständliche Meldung
 
 **Karten**
 
-- [ ] Kartenname aus `routes.xml` (`map`) bzw. aus der Savegame-Config (`MapName`) lesen
-- [ ] Mod-Zip einer Karte importieren: Kartenbild und Heightmap auslesen und im Datenordner des Editors ablegen (z. B. `%APPDATA%\AutoDrive Editor\maps\<Kartenname>\`), zusammen mit der Kartengröße
-- [ ] Schaltfläche „Karten scannen“: `mods`-Ordner nach Kartenmods durchsuchen (Zips und entpackte Ordner) und zum Import anbieten; bereits importierte Karten kennzeichnen
-- [ ] beim Laden einer Route oder eines Savegames die passende importierte Karte automatisch laden
-- [ ] Savegame: `terrain.heightmap.png` neben der Config als Heightmap verwenden
-- [ ] Prüfen, ob die Grundspiel-Karten aus dem Installationsordner lesbar sind; vermutlich liegen sie in einem Archivformat von Giants und können nicht importiert werden
+- [x] Kartenname aus `routes.xml` (`map`) bzw. aus der Savegame-Config (`MapName`) lesen
+- [x] Mod-Zip einer Karte importieren: Kartenbild und Heightmap auslesen und im Datenordner des Editors ablegen (z. B. `%APPDATA%\AutoDrive Editor\maps\<Kartenname>\`), zusammen mit der Kartengröße
+- [x] Schaltfläche „Karten scannen“: `mods`-Ordner nach Kartenmods durchsuchen (Zips und entpackte Ordner) und zum Import anbieten; bereits importierte Karten kennzeichnen
+- [x] beim Laden einer Route oder eines Savegames die passende importierte Karte automatisch laden
+- [x] Savegame: `terrain.heightmap.png` neben der Config als Heightmap verwenden
+- [x] Kartengröße aus der Kartenkonfiguration im Mod übernehmen statt sie von Hand zu wählen
+- [x] Prüfen, ob die Grundspiel-Karten aus dem Installationsordner lesbar sind: ja, sie liegen entpackt unter `<Installationsordner>\data\maps\mapUS`, `mapEU` und `mapAS` (Kartenkonfiguration, `textures\ui\overview.dds`, i3d, `data\dem.png`; Pfade beginnen mit `$data/`)
+- [ ] Grundspiel-Karten importierbar machen; offen ist, welchen Kartennamen AutoDrive für sie verwendet (es gibt keine `modDesc.xml` mit Titel). Klären mit einem Savegame oder einer Route auf einer Grundspiel-Karte
 
 Kartenbilder werden nicht mit dem Editor ausgeliefert. Jeder Nutzer erzeugt sie aus seinen eigenen Mods; einmal importiert, werden sie ohne erneuten Zip-Import wiederverwendet.
 
 **Flags**
 
-- [ ] Flags `2` und `4` unverändert im Datenmodell behalten, wie Regular-Nodes darstellen und von „Typ wechseln“ ausnehmen (bisher gilt jedes Flag ungleich `0` als Subprio)
+- [x] unbekannte Flag-Werte unverändert im Datenmodell behalten, wie Regular-Nodes darstellen und von „Typ wechseln“ ausnehmen (bisher gilt jedes Flag ungleich `0` als Subprio)
 
-Laut altem Editor werden Nodes mit diesen Flags in FS22 und FS25 von AutoDrive aus Karten-Splines erzeugt. Was genau sie bedeuten und wie sie gespeichert werden müssen, wird anhand einer echten FS25-Savegame-Config geklärt.
+Laut altem Editor stehen die Flags `2` und `4` für Nodes, die AutoDrive aus Karten-Splines erzeugt. In echten FS25-Daten kommen sie nicht vor: Alle sieben Routen im RoutesManager und die Savegame-Config enthalten nur `0` und `1`. Eine eigene Behandlung ist deshalb nicht nötig; unbekannte Werte werden lediglich erhalten.
+
+**Erkenntnisse aus einer echten FS25-Installation**
+
+- RoutesManager: `<FS25-Ordner>\modSettings\FS25_AutoDrive\routesManager\routes.xml`, Routendateien im Unterordner `routes\`. AutoDrive legt dort eigene Autosaves ab (`<Datei>_autosave_<n>.xml`); sie gehören nicht in die Routenliste.
+- `routes.xml`: je Route `name`, `fileName`, `map`, `revision`, `date` (`JJJJ/MM/TT hh:mm:ss`) und `<serverId/>`. `revision` steigt bei jedem Speichern im Spiel.
+- Savegame: `savegameN\AutoDrive_config.xml` mit `version` z. B. `3.0.1.4` (FS25 = Hauptversion 3) und `MapName`; daneben liegen `terrain.heightmap.png` und `vehicles.xml`.
+- Kartenname: AutoDrive verwendet den Kartentitel aus der `modDesc.xml` des Kartenmods (`<maps><map><title>`), Leerzeichen und Punkte durch `_` ersetzt, z. B. `LS25 Thüringen 2.0 16x` → `LS25_Thüringen_2_0_16x`. Der Titel kann in mehreren Sprachen vorliegen; verglichen wird mit allen. Zip-Name und Karten-ID (oft `SampleModMap`) taugen nicht zur Zuordnung.
+- Kartenmod: `modDesc.xml` → `<map configFilename>` → Kartenkonfiguration mit `width`/`height` (z. B. 8192) und `imageFilename`. Kartengröße = `width / 2048` (4096 → 2 = 4x-Karte, 8192 → 4 = 16x-Karte).
+- Ein Mod kann mehrere Karten enthalten; der `mods`-Ordner kann auch nicht lesbare Zips enthalten, die beim Scan übersprungen werden.
 
 ## 2. Marker — hohe Priorität
 
@@ -141,6 +151,7 @@ Gespeichert wird in das Format, aus dem geladen wurde. Es gibt drei Wege:
 
 **Für alle Formate**
 
+- Genauigkeit wie im Original: Savegame-Configs speichern Koordinaten mit drei Nachkommastellen, Routendateien mit zwei.
 - Node-IDs sind die Positionen in den Listen; Lücken durch gelöschte Nodes müssen beim Speichern geschlossen und alle Verweise und Marker umgeschrieben werden.
 - Flags `2` und `4` je nach Ergebnis der Klärung in Phase 1 zurückschreiben.
 
@@ -161,5 +172,5 @@ Werden erledigt, wenn eine Phase den betroffenen Code ohnehin berührt.
 - [ ] kurzer Hänger beim ersten Hineinzoomen über Zoom 1.0
 - [ ] Heightmap-Werte zwischen Pixeln interpolieren statt den nächsten Pixel zu nehmen
 - [ ] an Nodes gebundene Messpunkte folgen verschobenen Nodes
-- [ ] leere Einträge in der `flags`-Liste der XML verschieben nachfolgende Flags
+- [x] leere Einträge in der `flags`-Liste der XML verschieben nachfolgende Flags
 - [ ] `scene_renderer.py` aufteilen

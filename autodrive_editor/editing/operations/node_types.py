@@ -46,12 +46,24 @@ class NodeTypeOperation(QObject):
 
         clicked_node = autodrive_data.get_node(node_item.node_id)
 
+        # Nodes with flags other than regular/subprio keep their value.
+        if not clicked_node.has_known_flag:
+            self.status_changed.emit(
+                f"Node {clicked_node.node_id} hat einen unbekannten Typ "
+                f"(Flag {clicked_node.flag}) und wird nicht geändert"
+            )
+            return False
+
         new_flag = SUBPRIO_FLAG if clicked_node.is_regular else REGULAR_FLAG
 
         selected_node_ids = self.node_selection.selected_node_ids
 
         if clicked_node.node_id in selected_node_ids:
-            node_ids = {node_id for node_id in selected_node_ids if node_id in autodrive_data.nodes}
+            node_ids = {
+                node_id
+                for node_id in selected_node_ids
+                if node_id in autodrive_data.nodes and autodrive_data.nodes[node_id].has_known_flag
+            }
 
         else:
             node_ids = {clicked_node.node_id}

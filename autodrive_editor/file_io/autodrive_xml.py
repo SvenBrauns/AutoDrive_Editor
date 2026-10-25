@@ -1,99 +1,168 @@
+"""Reads AutoDrive networks from the two FS25 file formats.
+
+Route export (RoutesManager, root <routeExport>):
+
+    <waypoints c="3">
+        <x>1.0;2.0;3.0</x> <y>…</y> <z>…</z>
+        <out>2;3;-1</out> <in>-1;1;2</in> <flags>0;1;0</flags>
+    </waypoints>
+    <markers><m i="1" n="Hof" g="All"/></markers>
+    <groups><g i="1" n="All"/></groups>
+
+Savegame config (savegameN/AutoDrive_config.xml, root <AutoDrive>):
+
+    <version>3.0.1.4</version> <MapName>…</MapName>
+    <waypoints>
+        <id>1,2,3</id> <x>1.0,2.0,3.0</x> <y>…</y> <z>…</z>
+        <out>2;3;-1</out> <incoming>-1;1;2</incoming> <flags>0,1,0</flags>
+    </waypoints>
+    <mapmarker><mm1><id>1.000000</id><name>Hof</name><group>All</group></mm1></mapmarker>
+
+In both formats a node's id is its 1-based position in the lists, -1
+means "no connection" and several connections of a node are separated
+by commas.
+"""
+
 import xml.etree.ElementTree as ET
+from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 
-from autodrive_editor.model.autodrive_data import AutoDriveData, MarkerData, NodeData
+from autodrive_editor.model.autodrive_data import (
+    REGULAR_FLAG,
+    AutoDriveData,
+    MarkerData,
+    MarkerGroup,
+    NodeData,
+)
+
+# Savegame configs of FS25 have AutoDrive version 3.x.
+FS25_CONFIG_MAJOR_VERSION = 3
+
+
+class ConfigFormat(Enum):
+    ROUTE_EXPORT = "route_export"
+    SAVEGAME = "savegame"
+
+
+@dataclass(frozen=True)
+class ConfigSource:
+    """Where loaded data came from. Needed to find the matching map and,
+    later, to save back into the same format."""
+
+    format: ConfigFormat
+    path: Path
+    map_name: str | None = None
+    version: str | None = None
+
+    # Shown in the window title, e.g. the route or savegame name.
+    display_name: str | None = None
+
+    @property
+    def format_label(self) -> str:
+        return "Route" if self.format == ConfigFormat.ROUTE_EXPORT else "Savegame"
+
+
+@dataclass(frozen=True)
+class LoadedConfig:
+    data: AutoDriveData
+    source: ConfigSource
+
+
+@dataclass(frozen=True)
+class _FormatLayout:
+    """How a format names its lists and separates its values."""
+
+    value_separator: str
+    incoming_element: str
+
+
+_LAYOUTS = {
+    ConfigFormat.ROUTE_EXPORT: _FormatLayout(value_separator=";", incoming_element="in"),
+    ConfigFormat.SAVEGAME: _FormatLayout(value_separator=",", incoming_element="incoming"),
+}
+
+_ROOT_FORMATS = {"routeExport": ConfigFormat.ROUTE_EXPORT, "AutoDrive": ConfigFormat.SAVEGAME}
 
 
 class AutoDriveXmlReader:
-    """Reads an AutoDrive config XML into AutoDriveData. Node ids are the 1-based positions in the
-    XML lists.
-    """
+    """Reads a route export or an FS25 savegame config into AutoDriveData.
+    The format is detected from the root element."""
 
     @classmethod
     def load(cls, file_path) -> AutoDriveData:
+        return cls.read(file_path).data
+
+    @classmethod
+    def read(cls, file_path) -> LoadedConfig:
         xml_path = Path(file_path).resolve()
 
         if not xml_path.is_file():
             raise FileNotFoundError(f"Die AutoDrive-XML wurde nicht gefunden: {xml_path}")
 
         try:
-            tree = ET.parse(xml_path)
-
+            root = ET.parse(xml_path).getroot()
         except ET.ParseError as ex:
             raise ValueError(f"Die XML-Datei ist ungültig: {ex}") from ex
 
-        root = tree.getroot()
+        config_format = _ROOT_FORMATS.get(root.tag)
 
-        waypoint_section = root.find("waypoints")
-
-        if waypoint_section is None:
-            raise ValueError("Die XML enthält keinen Waypoint-Bereich.")
-
-        x_values = cls._parse_float_values(waypoint_section, "x")
-
-        y_values = cls._parse_float_values(waypoint_section, "y")
-
-        z_values = cls._parse_float_values(waypoint_section, "z")
-
-        node_count = cls._validate_coordinate_lengths(x_values, y_values, z_values)
-
-        flag_values = cls._parse_flag_values(waypoint_section, node_count)
-
-        outgoing_values = cls._parse_connection_values(waypoint_section, "out", node_count)
-
-        incoming_values = cls._parse_connection_values(waypoint_section, "in", node_count)
-
-        autodrive_data = AutoDriveData()
-
-        for index in range(node_count):
-            node_id = index + 1
-
-            node = NodeData(
-                node_id=node_id,
-                x=x_values[index],
-                y=y_values[index],
-                z=z_values[index],
-                flag=flag_values[index],
-                outgoing=outgoing_values[index],
-                incoming=incoming_values[index],
+        if config_format is None:
+            raise ValueError(
+                f"Unbekanntes Format: Wurzelelement <{root.tag}>. Erwartet wird eine "
+                "RoutesManager-Route (<routeExport>) oder eine Savegame-Config (<AutoDrive>)."
             )
 
-            autodrive_data.add_node(node)
+        version = None
 
-        cls._parse_markers(root, autodrive_data)
+        if config_format == ConfigFormat.SAVEGAME:
+            version = cls._check_fs25_version(root)
 
-        return autodrive_data
+        waypoints = root.find("waypoints")
 
-    @staticmethod
-    def _parse_float_values(waypoint_section, element_name):
-        element = waypoint_section.find(element_name)
+        if waypoints is None:
+            raise ValueError("Die XML enthält keinen Waypoint-Bereich.")
 
-        if element is None or not element.text:
-            raise ValueError(f"Die XML enthält keine {element_name}-Koordinaten.")
+        data = cls._read_nodes(waypoints, _LAYOUTS[config_format])
 
-        values = []
+        if config_format == ConfigFormat.ROUTE_EXPORT:
+            cls._read_route_markers(root, data)
+        else:
+            cls._read_savegame_markers(root, data)
 
-        for raw_value in element.text.split(";"):
-            raw_value = raw_value.strip()
+        map_name = (root.findtext("MapName") or "").strip() or None
 
-            if not raw_value:
-                continue
-
-            try:
-                values.append(float(raw_value))
-
-            except ValueError as ex:
-                raise ValueError(
-                    f"Ungültiger Wert im Element '{element_name}': {raw_value}"
-                ) from ex
-
-        if not values:
-            raise ValueError(f"Das XML-Element '{element_name}' enthält keine gültigen Werte.")
-
-        return values
+        return LoadedConfig(
+            data=data,
+            source=ConfigSource(
+                format=config_format, path=xml_path, map_name=map_name, version=version
+            ),
+        )
 
     @staticmethod
-    def _validate_coordinate_lengths(x_values, y_values, z_values):
+    def _check_fs25_version(root) -> str:
+        version = (root.findtext("version") or "").strip()
+        major = version.split(".")[0]
+
+        if not major.isdigit():
+            raise ValueError("Die Savegame-Config enthält keine gültige AutoDrive-Version.")
+
+        if int(major) != FS25_CONFIG_MAJOR_VERSION:
+            raise ValueError(
+                f"Nur Configs aus dem LS25 werden unterstützt (AutoDrive-Version 3.x). "
+                f"Diese Config hat Version {version}."
+            )
+
+        return version
+
+    @classmethod
+    def _read_nodes(cls, waypoints, layout: _FormatLayout) -> AutoDriveData:
+        separator = layout.value_separator
+
+        x_values = cls._read_floats(waypoints, "x", separator)
+        y_values = cls._read_floats(waypoints, "y", separator)
+        z_values = cls._read_floats(waypoints, "z", separator)
+
         lengths = {"x": len(x_values), "y": len(y_values), "z": len(z_values)}
 
         if len(set(lengths.values())) != 1:
@@ -101,105 +170,150 @@ class AutoDriveXmlReader:
                 f"Die Anzahl der X-, Y- und Z-Koordinaten stimmt nicht überein: {lengths}"
             )
 
-        return len(x_values)
+        node_count = len(x_values)
+
+        flags = cls._read_flags(waypoints, separator, node_count)
+        outgoing = cls._read_connections(waypoints, "out", node_count)
+        incoming = cls._read_connections(waypoints, layout.incoming_element, node_count)
+
+        data = AutoDriveData()
+
+        for index in range(node_count):
+            data.add_node(
+                NodeData(
+                    node_id=index + 1,
+                    x=x_values[index],
+                    y=y_values[index],
+                    z=z_values[index],
+                    flag=flags[index],
+                    outgoing=outgoing[index],
+                    incoming=incoming[index],
+                )
+            )
+
+        return data
 
     @staticmethod
-    def _parse_flag_values(waypoint_section, node_count):
-        flags_element = waypoint_section.find("flags")
+    def _split(waypoints, element_name: str, separator: str) -> list[str] | None:
+        text = waypoints.findtext(element_name)
 
-        if flags_element is None or not flags_element.text:
-            return [0 for _ in range(node_count)]
+        if text is None or not text.strip():
+            return None
 
-        raw_flags = flags_element.text.split(";")
-        flags = []
-
-        for raw_flag in raw_flags:
-            raw_flag = raw_flag.strip()
-
-            if not raw_flag:
-                continue
-
-            try:
-                flags.append(int(raw_flag))
-
-            except ValueError as ex:
-                raise ValueError(f"Ungültiger Node-Flag: {raw_flag}") from ex
-
-        if len(flags) < node_count:
-            flags.extend([0] * (node_count - len(flags)))
-
-        return flags[:node_count]
+        return [part.strip() for part in text.strip().split(separator)]
 
     @classmethod
-    def _parse_connection_values(cls, waypoint_section, element_name, node_count):
-        connection_element = waypoint_section.find(element_name)
+    def _read_floats(cls, waypoints, element_name: str, separator: str) -> list[float]:
+        parts = cls._split(waypoints, element_name, separator)
 
-        if connection_element is None or connection_element.text is None:
-            return [set() for _ in range(node_count)]
+        if parts is None:
+            raise ValueError(f"Die XML enthält keine {element_name}-Koordinaten.")
 
-        raw_entries = connection_element.text.split(";")
-        parsed_entries = []
+        values = []
 
-        for raw_entry in raw_entries:
-            parsed_entries.append(cls._parse_connection_entry(raw_entry))
+        for part in parts:
+            try:
+                values.append(float(part))
+            except ValueError as ex:
+                raise ValueError(f"Ungültiger Wert im Element '{element_name}': {part}") from ex
 
-        if len(parsed_entries) < node_count:
-            parsed_entries.extend(set() for _ in range(node_count - len(parsed_entries)))
+        return values
 
-        return parsed_entries[:node_count]
+    @classmethod
+    def _read_flags(cls, waypoints, separator: str, node_count: int) -> list[int]:
+        """Flags by position. Missing or empty entries are regular nodes, so
+        later flags keep their position."""
 
-    @staticmethod
-    def _parse_connection_entry(raw_entry):
-        connections = set()
+        parts = cls._split(waypoints, "flags", separator) or []
+        flags = []
 
-        if not raw_entry:
-            return connections
-
-        for raw_node_id in raw_entry.split(","):
-            raw_node_id = raw_node_id.strip()
-
-            if not raw_node_id:
+        for part in parts[:node_count]:
+            if not part:
+                flags.append(REGULAR_FLAG)
                 continue
 
             try:
-                node_id = int(raw_node_id)
-
+                flags.append(int(float(part)))
             except ValueError as ex:
-                raise ValueError(f"Ungültige Verbindungs-ID: {raw_node_id}") from ex
+                raise ValueError(f"Ungültiger Node-Flag: {part}") from ex
 
-            if node_id <= 0:
-                continue
+        flags.extend([REGULAR_FLAG] * (node_count - len(flags)))
 
-            connections.add(node_id)
+        return flags
+
+    @classmethod
+    def _read_connections(cls, waypoints, element_name: str, node_count: int) -> list[set[int]]:
+        """Connections per node: nodes separated by ';', several targets of
+        one node by ','. Values <= 0 (like -1) mean no connection."""
+
+        parts = cls._split(waypoints, element_name, ";") or []
+        connections = []
+
+        for part in parts[:node_count]:
+            targets = set()
+
+            for raw_id in part.split(","):
+                raw_id = raw_id.strip()
+
+                if not raw_id:
+                    continue
+
+                try:
+                    node_id = int(raw_id)
+                except ValueError as ex:
+                    raise ValueError(f"Ungültige Verbindungs-ID: {raw_id}") from ex
+
+                if node_id > 0:
+                    targets.add(node_id)
+
+            connections.append(targets)
+
+        connections.extend(set() for _ in range(node_count - len(connections)))
 
         return connections
 
     @staticmethod
-    def _parse_markers(root, autodrive_data):
-        markers_section = root.find("markers")
-
-        if markers_section is None:
+    def _add_marker(data: AutoDriveData, raw_node_id, name: str, group: str):
+        try:
+            node_id = int(float(raw_node_id))
+        except (TypeError, ValueError):
             return
 
-        for marker_element in markers_section:
-            raw_node_id = marker_element.attrib.get("i")
+        if node_id in data.nodes:
+            data.add_marker(MarkerData(node_id=node_id, name=name, group=group))
 
-            if not raw_node_id:
-                continue
+    @classmethod
+    def _read_route_markers(cls, root, data: AutoDriveData):
+        for marker in root.findall("markers/*"):
+            cls._add_marker(data, marker.get("i"), marker.get("n", ""), marker.get("g", ""))
 
-            try:
-                node_id = int(raw_node_id)
-
-            except ValueError:
-                continue
-
-            if node_id not in autodrive_data.nodes:
-                continue
-
-            marker = MarkerData(
-                node_id=node_id,
-                name=marker_element.attrib.get("n", ""),
-                group=marker_element.attrib.get("g", ""),
+        for group in root.findall("groups/*"):
+            raw_id = group.get("i", "")
+            data.marker_groups.append(
+                MarkerGroup(
+                    name=group.get("n", ""),
+                    group_id=int(raw_id) if raw_id.strip().isdigit() else None,
+                )
             )
 
-            autodrive_data.add_marker(marker)
+    @classmethod
+    def _read_savegame_markers(cls, root, data: AutoDriveData):
+        """Markers are mm1, mm2, … in that order. The groups are not listed
+        separately; they are collected from the markers' group names."""
+
+        def marker_number(element):
+            suffix = element.tag.removeprefix("mm")
+            return int(suffix) if suffix.isdigit() else 0
+
+        group_names = []
+
+        for marker in sorted(root.findall("mapmarker/*"), key=marker_number):
+            name = (marker.findtext("name") or "").strip()
+            group = (marker.findtext("group") or "").strip()
+
+            cls._add_marker(data, marker.findtext("id"), name, group)
+
+            if group and group not in group_names:
+                group_names.append(group)
+
+        data.marker_groups.extend(MarkerGroup(name=name) for name in group_names)

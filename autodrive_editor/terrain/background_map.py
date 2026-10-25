@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QGraphicsPixmapItem, QGraphicsScene
 
-from autodrive_editor.file_io.background_image import load_dds_as_pixmap
+from autodrive_editor.file_io.background_image import load_background_pixmap
 from autodrive_editor.rendering.items.map_grid_item import MapGridItem
 from autodrive_editor.terrain.background_transform import BackgroundTransform
 
@@ -21,10 +21,10 @@ class BackgroundMap:
         self.grid_rotation = 0.0
 
     def load(self, file_path):
-        pixmap = load_dds_as_pixmap(file_path)
+        pixmap = load_background_pixmap(file_path)
 
         if pixmap.isNull():
-            raise ValueError("Die DDS-Datei enthält kein lesbares Bild.")
+            raise ValueError("Die Bilddatei enthält kein lesbares Bild.")
 
         self.file_path = file_path
 
@@ -39,10 +39,10 @@ class BackgroundMap:
         if not self.file_path:
             return False
 
-        pixmap = load_dds_as_pixmap(self.file_path)
+        pixmap = load_background_pixmap(self.file_path)
 
         if pixmap.isNull():
-            raise ValueError("Die DDS-Datei konnte nicht erneut geladen werden.")
+            raise ValueError("Die Bilddatei konnte nicht erneut geladen werden.")
 
         self._replace_background(pixmap)
 
