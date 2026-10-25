@@ -13,6 +13,9 @@ from PySide6.QtWidgets import (
 from ui.interaction_mode import InteractionMode
 from ui.rotation_controls import RotationControls
 from ui.grid_controls import GridControls
+from measurement.measurement_mode import (
+    MeasurementMode
+)
 
 
 class MainWindowActions:
@@ -90,6 +93,72 @@ class MainWindowActions:
 
         self.navigation_action.setChecked(
             True
+        )
+
+        self.distance_measurement_action = QAction(
+            "↔",
+            self.window
+        )
+
+        self.distance_measurement_action.setCheckable(
+            True
+        )
+
+        self.distance_measurement_action.setToolTip(
+            "Abstand zwischen zwei Punkten messen"
+        )
+
+        self.distance_measurement_action.setStatusTip(
+            "Abstand zwischen Nodes oder freien "
+            "Kartenpunkten messen"
+        )
+
+        self.distance_measurement_action.triggered.connect(
+            self._toggle_distance_measurement
+        )
+
+        self.angle_measurement_action = QAction(
+            "∠",
+            self.window
+        )
+
+        self.angle_measurement_action.setCheckable(
+            True
+        )
+
+        self.angle_measurement_action.setToolTip(
+            "Kartenwinkel zwischen zwei Punkten messen"
+        )
+
+        self.angle_measurement_action.setStatusTip(
+            "Richtungswinkel zwischen Nodes oder freien "
+            "Kartenpunkten messen"
+        )
+
+        self.angle_measurement_action.triggered.connect(
+            self._toggle_angle_measurement
+        )
+
+        self.align_measurement_action = QAction(
+            "━",
+            self.window
+        )
+
+        self.align_measurement_action.setToolTip(
+            "Messlinie horizontal ausrichten"
+        )
+
+        self.align_measurement_action.setStatusTip(
+            "Ansicht so drehen, dass Messpunkt A "
+            "links und Messpunkt B rechts liegt"
+        )
+
+        self.align_measurement_action.setEnabled(
+            False
+        )
+
+        self.align_measurement_action.triggered.connect(
+            self.window.align_view_to_measurement
         )
 
         self.load_project_action = QAction(
@@ -421,6 +490,20 @@ class MainWindowActions:
             self.grid_controls
         )
 
+        self.quick_access_toolbar.addSeparator()
+
+        self.quick_access_toolbar.addAction(
+            self.distance_measurement_action
+        )
+
+        self.quick_access_toolbar.addAction(
+            self.angle_measurement_action
+        )
+
+        self.quick_access_toolbar.addAction(
+            self.align_measurement_action
+        )
+
     def _create_editor_toolbar(self):
         self.editor_toolbar = QToolBar(
             "Editor-Werkzeuge",
@@ -478,12 +561,70 @@ class MainWindowActions:
                 True
             )
 
+    def set_measurement_mode(
+        self,
+        measurement_mode: MeasurementMode
+    ):
+        if not isinstance(
+            measurement_mode,
+            MeasurementMode
+        ):
+            raise TypeError(
+                "Der Messmodus ist ungültig."
+            )
+
+        distance_active = (
+            measurement_mode
+            == MeasurementMode.DISTANCE
+        )
+
+        angle_active = (
+            measurement_mode
+            == MeasurementMode.ANGLE
+        )
+
+        self.distance_measurement_action.blockSignals(
+            True
+        )
+
+        self.distance_measurement_action.setChecked(
+            distance_active
+        )
+
+        self.distance_measurement_action.blockSignals(
+            False
+        )
+
+        self.angle_measurement_action.blockSignals(
+            True
+        )
+
+        self.angle_measurement_action.setChecked(
+            angle_active
+        )
+
+        self.angle_measurement_action.blockSignals(
+            False
+        )
+
+    def set_measurement_alignment_enabled(
+        self,
+        enabled: bool
+    ):
+        self.align_measurement_action.setEnabled(
+            bool(enabled)
+        )
+
     def _activate_navigation_mode(
         self,
         checked: bool
     ):
         if not checked:
             return
+
+        self.window.set_measurement_mode(
+            MeasurementMode.INACTIVE
+        )
 
         self.window.set_interaction_mode(
             InteractionMode.NAVIGATE
@@ -496,6 +637,56 @@ class MainWindowActions:
         if not checked:
             return
 
+        self.window.set_measurement_mode(
+            MeasurementMode.INACTIVE
+        )
+
         self.window.set_interaction_mode(
             InteractionMode.SELECT
         )
+
+    def _toggle_distance_measurement(
+        self,
+        checked: bool
+    ):
+        if checked:
+            self.angle_measurement_action.setChecked(
+                False
+            )
+
+            self.window.set_measurement_mode(
+                MeasurementMode.DISTANCE
+            )
+
+            return
+
+        if (
+            self.window.measurement_controller.mode
+            == MeasurementMode.DISTANCE
+        ):
+            self.window.set_measurement_mode(
+                MeasurementMode.INACTIVE
+            )
+
+    def _toggle_angle_measurement(
+        self,
+        checked: bool
+    ):
+        if checked:
+            self.distance_measurement_action.setChecked(
+                False
+            )
+
+            self.window.set_measurement_mode(
+                MeasurementMode.ANGLE
+            )
+
+            return
+
+        if (
+            self.window.measurement_controller.mode
+            == MeasurementMode.ANGLE
+        ):
+            self.window.set_measurement_mode(
+                MeasurementMode.INACTIVE
+            )
