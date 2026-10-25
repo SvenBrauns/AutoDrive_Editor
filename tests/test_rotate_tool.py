@@ -59,7 +59,7 @@ def test_dragging_the_ring_rotates_the_selection(rotating):
     assert xz(rotating, 1) == pytest.approx((10, -10), abs=0.2)
     assert xz(rotating, 2) == pytest.approx((10, 0), abs=0.2)
     assert xz(rotating, 3) == pytest.approx((10, 10), abs=0.2)
-    assert rotating.edit_coordinator.undo_stack.count() == 1
+    assert rotating.edit_history.undo_stack.count() == 1
     assert rotating.actions.undo_action.text() == "Rückgängig: 3 Nodes rotieren"
     assert rotating.status.text().startswith("3 Nodes um 90")
 
@@ -84,7 +84,7 @@ def test_dragging_off_the_ring_pans(rotating):
     drag(rotating, start, start + QPoint(60, 0))
 
     assert xz(rotating, 1) == (0, 0)
-    assert rotating.edit_coordinator.undo_stack.count() == 0
+    assert rotating.edit_history.undo_stack.count() == 0
 
 
 def test_escape_cancels_rotation(rotating):
@@ -96,7 +96,7 @@ def test_escape_cancels_rotation(rotating):
     )
 
     assert xz(rotating, 1) == pytest.approx((0, 0))
-    assert rotating.edit_coordinator.undo_stack.count() == 0
+    assert rotating.edit_history.undo_stack.count() == 0
 
 
 def test_undo_restores_positions_and_ring(rotating):

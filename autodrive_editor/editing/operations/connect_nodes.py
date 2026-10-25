@@ -3,7 +3,7 @@ from collections.abc import Callable
 from PySide6.QtCore import QObject, QPoint, Signal
 
 from autodrive_editor.editing.commands.set_connection import SetConnectionCommand
-from autodrive_editor.editing.edit_history import EditCoordinator
+from autodrive_editor.editing.edit_history import EditHistory
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
 from autodrive_editor.model.connections import (
     CONNECTION_STATES,
@@ -20,7 +20,7 @@ CONNECTION_TYPE_NAMES = {
 }
 
 
-class NodeConnectCoordinator(QObject):
+class ConnectNodesOperation(QObject):
     """Connects nodes by clicking them one after another.
 
     The first click picks the start node. Each further click on a node
@@ -37,14 +37,14 @@ class NodeConnectCoordinator(QObject):
     def __init__(
         self,
         selection_coordinator: SelectionCoordinator,
-        edit_coordinator: EditCoordinator,
+        edit_history: EditHistory,
         autodrive_data_provider: Callable[[], AutoDriveData | None],
         parent=None,
     ):
         super().__init__(parent)
 
         self.selection_coordinator = selection_coordinator
-        self.edit_coordinator = edit_coordinator
+        self.edit_history = edit_history
         self.autodrive_data_provider = autodrive_data_provider
 
         self._start_node_id: int | None = None
@@ -88,7 +88,7 @@ class NodeConnectCoordinator(QObject):
         if clicked_id == start_node.node_id:
             return
 
-        if self.edit_coordinator.history_locked:
+        if self.edit_history.history_locked:
             return
 
         self._connect(autodrive_data, start_node.node_id, clicked_id, connection_type)
@@ -118,7 +118,7 @@ class NodeConnectCoordinator(QObject):
         # Clicking with the type the connection already has removes it.
         removing = current_state == wanted_state
 
-        self.edit_coordinator.push(
+        self.edit_history.push(
             SetConnectionCommand(
                 autodrive_data, source_id, target_id, NO_CONNECTION if removing else wanted_state
             )

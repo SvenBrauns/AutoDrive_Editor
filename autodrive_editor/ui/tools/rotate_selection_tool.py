@@ -4,7 +4,7 @@ from PySide6.QtCore import QPoint, QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QMouseEvent, QPen
 from PySide6.QtWidgets import QGraphicsEllipseItem, QGraphicsItemGroup, QGraphicsLineItem
 
-from autodrive_editor.editing.operations.rotate_selection import SelectionRotateCoordinator
+from autodrive_editor.editing.operations.rotate_selection import RotateSelectionOperation
 from autodrive_editor.ui.tools.map_tool import DragGesture, MapTool, is_alive_in_scene
 
 
@@ -21,12 +21,10 @@ class RotateSelectionTool(MapTool):
     RING_GRAB_TOLERANCE_PX = 8.0
     CENTER_MARK_SIZE_PX = 6.0
 
-    def __init__(
-        self, view, selection_rotate_coordinator: SelectionRotateCoordinator, z_value: float
-    ):
+    def __init__(self, view, rotate_selection_operation: RotateSelectionOperation, z_value: float):
         super().__init__(view)
 
-        self.coordinator = selection_rotate_coordinator
+        self.coordinator = rotate_selection_operation
 
         self._z_value = z_value
         self._rotation_drag = DragGesture()

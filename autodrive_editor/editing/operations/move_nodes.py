@@ -4,15 +4,15 @@ from collections.abc import Callable
 from PySide6.QtCore import QObject, QPoint, QPointF, Signal
 
 from autodrive_editor.editing.commands.move_nodes import MoveNodesCommand, NodePosition
-from autodrive_editor.editing.edit_history import EditCoordinator
+from autodrive_editor.editing.edit_history import EditHistory
 from autodrive_editor.model.autodrive_data import AutoDriveData
-from autodrive_editor.selection.node_selection import NodeSelectionManager
+from autodrive_editor.selection.node_selection import NodeSelection
 from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
 from autodrive_editor.terrain.terrain_follower import TerrainFollower, TerrainHeightProvider
 from autodrive_editor.ui.map_view.map_view import MapView
 
 
-class NodeDragCoordinator(QObject):
+class MoveNodesOperation(QObject):
     """Moves nodes by left dragging with the "Verschieben" tool.
 
     Dragging a selected node moves the whole selection. Dragging an
@@ -27,8 +27,8 @@ class NodeDragCoordinator(QObject):
         self,
         view: MapView,
         selection_coordinator: SelectionCoordinator,
-        selection_manager: NodeSelectionManager,
-        edit_coordinator: EditCoordinator,
+        node_selection: NodeSelection,
+        edit_history: EditHistory,
         autodrive_data_provider: Callable[[], AutoDriveData | None],
         terrain_height_at: TerrainHeightProvider | None = None,
         parent=None,
@@ -39,8 +39,8 @@ class NodeDragCoordinator(QObject):
 
         self.view = view
         self.selection_coordinator = selection_coordinator
-        self.selection_manager = selection_manager
-        self.edit_coordinator = edit_coordinator
+        self.node_selection = node_selection
+        self.edit_history = edit_history
         self.autodrive_data_provider = autodrive_data_provider
 
         self._merge_keys = itertools.count(1)
@@ -69,7 +69,7 @@ class NodeDragCoordinator(QObject):
 
         pressed_node_id = node_item.node_id
 
-        selected_node_ids = self.selection_manager.selected_node_ids
+        selected_node_ids = self.node_selection.selected_node_ids
 
         if pressed_node_id in selected_node_ids:
             moving_node_ids = selected_node_ids
@@ -139,10 +139,10 @@ class NodeDragCoordinator(QObject):
     def _begin_move(self):
         self._moved = True
 
-        self.edit_coordinator.set_history_locked(True)
+        self.edit_history.set_history_locked(True)
 
     def _push_positions(self, target_positions: dict[int, NodePosition]):
-        self.edit_coordinator.push(
+        self.edit_history.push(
             MoveNodesCommand(
                 autodrive_data=self._autodrive_data,
                 old_positions=self._read_positions(target_positions),
@@ -160,7 +160,7 @@ class NodeDragCoordinator(QObject):
 
     def _end_drag(self):
         if self._moved:
-            self.edit_coordinator.set_history_locked(False)
+            self.edit_history.set_history_locked(False)
 
         self._reset_state()
 

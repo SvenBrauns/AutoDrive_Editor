@@ -1,7 +1,7 @@
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QMouseEvent
 
-from autodrive_editor.editing.operations.move_nodes import NodeDragCoordinator
+from autodrive_editor.editing.operations.move_nodes import MoveNodesOperation
 from autodrive_editor.ui.tools.map_tool import DragGesture, MapTool
 
 
@@ -9,10 +9,10 @@ class MoveNodesTool(MapTool):
     """Left dragging a node moves it, or the whole selection if the
     node is selected. Left dragging empty map pans. Esc cancels."""
 
-    def __init__(self, view, node_drag_coordinator: NodeDragCoordinator):
+    def __init__(self, view, move_nodes_operation: MoveNodesOperation):
         super().__init__(view)
 
-        self.node_drag_coordinator = node_drag_coordinator
+        self.move_nodes_operation = move_nodes_operation
 
         self._node_drag = DragGesture()
 
@@ -22,7 +22,7 @@ class MoveNodesTool(MapTool):
 
         position = event.position().toPoint()
 
-        if self.node_drag_coordinator.begin_drag(position):
+        if self.move_nodes_operation.begin_drag(position):
             self._node_drag.press(Qt.LeftButton, position)
 
             return True
@@ -37,7 +37,7 @@ class MoveNodesTool(MapTool):
 
         # Nodes only move once the drag threshold is reached.
         if self._node_drag.move(position) is not None:
-            self.node_drag_coordinator.update_drag(position)
+            self.move_nodes_operation.update_drag(position)
 
         return True
 
@@ -45,7 +45,7 @@ class MoveNodesTool(MapTool):
         if event.button() == Qt.LeftButton and self._node_drag.is_pressed:
             self._node_drag.reset()
 
-            self.node_drag_coordinator.finish_drag()
+            self.move_nodes_operation.finish_drag()
 
             return True
 
@@ -57,7 +57,7 @@ class MoveNodesTool(MapTool):
 
         self._node_drag.reset()
 
-        self.node_drag_coordinator.cancel_drag()
+        self.move_nodes_operation.cancel_drag()
 
         return True
 

@@ -1,11 +1,11 @@
 import pytest
 
-from autodrive_editor.selection.node_selection import NodeSelectionManager
+from autodrive_editor.selection.node_selection import NodeSelection
 
 
 @pytest.fixture
 def manager():
-    return NodeSelectionManager()
+    return NodeSelection()
 
 
 @pytest.fixture

@@ -1,7 +1,7 @@
 from PySide6.QtCore import QObject, Signal
 
 
-class NodeSelectionManager(QObject):
+class NodeSelection(QObject):
     selection_changed = Signal(object, object)
 
     def __init__(self):

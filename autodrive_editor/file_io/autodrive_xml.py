@@ -4,7 +4,7 @@ from pathlib import Path
 from autodrive_editor.model.autodrive_data import AutoDriveData, MarkerData, NodeData
 
 
-class AutoDriveXmlParser:
+class AutoDriveXmlReader:
     @classmethod
     def load(cls, file_path) -> AutoDriveData:
         xml_path = Path(file_path).resolve()

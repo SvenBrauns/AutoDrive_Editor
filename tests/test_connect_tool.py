@@ -74,8 +74,8 @@ def test_chain_continues_from_last_node(connecting):
 
     assert state(window, 1, 2) == CONNECTION_STATES[ConnectionType.DUAL]
     assert state(window, 2, 3) == CONNECTION_STATES[ConnectionType.DUAL]
-    assert window.edit_coordinator.undo_stack.count() == 2
-    assert window.node_connect_coordinator.start_node.node_id == 3
+    assert window.edit_history.undo_stack.count() == 2
+    assert window.connect_nodes_operation.start_node.node_id == 3
 
 
 def test_same_type_removes_existing_connection(connecting):
@@ -129,7 +129,7 @@ def test_click_on_empty_map_ends_chain(connecting):
     click(window, view_pos(window, 20, 0))
 
     assert state(window, 1, 3) == NO_CONNECTION
-    assert window.node_connect_coordinator.start_node.node_id == 3
+    assert window.connect_nodes_operation.start_node.node_id == 3
 
 
 def test_escape_ends_chain(connecting):
@@ -148,8 +148,8 @@ def test_clicking_start_node_again_does_nothing(connecting):
     click(window, view_pos(window, 0, 0))
     click(window, view_pos(window, 0, 0))
 
-    assert window.edit_coordinator.undo_stack.count() == 0
-    assert window.node_connect_coordinator.start_node.node_id == 1
+    assert window.edit_history.undo_stack.count() == 0
+    assert window.connect_nodes_operation.start_node.node_id == 1
 
 
 def test_dragging_pans_without_connecting(connecting):
@@ -160,7 +160,7 @@ def test_dragging_pans_without_connecting(connecting):
     drag(window, start, start + QPoint(60, 0))
 
     assert state(window, 1, 3) == NO_CONNECTION
-    assert window.node_connect_coordinator.start_node.node_id == 1
+    assert window.connect_nodes_operation.start_node.node_id == 1
 
 
 def test_preview_line_follows_mouse(connecting):
@@ -185,16 +185,16 @@ def test_switching_tool_ends_chain(connecting):
 
     window.set_interaction_mode(InteractionMode.CONNECT_DUAL)
 
-    assert window.node_connect_coordinator.start_node is None
+    assert window.connect_nodes_operation.start_node is None
 
 
 def test_chain_ends_when_start_node_is_deleted(connecting):
     window = connecting(ConnectionType.REGULAR)
     click(window, view_pos(window, 0, 0))
 
-    window.node_delete_coordinator.delete_nodes({1})
+    window.delete_nodes_operation.delete_nodes({1})
 
-    assert window.node_connect_coordinator.start_node is None
+    assert window.connect_nodes_operation.start_node is None
 
 
 def test_loading_data_ends_chain(connecting, write_xml):
@@ -203,7 +203,7 @@ def test_loading_data_ends_chain(connecting, write_xml):
 
     window.project_coordinator.load_xml_file(write_xml())
 
-    assert window.node_connect_coordinator.start_node is None
+    assert window.connect_nodes_operation.start_node is None
     hover(window, QPoint(100, 100))  # must not touch the deleted preview item
 
 

@@ -17,7 +17,7 @@ class HeightSample:
     height: float
 
 
-class HeightmapManager:
+class Heightmap:
     DEFAULT_HEIGHT_SCALE = 255.0
     MAX_16_BIT_VALUE = 65535
 

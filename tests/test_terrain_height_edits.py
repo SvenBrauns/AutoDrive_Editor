@@ -10,7 +10,7 @@ from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
 @pytest.fixture
 def terrain_window(zoomed_window, sloped_heightmap):
-    zoomed_window.heightmap_manager.load(sloped_heightmap)
+    zoomed_window.heightmap.load(sloped_heightmap)
     return zoomed_window
 
 

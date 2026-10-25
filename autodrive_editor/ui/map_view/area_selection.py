@@ -3,7 +3,7 @@ from PySide6.QtGui import QPainterPath
 from PySide6.QtWidgets import QApplication, QGraphicsView, QRubberBand
 
 
-class ViewSelectionController(QObject):
+class AreaSelectionController(QObject):
     area_requested = Signal(object, object)
 
     area_preview_requested = Signal(object, object)

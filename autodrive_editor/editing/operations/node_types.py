@@ -3,13 +3,13 @@ from collections.abc import Callable
 from PySide6.QtCore import QObject, QPoint, Signal
 
 from autodrive_editor.editing.commands.set_node_flags import SetNodeFlagsCommand
-from autodrive_editor.editing.edit_history import EditCoordinator
+from autodrive_editor.editing.edit_history import EditHistory
 from autodrive_editor.model.autodrive_data import REGULAR_FLAG, SUBPRIO_FLAG, AutoDriveData
-from autodrive_editor.selection.node_selection import NodeSelectionManager
+from autodrive_editor.selection.node_selection import NodeSelection
 from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
 
 
-class NodeFlagCoordinator(QObject):
+class NodeTypeOperation(QObject):
     """Switches nodes between regular and subprio."""
 
     status_changed = Signal(str)
@@ -17,16 +17,16 @@ class NodeFlagCoordinator(QObject):
     def __init__(
         self,
         selection_coordinator: SelectionCoordinator,
-        selection_manager: NodeSelectionManager,
-        edit_coordinator: EditCoordinator,
+        node_selection: NodeSelection,
+        edit_history: EditHistory,
         autodrive_data_provider: Callable[[], AutoDriveData | None],
         parent=None,
     ):
         super().__init__(parent)
 
         self.selection_coordinator = selection_coordinator
-        self.selection_manager = selection_manager
-        self.edit_coordinator = edit_coordinator
+        self.node_selection = node_selection
+        self.edit_history = edit_history
         self.autodrive_data_provider = autodrive_data_provider
 
     def toggle_at(self, view_position: QPoint) -> bool:
@@ -36,7 +36,7 @@ class NodeFlagCoordinator(QObject):
 
         autodrive_data = self.autodrive_data_provider()
 
-        if autodrive_data is None or self.edit_coordinator.history_locked:
+        if autodrive_data is None or self.edit_history.history_locked:
             return False
 
         node_item = self.selection_coordinator.get_node_item_at(view_position)
@@ -48,7 +48,7 @@ class NodeFlagCoordinator(QObject):
 
         new_flag = SUBPRIO_FLAG if clicked_node.is_regular else REGULAR_FLAG
 
-        selected_node_ids = self.selection_manager.selected_node_ids
+        selected_node_ids = self.node_selection.selected_node_ids
 
         if clicked_node.node_id in selected_node_ids:
             node_ids = {node_id for node_id in selected_node_ids if node_id in autodrive_data.nodes}
@@ -60,7 +60,7 @@ class NodeFlagCoordinator(QObject):
             1 for node_id in node_ids if autodrive_data.nodes[node_id].flag != new_flag
         )
 
-        self.edit_coordinator.push(SetNodeFlagsCommand(autodrive_data, node_ids, new_flag))
+        self.edit_history.push(SetNodeFlagsCommand(autodrive_data, node_ids, new_flag))
 
         type_name = "Regular" if new_flag == REGULAR_FLAG else "Subprio"
 

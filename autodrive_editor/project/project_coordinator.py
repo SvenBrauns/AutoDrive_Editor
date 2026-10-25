@@ -3,14 +3,14 @@ from pathlib import Path
 from PySide6.QtCore import QObject, Qt, Signal
 from PySide6.QtWidgets import QGraphicsScene
 
-from autodrive_editor.file_io.autodrive_xml import AutoDriveXmlParser
-from autodrive_editor.file_io.project_file import ProjectManager
+from autodrive_editor.file_io.autodrive_xml import AutoDriveXmlReader
+from autodrive_editor.file_io.project_file import ProjectFileStore
 from autodrive_editor.measurement.coordinator import MeasurementCoordinator
 from autodrive_editor.model.autodrive_data import AutoDriveData
 from autodrive_editor.rendering.scene_renderer import SceneRenderer
 from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
-from autodrive_editor.terrain.background_map import BackgroundManager
-from autodrive_editor.terrain.heightmap import HeightmapManager
+from autodrive_editor.terrain.background_map import BackgroundMap
+from autodrive_editor.terrain.heightmap import Heightmap
 from autodrive_editor.ui.map_view.map_view import MapView
 
 
@@ -29,9 +29,9 @@ class ProjectCoordinator(QObject):
         self,
         scene: QGraphicsScene,
         view: MapView,
-        project_manager: ProjectManager,
-        background_manager: BackgroundManager,
-        heightmap_manager: HeightmapManager,
+        project_files: ProjectFileStore,
+        background_map: BackgroundMap,
+        heightmap: Heightmap,
         scene_renderer: SceneRenderer,
         selection_coordinator: SelectionCoordinator,
         measurement_coordinator: MeasurementCoordinator,
@@ -42,9 +42,9 @@ class ProjectCoordinator(QObject):
         self.scene = scene
         self.view = view
 
-        self.project_manager = project_manager
-        self.background_manager = background_manager
-        self.heightmap_manager = heightmap_manager
+        self.project_files = project_files
+        self.background_map = background_map
+        self.heightmap = heightmap
         self.scene_renderer = scene_renderer
 
         self.selection_coordinator = selection_coordinator
@@ -58,7 +58,7 @@ class ProjectCoordinator(QObject):
         self.current_heightmap_path: str | None = None
 
     def load_background_file(self, file_path):
-        self.background_manager.load(file_path)
+        self.background_map.load(file_path)
 
         self.update_scene_rect()
 
@@ -70,7 +70,7 @@ class ProjectCoordinator(QObject):
         self.debug_refresh_requested.emit()
 
     def load_heightmap_file(self, file_path):
-        heightmap_data = self.heightmap_manager.load(file_path)
+        heightmap_data = self.heightmap.load(file_path)
 
         self._set_heightmap_path(heightmap_data.file_path)
 
@@ -86,7 +86,7 @@ class ProjectCoordinator(QObject):
         self.debug_refresh_requested.emit()
 
     def remove_heightmap(self):
-        self.heightmap_manager.clear()
+        self.heightmap.clear()
 
         self._set_heightmap_path(None)
 
@@ -97,13 +97,13 @@ class ProjectCoordinator(QObject):
         self.debug_refresh_requested.emit()
 
     def set_map_scale(self, map_scale: int, map_scale_label: str):
-        self.background_manager.set_map_scale(map_scale)
+        self.background_map.set_map_scale(map_scale)
 
         self.update_scene_rect()
 
         self.selection_coordinator.refresh_info()
 
-        self.map_scale_changed.emit(self.background_manager.map_scale)
+        self.map_scale_changed.emit(self.background_map.map_scale)
 
         self.status_changed.emit(f"Kartengröße: {map_scale_label}")
 
@@ -112,7 +112,7 @@ class ProjectCoordinator(QObject):
     def load_xml_file(self, file_path):
         xml_path = Path(file_path).resolve()
 
-        autodrive_data = AutoDriveXmlParser.load(xml_path)
+        autodrive_data = AutoDriveXmlReader.load(xml_path)
 
         self.clear_scene_content()
 
@@ -122,7 +122,7 @@ class ProjectCoordinator(QObject):
 
         self.selection_coordinator.clear()
 
-        self.background_manager.restore()
+        self.background_map.restore()
 
         self.scene_renderer.render(self.autodrive_data)
 
@@ -143,11 +143,11 @@ class ProjectCoordinator(QObject):
         if not self.current_xml_path:
             raise ValueError("Bitte zuerst eine AutoDrive-XML laden")
 
-        saved_path = self.project_manager.save_project(
+        saved_path = self.project_files.save_project(
             config_path=config_path,
             xml_path=self.current_xml_path,
-            background_path=(self.background_manager.file_path),
-            map_scale=(self.background_manager.map_scale),
+            background_path=(self.background_map.file_path),
+            map_scale=(self.background_map.map_scale),
             heightmap_path=(self.current_heightmap_path),
         )
 
@@ -158,7 +158,7 @@ class ProjectCoordinator(QObject):
         return saved_path
 
     def load_project_file(self, config_path):
-        project_data = self.project_manager.load_project(config_path)
+        project_data = self.project_files.load_project(config_path)
 
         self.apply_project_data(project_data)
 
@@ -168,7 +168,7 @@ class ProjectCoordinator(QObject):
 
         status_text = f"Projekt geladen: {project_name}"
 
-        if self.heightmap_manager.has_heightmap():
+        if self.heightmap.has_heightmap():
             status_text += " mit Heightmap"
 
         self.status_changed.emit(status_text)
@@ -178,32 +178,32 @@ class ProjectCoordinator(QObject):
     def apply_project_data(self, project_data: dict):
         map_scale = int(project_data["map_scale"])
 
-        if map_scale not in self.project_manager.VALID_MAP_SCALES:
+        if map_scale not in self.project_files.VALID_MAP_SCALES:
             raise ValueError(f"Unbekannte Kartengröße: {map_scale}")
 
         self.selection_coordinator.clear()
 
-        self.background_manager.set_map_scale(map_scale)
+        self.background_map.set_map_scale(map_scale)
 
         self.map_scale_changed.emit(map_scale)
 
         background_path = project_data["background_dds"]
 
         if background_path:
-            self.background_manager.load(background_path)
+            self.background_map.load(background_path)
 
         else:
-            self.background_manager.remove_from_scene(preserve_file_path=False)
+            self.background_map.remove_from_scene(preserve_file_path=False)
 
         heightmap_path = project_data["heightmap"]
 
         if heightmap_path:
-            heightmap_data = self.heightmap_manager.load(heightmap_path)
+            heightmap_data = self.heightmap.load(heightmap_path)
 
             self._set_heightmap_path(heightmap_data.file_path)
 
         else:
-            self.heightmap_manager.clear()
+            self.heightmap.clear()
 
             self._set_heightmap_path(None)
 
@@ -222,7 +222,7 @@ class ProjectCoordinator(QObject):
 
         self.clear_scene_content()
 
-        self.background_manager.restore()
+        self.background_map.restore()
 
         self.scene_renderer.render(self.autodrive_data)
 
@@ -244,7 +244,7 @@ class ProjectCoordinator(QObject):
     def clear_scene_content(self):
         self.measurement_coordinator.remove_scene_items()
 
-        self.background_manager.remove_from_scene(preserve_file_path=True)
+        self.background_map.remove_from_scene(preserve_file_path=True)
 
         self.scene_renderer.reset()
 

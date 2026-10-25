@@ -5,13 +5,13 @@ from collections.abc import Callable
 from PySide6.QtCore import QObject, QPointF, Signal
 
 from autodrive_editor.editing.commands.move_nodes import MoveNodesCommand, NodePosition
-from autodrive_editor.editing.edit_history import EditCoordinator
+from autodrive_editor.editing.edit_history import EditHistory
 from autodrive_editor.model.autodrive_data import AutoDriveData
-from autodrive_editor.selection.node_selection import NodeSelectionManager
+from autodrive_editor.selection.node_selection import NodeSelection
 from autodrive_editor.terrain.terrain_follower import TerrainFollower, TerrainHeightProvider
 
 
-class SelectionRotateCoordinator(QObject):
+class RotateSelectionOperation(QObject):
     """Rotates the selected nodes around their average center.
 
     Every mouse move pushes a MoveNodesCommand with the same merge key,
@@ -29,8 +29,8 @@ class SelectionRotateCoordinator(QObject):
 
     def __init__(
         self,
-        selection_manager: NodeSelectionManager,
-        edit_coordinator: EditCoordinator,
+        node_selection: NodeSelection,
+        edit_history: EditHistory,
         autodrive_data_provider: Callable[[], AutoDriveData | None],
         terrain_height_at: TerrainHeightProvider | None = None,
         parent=None,
@@ -39,19 +39,19 @@ class SelectionRotateCoordinator(QObject):
 
         self.terrain_follower = TerrainFollower(terrain_height_at)
 
-        self.selection_manager = selection_manager
-        self.edit_coordinator = edit_coordinator
+        self.node_selection = node_selection
+        self.edit_history = edit_history
         self.autodrive_data_provider = autodrive_data_provider
 
         self._merge_keys = itertools.count(1)
 
         self._reset_state()
 
-        selection_manager.selection_changed.connect(
+        node_selection.selection_changed.connect(
             lambda node_ids, primary_node_id: self.target_changed.emit()
         )
 
-        edit_coordinator.data_changed.connect(lambda data_change: self.target_changed.emit())
+        edit_history.data_changed.connect(lambda data_change: self.target_changed.emit())
 
     @property
     def is_rotating(self) -> bool:
@@ -69,7 +69,7 @@ class SelectionRotateCoordinator(QObject):
 
         nodes = [
             autodrive_data.nodes[node_id]
-            for node_id in self.selection_manager.selected_node_ids
+            for node_id in self.node_selection.selected_node_ids
             if node_id in autodrive_data.nodes
         ]
 
@@ -89,7 +89,7 @@ class SelectionRotateCoordinator(QObject):
 
         self._end_rotation()
 
-        if self.edit_coordinator.history_locked:
+        if self.edit_history.history_locked:
             return False
 
         target = self.rotation_target()
@@ -108,7 +108,7 @@ class SelectionRotateCoordinator(QObject):
 
         self._start_positions = {
             node_id: (node.x, node.y, node.z)
-            for node_id in self.selection_manager.selected_node_ids
+            for node_id in self.node_selection.selected_node_ids
             if (node := autodrive_data.get_node(node_id)) is not None
         }
 
@@ -126,7 +126,7 @@ class SelectionRotateCoordinator(QObject):
             return None
 
         if not self._history_locked:
-            self.edit_coordinator.set_history_locked(True)
+            self.edit_history.set_history_locked(True)
 
             self._history_locked = True
 
@@ -194,7 +194,7 @@ class SelectionRotateCoordinator(QObject):
     def _push_positions(self, target_positions: dict[int, NodePosition]):
         nodes = self._autodrive_data.nodes
 
-        self.edit_coordinator.push(
+        self.edit_history.push(
             MoveNodesCommand(
                 autodrive_data=self._autodrive_data,
                 old_positions={
@@ -214,7 +214,7 @@ class SelectionRotateCoordinator(QObject):
 
     def _end_rotation(self):
         if self._history_locked:
-            self.edit_coordinator.set_history_locked(False)
+            self.edit_history.set_history_locked(False)
 
         self._reset_state()
 

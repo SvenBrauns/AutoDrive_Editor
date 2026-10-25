@@ -1,7 +1,7 @@
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QMouseEvent
 
-from autodrive_editor.editing.operations.create_nodes import NodeCreateCoordinator
+from autodrive_editor.editing.operations.create_nodes import CreateNodesOperation
 from autodrive_editor.model.autodrive_data import REGULAR_FLAG
 from autodrive_editor.ui.tools.map_tool import MapTool
 
@@ -11,10 +11,10 @@ class CreateNodeTool(MapTool):
     tool's flag (regular or subprio). Clicking an existing node does
     nothing. Left dragging pans."""
 
-    def __init__(self, view, node_create_coordinator: NodeCreateCoordinator, flag: int):
+    def __init__(self, view, create_nodes_operation: CreateNodesOperation, flag: int):
         super().__init__(view)
 
-        self.node_create_coordinator = node_create_coordinator
+        self.create_nodes_operation = create_nodes_operation
         self.flag = flag
 
     def mouse_release(self, event: QMouseEvent) -> bool:
@@ -23,7 +23,7 @@ class CreateNodeTool(MapTool):
 
         # Only a click creates. Releasing after a pan does nothing.
         if not self._end_pan():
-            self.node_create_coordinator.create_node_at(event.position().toPoint(), self.flag)
+            self.create_nodes_operation.create_node_at(event.position().toPoint(), self.flag)
 
         return True
 

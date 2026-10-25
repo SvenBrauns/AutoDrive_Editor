@@ -5,7 +5,7 @@ from autodrive_editor.rendering.items.map_grid_item import MapGridItem
 from autodrive_editor.terrain.background_transform import MapTransform
 
 
-class BackgroundManager:
+class BackgroundMap:
     def __init__(self, scene: QGraphicsScene, map_scale: int = 1):
         self.scene = scene
         self.map_scale = map_scale

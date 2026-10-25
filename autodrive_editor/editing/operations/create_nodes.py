@@ -4,14 +4,14 @@ from collections.abc import Callable
 from PySide6.QtCore import QObject, QPoint, Signal
 
 from autodrive_editor.editing.commands.create_node import CreateNodeCommand
-from autodrive_editor.editing.edit_history import EditCoordinator
+from autodrive_editor.editing.edit_history import EditHistory
 from autodrive_editor.model.autodrive_data import REGULAR_FLAG, AutoDriveData
 from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
 from autodrive_editor.terrain.terrain_follower import TerrainHeightProvider
 from autodrive_editor.ui.map_view.map_view import MapView
 
 
-class NodeCreateCoordinator(QObject):
+class CreateNodesOperation(QObject):
     """Creates single unconnected nodes on the map."""
 
     status_changed = Signal(str)
@@ -20,7 +20,7 @@ class NodeCreateCoordinator(QObject):
         self,
         view: MapView,
         selection_coordinator: SelectionCoordinator,
-        edit_coordinator: EditCoordinator,
+        edit_history: EditHistory,
         autodrive_data_provider: Callable[[], AutoDriveData | None],
         terrain_height_at: TerrainHeightProvider | None = None,
         parent=None,
@@ -29,7 +29,7 @@ class NodeCreateCoordinator(QObject):
 
         self.view = view
         self.selection_coordinator = selection_coordinator
-        self.edit_coordinator = edit_coordinator
+        self.edit_history = edit_history
         self.autodrive_data_provider = autodrive_data_provider
         self.terrain_height_at = terrain_height_at
 
@@ -44,7 +44,7 @@ class NodeCreateCoordinator(QObject):
             self.status_changed.emit("Zuerst eine AutoDrive-XML laden")
             return None
 
-        if self.edit_coordinator.history_locked:
+        if self.edit_history.history_locked:
             return None
 
         # Clicking an existing node does not create a second one there.
@@ -58,7 +58,7 @@ class NodeCreateCoordinator(QObject):
 
         node_id = self.next_node_id(autodrive_data)
 
-        self.edit_coordinator.push(
+        self.edit_history.push(
             CreateNodeCommand(
                 autodrive_data,
                 node_id=node_id,

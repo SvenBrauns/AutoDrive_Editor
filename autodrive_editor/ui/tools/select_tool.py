@@ -2,7 +2,7 @@ from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QMouseEvent
 
 from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
-from autodrive_editor.ui.map_view.area_selection import ViewSelectionController
+from autodrive_editor.ui.map_view.area_selection import AreaSelectionController
 from autodrive_editor.ui.tools.map_tool import MapTool
 
 
@@ -15,7 +15,7 @@ class SelectTool(MapTool):
 
         self.selection_coordinator = selection_coordinator
 
-        self._area_selection = ViewSelectionController(view=view, parent=view)
+        self._area_selection = AreaSelectionController(view=view, parent=view)
 
         self._area_selection.area_requested.connect(selection_coordinator.handle_area)
 

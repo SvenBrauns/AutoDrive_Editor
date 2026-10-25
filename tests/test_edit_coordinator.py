@@ -1,7 +1,7 @@
 import pytest
 
 from autodrive_editor.editing.commands.move_nodes import MoveNodesCommand
-from autodrive_editor.editing.edit_history import EditCoordinator
+from autodrive_editor.editing.edit_history import EditHistory
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
 
 
@@ -14,7 +14,7 @@ def data():
 
 @pytest.fixture
 def coordinator():
-    return EditCoordinator()
+    return EditHistory()
 
 
 def move(data, start_x, end_x, merge_key=None):

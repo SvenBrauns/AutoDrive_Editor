@@ -5,7 +5,7 @@ from mouse_helpers import click, cursor_shape, drag, hover, view_pos
 from PySide6.QtCore import QPoint, Qt
 
 from autodrive_editor.editing.commands.create_node import CreateNodeCommand
-from autodrive_editor.editing.operations.create_nodes import NodeCreateCoordinator
+from autodrive_editor.editing.operations.create_nodes import CreateNodesOperation
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
@@ -56,8 +56,8 @@ def test_next_id_follows_the_highest_id_even_with_gaps():
     for node_id in (1, 2, 5):
         data.add_node(NodeData(node_id, 0, 0, 0))
 
-    assert NodeCreateCoordinator.next_node_id(data) == 6
-    assert NodeCreateCoordinator.next_node_id(AutoDriveData()) == 1
+    assert CreateNodesOperation.next_node_id(data) == 6
+    assert CreateNodesOperation.next_node_id(AutoDriveData()) == 1
 
 
 # --- tool ---------------------------------------------------------------
@@ -94,14 +94,14 @@ def test_each_click_creates_the_next_id(creating):
     click(creating, view_pos(creating, 15, 20))
 
     assert sorted(data(creating).nodes) == [1, 2, 3, 4, 5]
-    assert creating.edit_coordinator.undo_stack.count() == 2
+    assert creating.edit_history.undo_stack.count() == 2
 
 
 def test_click_on_existing_node_creates_nothing(creating):
     click(creating, view_pos(creating, 10, 0))
 
     assert len(data(creating)) == 3
-    assert creating.edit_coordinator.undo_stack.count() == 0
+    assert creating.edit_history.undo_stack.count() == 0
 
 
 def test_dragging_pans_without_creating(creating):
@@ -132,7 +132,7 @@ def test_new_node_can_be_connected(creating):
 
 
 def test_height_comes_from_the_heightmap(creating, sloped_heightmap):
-    creating.heightmap_manager.load(sloped_heightmap)
+    creating.heightmap.load(sloped_heightmap)
 
     click(creating, view_pos(creating, *EMPTY))
 

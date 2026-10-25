@@ -299,14 +299,14 @@ class MainWindowActions:
         return action
 
     def _create_undo_actions(self):
-        edit_coordinator = self.window.edit_coordinator
-        undo_stack = edit_coordinator.undo_stack
+        edit_history = self.window.edit_history
+        undo_stack = edit_history.undo_stack
 
         self.undo_action = self._create_history_action(
             icon="undo",
             base_text=self.UNDO_TEXT,
             shortcut=QKeySequence.Undo,
-            trigger=edit_coordinator.undo,
+            trigger=edit_history.undo,
             can_run_changed=undo_stack.canUndoChanged,
             text_changed=undo_stack.undoTextChanged,
         )
@@ -315,7 +315,7 @@ class MainWindowActions:
             icon="redo",
             base_text=self.REDO_TEXT,
             shortcut=QKeySequence.Redo,
-            trigger=edit_coordinator.redo,
+            trigger=edit_history.redo,
             can_run_changed=undo_stack.canRedoChanged,
             text_changed=undo_stack.redoTextChanged,
         )
@@ -468,9 +468,9 @@ class MainWindowActions:
         self.quick_access_toolbar.addWidget(self.rotation_controls)
 
         self.grid_controls = GridControls(
-            grid_visible=(self.window.background_manager.grid_visible),
-            grid_spacing=(self.window.background_manager.grid_spacing),
-            grid_rotation=(self.window.background_manager.grid_rotation),
+            grid_visible=(self.window.background_map.grid_visible),
+            grid_spacing=(self.window.background_map.grid_spacing),
+            grid_rotation=(self.window.background_map.grid_rotation),
             parent=self.quick_access_toolbar,
         )
 

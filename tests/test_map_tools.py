@@ -12,7 +12,7 @@ EMPTY = (5, 20)  # map position between the nodes, below the line
 
 
 def selected(window):
-    return window.node_selection_manager.selected_node_ids
+    return window.node_selection.selected_node_ids
 
 
 def scroll_position(window):
@@ -75,7 +75,7 @@ def test_left_drag_on_empty_map_pans_in_every_tool(zoomed_window, mode):
     drag(zoomed_window, start, start + QPoint(60, 30))
 
     assert scroll_position(zoomed_window) != before
-    assert zoomed_window.edit_coordinator.undo_stack.count() == 0
+    assert zoomed_window.edit_history.undo_stack.count() == 0
 
 
 # --- Navigation --------------------------------------------------------

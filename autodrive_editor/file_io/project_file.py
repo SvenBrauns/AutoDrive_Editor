@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 
 
-class ProjectManager:
+class ProjectFileStore:
     FORMAT_VERSION = 1
     VALID_MAP_SCALES = (1, 2, 4, 8)
 

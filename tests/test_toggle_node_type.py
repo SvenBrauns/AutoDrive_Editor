@@ -128,7 +128,7 @@ def test_click_on_unselected_node_keeps_selection(toggling):
     click(toggling, view_pos(toggling, 20, 0))
 
     assert (flag(toggling, 1), flag(toggling, 3)) == (0, 1)
-    assert toggling.node_selection_manager.selected_node_ids == {1}
+    assert toggling.node_selection.selected_node_ids == {1}
 
 
 def test_undo_restores_type_and_color(toggling):
@@ -155,7 +155,7 @@ def test_click_on_empty_map_and_drag_change_nothing(toggling):
     drag(toggling, start, start + QPoint(60, 0))
 
     assert (flag(toggling, 1), flag(toggling, 2), flag(toggling, 3)) == (0, 0, 0)
-    assert toggling.edit_coordinator.undo_stack.count() == 0
+    assert toggling.edit_history.undo_stack.count() == 0
 
 
 def test_cursor_points_at_nodes(toggling):

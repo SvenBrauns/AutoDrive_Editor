@@ -6,7 +6,7 @@ from PySide6.QtGui import QPainterPath
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
 from autodrive_editor.rendering.items.node_item import NodeItem
 from autodrive_editor.rendering.scene_renderer import SceneRenderer
-from autodrive_editor.selection.node_selection import NodeSelectionManager
+from autodrive_editor.selection.node_selection import NodeSelection
 from autodrive_editor.ui.map_view.map_view import MapView
 from autodrive_editor.ui.panels.node_info_formatter import NodeInfoFormatter
 
@@ -22,7 +22,7 @@ class SelectionCoordinator(QObject):
         self,
         view: MapView,
         renderer: SceneRenderer,
-        selection_manager: NodeSelectionManager,
+        node_selection: NodeSelection,
         node_info_formatter: NodeInfoFormatter,
         autodrive_data_provider: Callable[[], AutoDriveData | None],
         parent=None,
@@ -35,8 +35,8 @@ class SelectionCoordinator(QObject):
         if not isinstance(renderer, SceneRenderer):
             raise TypeError("Der SceneRenderer ist ungültig.")
 
-        if not isinstance(selection_manager, NodeSelectionManager):
-            raise TypeError("Der NodeSelectionManager ist ungültig.")
+        if not isinstance(node_selection, NodeSelection):
+            raise TypeError("Der NodeSelection ist ungültig.")
 
         if not isinstance(node_info_formatter, NodeInfoFormatter):
             raise TypeError("Der NodeInfoFormatter ist ungültig.")
@@ -47,27 +47,27 @@ class SelectionCoordinator(QObject):
         self.view = view
         self.renderer = renderer
 
-        self.selection_manager = selection_manager
+        self.node_selection = node_selection
 
         self.node_info_formatter = node_info_formatter
 
         self._autodrive_data_provider = autodrive_data_provider
 
-        self.selection_manager.selection_changed.connect(self._handle_selection_changed)
+        self.node_selection.selection_changed.connect(self._handle_selection_changed)
 
     @property
     def selected_node_ids(self) -> set[int]:
-        return self.selection_manager.selected_node_ids
+        return self.node_selection.selected_node_ids
 
     @property
     def primary_node_id(self) -> int | None:
-        return self.selection_manager.primary_node_id
+        return self.node_selection.primary_node_id
 
     def show_node_info(self, node_data: NodeData):
         if not isinstance(node_data, NodeData):
             raise TypeError("Die Node-Daten sind ungültig.")
 
-        self.selection_manager.replace({node_data.node_id}, primary_node_id=(node_data.node_id))
+        self.node_selection.replace({node_data.node_id}, primary_node_id=(node_data.node_id))
 
     def handle_click(self, view_position: QPoint, modifiers):
         clicked_node_item = self.get_node_item_at(view_position)
@@ -76,17 +76,17 @@ class SelectionCoordinator(QObject):
 
         if clicked_node_item is None:
             if not control_pressed:
-                self.selection_manager.clear()
+                self.node_selection.clear()
 
             return
 
         clicked_node = clicked_node_item.node_data
 
         if control_pressed:
-            self.selection_manager.toggle(clicked_node.node_id)
+            self.node_selection.toggle(clicked_node.node_id)
 
         else:
-            self.selection_manager.replace(
+            self.node_selection.replace(
                 {clicked_node.node_id}, primary_node_id=(clicked_node.node_id)
             )
 
@@ -100,17 +100,17 @@ class SelectionCoordinator(QObject):
         control_pressed = bool(modifiers & Qt.ControlModifier)
 
         if control_pressed:
-            self.selection_manager.toggle_many(selected_node_ids, primary_node_id=(primary_node_id))
+            self.node_selection.toggle_many(selected_node_ids, primary_node_id=(primary_node_id))
 
         else:
-            self.selection_manager.replace(selected_node_ids, primary_node_id=(primary_node_id))
+            self.node_selection.replace(selected_node_ids, primary_node_id=(primary_node_id))
 
     def handle_area_preview(self, selection_path: QPainterPath, modifiers):
         preview_nodes = self.renderer.get_nodes_in_selection_path(selection_path)
 
         area_node_ids = {node_data.node_id for node_data in preview_nodes}
 
-        current_node_ids = self.selection_manager.selected_node_ids
+        current_node_ids = self.node_selection.selected_node_ids
 
         control_pressed = bool(modifiers & Qt.ControlModifier)
 
@@ -123,15 +123,15 @@ class SelectionCoordinator(QObject):
         self.renderer.set_selected_node_ids(preview_node_ids)
 
     def clear_area_preview(self):
-        self.renderer.set_selected_node_ids(self.selection_manager.selected_node_ids)
+        self.renderer.set_selected_node_ids(self.node_selection.selected_node_ids)
 
     def clear(self):
-        self.selection_manager.clear()
+        self.node_selection.clear()
 
     def synchronize(self):
-        selected_node_ids = self.selection_manager.selected_node_ids
+        selected_node_ids = self.node_selection.selected_node_ids
 
-        primary_node_id = self.selection_manager.primary_node_id
+        primary_node_id = self.node_selection.primary_node_id
 
         self.renderer.set_selected_node_ids(selected_node_ids)
 
@@ -141,7 +141,7 @@ class SelectionCoordinator(QObject):
 
     def refresh_info(self):
         self._emit_selection_info(
-            self.selection_manager.selected_node_ids, self.selection_manager.primary_node_id
+            self.node_selection.selected_node_ids, self.node_selection.primary_node_id
         )
 
     def get_node_item_at(self, view_position: QPoint) -> NodeItem | None:

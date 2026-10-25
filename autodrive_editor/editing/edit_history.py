@@ -4,7 +4,7 @@ from PySide6.QtGui import QUndoStack
 from autodrive_editor.editing.commands.edit_command import DataChange, EditCommand
 
 
-class EditCoordinator(QObject):
+class EditHistory(QObject):
     """Runs all edits through one undo history."""
 
     data_changed = Signal(object)

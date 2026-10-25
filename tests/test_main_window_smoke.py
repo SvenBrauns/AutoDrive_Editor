@@ -42,11 +42,11 @@ def test_grid_controls_update_grid_and_status(window):
     controls = window.actions.grid_controls
 
     controls.spacing_requested.emit(25.0)
-    assert window.background_manager.grid_spacing == 25.0
+    assert window.background_map.grid_spacing == 25.0
     assert "25.00" in window.status.text()
 
     controls.reset_requested.emit()
-    assert window.background_manager.grid_spacing == 10.0
+    assert window.background_map.grid_spacing == 10.0
 
 
 def test_debug_dock_refreshes_on_zoom(window, qapp):
@@ -82,7 +82,7 @@ def test_area_selection_selects_nodes(loaded_window, qapp):
     loaded_window.selection_coordinator.handle_area(path, Qt.NoModifier)
     qapp.processEvents()
 
-    selection = loaded_window.node_selection_manager
+    selection = loaded_window.node_selection
     assert selection.selected_node_ids == {1, 2}
     assert selection.primary_node_id == 1
 
@@ -90,7 +90,7 @@ def test_area_selection_selects_nodes(loaded_window, qapp):
 def push_move(window, end_x):
     data = window.project_coordinator.autodrive_data
     node = data.get_node(1)
-    window.edit_coordinator.push(
+    window.edit_history.push(
         MoveNodesCommand(data, {1: (node.x, node.y, node.z)}, {1: (end_x, node.y, node.z)})
     )
 

@@ -1,7 +1,7 @@
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QMouseEvent
 
-from autodrive_editor.editing.operations.delete_nodes import NodeDeleteCoordinator
+from autodrive_editor.editing.operations.delete_nodes import DeleteNodesOperation
 from autodrive_editor.ui.tools.map_tool import MapTool
 
 
@@ -9,10 +9,10 @@ class DeleteNodesTool(MapTool):
     """Left click on a node deletes it, or the whole selection if the
     node is selected. Left dragging pans the map."""
 
-    def __init__(self, view, node_delete_coordinator: NodeDeleteCoordinator):
+    def __init__(self, view, delete_nodes_operation: DeleteNodesOperation):
         super().__init__(view)
 
-        self.node_delete_coordinator = node_delete_coordinator
+        self.delete_nodes_operation = delete_nodes_operation
 
     def mouse_release(self, event: QMouseEvent) -> bool:
         if event.button() != Qt.LeftButton:
@@ -20,7 +20,7 @@ class DeleteNodesTool(MapTool):
 
         # Only a click deletes. Releasing after a pan does nothing.
         if not self._end_pan():
-            self.node_delete_coordinator.delete_node_at(event.position().toPoint())
+            self.delete_nodes_operation.delete_node_at(event.position().toPoint())
 
         return True
 

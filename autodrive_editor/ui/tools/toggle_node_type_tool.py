@@ -1,7 +1,7 @@
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QMouseEvent
 
-from autodrive_editor.editing.operations.node_types import NodeFlagCoordinator
+from autodrive_editor.editing.operations.node_types import NodeTypeOperation
 from autodrive_editor.ui.tools.map_tool import MapTool
 
 
@@ -10,10 +10,10 @@ class ToggleNodeTypeTool(MapTool):
     or the whole selection if the node is selected. Left dragging
     pans the map."""
 
-    def __init__(self, view, node_flag_coordinator: NodeFlagCoordinator):
+    def __init__(self, view, node_type_operation: NodeTypeOperation):
         super().__init__(view)
 
-        self.node_flag_coordinator = node_flag_coordinator
+        self.node_type_operation = node_type_operation
 
     def mouse_release(self, event: QMouseEvent) -> bool:
         if event.button() != Qt.LeftButton:
@@ -21,7 +21,7 @@ class ToggleNodeTypeTool(MapTool):
 
         # Only a click switches. Releasing after a pan does nothing.
         if not self._end_pan():
-            self.node_flag_coordinator.toggle_at(event.position().toPoint())
+            self.node_type_operation.toggle_at(event.position().toPoint())
 
         return True
 

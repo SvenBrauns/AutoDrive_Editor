@@ -47,7 +47,7 @@ def test_click_on_selected_node_deletes_whole_selection(deleting):
     click(deleting, view_pos(deleting, 0, 0))
 
     assert sorted(data(deleting).nodes) == [3]
-    assert deleting.node_selection_manager.selected_node_ids == set()
+    assert deleting.node_selection.selected_node_ids == set()
     assert deleting.status.text() == "2 Nodes gelöscht"
 
 
@@ -57,14 +57,14 @@ def test_click_on_unselected_node_keeps_selection(deleting):
     click(deleting, view_pos(deleting, 20, 0))
 
     assert sorted(data(deleting).nodes) == [1, 2]
-    assert deleting.node_selection_manager.selected_node_ids == {1}
+    assert deleting.node_selection.selected_node_ids == {1}
 
 
 def test_click_on_empty_map_deletes_nothing(deleting):
     click(deleting, view_pos(deleting, 5, 20))
 
     assert len(data(deleting)) == 3
-    assert deleting.edit_coordinator.undo_stack.count() == 0
+    assert deleting.edit_history.undo_stack.count() == 0
 
 
 def test_dragging_from_a_node_pans_instead_of_deleting(deleting):

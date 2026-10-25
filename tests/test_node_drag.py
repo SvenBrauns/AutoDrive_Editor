@@ -40,8 +40,8 @@ def test_dragging_unselected_node_moves_only_that_node(editor):
 
     assert node_xz(editor, 1) == pytest.approx((dx, dz))
     assert node_xz(editor, 2) == (10, 0)
-    assert editor.node_selection_manager.selected_node_ids == {2, 3}
-    assert editor.edit_coordinator.undo_stack.count() == 1
+    assert editor.node_selection.selected_node_ids == {2, 3}
+    assert editor.edit_history.undo_stack.count() == 1
     assert editor.status.text() == "Node verschoben"
 
 
@@ -56,8 +56,8 @@ def test_dragging_selected_node_moves_whole_selection(editor):
     assert node_xz(editor, 1) == pytest.approx((0 + dx, dz))
     assert node_xz(editor, 2) == pytest.approx((10 + dx, dz))
     assert node_xz(editor, 3) == (20, 0)
-    assert editor.edit_coordinator.undo_stack.count() == 1
-    assert editor.edit_coordinator.undo_stack.undoText() == "2 Nodes verschieben"
+    assert editor.edit_history.undo_stack.count() == 1
+    assert editor.edit_history.undo_stack.undoText() == "2 Nodes verschieben"
 
 
 def test_undo_and_redo_restore_data_and_drawing(editor):
@@ -95,8 +95,8 @@ def test_click_does_nothing(editor):
     drag(editor, pos, pos, steps=1)
 
     assert node_xz(editor, 2) == (10, 0)
-    assert editor.node_selection_manager.selected_node_ids == set()
-    assert editor.edit_coordinator.undo_stack.count() == 0
+    assert editor.node_selection.selected_node_ids == set()
+    assert editor.edit_history.undo_stack.count() == 0
 
 
 def test_right_drag_does_not_box_select(editor):
@@ -106,7 +106,7 @@ def test_right_drag_does_not_box_select(editor):
     send_mouse(editor, QEvent.MouseMove, end, Qt.NoButton, Qt.RightButton)
     send_mouse(editor, QEvent.MouseButtonRelease, end, Qt.RightButton, Qt.NoButton)
 
-    assert editor.node_selection_manager.selected_node_ids == set()
+    assert editor.node_selection.selected_node_ids == set()
 
 
 def test_tiny_movement_below_drag_threshold_does_not_move(editor):
@@ -126,7 +126,7 @@ def test_escape_cancels_drag_without_undo_step(editor):
     send_mouse(editor, QEvent.MouseButtonRelease, start, Qt.LeftButton, Qt.NoButton)
 
     assert node_xz(editor, 1) == (0, 0)
-    assert editor.edit_coordinator.undo_stack.count() == 0
+    assert editor.edit_history.undo_stack.count() == 0
     assert not editor.isWindowModified()
 
 
@@ -141,7 +141,7 @@ def test_undo_is_blocked_while_dragging(editor):
     send_mouse(editor, QEvent.MouseButtonRelease, start + QPoint(40, 0), Qt.LeftButton, Qt.NoButton)
 
     assert node_xz(editor, 3) == node_3_after_first_drag
-    assert editor.edit_coordinator.undo_stack.count() == 2
+    assert editor.edit_history.undo_stack.count() == 2
 
 
 def test_dragging_empty_space_pans_instead(editor):
@@ -150,7 +150,7 @@ def test_dragging_empty_space_pans_instead(editor):
     drag(editor, start, start + QPoint(60, 0))
 
     assert node_xz(editor, 1) == (0, 0)
-    assert editor.edit_coordinator.undo_stack.count() == 0
+    assert editor.edit_history.undo_stack.count() == 0
 
 
 def test_selection_mode_never_moves_nodes(editor):
@@ -160,7 +160,7 @@ def test_selection_mode_never_moves_nodes(editor):
     drag(editor, start, start + QPoint(40, 0))
 
     assert node_xz(editor, 1) == (0, 0)
-    assert editor.edit_coordinator.undo_stack.count() == 0
+    assert editor.edit_history.undo_stack.count() == 0
 
 
 def test_navigation_mode_never_moves_nodes(editor):
@@ -179,8 +179,8 @@ def test_switching_tool_mid_drag_cancels_it(editor):
     editor.set_interaction_mode(InteractionMode.SELECT)
 
     assert node_xz(editor, 1) == (0, 0)
-    assert editor.edit_coordinator.undo_stack.count() == 0
-    assert not editor.edit_coordinator.history_locked
+    assert editor.edit_history.undo_stack.count() == 0
+    assert not editor.edit_history.history_locked
 
 
 def test_two_drags_are_two_undo_steps(editor):
@@ -190,4 +190,4 @@ def test_two_drags_are_two_undo_steps(editor):
     start = view_pos(editor, 20, 0)
     drag(editor, start, start + QPoint(0, 40))
 
-    assert editor.edit_coordinator.undo_stack.count() == 2
+    assert editor.edit_history.undo_stack.count() == 2

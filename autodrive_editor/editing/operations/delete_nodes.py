@@ -3,13 +3,13 @@ from collections.abc import Callable
 from PySide6.QtCore import QObject, QPoint, Signal
 
 from autodrive_editor.editing.commands.delete_nodes import DeleteNodesCommand
-from autodrive_editor.editing.edit_history import EditCoordinator
+from autodrive_editor.editing.edit_history import EditHistory
 from autodrive_editor.model.autodrive_data import AutoDriveData
-from autodrive_editor.selection.node_selection import NodeSelectionManager
+from autodrive_editor.selection.node_selection import NodeSelection
 from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
 
 
-class NodeDeleteCoordinator(QObject):
+class DeleteNodesOperation(QObject):
     """Deletes nodes as one undoable step."""
 
     status_changed = Signal(str)
@@ -17,16 +17,16 @@ class NodeDeleteCoordinator(QObject):
     def __init__(
         self,
         selection_coordinator: SelectionCoordinator,
-        selection_manager: NodeSelectionManager,
-        edit_coordinator: EditCoordinator,
+        node_selection: NodeSelection,
+        edit_history: EditHistory,
         autodrive_data_provider: Callable[[], AutoDriveData | None],
         parent=None,
     ):
         super().__init__(parent)
 
         self.selection_coordinator = selection_coordinator
-        self.selection_manager = selection_manager
-        self.edit_coordinator = edit_coordinator
+        self.node_selection = node_selection
+        self.edit_history = edit_history
         self.autodrive_data_provider = autodrive_data_provider
 
     def delete_node_at(self, view_position: QPoint) -> bool:
@@ -39,7 +39,7 @@ class NodeDeleteCoordinator(QObject):
         if node_item is None:
             return False
 
-        selected_node_ids = self.selection_manager.selected_node_ids
+        selected_node_ids = self.node_selection.selected_node_ids
 
         if node_item.node_id in selected_node_ids:
             return self.delete_nodes(selected_node_ids)
@@ -47,7 +47,7 @@ class NodeDeleteCoordinator(QObject):
         return self.delete_nodes({node_item.node_id})
 
     def delete_selection(self) -> bool:
-        return self.delete_nodes(self.selection_manager.selected_node_ids)
+        return self.delete_nodes(self.node_selection.selected_node_ids)
 
     def delete_nodes(self, node_ids) -> bool:
         autodrive_data = self.autodrive_data_provider()
@@ -56,7 +56,7 @@ class NodeDeleteCoordinator(QObject):
             autodrive_data is None
             or not node_ids
             # Never interleave with a running drag's undo steps.
-            or self.edit_coordinator.history_locked
+            or self.edit_history.history_locked
         ):
             return False
 
@@ -65,7 +65,7 @@ class NodeDeleteCoordinator(QObject):
         if not node_ids:
             return False
 
-        self.edit_coordinator.push(DeleteNodesCommand(autodrive_data, node_ids))
+        self.edit_history.push(DeleteNodesCommand(autodrive_data, node_ids))
 
         self.status_changed.emit(
             "Node gelöscht" if len(node_ids) == 1 else f"{len(node_ids)} Nodes gelöscht"

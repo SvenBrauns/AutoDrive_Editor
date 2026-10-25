@@ -4,7 +4,7 @@ from PySide6.QtCore import QLineF, QPoint, Qt
 from PySide6.QtGui import QColor, QMouseEvent, QPen
 from PySide6.QtWidgets import QGraphicsLineItem
 
-from autodrive_editor.editing.operations.connect_nodes import NodeConnectCoordinator
+from autodrive_editor.editing.operations.connect_nodes import ConnectNodesOperation
 from autodrive_editor.model.connections import ConnectionType
 from autodrive_editor.ui.tools.map_tool import MapTool, is_alive_in_scene
 
@@ -17,14 +17,14 @@ class ConnectNodesTool(MapTool):
     def __init__(
         self,
         view,
-        node_connect_coordinator: NodeConnectCoordinator,
+        connect_nodes_operation: ConnectNodesOperation,
         connection_type: ConnectionType,
         color_provider: Callable[[], tuple[int, int, int]],
         z_value: float,
     ):
         super().__init__(view)
 
-        self.node_connect_coordinator = node_connect_coordinator
+        self.connect_nodes_operation = connect_nodes_operation
         self.connection_type = connection_type
 
         # Read on every update, so display option changes apply.
@@ -44,7 +44,7 @@ class ConnectNodesTool(MapTool):
     def deactivate(self):
         super().deactivate()
 
-        self.node_connect_coordinator.end_chain()
+        self.connect_nodes_operation.end_chain()
         self._hide_preview()
 
     def mouse_move(self, event: QMouseEvent) -> bool:
@@ -61,14 +61,14 @@ class ConnectNodesTool(MapTool):
 
         # Only a click connects. Releasing after a pan does nothing.
         if not self._end_pan():
-            self.node_connect_coordinator.click(position, self.connection_type)
+            self.connect_nodes_operation.click(position, self.connection_type)
 
         self._update_preview(position)
 
         return True
 
     def cancel(self) -> bool:
-        cancelled = self.node_connect_coordinator.end_chain()
+        cancelled = self.connect_nodes_operation.end_chain()
 
         self._hide_preview()
 
@@ -87,7 +87,7 @@ class ConnectNodesTool(MapTool):
         if self.view.has_selectable_item_at(view_position):
             return Qt.PointingHandCursor
 
-        if self.node_connect_coordinator.start_node is not None:
+        if self.connect_nodes_operation.start_node is not None:
             return Qt.CrossCursor
 
         return Qt.OpenHandCursor
@@ -104,7 +104,7 @@ class ConnectNodesTool(MapTool):
         return item.line()
 
     def _update_preview(self, view_position: QPoint):
-        start_node = self.node_connect_coordinator.start_node
+        start_node = self.connect_nodes_operation.start_node
 
         if start_node is None:
             self._hide_preview()

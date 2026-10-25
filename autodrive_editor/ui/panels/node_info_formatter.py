@@ -1,12 +1,12 @@
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
-from autodrive_editor.terrain.background_map import BackgroundManager
-from autodrive_editor.terrain.heightmap import HeightmapManager
+from autodrive_editor.terrain.background_map import BackgroundMap
+from autodrive_editor.terrain.heightmap import Heightmap
 
 
 class NodeInfoFormatter:
-    def __init__(self, background_manager: BackgroundManager, heightmap_manager: HeightmapManager):
-        self.background_manager = background_manager
-        self.heightmap_manager = heightmap_manager
+    def __init__(self, background_map: BackgroundMap, heightmap: Heightmap):
+        self.background_map = background_map
+        self.heightmap = heightmap
 
     def format_node_info(self, node_data: NodeData, autodrive_data: AutoDriveData | None) -> str:
         node_type = self._get_node_type(node_data)
@@ -51,14 +51,14 @@ class NodeInfoFormatter:
         return [f"Name: {marker_data.name}", f"Gruppe: {marker_data.group}"]
 
     def _get_heightmap_lines(self, node_data: NodeData) -> list[str]:
-        if not self.heightmap_manager.has_heightmap():
+        if not self.heightmap.has_heightmap():
             return [f"Y: {node_data.y:.3f}"]
 
         try:
-            height_sample = self.heightmap_manager.get_height_at(
+            height_sample = self.heightmap.get_height_at(
                 world_x=node_data.x,
                 world_z=node_data.z,
-                map_scale=(self.background_manager.map_scale),
+                map_scale=(self.background_map.map_scale),
             )
 
         except ValueError as ex:
