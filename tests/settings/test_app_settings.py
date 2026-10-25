@@ -71,3 +71,31 @@ def test_install_folder_can_be_cleared(tmp_path, isolated_user_data):
     settings.set_install_folder(None)
 
     assert AppSettings().install_folder is None
+
+
+def test_setup_is_needed_until_marked_done(tmp_path, isolated_user_data):
+    settings = AppSettings()
+    assert settings.needs_setup
+
+    settings.mark_setup_done()
+
+    assert not AppSettings().needs_setup
+
+
+def test_setup_is_needed_again_when_a_folder_is_gone(tmp_path, isolated_user_data):
+    settings = AppSettings()
+    settings.set_game_folder(make_game_folder(tmp_path / "fs25"))
+    settings.set_install_folder(make_installation(tmp_path / "install"))
+    settings.mark_setup_done()
+    assert not settings.needs_setup
+
+    settings.set_install_folder(tmp_path / "moved")
+
+    assert settings.needs_setup
+
+
+def test_empty_folders_do_not_ask_again(isolated_user_data):
+    settings = AppSettings()
+    settings.mark_setup_done()
+
+    assert not settings.needs_setup

@@ -21,7 +21,7 @@ from autodrive_editor.file_io.base_game_maps import read_base_game_maps
 from autodrive_editor.file_io.map_mod import read_map_mod
 from autodrive_editor.file_io.project_file import ProjectFileStore
 from autodrive_editor.file_io.routes_index import read_routes_index
-from autodrive_editor.game.map_scanner import scan_for_map_mods
+from autodrive_editor.game.map_scanner import ScanResult, scan_for_map_mods
 from autodrive_editor.game.savegame_info import savegames_with_autodrive
 from autodrive_editor.measurement.controller import MeasurementController
 from autodrive_editor.measurement.coordinator import MeasurementCoordinator
@@ -45,6 +45,7 @@ from autodrive_editor.terrain.heightmap import Heightmap
 from autodrive_editor.terrain.map_cache import MapCache
 from autodrive_editor.ui.actions.main_window_actions import MainWindowActions
 from autodrive_editor.ui.controls.grid_coordinator import GridCoordinator
+from autodrive_editor.ui.dialogs.first_start_dialog import FirstStartDialog
 from autodrive_editor.ui.dialogs.list_choice_dialog import ListChoiceDialog
 from autodrive_editor.ui.dialogs.map_import_dialog import MapImportDialog
 from autodrive_editor.ui.dialogs.settings_dialog import SettingsDialog
@@ -86,6 +87,9 @@ class MainWindow(QMainWindow):
 
     DEFAULT_MAP_SCALE = 1
 
+    MISSING_MAP_SCAN = "scan"
+    MISSING_MAP_IMPORT = "import"
+
     def __init__(self):
         super().__init__()
 
@@ -98,6 +102,9 @@ class MainWindow(QMainWindow):
 
         # Map images and heightmaps imported from map mods.
         self.map_cache = MapCache()
+
+        # Missing maps the user chose to go on without in this session.
+        self.declined_missing_maps = set()
 
         self._configure_window()
         self._create_scene_and_view()
@@ -189,15 +196,41 @@ class MainWindow(QMainWindow):
 
         self._import_maps([(map_mod, entry) for entry in map_mod.maps])
 
-    def scan_map_mods(self):
-        game_folder = self._valid_game_folder()
+    def run_first_start(self):
+        """Shows the setup dialog on the first start (or when a stored folder
+        is gone) and scans for maps if the user wants to."""
 
-        if game_folder is None:
+        if not self.settings.needs_setup:
             return
 
-        result = scan_for_map_mods(game_folder.mods_directory)
+        scan_requested = self._show_first_start_dialog()
+        self.settings.mark_setup_done()
 
+        if scan_requested:
+            self.scan_map_mods()
+
+    def _show_first_start_dialog(self) -> bool:
+        dialog = FirstStartDialog(self.settings, parent=self)
+        dialog.exec()
+
+        return dialog.scan_requested
+
+    def scan_map_mods(self):
+        """Offers the base game maps and the map mods for import. Works with
+        only one of the two folders set."""
+
+        game_folder = self.settings.game_folder
+        has_game_folder = game_folder is not None and game_folder.is_valid
         base_maps = self._read_base_game_maps()
+
+        if not has_game_folder and base_maps is None:
+            self._inform(
+                "Es ist weder ein gültiger FS25-Spielordner noch eine LS25-Installation "
+                "eingestellt.\nBitte unter Datei → Einstellungen festlegen."
+            )
+            return
+
+        result = scan_for_map_mods(game_folder.mods_directory) if has_game_folder else ScanResult()
 
         if base_maps is not None:
             result.map_mods.insert(0, base_maps)
@@ -212,6 +245,51 @@ class MainWindow(QMainWindow):
 
         if chosen:
             self._import_maps(chosen)
+
+    def offer_missing_map(self, map_name: str):
+        """Called when a loaded config names a map that is not imported.
+        Offers to import it and loads it right away."""
+
+        if map_name in self.declined_missing_maps:
+            return
+
+        choice = self._ask_missing_map(map_name)
+
+        if choice == self.MISSING_MAP_SCAN:
+            self.scan_map_mods()
+        elif choice == self.MISSING_MAP_IMPORT:
+            self.import_map_mod()
+        else:
+            self.declined_missing_maps.add(map_name)
+            return
+
+        if not self.project_coordinator.load_map_for_current_config():
+            self._set_status(f"Karte „{map_name}“ ist weiterhin nicht importiert")
+
+    def _ask_missing_map(self, map_name: str) -> str | None:
+        box = QMessageBox(self)
+        box.setWindowTitle(self.WINDOW_TITLE)
+        box.setIcon(QMessageBox.Icon.Question)
+        box.setText(f"Die Karte „{map_name}“ ist noch nicht importiert.")
+        box.setInformativeText(
+            "Ohne Kartenbild und Heightmap werden nur die Nodes angezeigt. Karte jetzt importieren?"
+        )
+
+        scan_button = box.addButton("Karten scannen…", QMessageBox.ButtonRole.AcceptRole)
+        import_button = box.addButton("Aus Mod importieren…", QMessageBox.ButtonRole.ActionRole)
+        box.addButton("Ohne Karte weiter", QMessageBox.ButtonRole.RejectRole)
+        box.setDefaultButton(scan_button)
+        box.exec()
+
+        clicked = box.clickedButton()
+
+        if clicked is scan_button:
+            return self.MISSING_MAP_SCAN
+
+        if clicked is import_button:
+            return self.MISSING_MAP_IMPORT
+
+        return None
 
     def _read_base_game_maps(self):
         """The base game maps, if the FS25 install folder is known."""
@@ -781,6 +859,8 @@ class MainWindow(QMainWindow):
         self.project_coordinator.heightmap_path_changed.connect(self._handle_heightmap_path_changed)
 
         self.project_coordinator.autodrive_data_loaded.connect(self._handle_autodrive_data_loaded)
+
+        self.project_coordinator.map_missing.connect(self.offer_missing_map)
 
         self.edit_history.clean_changed.connect(self._handle_edit_clean_changed)
 
