@@ -80,3 +80,15 @@ def test_clear_removes_nodes_and_markers():
 
     assert len(data) == 0
     assert data.markers == {}
+
+
+def test_markers_can_be_inserted_at_a_position():
+    data = make_data(1, 2, 3)
+    data.add_marker(MarkerData(node_id=1, name="A"))
+    data.add_marker(MarkerData(node_id=3, name="C"))
+
+    data.add_marker(MarkerData(node_id=2, name="B"), position=1)
+
+    assert list(data.markers) == [1, 2, 3]
+    assert data.marker_position(3) == 2
+    assert data.marker_position(99) is None

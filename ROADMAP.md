@@ -35,7 +35,7 @@ Kartenbilder werden nicht mit dem Editor ausgeliefert. Jeder Nutzer erzeugt sie 
 
 **Flags**
 
-- [ ] unbekannte Flag-Werte unverändert im Datenmodell behalten, wie Regular-Nodes darstellen und von „Typ wechseln“ ausnehmen (bisher gilt jedes Flag ungleich `0` als Subprio)
+- [x] unbekannte Flag-Werte unverändert im Datenmodell behalten, wie Regular-Nodes darstellen und von „Typ wechseln“ ausnehmen (bisher gilt jedes Flag ungleich `0` als Subprio)
 
 Laut altem Editor stehen die Flags `2` und `4` für Nodes, die AutoDrive aus Karten-Splines erzeugt. In echten FS25-Daten kommen sie nicht vor: Alle sieben Routen im RoutesManager und die Savegame-Config enthalten nur `0` und `1`. Eine eigene Behandlung ist deshalb nicht nötig; unbekannte Werte werden lediglich erhalten.
 
@@ -150,6 +150,7 @@ Gespeichert wird in das Format, aus dem geladen wurde. Es gibt drei Wege:
 
 **Für alle Formate**
 
+- Genauigkeit wie im Original: Savegame-Configs speichern Koordinaten mit drei Nachkommastellen, Routendateien mit zwei.
 - Node-IDs sind die Positionen in den Listen; Lücken durch gelöschte Nodes müssen beim Speichern geschlossen und alle Verweise und Marker umgeschrieben werden.
 - Flags `2` und `4` je nach Ergebnis der Klärung in Phase 1 zurückschreiben.
 
@@ -170,5 +171,5 @@ Werden erledigt, wenn eine Phase den betroffenen Code ohnehin berührt.
 - [ ] kurzer Hänger beim ersten Hineinzoomen über Zoom 1.0
 - [ ] Heightmap-Werte zwischen Pixeln interpolieren statt den nächsten Pixel zu nehmen
 - [ ] an Nodes gebundene Messpunkte folgen verschobenen Nodes
-- [ ] leere Einträge in der `flags`-Liste der XML verschieben nachfolgende Flags
+- [x] leere Einträge in der `flags`-Liste der XML verschieben nachfolgende Flags
 - [ ] `scene_renderer.py` aufteilen

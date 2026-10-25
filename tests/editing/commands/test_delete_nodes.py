@@ -105,3 +105,18 @@ def test_rejects_unknown_or_empty(data):
 
     with pytest.raises(ValueError):
         DeleteNodesCommand(data, set())
+
+
+def test_undo_puts_markers_back_in_their_order():
+    data = AutoDriveData()
+    for node_id in (1, 2, 3):
+        data.add_node(NodeData(node_id, 0, 0, 0))
+    for node_id, name in ((3, "first"), (1, "second"), (2, "third")):
+        data.add_marker(MarkerData(node_id=node_id, name=name))
+    command = DeleteNodesCommand(data, {1})
+
+    command.redo()
+    assert [m.name for m in data.markers.values()] == ["first", "third"]
+
+    command.undo()
+    assert [m.name for m in data.markers.values()] == ["first", "second", "third"]

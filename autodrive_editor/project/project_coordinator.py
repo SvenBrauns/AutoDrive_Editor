@@ -3,7 +3,7 @@ from pathlib import Path
 from PySide6.QtCore import QObject, Qt, Signal
 from PySide6.QtWidgets import QGraphicsScene
 
-from autodrive_editor.file_io.autodrive_xml import AutoDriveXmlReader
+from autodrive_editor.file_io.autodrive_xml import AutoDriveXmlReader, ConfigSource
 from autodrive_editor.file_io.project_file import ProjectFileStore
 from autodrive_editor.measurement.coordinator import MeasurementCoordinator
 from autodrive_editor.model.autodrive_data import AutoDriveData
@@ -56,6 +56,9 @@ class ProjectCoordinator(QObject):
         self.autodrive_data: AutoDriveData | None = None
 
         self.current_xml_path: str | None = None
+
+        # Format, path and map name of the loaded data.
+        self.config_source: ConfigSource | None = None
         self.current_config_path: str | None = None
         self.current_heightmap_path: str | None = None
 
@@ -114,13 +117,14 @@ class ProjectCoordinator(QObject):
     def load_xml_file(self, file_path):
         xml_path = Path(file_path).resolve()
 
-        autodrive_data = AutoDriveXmlReader.load(xml_path)
+        loaded = AutoDriveXmlReader.read(xml_path)
 
         self.clear_scene_content()
 
         self.current_xml_path = str(xml_path)
 
-        self.autodrive_data = autodrive_data
+        self.autodrive_data = loaded.data
+        self.config_source = loaded.source
 
         self.selection_coordinator.clear()
 

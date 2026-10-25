@@ -161,3 +161,28 @@ def test_click_on_empty_map_and_drag_change_nothing(toggling):
 def test_cursor_points_at_nodes(toggling):
     hover(toggling, view_pos(toggling, 10, 0))
     assert cursor_shape(toggling) == Qt.PointingHandCursor
+
+
+def test_nodes_with_unknown_flag_are_not_changed(toggling):
+    toggling.project_coordinator.autodrive_data.get_node(2).flag = 4
+
+    click(toggling, view_pos(toggling, 10, 0))
+
+    assert flag(toggling, 2) == 4
+    assert toggling.edit_history.undo_stack.count() == 0
+    assert "unbekannten Typ" in toggling.status.text()
+
+
+def test_selection_skips_nodes_with_unknown_flag(toggling):
+    toggling.project_coordinator.autodrive_data.get_node(2).flag = 4
+    select(toggling, QRectF(-5, -5, 30, 10))  # all three
+
+    click(toggling, view_pos(toggling, 0, 0))
+
+    assert (flag(toggling, 1), flag(toggling, 2), flag(toggling, 3)) == (1, 4, 1)
+
+
+def test_loaded_source_is_remembered(loaded_window):
+    source = loaded_window.project_coordinator.config_source
+
+    assert source.format.value == "route_export"

@@ -28,7 +28,7 @@ class DeleteNodesCommand(EditCommand):
         self.node_ids = node_ids
 
         self._deleted_nodes: list[NodeData] = []
-        self._deleted_markers: list[MarkerData] = []
+        self._deleted_markers: list[tuple[int, MarkerData]] = []
 
         # (neighbor id, "incoming" or "outgoing", deleted node id)
         self._removed_references: list[tuple[int, str, int]] = []
@@ -39,8 +39,11 @@ class DeleteNodesCommand(EditCommand):
 
         self._deleted_nodes = [nodes[node_id] for node_id in sorted(self.node_ids)]
 
+        # Remember where each marker was, so undo puts it back in place.
         self._deleted_markers = [
-            markers[node_id] for node_id in sorted(self.node_ids) if node_id in markers
+            (position, marker)
+            for position, marker in enumerate(markers.values())
+            if marker.node_id in self.node_ids
         ]
 
         # Reverse connections are only stored in the source node's
@@ -69,8 +72,8 @@ class DeleteNodesCommand(EditCommand):
         for node in self._deleted_nodes:
             self.autodrive_data.add_node(node)
 
-        for marker in self._deleted_markers:
-            self.autodrive_data.add_marker(marker)
+        for position, marker in self._deleted_markers:
+            self.autodrive_data.add_marker(marker, position)
 
         for neighbor_id, attribute, deleted_id in self._removed_references:
             getattr(self.autodrive_data.nodes[neighbor_id], attribute).add(deleted_id)

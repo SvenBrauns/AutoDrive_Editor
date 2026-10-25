@@ -57,7 +57,7 @@ def fail_on_slot_exceptions():
 
 @pytest.fixture
 def write_xml(tmp_path):
-    """Write an AutoDrive XML file and return its path."""
+    """Write a RoutesManager route file (<routeExport>) and return its path."""
 
     def _write(
         x="0;10;20",
@@ -67,6 +67,7 @@ def write_xml(tmp_path):
         incoming=";1;2",
         flags="0;0;0",
         markers="",
+        groups="",
         raw=None,
     ):
         if raw is None:
@@ -82,16 +83,17 @@ def write_xml(tmp_path):
                 optional += f"<flags>{flags}</flags>"
 
             raw = (
-                "<AutoDrive>"
+                "<routeExport>"
                 "<waypoints>"
                 f"<x>{x}</x><y>{y}</y><z>{z}</z>"
                 f"{optional}"
                 "</waypoints>"
                 f"<markers>{markers}</markers>"
-                "</AutoDrive>"
+                f"<groups>{groups}</groups>"
+                "</routeExport>"
             )
 
-        path = tmp_path / "AutoDrive_config.xml"
+        path = tmp_path / "route.xml"
         path.write_text(raw, encoding="utf-8")
         return path
 
