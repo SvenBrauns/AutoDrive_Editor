@@ -27,6 +27,8 @@ from ui.display_options_dialog import (
 )
 from ui.interaction_mode import InteractionMode
 from ui.main_window_actions import MainWindowActions
+from rendering.connection_data import ConnectionType
+from ui.map_tools.connect_nodes_tool import ConnectNodesTool
 from ui.map_tools.delete_nodes_tool import DeleteNodesTool
 from ui.map_tools.measure_tool import MeasureTool
 from ui.map_tools.move_nodes_tool import MoveNodesTool
@@ -39,6 +41,7 @@ from ui.debug_dock_coordinator import DebugDockCoordinator
 from ui.grid_coordinator import GridCoordinator
 from editing.edit_command import DataChange
 from editing.edit_coordinator import EditCoordinator
+from editing.node_connect_coordinator import NodeConnectCoordinator
 from editing.node_delete_coordinator import NodeDeleteCoordinator
 from editing.node_drag_coordinator import NodeDragCoordinator
 from selection.node_selection_manager import (
@@ -484,6 +487,13 @@ class MainWindow(QMainWindow):
             parent=self
         )
 
+        self.node_connect_coordinator = NodeConnectCoordinator(
+            selection_coordinator=self.selection_coordinator,
+            edit_coordinator=self.edit_coordinator,
+            autodrive_data_provider=self._get_autodrive_data,
+            parent=self
+        )
+
         self._register_map_tools()
 
         self.project_coordinator = (
@@ -536,6 +546,44 @@ class MainWindow(QMainWindow):
                 self.node_delete_coordinator
             )
         )
+
+        connect_tools = (
+            (
+                InteractionMode.CONNECT_REGULAR,
+                ConnectionType.REGULAR,
+                "regular_connection_color"
+            ),
+            (
+                InteractionMode.CONNECT_DUAL,
+                ConnectionType.DUAL,
+                "dual_connection_color"
+            ),
+            (
+                InteractionMode.CONNECT_REVERSE,
+                ConnectionType.REVERSE,
+                "reverse_connection_color"
+            )
+        )
+
+        for interaction_mode, connection_type, color_name in connect_tools:
+            self.view.register_tool(
+                interaction_mode,
+                ConnectNodesTool(
+                    self.view,
+                    self.node_connect_coordinator,
+                    connection_type,
+                    color_provider=(
+                        lambda name=color_name: getattr(
+                            self.scene_renderer.display_style,
+                            name
+                        )
+                    ),
+                    z_value=(
+                        self.scene_renderer.display_style
+                        .selected_node_z + 1
+                    )
+                )
+            )
 
         self.view.register_measure_tool(
             MeasureTool(
@@ -648,6 +696,16 @@ class MainWindow(QMainWindow):
             self._set_status
         )
 
+        self.node_connect_coordinator.status_changed.connect(
+            self._set_status
+        )
+
+        # Keeps the tool buttons right even when the mode is changed
+        # without clicking a button.
+        self.view.interaction_mode_changed.connect(
+            lambda interaction_mode: self.actions.sync_tool_actions()
+        )
+
         self.node_selection_manager.selection_changed.connect(
             lambda node_ids, primary_node_id:
             self.actions.delete_selection_action.setEnabled(
@@ -706,6 +764,8 @@ class MainWindow(QMainWindow):
     ):
         # Edits of the previous data cannot be undone on new data.
         self.edit_coordinator.clear()
+
+        self.node_connect_coordinator.end_chain()
 
         self.setWindowModified(
             False

@@ -139,3 +139,38 @@ def test_moving_after_rebuild_keeps_index_consistent():
 
     assert index.connection_count == 2
     assert len(index.get_connections_in_rect(everything())) == 2
+
+
+def test_rebuild_keeps_one_way_connection_into_rebuilt_node():
+    # 4 -> 2 is reverse: only 4.outgoing knows about it. Rebuilding
+    # node 2 alone must still keep it.
+    data = build_data()
+    data.add_node(NodeData(node_id=4, x=50, y=0, z=50, outgoing={2}))
+    index = build_index(data)
+
+    index.rebuild_node_connections(data, {2})
+
+    assert ("reverse", 2, 4) in connection_pairs(index)
+    assert index.connection_count == 3
+
+
+def test_incremental_updates_match_a_fresh_build():
+    """Random connection edits: the incrementally updated index must
+    always equal an index built from scratch."""
+    import random
+    from editing.set_connection_command import CONNECTION_STATES, NO_CONNECTION, SetConnectionCommand
+
+    rng = random.Random(7)
+    data = AutoDriveData()
+    for node_id in range(1, 9):
+        data.add_node(NodeData(node_id=node_id, x=node_id * 30.0, y=0, z=(node_id % 3) * 30.0))
+    index = build_index(data)
+    states = list(CONNECTION_STATES.values()) + [NO_CONNECTION]
+
+    for _ in range(120):
+        source, target = rng.sample(range(1, 9), 2)
+        command = SetConnectionCommand(data, source, target, rng.choice(states))
+        command.redo()
+        index.rebuild_node_connections(data, {source, target})
+
+        assert connection_pairs(index) == connection_pairs(build_index(data))

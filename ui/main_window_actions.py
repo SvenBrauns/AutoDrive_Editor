@@ -38,6 +38,24 @@ class MainWindowActions:
                     "Löschen",
                     "Node oder Auswahl per Linksklick löschen"
                 ),
+                (
+                    InteractionMode.CONNECT_REGULAR,
+                    "Verbinden (Regular)",
+                    "Nodes nacheinander anklicken, um sie mit "
+                    "Regular-Connections zu verbinden"
+                ),
+                (
+                    InteractionMode.CONNECT_DUAL,
+                    "Verbinden (Dual)",
+                    "Nodes nacheinander anklicken, um sie mit "
+                    "Dual-Connections zu verbinden"
+                ),
+                (
+                    InteractionMode.CONNECT_REVERSE,
+                    "Verbinden (Reverse)",
+                    "Nodes nacheinander anklicken, um sie mit "
+                    "Reverse-Connections zu verbinden"
+                ),
             ]
         ),
     )
@@ -761,6 +779,18 @@ class MainWindowActions:
         self._check_tool_action(
             self.window.view.interaction_mode
         )
+
+    def sync_tool_actions(self):
+        """Checks the button of the active tool, or none while
+        measuring."""
+
+        if self.window.view.measurement_active:
+            self._check_tool_action(
+                None
+            )
+
+        else:
+            self._restore_interaction_action()
 
     def set_measurement_alignment_enabled(
         self,

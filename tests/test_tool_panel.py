@@ -69,3 +69,18 @@ def test_debug_dock_shows_move_tool_name(window, qapp):
     qapp.processEvents()
 
     assert window.debug_dock.interaction_mode_value.text() == "Nodes verschieben"
+
+
+def test_node_group_lists_all_node_tools_in_order(window):
+    texts = [action.text() for action in window.actions.tool_panel.tool_buttons]
+
+    assert texts == [
+        "Verschieben", "Löschen",
+        "Verbinden (Regular)", "Verbinden (Dual)", "Verbinden (Reverse)",
+    ]
+
+
+def test_tool_buttons_follow_mode_changes_from_code(window):
+    window.set_interaction_mode(InteractionMode.CONNECT_DUAL)
+
+    assert checked_tools(window) == {InteractionMode.CONNECT_DUAL}

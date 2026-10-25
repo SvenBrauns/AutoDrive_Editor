@@ -162,6 +162,13 @@ class ConnectionSpatialIndex:
             node_ids
         )
 
+        # The other ends of removed connections are checked again too.
+        # A reverse connection into a rebuilt node is only stored in
+        # the source node's outgoing set and would otherwise be lost.
+        nodes_to_check = set(
+            node_ids
+        )
+
         for node_id in node_ids:
             for connection_key in list(
                 self._connection_keys_by_node_id.get(
@@ -169,13 +176,22 @@ class ConnectionSpatialIndex:
                     ()
                 )
             ):
-                self._remove_connection(
-                    self._connections_by_key[
-                        connection_key
-                    ]
+                connection = self._connections_by_key[
+                    connection_key
+                ]
+
+                nodes_to_check.update(
+                    (
+                        connection.source_id,
+                        connection.target_id
+                    )
                 )
 
-        for node_id in node_ids:
+                self._remove_connection(
+                    connection
+                )
+
+        for node_id in nodes_to_check:
             node = autodrive_data.get_node(
                 node_id
             )
