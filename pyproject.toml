@@ -1,0 +1,16 @@
+[project]
+name = "autodrive-editor"
+description = "Desktop editor for AutoDrive route networks in Farming Simulator 25"
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# Pyflakes, pycodestyle errors, import sorting, pyupgrade, bugbear
+select = ["F", "E", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
