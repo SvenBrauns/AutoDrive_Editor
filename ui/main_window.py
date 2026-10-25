@@ -31,6 +31,8 @@ from ui.map_view import MapView
 from ui.node_info_formatter import NodeInfoFormatter
 from ui.view_rotation_controller import ViewRotationController
 from ui.debug_dock import DebugDock
+from ui.debug_dock_coordinator import DebugDockCoordinator
+from ui.grid_coordinator import GridCoordinator
 from selection.node_selection_manager import (
     NodeSelectionManager
 )
@@ -80,7 +82,30 @@ class MainWindow(QMainWindow):
             self.background_manager.map_scale
         )
 
+        self.grid_coordinator = GridCoordinator(
+            background_manager=self.background_manager,
+            grid_controls=self.actions.grid_controls,
+            parent=self
+        )
+
         self._connect_signals()
+
+        # Created after the renderer is connected to the view, so the
+        # dock reads the renderer state after it has been updated.
+        self.debug_dock_coordinator = DebugDockCoordinator(
+            debug_dock=self.debug_dock,
+            view=self.view,
+            scene_renderer=self.scene_renderer,
+            parent=self
+        )
+
+        self.selection_coordinator.selection_state_changed.connect(
+            self.debug_dock_coordinator.refresh
+        )
+
+        self.project_coordinator.debug_refresh_requested.connect(
+            self.debug_dock_coordinator.refresh
+        )
 
     def select_background(self):
         filename, _ = QFileDialog.getOpenFileName(
@@ -304,6 +329,14 @@ class MainWindow(QMainWindow):
 
         self._set_status(
             "Rotation zurückgesetzt"
+        )
+
+    def set_measurement_mode(
+        self,
+        measurement_mode: MeasurementMode
+    ):
+        self.measurement_coordinator.set_mode(
+            measurement_mode
         )
 
     def align_view_to_measurement(self):
@@ -550,16 +583,12 @@ class MainWindow(QMainWindow):
             self.debug_dock.set_node_info
         )
 
-        self.selection_coordinator.selection_state_changed.connect(
-            self._refresh_debug_dock
-        )
-
         self.project_coordinator.status_changed.connect(
             self._set_status
         )
 
-        self.project_coordinator.debug_refresh_requested.connect(
-            self._refresh_debug_dock
+        self.grid_coordinator.status_changed.connect(
+            self._set_status
         )
 
         self.project_coordinator.map_scale_changed.connect(
@@ -570,28 +599,8 @@ class MainWindow(QMainWindow):
             self._handle_heightmap_path_changed
         )
 
-        self.view.zoom_changed.connect(
-            self._refresh_debug_dock
-        )
-
-        self.view.rotation_changed.connect(
-            self._refresh_debug_dock
-        )
-
         self.view.rotation_step_changed.connect(
             self._handle_rotation_step_changed
-        )
-
-        self.view.visible_scene_rect_changed.connect(
-            self._refresh_debug_dock
-        )
-
-        self.view.interaction_mode_changed.connect(
-            self._refresh_debug_dock
-        )
-
-        self.debug_dock.visibilityChanged.connect(
-            self._handle_debug_dock_visibility_changed
         )
 
     def _handle_rotation_changed(
@@ -619,36 +628,6 @@ class MainWindow(QMainWindow):
             rotation_step
         )
 
-    def _refresh_debug_dock(
-        self,
-        *args
-    ):
-        if not self.debug_dock.isVisible():
-            return
-
-        self.debug_dock.set_interaction_mode(
-            self.view.interaction_mode
-        )
-
-        self.debug_dock.set_view_state(
-            zoom_level=self.view.zoom_level,
-            rotation_angle=self.view.rotation_angle,
-            visible_rect=(
-                self.scene_renderer.current_visible_rect
-            )
-        )
-
-        self.debug_dock.set_renderer_state(
-            self.scene_renderer.get_debug_state()
-        )
-
-    def _handle_debug_dock_visibility_changed(
-        self,
-        visible: bool
-    ):
-        if visible:
-            self._refresh_debug_dock()
-
     def _handle_heightmap_path_changed(
         self,
         file_path
@@ -671,95 +650,4 @@ class MainWindow(QMainWindow):
     ):
         self.status.setText(
             message
-        )
-
-    def set_grid_visible(
-        self,
-        visible: bool
-    ):
-        self.background_manager.set_grid_visible(
-            visible
-        )
-
-        self.actions.grid_controls.set_grid_visible(
-            self.background_manager.grid_visible
-        )
-
-        if self.background_manager.grid_visible:
-            status_text = "Raster eingeblendet"
-
-        else:
-            status_text = "Raster ausgeblendet"
-
-        self._set_status(
-            status_text
-        )
-
-    def set_measurement_mode(
-        self,
-        measurement_mode: MeasurementMode
-    ):
-        self.measurement_coordinator.set_mode(
-            measurement_mode
-        )
-
-    def set_grid_spacing(
-        self,
-        spacing: float
-    ):
-        try:
-            self.background_manager.set_grid_spacing(
-                spacing
-            )
-
-        except Exception as ex:
-            self._set_status(
-                f"Rasterabstand konnte nicht "
-                f"geändert werden: {ex}"
-            )
-            return
-
-        self.actions.grid_controls.set_grid_spacing(
-            self.background_manager.grid_spacing
-        )
-
-        self._set_status(
-            f"Rasterabstand: "
-            f"{self.background_manager.grid_spacing:.2f} m"
-        )
-
-    def set_grid_rotation(
-        self,
-        rotation_angle: float
-    ):
-        self.background_manager.set_grid_rotation(
-            rotation_angle
-        )
-
-        self.actions.grid_controls.set_grid_rotation(
-            self.background_manager.grid_rotation
-        )
-
-        self._set_status(
-            f"Rasterrotation: "
-            f"{self.background_manager.grid_rotation:.2f}°"
-        )
-
-    def reset_grid(self):
-        self.background_manager.reset_grid()
-
-        self.actions.grid_controls.set_grid_visible(
-            self.background_manager.grid_visible
-        )
-
-        self.actions.grid_controls.set_grid_spacing(
-            self.background_manager.grid_spacing
-        )
-
-        self.actions.grid_controls.set_grid_rotation(
-            self.background_manager.grid_rotation
-        )
-
-        self._set_status(
-            "Raster zurückgesetzt"
         )

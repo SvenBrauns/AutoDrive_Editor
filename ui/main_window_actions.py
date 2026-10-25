@@ -470,22 +470,6 @@ class MainWindowActions:
             parent=self.quick_access_toolbar
         )
 
-        self.grid_controls.visibility_requested.connect(
-            self.window.set_grid_visible
-        )
-
-        self.grid_controls.spacing_requested.connect(
-            self.window.set_grid_spacing
-        )
-
-        self.grid_controls.rotation_requested.connect(
-            self.window.set_grid_rotation
-        )
-
-        self.grid_controls.reset_requested.connect(
-            self.window.reset_grid
-        )
-
         self.quick_access_toolbar.addWidget(
             self.grid_controls
         )
