@@ -155,7 +155,8 @@ class SceneRenderer:
         moved_node_ids=(),
         added_node_ids=(),
         removed_node_ids=(),
-        connection_node_ids=()
+        connection_node_ids=(),
+        changed_flag_node_ids=()
     ):
         """Updates the drawing after an edit without redrawing
         everything.
@@ -164,6 +165,7 @@ class SceneRenderer:
         added_node_ids:      nodes added to the data
         removed_node_ids:    nodes removed from the data
         connection_node_ids: nodes whose connections changed
+        changed_flag_node_ids: nodes whose flag changed
         """
 
         if self.autodrive_data is None:
@@ -186,6 +188,22 @@ class SceneRenderer:
         removed_node_ids = set(
             removed_node_ids
         )
+
+        flag_changed_nodes = [
+            nodes[node_id]
+            for node_id in changed_flag_node_ids
+            if node_id in nodes
+        ]
+
+        if flag_changed_nodes:
+            for manager in (
+                self.visible_node_manager,
+                self.visible_node_selection_manager
+            ):
+                if manager is not None:
+                    manager.recreate_items(
+                        flag_changed_nodes
+                    )
 
         if not (
             moved_nodes

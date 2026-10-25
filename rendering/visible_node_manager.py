@@ -105,6 +105,24 @@ class VisibleNodeManager:
                 node_data.z
             )
 
+    def recreate_items(
+        self,
+        nodes
+    ):
+        """Redraws visible nodes, e.g. after their flag changed."""
+
+        for node_data in nodes:
+            if node_data.node_id not in self.visible_node_items:
+                continue
+
+            self._remove_node_item(
+                node_data.node_id
+            )
+
+            self._add_node_item(
+                node_data
+            )
+
     def clear(self):
         for node_id in list(
             self.visible_node_items

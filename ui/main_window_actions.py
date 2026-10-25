@@ -41,6 +41,12 @@ class MainWindowActions:
                     "Subprio-Node erstellen"
                 ),
                 (
+                    InteractionMode.TOGGLE_NODE_TYPE,
+                    "Typ wechseln",
+                    "Node oder Auswahl per Linksklick zwischen "
+                    "Regular und Subprio umschalten"
+                ),
+                (
                     InteractionMode.MOVE_NODES,
                     "Verschieben",
                     "Node oder Auswahl per Linkes Ziehen verschieben"

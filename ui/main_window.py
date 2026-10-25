@@ -35,6 +35,7 @@ from ui.map_tools.create_node_tool import CreateNodeTool
 from ui.map_tools.delete_nodes_tool import DeleteNodesTool
 from ui.map_tools.measure_tool import MeasureTool
 from ui.map_tools.rotate_selection_tool import RotateSelectionTool
+from ui.map_tools.toggle_node_type_tool import ToggleNodeTypeTool
 from ui.map_tools.move_nodes_tool import MoveNodesTool
 from ui.map_tools.select_tool import SelectTool
 from ui.map_view import MapView
@@ -49,6 +50,7 @@ from editing.node_connect_coordinator import NodeConnectCoordinator
 from editing.node_create_coordinator import NodeCreateCoordinator
 from editing.node_delete_coordinator import NodeDeleteCoordinator
 from editing.node_drag_coordinator import NodeDragCoordinator
+from editing.node_flag_coordinator import NodeFlagCoordinator
 from editing.selection_rotate_coordinator import SelectionRotateCoordinator
 from selection.node_selection_manager import (
     NodeSelectionManager
@@ -525,6 +527,14 @@ class MainWindow(QMainWindow):
             parent=self
         )
 
+        self.node_flag_coordinator = NodeFlagCoordinator(
+            selection_coordinator=self.selection_coordinator,
+            selection_manager=self.node_selection_manager,
+            edit_coordinator=self.edit_coordinator,
+            autodrive_data_provider=self._get_autodrive_data,
+            parent=self
+        )
+
         self._register_map_tools()
 
         self.project_coordinator = (
@@ -574,6 +584,14 @@ class MainWindow(QMainWindow):
                     flag
                 )
             )
+
+        self.view.register_tool(
+            InteractionMode.TOGGLE_NODE_TYPE,
+            ToggleNodeTypeTool(
+                self.view,
+                self.node_flag_coordinator
+            )
+        )
 
         self.view.register_tool(
             InteractionMode.MOVE_NODES,
@@ -781,6 +799,10 @@ class MainWindow(QMainWindow):
             self._set_status
         )
 
+        self.node_flag_coordinator.status_changed.connect(
+            self._set_status
+        )
+
         self.selection_rotate_coordinator.status_changed.connect(
             self._set_status
         )
@@ -864,7 +886,8 @@ class MainWindow(QMainWindow):
             moved_node_ids=data_change.moved_node_ids,
             added_node_ids=data_change.added_node_ids,
             removed_node_ids=data_change.removed_node_ids,
-            connection_node_ids=data_change.connection_node_ids
+            connection_node_ids=data_change.connection_node_ids,
+            changed_flag_node_ids=data_change.changed_flag_node_ids
         )
 
         if data_change.removed_node_ids:

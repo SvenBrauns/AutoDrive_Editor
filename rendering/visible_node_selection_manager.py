@@ -132,6 +132,25 @@ class VisibleNodeSelectionManager:
                 node_data.z
             )
 
+    def recreate_items(
+        self,
+        nodes
+    ):
+        """Redraws visible selection rings, e.g. after the node's flag
+        changed."""
+
+        for node_data in nodes:
+            if node_data.node_id not in self.visible_selection_items:
+                continue
+
+            self._remove_selection_item(
+                node_data.node_id
+            )
+
+            self._add_selection_item(
+                node_data
+            )
+
     def clear(self):
         for node_id in list(
             self.visible_selection_items

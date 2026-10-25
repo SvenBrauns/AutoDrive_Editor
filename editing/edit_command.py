@@ -29,6 +29,11 @@ class DataChange:
         default_factory=frozenset
     )
 
+    # Nodes whose flag (regular or subprio) changed.
+    changed_flag_node_ids: frozenset[int] = field(
+        default_factory=frozenset
+    )
+
 
 class EditCommand(QUndoCommand):
     """Base class for all undoable edits.
