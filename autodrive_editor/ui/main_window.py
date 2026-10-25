@@ -614,6 +614,7 @@ class MainWindow(QMainWindow):
             scene_renderer=self.scene_renderer,
             selection_coordinator=self.selection_coordinator,
             measurement_coordinator=self.measurement_coordinator,
+            map_cache=self.map_cache,
             parent=self,
         )
 

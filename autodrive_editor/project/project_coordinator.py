@@ -17,7 +17,11 @@ from autodrive_editor.rendering.scene_renderer import SceneRenderer
 from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
 from autodrive_editor.terrain.background_map import BackgroundMap
 from autodrive_editor.terrain.heightmap import Heightmap
+from autodrive_editor.terrain.map_cache import MapCache
 from autodrive_editor.ui.map_view.map_view import MapView
+
+# Heightmap a savegame keeps next to its AutoDrive config.
+SAVEGAME_HEIGHTMAP_NAME = "terrain.heightmap.png"
 
 
 class ProjectCoordinator(QObject):
@@ -43,6 +47,7 @@ class ProjectCoordinator(QObject):
         scene_renderer: SceneRenderer,
         selection_coordinator: SelectionCoordinator,
         measurement_coordinator: MeasurementCoordinator,
+        map_cache: MapCache | None = None,
         parent=None,
     ):
         super().__init__(parent)
@@ -58,6 +63,9 @@ class ProjectCoordinator(QObject):
         self.selection_coordinator = selection_coordinator
 
         self.measurement_coordinator = measurement_coordinator
+
+        # Imported maps, used to load the matching map automatically.
+        self.map_cache = map_cache
 
         self.autodrive_data: AutoDriveData | None = None
 
@@ -120,9 +128,13 @@ class ProjectCoordinator(QObject):
 
         self.debug_refresh_requested.emit()
 
-    def load_xml_file(self, file_path, display_name=None, map_name=None):
+    def load_xml_file(self, file_path, display_name=None, map_name=None, detect_map=True):
         """Loads a route file or savegame config. Route files do not contain
-        their map name; it comes from the caller or from routes.xml."""
+        their map name; it comes from the caller or from routes.xml.
+
+        With detect_map, the imported map with that name is loaded as
+        background together with its heightmap and map size. Project files
+        bring their own map settings and turn this off."""
 
         xml_path = Path(file_path).resolve()
 
@@ -152,7 +164,10 @@ class ProjectCoordinator(QObject):
 
         self.selection_coordinator.clear()
 
-        self.background_map.restore()
+        map_loaded, map_note = self._load_detected_map(source) if detect_map else (False, "")
+
+        if not map_loaded:
+            self.background_map.restore()
 
         self.scene_renderer.render(self.autodrive_data)
 
@@ -167,7 +182,7 @@ class ProjectCoordinator(QObject):
 
         self.status_changed.emit(
             f"{source.format_label} „{source.display_name}“ geladen: "
-            f"{len(self.autodrive_data)} Waypoints"
+            f"{len(self.autodrive_data)} Waypoints{map_note}"
         )
 
         self.debug_refresh_requested.emit()
@@ -240,7 +255,7 @@ class ProjectCoordinator(QObject):
 
             self._set_heightmap_path(None)
 
-        self.load_xml_file(project_data["autodrive_xml"])
+        self.load_xml_file(project_data["autodrive_xml"], detect_map=False)
 
     def rebuild_scene_after_style_change(self):
         if self.autodrive_data is None:
@@ -297,6 +312,41 @@ class ProjectCoordinator(QObject):
             return
 
         self.view.fitInView(scene_rect, Qt.KeepAspectRatio)
+
+    def _load_detected_map(self, source: ConfigSource) -> tuple[bool, str]:
+        """Loads the imported map AutoDrive names in the source. Returns
+        whether a background was loaded and a note for the status bar."""
+
+        if self.map_cache is None or not source.map_name:
+            return False, ""
+
+        cached = self.map_cache.find(source.map_name)
+
+        if cached is None:
+            return False, (
+                f" – Karte „{source.map_name}“ ist nicht importiert (Karte → Karten scannen)"
+            )
+
+        self.background_map.set_map_scale(cached.map_scale)
+        self.map_scale_changed.emit(cached.map_scale)
+
+        self.background_map.load(str(cached.overview_path))
+
+        # A savegame's own heightmap includes terrain changes made in game.
+        heightmap_path = cached.heightmap_path
+        savegame_heightmap = source.path.parent / SAVEGAME_HEIGHTMAP_NAME
+
+        if source.format == ConfigFormat.SAVEGAME and savegame_heightmap.is_file():
+            heightmap_path = savegame_heightmap
+
+        if heightmap_path is not None:
+            heightmap_data = self.heightmap.load(heightmap_path)
+            self._set_heightmap_path(heightmap_data.file_path)
+        else:
+            self.heightmap.clear()
+            self._set_heightmap_path(None)
+
+        return True, f" – Karte „{cached.title}“"
 
     def _set_heightmap_path(self, file_path):
         self.current_heightmap_path = str(file_path) if file_path is not None else None
