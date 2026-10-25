@@ -19,6 +19,7 @@ from autodrive_editor.editing.operations.create_nodes import CreateNodesOperatio
 from autodrive_editor.editing.operations.delete_nodes import DeleteNodesOperation
 from autodrive_editor.editing.operations.markers import MarkerOperation
 from autodrive_editor.editing.operations.move_nodes import MoveNodesOperation
+from autodrive_editor.editing.operations.node_position import NodePositionOperation
 from autodrive_editor.editing.operations.node_types import NodeTypeOperation
 from autodrive_editor.editing.operations.reverse_direction import ReverseDirectionOperation
 from autodrive_editor.editing.operations.rotate_selection import RotateSelectionOperation
@@ -54,6 +55,7 @@ from autodrive_editor.ui.dialogs.first_start_dialog import FirstStartDialog
 from autodrive_editor.ui.dialogs.list_choice_dialog import ListChoiceDialog
 from autodrive_editor.ui.dialogs.map_import_dialog import MapImportDialog
 from autodrive_editor.ui.dialogs.marker_dialog import MarkerDialog
+from autodrive_editor.ui.dialogs.node_position_dialog import NodePositionDialog
 from autodrive_editor.ui.dialogs.settings_dialog import SettingsDialog
 from autodrive_editor.ui.map_view.map_view import MapView
 from autodrive_editor.ui.map_view.rotation_controller import ViewRotationController
@@ -632,6 +634,11 @@ class MainWindow(QMainWindow):
 
         return new_name if accepted else None
 
+    def _ask_node_position(self, node):
+        dialog = NodePositionDialog(node.node_id, node.x, node.y, node.z, parent=self)
+
+        return dialog.values if dialog.exec() else None
+
     def _ask_marker(self, title, marker, group, groups, taken_names):
         dialog = MarkerDialog(
             title,
@@ -774,6 +781,15 @@ class MainWindow(QMainWindow):
             parent=self,
         )
 
+        self.node_position_operation = NodePositionOperation(
+            selection_coordinator=self.selection_coordinator,
+            edit_history=self.edit_history,
+            autodrive_data_provider=self._get_autodrive_data,
+            # Looked up on each call, so tests can replace _ask_node_position.
+            ask_position=lambda node: self._ask_node_position(node),
+            parent=self,
+        )
+
         self.reverse_direction_operation = ReverseDirectionOperation(
             connection_at=self._get_connection_at,
             node_selection=self.node_selection,
@@ -836,6 +852,15 @@ class MainWindow(QMainWindow):
 
         self.view.register_tool(
             InteractionMode.MOVE_NODES, MoveNodesTool(self.view, self.move_nodes_operation)
+        )
+
+        self.view.register_tool(
+            InteractionMode.EDIT_NODE_POSITION,
+            NodeClickTool(
+                self.view,
+                self.node_position_operation.edit_at,
+                "Node anklicken, um ihre Position einzugeben",
+            ),
         )
 
         self.view.register_tool(
@@ -1037,6 +1062,8 @@ class MainWindow(QMainWindow):
         self.reverse_direction_operation.status_changed.connect(self._set_status)
 
         self.clipboard_operation.status_changed.connect(self._set_status)
+
+        self.node_position_operation.status_changed.connect(self._set_status)
 
         self.rotate_selection_operation.status_changed.connect(self._set_status)
 

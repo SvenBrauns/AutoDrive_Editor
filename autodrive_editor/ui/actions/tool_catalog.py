@@ -113,6 +113,14 @@ REVERSE_DIRECTION_TOOL = ToolDefinition(
     "U",
 )
 
+NODE_POSITION_TOOL = ToolDefinition(
+    InteractionMode.EDIT_NODE_POSITION,
+    "Position eingeben",
+    "Node anklicken und ihre Position als Zahlen eingeben",
+    "node_position",
+    "P",
+)
+
 ROTATE_TOOL = ToolDefinition(
     InteractionMode.ROTATE_SELECTION,
     "Rotieren",
@@ -199,6 +207,7 @@ TOOL_GROUPS = (
             (CREATE_SUBPRIO_TOOL, CONNECT_REVERSE_TOOL),
             (TOGGLE_TYPE_TOOL, REVERSE_DIRECTION_TOOL),
             (ROTATE_TOOL, DELETE_TOOL),
+            (NODE_POSITION_TOOL, None),
         ),
     ),
     (

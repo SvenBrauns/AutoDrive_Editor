@@ -73,7 +73,7 @@ Für das spätere Speichern muss diese Phase schon beachten: Markergruppen sind 
 - [x] Kopieren, Ausschneiden, Einfügen (`Strg+C/X/V`, an der Maus zentriert; `Strg+Umschalt+V` an der ursprünglichen Position). Kopiert werden Nodes, ihre Connections untereinander und ihre Marker; doppelte Markernamen in einer Gruppe bekommen eine Nummer
 - [x] Werkzeug „Richtung umkehren“ (`U`): Connection anklicken; liegt sie in der Auswahl, werden alle Connections der Auswahl umgekehrt. Dual-Connections bleiben unverändert
 - [ ] Ausrichten: horizontal, vertikal und in der Höhe
-- [ ] Position einer Node als Zahlen eingeben
+- [x] Position einer Node als Zahlen eingeben (Werkzeug „Position eingeben“, `P`: Node anklicken, X/Y/Z im Dialog)
 - [ ] Einrasten am Raster beim Erstellen und Verschieben
 - [ ] Freihand-Auswahl (Lasso)
 

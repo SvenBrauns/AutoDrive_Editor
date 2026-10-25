@@ -93,7 +93,7 @@ def grid_text(window, row, column):
 
 
 def test_node_tools_are_paired_in_two_columns(window):
-    layout = [[grid_text(window, row, column) for column in (0, 1)] for row in range(5)]
+    layout = [[grid_text(window, row, column) for column in (0, 1)] for row in range(6)]
 
     assert layout == [
         ["Verschieben", "Verbinden (Regular)"],
@@ -101,6 +101,7 @@ def test_node_tools_are_paired_in_two_columns(window):
         ["Erstellen (Subprio)", "Verbinden (Reverse)"],
         ["Typ wechseln", "Richtung umkehren"],
         ["Rotieren", "Löschen"],
+        ["Position eingeben", None],
     ]
 
 

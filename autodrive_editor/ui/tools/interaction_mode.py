@@ -11,6 +11,7 @@ class InteractionMode(Enum):
     TOGGLE_NODE_TYPE = auto()
     REVERSE_DIRECTION = auto()
     MOVE_NODES = auto()
+    EDIT_NODE_POSITION = auto()
     ROTATE_SELECTION = auto()
     DELETE_NODES = auto()
     CONNECT_REGULAR = auto()
@@ -31,6 +32,7 @@ class InteractionMode(Enum):
             InteractionMode.TOGGLE_NODE_TYPE: "Node-Typ wechseln",
             InteractionMode.REVERSE_DIRECTION: "Richtung umkehren",
             InteractionMode.MOVE_NODES: "Nodes verschieben",
+            InteractionMode.EDIT_NODE_POSITION: "Position eingeben",
             InteractionMode.ROTATE_SELECTION: "Auswahl rotieren",
             InteractionMode.DELETE_NODES: "Nodes löschen",
             InteractionMode.CONNECT_REGULAR: "Verbinden (Regular)",
