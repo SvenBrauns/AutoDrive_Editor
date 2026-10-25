@@ -13,7 +13,6 @@ Damit alle folgenden Funktionen mit echten Spieldaten getestet werden können.
 **Spielordner**
 
 - [ ] FS25-Benutzerordner (üblicherweise `Dokumente\My Games\FarmingSimulator2025`) automatisch finden und in den Einstellungen änderbar machen
-- [ ] Prüfen, wo AutoDrive den RoutesManager ablegt (vermutlich `modSettings\FS25_AutoDrive\routesManager\`)
 
 **Routen und Savegames**
 
@@ -29,15 +28,25 @@ Damit alle folgenden Funktionen mit echten Spieldaten getestet werden können.
 - [ ] Schaltfläche „Karten scannen“: `mods`-Ordner nach Kartenmods durchsuchen (Zips und entpackte Ordner) und zum Import anbieten; bereits importierte Karten kennzeichnen
 - [ ] beim Laden einer Route oder eines Savegames die passende importierte Karte automatisch laden
 - [ ] Savegame: `terrain.heightmap.png` neben der Config als Heightmap verwenden
+- [ ] Kartengröße aus der Kartenkonfiguration im Mod übernehmen statt sie von Hand zu wählen
 - [ ] Prüfen, ob die Grundspiel-Karten aus dem Installationsordner lesbar sind; vermutlich liegen sie in einem Archivformat von Giants und können nicht importiert werden
 
 Kartenbilder werden nicht mit dem Editor ausgeliefert. Jeder Nutzer erzeugt sie aus seinen eigenen Mods; einmal importiert, werden sie ohne erneuten Zip-Import wiederverwendet.
 
 **Flags**
 
-- [ ] Flags `2` und `4` unverändert im Datenmodell behalten, wie Regular-Nodes darstellen und von „Typ wechseln“ ausnehmen (bisher gilt jedes Flag ungleich `0` als Subprio)
+- [ ] unbekannte Flag-Werte unverändert im Datenmodell behalten, wie Regular-Nodes darstellen und von „Typ wechseln“ ausnehmen (bisher gilt jedes Flag ungleich `0` als Subprio)
 
-Laut altem Editor werden Nodes mit diesen Flags in FS22 und FS25 von AutoDrive aus Karten-Splines erzeugt. Was genau sie bedeuten und wie sie gespeichert werden müssen, wird anhand einer echten FS25-Savegame-Config geklärt.
+Laut altem Editor stehen die Flags `2` und `4` für Nodes, die AutoDrive aus Karten-Splines erzeugt. In echten FS25-Daten kommen sie nicht vor: Alle sieben Routen im RoutesManager und die Savegame-Config enthalten nur `0` und `1`. Eine eigene Behandlung ist deshalb nicht nötig; unbekannte Werte werden lediglich erhalten.
+
+**Erkenntnisse aus einer echten FS25-Installation**
+
+- RoutesManager: `<FS25-Ordner>\modSettings\FS25_AutoDrive\routesManager\routes.xml`, Routendateien im Unterordner `routes\`. AutoDrive legt dort eigene Autosaves ab (`<Datei>_autosave_<n>.xml`); sie gehören nicht in die Routenliste.
+- `routes.xml`: je Route `name`, `fileName`, `map`, `revision`, `date` (`JJJJ/MM/TT hh:mm:ss`) und `<serverId/>`. `revision` steigt bei jedem Speichern im Spiel.
+- Savegame: `savegameN\AutoDrive_config.xml` mit `version` z. B. `3.0.1.4` (FS25 = Hauptversion 3) und `MapName`; daneben liegen `terrain.heightmap.png` und `vehicles.xml`.
+- Kartenname: AutoDrive verwendet den Kartentitel aus der `modDesc.xml` des Kartenmods (`<maps><map><title>`), Leerzeichen und Punkte durch `_` ersetzt, z. B. `LS25 Thüringen 2.0 16x` → `LS25_Thüringen_2_0_16x`. Der Titel kann in mehreren Sprachen vorliegen; verglichen wird mit allen. Zip-Name und Karten-ID (oft `SampleModMap`) taugen nicht zur Zuordnung.
+- Kartenmod: `modDesc.xml` → `<map configFilename>` → Kartenkonfiguration mit `width`/`height` (z. B. 8192) und `imageFilename`. Kartengröße = `width / 2048` (4096 → 2 = 4x-Karte, 8192 → 4 = 16x-Karte).
+- Ein Mod kann mehrere Karten enthalten; der `mods`-Ordner kann auch nicht lesbare Zips enthalten, die beim Scan übersprungen werden.
 
 ## 2. Marker — hohe Priorität
 
