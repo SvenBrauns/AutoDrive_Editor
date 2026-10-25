@@ -186,3 +186,33 @@ def test_loaded_source_is_remembered(loaded_window):
     source = loaded_window.project_coordinator.config_source
 
     assert source.format.value == "route_export"
+
+
+def test_map_scan_nodes_toggle_like_regular_nodes(toggling):
+    toggling.project_coordinator.autodrive_data.get_node(2).flag = 2
+
+    click(toggling, view_pos(toggling, 10, 0))
+    assert flag(toggling, 2) == 1
+    assert color(toggling, 2) == ORANGE
+
+    click(toggling, view_pos(toggling, 10, 0))
+    assert flag(toggling, 2) == 0
+
+
+def test_undo_gives_map_scan_flag_back(toggling):
+    toggling.project_coordinator.autodrive_data.get_node(2).flag = 2
+
+    click(toggling, view_pos(toggling, 10, 0))
+    toggling.actions.undo_action.trigger()
+
+    assert flag(toggling, 2) == 2
+
+
+def test_node_info_names_map_scan_and_unknown_flags(toggling):
+    data = toggling.project_coordinator.autodrive_data
+    data.get_node(2).flag = 2
+    data.get_node(3).flag = 4
+    formatter = toggling.node_info_formatter
+
+    assert "Regular Node (aus Karten-Scan)" in formatter.format_node_info(data.get_node(2), data)
+    assert "Regular Node (Flag 4)" in formatter.format_node_info(data.get_node(3), data)

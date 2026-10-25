@@ -17,7 +17,8 @@ from datetime import datetime
 from pathlib import Path
 
 from autodrive_editor.file_io.background_image import map_image_from_dds_bytes
-from autodrive_editor.file_io.map_mod import MapEntry
+from autodrive_editor.file_io.base_game_maps import open_mod_archive
+from autodrive_editor.file_io.map_mod import MapEntry, MapMod
 from autodrive_editor.file_io.mod_archive import ModArchive
 from autodrive_editor.paths import user_data_directory
 
@@ -86,14 +87,16 @@ class MapCache:
 
         return next((cached for cached in self.maps() if cached.source_key == key), None)
 
-    def import_map(self, mod_path: Path, map_entry: MapEntry) -> CachedMap:
-        """Extracts image and heightmap of one map from a mod. Importing the
-        same map again replaces the earlier import."""
+    def import_map(self, mod: MapMod | Path, map_entry: MapEntry) -> CachedMap:
+        """Extracts image and heightmap of one map from a mod (or the base
+        game). Importing the same map again replaces the earlier import."""
 
         if map_entry.problems:
             raise ValueError("; ".join(map_entry.problems))
 
-        with ModArchive(mod_path) as archive:
+        archive = open_mod_archive(mod) if isinstance(mod, MapMod) else ModArchive(mod)
+
+        with archive:
             existing = self.find_import(archive.name, map_entry)
             folder = existing.directory if existing else self._new_folder(map_entry)
             folder.mkdir(parents=True, exist_ok=True)

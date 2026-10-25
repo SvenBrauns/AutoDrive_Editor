@@ -154,12 +154,13 @@ def test_marker_order_follows_the_file(write_xml):
     assert list(data.markers) == [3, 1]
 
 
-def test_unknown_flags_are_kept_and_shown_as_regular(write_xml):
+def test_map_scan_and_unknown_flags_are_kept_and_shown_as_regular(write_xml):
     data = AutoDriveXmlReader.load(write_xml(flags="2;4;1"))
 
-    node_2, node_4, subprio = (data.get_node(i) for i in (1, 2, 3))
-    assert (node_2.flag, node_4.flag) == (2, 4)
-    assert node_2.is_regular and not node_2.is_subprio and not node_2.has_known_flag
+    scanned, unknown, subprio = (data.get_node(i) for i in (1, 2, 3))
+    assert (scanned.flag, unknown.flag) == (2, 4)
+    assert scanned.is_regular and scanned.is_from_map_scan and scanned.has_known_flag
+    assert unknown.is_regular and not unknown.has_known_flag
     assert subprio.is_subprio and subprio.has_known_flag
 
 

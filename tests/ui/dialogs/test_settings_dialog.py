@@ -1,7 +1,9 @@
 import pytest
+from base_game_helpers import make_installation
 from game_folder_helpers import make_game_folder
 
 from autodrive_editor.game.game_folder import GameFolder
+from autodrive_editor.game.game_installation import GameInstallation
 from autodrive_editor.settings.app_settings import AppSettings
 from autodrive_editor.ui.dialogs.settings_dialog import SettingsDialog
 
@@ -64,3 +66,31 @@ def test_detect_button_fills_in_default_folder(qapp, tmp_path, monkeypatch):
 def test_settings_menu_entry_exists(window, isolated_user_data):
     assert window.actions.settings_action.text() == "Einstellungen…"
     assert "user_data" in window.settings.settings_path.parent.name
+
+
+def test_install_folder_is_shown_checked_and_stored(qapp, tmp_path):
+    install = make_installation(tmp_path / "FS25")
+    settings = AppSettings()
+    dialog = SettingsDialog(settings)
+    assert dialog.install_status_label.text() == SettingsDialog.EMPTY_TEXT
+
+    dialog.install_folder_input.setText(str(tmp_path))
+    assert dialog.install_status_label.text() == SettingsDialog.INSTALL_INVALID_TEXT
+
+    dialog.install_folder_input.setText(str(install))
+    assert dialog.install_status_label.text() == SettingsDialog.INSTALL_VALID_TEXT
+
+    dialog.accept()
+    assert AppSettings().install_folder.path == install
+
+
+def test_detect_install_button_fills_in_the_folder(qapp, tmp_path, monkeypatch):
+    install = make_installation(tmp_path / "FS25")
+    monkeypatch.setattr(
+        GameInstallation, "detect", classmethod(lambda cls: GameInstallation(install))
+    )
+    dialog = SettingsDialog(AppSettings())
+
+    dialog._detect_install()
+
+    assert dialog.install_folder_input.text() == str(install)

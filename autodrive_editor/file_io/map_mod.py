@@ -102,6 +102,9 @@ class MapMod:
     name: str
     maps: list[MapEntry] = field(default_factory=list)
 
+    # Base game maps are read from the game's data folder.
+    is_base_game: bool = False
+
 
 def read_map_mod(path: str | Path) -> MapMod | None:
     """The maps of a mod, or None if the mod contains no map."""
@@ -114,7 +117,7 @@ def read_map_mod(path: str | Path) -> MapMod | None:
         maps = [
             entry
             for element in mod_desc.iter("map")
-            if (entry := _read_map_entry(archive, element)) is not None
+            if (entry := _read_mod_desc_map(archive, element)) is not None
         ]
 
         if not maps:
@@ -123,17 +126,34 @@ def read_map_mod(path: str | Path) -> MapMod | None:
         return MapMod(path=Path(path), name=archive.name, maps=maps)
 
 
-def _read_map_entry(archive: ModArchive, element) -> MapEntry | None:
-    config_file = archive.resolve(element.get("configFilename", ""))
+def _read_mod_desc_map(archive: ModArchive, element) -> MapEntry | None:
+    """A <map> entry of modDesc.xml."""
 
-    if config_file is None:
-        return None
+    title_element = element.find("title")
 
     titles = {
         child.tag: (child.text or "").strip()
-        for child in (element.find("title") if element.find("title") is not None else [])
+        for child in (title_element if title_element is not None else [])
         if (child.text or "").strip()
     }
+
+    return read_map_entry(
+        archive,
+        map_id=element.get("id", ""),
+        titles=titles,
+        config_filename=element.get("configFilename", ""),
+    )
+
+
+def read_map_entry(
+    archive: ModArchive, map_id: str, titles: dict[str, str], config_filename: str
+) -> MapEntry | None:
+    """A map from its config file, or None if the config is missing."""
+
+    config_file = archive.resolve(config_filename)
+
+    if config_file is None:
+        return None
 
     config = ET.fromstring(archive.read(config_file))
 
@@ -141,7 +161,7 @@ def _read_map_entry(archive: ModArchive, element) -> MapEntry | None:
     i3d_file = archive.resolve((config.findtext("filename") or "").strip())
 
     return MapEntry(
-        map_id=element.get("id", ""),
+        map_id=map_id,
         titles=titles,
         config_file=config_file,
         width=int(width) if width.isdigit() else 0,
@@ -172,6 +192,10 @@ def _find_heightmap_file(archive: ModArchive, i3d_file: str) -> str | None:
                 filename = element.get("filename", "")
 
                 if filename.lower().endswith("dem.png"):
+                    # "$data/..." paths point into the game's data folder.
+                    if filename.startswith("$"):
+                        return archive.resolve(filename)
+
                     relative = posixpath.join(posixpath.dirname(i3d_file), filename)
                     return archive.resolve(posixpath.normpath(relative))
 

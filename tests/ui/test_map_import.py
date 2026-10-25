@@ -1,6 +1,7 @@
 """Importing maps from mods via the Karte menu."""
 
 import pytest
+from base_game_helpers import make_installation
 from game_folder_helpers import make_game_folder
 from map_mod_helpers import make_single_map_mod
 from PySide6.QtCore import Qt
@@ -86,3 +87,23 @@ def test_map_menu_offers_scan_and_import(window):
     texts = [action.text() for action in map_menu.actions()]
 
     assert texts[:2] == ["Karten scannen…", "Karte aus Mod importieren…"]
+
+
+def test_scan_lists_base_game_maps_first(map_window, tmp_path, monkeypatch):
+    map_window.mods.mkdir()
+    make_single_map_mod(map_window.mods, name="FS25_A", title="Karte A")
+    map_window.settings.set_install_folder(make_installation(tmp_path / "FS25", folders=("mapUS",)))
+    seen = []
+    monkeypatch.setattr(
+        map_window,
+        "_choose_maps_to_import",
+        lambda result: (
+            seen.extend(result.map_mods)
+            or [(m, e) for m in result.map_mods if m.is_base_game for e in m.maps]
+        ),
+    )
+
+    map_window.scan_map_mods()
+
+    assert [m.name for m in seen] == ["FS25 Grundspiel", "FS25_A"]
+    assert [m.title for m in map_window.map_cache.maps()] == ["Riverbend Springs"]

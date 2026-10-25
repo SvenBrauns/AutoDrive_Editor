@@ -17,6 +17,7 @@ from autodrive_editor.editing.operations.delete_nodes import DeleteNodesOperatio
 from autodrive_editor.editing.operations.move_nodes import MoveNodesOperation
 from autodrive_editor.editing.operations.node_types import NodeTypeOperation
 from autodrive_editor.editing.operations.rotate_selection import RotateSelectionOperation
+from autodrive_editor.file_io.base_game_maps import read_base_game_maps
 from autodrive_editor.file_io.map_mod import read_map_mod
 from autodrive_editor.file_io.project_file import ProjectFileStore
 from autodrive_editor.file_io.routes_index import read_routes_index
@@ -93,6 +94,7 @@ class MainWindow(QMainWindow):
         # Detects the FS25 folder on first start and keeps it afterwards.
         self.settings = AppSettings()
         self.settings.ensure_game_folder()
+        self.settings.ensure_install_folder()
 
         # Map images and heightmaps imported from map mods.
         self.map_cache = MapCache()
@@ -195,6 +197,11 @@ class MainWindow(QMainWindow):
 
         result = scan_for_map_mods(game_folder.mods_directory)
 
+        base_maps = self._read_base_game_maps()
+
+        if base_maps is not None:
+            result.map_mods.insert(0, base_maps)
+
         if not result.map_mods:
             self._inform(
                 f"Im Mods-Ordner wurden keine Kartenmods gefunden:\n{game_folder.mods_directory}"
@@ -205,6 +212,19 @@ class MainWindow(QMainWindow):
 
         if chosen:
             self._import_maps(chosen)
+
+    def _read_base_game_maps(self):
+        """The base game maps, if the FS25 install folder is known."""
+
+        installation = self.settings.install_folder
+
+        if installation is None or not installation.is_valid:
+            return None
+
+        try:
+            return read_base_game_maps(installation.data_directory)
+        except Exception:
+            return None
 
     def _choose_maps_to_import(self, scan_result):
         dialog = MapImportDialog(
@@ -232,7 +252,7 @@ class MainWindow(QMainWindow):
             QApplication.processEvents()
 
             try:
-                self.map_cache.import_map(map_mod.path, entry)
+                self.map_cache.import_map(map_mod, entry)
                 imported.append(entry.title)
             except Exception as ex:
                 failed.append(f"{entry.title}: {ex}")
