@@ -33,7 +33,9 @@ from ui.view_rotation_controller import ViewRotationController
 from ui.debug_dock import DebugDock
 from ui.debug_dock_coordinator import DebugDockCoordinator
 from ui.grid_coordinator import GridCoordinator
+from editing.edit_command import DataChange
 from editing.edit_coordinator import EditCoordinator
+from editing.node_drag_coordinator import NodeDragCoordinator
 from selection.node_selection_manager import (
     NodeSelectionManager
 )
@@ -289,15 +291,9 @@ class MainWindow(QMainWindow):
             interaction_mode
         )
 
-        if interaction_mode == InteractionMode.NAVIGATE:
-            self._set_status(
-                "Modus: Navigation"
-            )
-
-        elif interaction_mode == InteractionMode.SELECT:
-            self._set_status(
-                "Modus: Auswahl"
-            )
+        self._set_status(
+            f"Modus: {interaction_mode.display_name}"
+        )
 
     def set_view_rotation(
         self,
@@ -463,6 +459,15 @@ class MainWindow(QMainWindow):
             parent=self
         )
 
+        self.node_drag_coordinator = NodeDragCoordinator(
+            view=self.view,
+            selection_coordinator=self.selection_coordinator,
+            selection_manager=self.node_selection_manager,
+            edit_coordinator=self.edit_coordinator,
+            autodrive_data_provider=self._get_autodrive_data,
+            parent=self
+        )
+
         self.project_coordinator = (
             ProjectCoordinator(
                 scene=self.scene,
@@ -613,6 +618,14 @@ class MainWindow(QMainWindow):
             self._handle_edit_clean_changed
         )
 
+        self.edit_coordinator.data_changed.connect(
+            self._handle_data_changed
+        )
+
+        self.node_drag_coordinator.status_changed.connect(
+            self._set_status
+        )
+
         self.view.rotation_step_changed.connect(
             self._handle_rotation_step_changed
         )
@@ -668,6 +681,17 @@ class MainWindow(QMainWindow):
         self.setWindowModified(
             False
         )
+
+    def _handle_data_changed(
+        self,
+        data_change: DataChange
+    ):
+        self.scene_renderer.update_node_positions(
+            data_change.changed_node_ids
+        )
+
+        # Node coordinates in the info panel may have changed.
+        self.selection_coordinator.refresh_info()
 
     def _handle_edit_clean_changed(
         self,

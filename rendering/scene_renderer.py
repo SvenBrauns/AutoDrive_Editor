@@ -1,5 +1,6 @@
 from PySide6.QtCore import (
     QRectF,
+    QTimer,
     Qt
 )
 from PySide6.QtGui import (
@@ -52,6 +53,7 @@ class SceneRenderer:
     
     SPATIAL_TILE_SIZE = 256.0
     VISIBILITY_PADDING = 128.0
+    OVERVIEW_REBUILD_DELAY_MS = 300
 
     def __init__(
         self,
@@ -119,12 +121,104 @@ class SceneRenderer:
             self._create_connection_pens()
         )
 
+        self.autodrive_data: AutoDriveData | None = None
+
+        # The overview paths take a noticeable time to rebuild on large
+        # networks. After edits they are only rebuilt once they are
+        # actually shown.
+        self.overview_connections_outdated = False
+
+        self._overview_rebuild_timer = QTimer()
+        self._overview_rebuild_timer.setSingleShot(
+            True
+        )
+        self._overview_rebuild_timer.setInterval(
+            self.OVERVIEW_REBUILD_DELAY_MS
+        )
+        self._overview_rebuild_timer.timeout.connect(
+            self._rebuild_outdated_overview_connections
+        )
+
+    def update_node_positions(
+        self,
+        node_ids
+    ):
+        """Moves the drawn nodes, markers, selection rings and
+        connections to the nodes' current positions."""
+
+        if self.autodrive_data is None:
+            return
+
+        nodes = [
+            self.autodrive_data.nodes[node_id]
+            for node_id in node_ids
+            if node_id in self.autodrive_data.nodes
+        ]
+
+        if not nodes:
+            return
+
+        self.node_spatial_index.update_nodes(
+            nodes
+        )
+
+        for manager in (
+            self.visible_node_manager,
+            self.visible_marker_manager,
+            self.visible_node_selection_manager
+        ):
+            if manager is not None:
+                manager.refresh_positions(
+                    nodes
+                )
+
+        # Adds or removes items for nodes that moved into or out of
+        # the visible area.
+        if self.current_visible_rect is not None:
+            self.update_visible_scene_rect(
+                self.current_visible_rect
+            )
+
+        self.connection_spatial_index.update_node_positions(
+            self.autodrive_data,
+            [node.node_id for node in nodes]
+        )
+
+        if self.connection_render_item is not None:
+            self.connection_render_item.update()
+
+        self.overview_connections_outdated = True
+
+        if self.detailed_connections_visible is False:
+            self._overview_rebuild_timer.start()
+
+    def _rebuild_outdated_overview_connections(self):
+        if (
+            not self.overview_connections_outdated
+            or self.autodrive_data is None
+        ):
+            return
+
+        self.rebuild_connections(
+            self.autodrive_data
+        )
+
+        if self.detailed_connections_visible is not None:
+            for connection_item in (
+                self.connection_items.values()
+            ):
+                connection_item.setVisible(
+                    not self.detailed_connections_visible
+                )
+
     def render(
         self,
         autodrive_data: AutoDriveData
     ):
         self.reset()
         self._create_layers()
+
+        self.autodrive_data = autodrive_data
 
         self.node_spatial_index.build(
             autodrive_data
@@ -215,6 +309,10 @@ class SceneRenderer:
         self.nodes_visible = None
         self.markers_visible = None
         self.detailed_connections_visible = None
+
+        self.autodrive_data = None
+        self.overview_connections_outdated = False
+        self._overview_rebuild_timer.stop()
 
     def update_visible_scene_rect(
         self,
@@ -342,6 +440,15 @@ class SceneRenderer:
             show_detailed_connections
             != self.detailed_connections_visible
         ):
+            if (
+                not show_detailed_connections
+                and self.overview_connections_outdated
+                and self.autodrive_data is not None
+            ):
+                self.rebuild_connections(
+                    self.autodrive_data
+                )
+
             for connection_item in (
                 self.connection_items.values()
             ):
@@ -494,6 +601,9 @@ class SceneRenderer:
                 self.connection_items[
                     connection_type
                 ] = connection_item
+
+        self.overview_connections_outdated = False
+        self._overview_rebuild_timer.stop()
 
     def _create_detailed_connection_renderer(
         self,

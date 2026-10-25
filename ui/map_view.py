@@ -125,6 +125,19 @@ class MapView(QGraphicsView):
 
     measurement_cancel_requested = Signal()
 
+    node_drag_press_requested = Signal(
+        QPoint,
+        object
+    )
+
+    node_drag_move_requested = Signal(
+        QPoint
+    )
+
+    node_drag_finish_requested = Signal()
+
+    node_drag_cancel_requested = Signal()
+
     def __init__(self):
         super().__init__()
 
@@ -134,6 +147,10 @@ class MapView(QGraphicsView):
 
         self._measurement_active = False
         self._measurement_point_drag_active = False
+
+        # Set by the node drag coordinator while handling a press on
+        # a draggable node. Left dragging then moves nodes, not the map.
+        self._node_drag_candidate = False
 
         self._pointer_state = (
             PointerDragState()
@@ -286,6 +303,12 @@ class MapView(QGraphicsView):
         ):
             self._selection_controller.cancel()
 
+        if (
+            interaction_mode
+            != InteractionMode.MOVE_NODES
+        ):
+            self._cancel_node_drag()
+
         self._interaction_mode = (
             interaction_mode
         )
@@ -311,6 +334,7 @@ class MapView(QGraphicsView):
         self._measurement_point_drag_active = False
 
         self._selection_controller.cancel()
+        self._cancel_node_drag()
 
         self._pointer_state.reset()
 
@@ -322,6 +346,14 @@ class MapView(QGraphicsView):
     ):
         self._measurement_point_drag_active = bool(
             active
+        )
+
+    def set_node_drag_candidate(
+        self,
+        candidate: bool
+    ):
+        self._node_drag_candidate = bool(
+            candidate
         )
 
     def get_visible_scene_rect(
@@ -430,6 +462,20 @@ class MapView(QGraphicsView):
                 mouse_position
             )
 
+        if (
+            pressed_button == Qt.LeftButton
+            and self._interaction_mode
+            == InteractionMode.MOVE_NODES
+        ):
+            self._node_drag_candidate = False
+
+            # The coordinator calls set_node_drag_candidate(True)
+            # while handling this if the press hit a draggable node.
+            self.node_drag_press_requested.emit(
+                mouse_position,
+                event.modifiers()
+            )
+
         if pressed_button == Qt.MiddleButton:
             self.viewport().setCursor(
                 Qt.SizeAllCursor
@@ -493,9 +539,15 @@ class MapView(QGraphicsView):
             event,
             Qt.LeftButton
         ):
-            self._handle_pan_drag(
-                mouse_position
-            )
+            if self._node_drag_candidate:
+                self._handle_node_drag(
+                    mouse_position
+                )
+
+            else:
+                self._handle_pan_drag(
+                    mouse_position
+                )
 
             event.accept()
             return
@@ -556,6 +608,14 @@ class MapView(QGraphicsView):
             else:
                 self._selection_controller.cancel()
 
+        if (
+            released_button == Qt.LeftButton
+            and self._node_drag_candidate
+        ):
+            self._node_drag_candidate = False
+
+            self.node_drag_finish_requested.emit()
+
         self._pointer_state.reset()
 
         self._restore_interaction_cursor(
@@ -584,6 +644,19 @@ class MapView(QGraphicsView):
             and event.key() == Qt.Key_Escape
         ):
             self.measurement_cancel_requested.emit()
+
+            event.accept()
+            return
+
+        if (
+            self._node_drag_candidate
+            and event.key() == Qt.Key_Escape
+        ):
+            self._cancel_node_drag()
+
+            self._pointer_state.reset()
+
+            self._restore_interaction_cursor()
 
             event.accept()
             return
@@ -619,6 +692,34 @@ class MapView(QGraphicsView):
 
     def _apply_interaction_mode(self):
         self._restore_interaction_cursor()
+
+    def _handle_node_drag(
+        self,
+        mouse_position: QPoint
+    ):
+        if not self._pointer_state.drag_active:
+            if not self._drag_threshold_reached(
+                mouse_position
+            ):
+                return
+
+            self._pointer_state.drag_active = True
+
+            self.viewport().setCursor(
+                Qt.SizeAllCursor
+            )
+
+        self.node_drag_move_requested.emit(
+            mouse_position
+        )
+
+    def _cancel_node_drag(self):
+        if not self._node_drag_candidate:
+            return
+
+        self._node_drag_candidate = False
+
+        self.node_drag_cancel_requested.emit()
 
     def _handle_measurement_press(
         self,
@@ -872,8 +973,11 @@ class MapView(QGraphicsView):
                 )
 
             elif (
-                self._measurement_active
-                and self._measurement_point_drag_active
+                self._node_drag_candidate
+                or (
+                    self._measurement_active
+                    and self._measurement_point_drag_active
+                )
             ):
                 self.viewport().setCursor(
                     Qt.SizeAllCursor
@@ -907,7 +1011,10 @@ class MapView(QGraphicsView):
             view_position
         ):
             self.viewport().setCursor(
-                Qt.ArrowCursor
+                Qt.SizeAllCursor
+                if self._interaction_mode
+                == InteractionMode.MOVE_NODES
+                else Qt.ArrowCursor
             )
 
         else:

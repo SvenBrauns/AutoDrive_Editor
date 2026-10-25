@@ -88,6 +88,23 @@ class VisibleNodeManager:
                 ]
             )
 
+    def refresh_positions(
+        self,
+        nodes
+    ):
+        for node_data in nodes:
+            node_item = self.visible_node_items.get(
+                node_data.node_id
+            )
+
+            if node_item is None:
+                continue
+
+            node_item.setPos(
+                node_data.x,
+                node_data.z
+            )
+
     def clear(self):
         for node_id in list(
             self.visible_node_items

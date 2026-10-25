@@ -231,18 +231,8 @@ class DebugDock(QDockWidget):
         self,
         interaction_mode: InteractionMode
     ):
-        mode_names = {
-            InteractionMode.NAVIGATE: "Navigation",
-            InteractionMode.SELECT: "Auswahl"
-        }
-
-        mode_name = mode_names.get(
-            interaction_mode,
-            str(interaction_mode)
-        )
-
         self.interaction_mode_value.setText(
-            mode_name
+            interaction_mode.display_name
         )
 
     def set_view_state(

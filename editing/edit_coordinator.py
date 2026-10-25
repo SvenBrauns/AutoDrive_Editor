@@ -33,6 +33,8 @@ class EditCoordinator(QObject):
             self
         )
 
+        self._history_locked = False
+
         self.undo_stack.cleanChanged.connect(
             self.clean_changed.emit
         )
@@ -43,6 +45,20 @@ class EditCoordinator(QObject):
 
         self.destroyed.connect(
             lambda: undo_stack.blockSignals(True)
+        )
+
+    @property
+    def history_locked(self) -> bool:
+        return self._history_locked
+
+    def set_history_locked(
+        self,
+        locked: bool
+    ):
+        """Blocks undo and redo, e.g. while a drag is in progress."""
+
+        self._history_locked = bool(
+            locked
         )
 
     @property
@@ -79,9 +95,15 @@ class EditCoordinator(QObject):
         )
 
     def undo(self):
+        if self._history_locked:
+            return
+
         self.undo_stack.undo()
 
     def redo(self):
+        if self._history_locked:
+            return
+
         self.undo_stack.redo()
 
     def clear(self):

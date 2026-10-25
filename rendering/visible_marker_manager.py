@@ -123,6 +123,45 @@ class VisibleMarkerManager:
             marker_scale
         )
 
+        self._place_marker_item(
+            marker_item,
+            node_data
+        )
+
+        marker_item.setParentItem(
+            self.marker_layer
+        )
+
+        self.visible_marker_items[
+            node_data.node_id
+        ] = marker_item
+
+    def refresh_positions(
+        self,
+        nodes
+    ):
+        for node_data in nodes:
+            marker_item = self.visible_marker_items.get(
+                node_data.node_id
+            )
+
+            if marker_item is None:
+                continue
+
+            self._place_marker_item(
+                marker_item,
+                node_data
+            )
+
+    def _place_marker_item(
+        self,
+        marker_item: MarkerItem,
+        node_data: NodeData
+    ):
+        marker_scale = (
+            self.display_style.marker_scale
+        )
+
         marker_bounds = (
             marker_item.boundingRect()
         )
@@ -154,14 +193,6 @@ class VisibleMarkerManager:
             marker_x,
             marker_z
         )
-
-        marker_item.setParentItem(
-            self.marker_layer
-        )
-
-        self.visible_marker_items[
-            node_data.node_id
-        ] = marker_item
 
     def _remove_marker_item(
         self,

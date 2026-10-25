@@ -13,27 +13,6 @@ from ui.interaction_mode import InteractionMode
 from ui.main_window import MainWindow
 
 
-@pytest.fixture
-def window(qapp):
-    main_window = MainWindow()
-    main_window.show()
-    qapp.processEvents()
-
-    yield main_window
-
-    main_window.close()
-    main_window.deleteLater()
-    qapp.processEvents()
-
-
-@pytest.fixture
-def loaded_window(window, write_xml, qapp):
-    path = write_xml(x="0;10;20", z="0;0;0", out="2;3;", incoming=";1;2")
-    window.project_coordinator.load_xml_file(path)
-    qapp.processEvents()
-    return window
-
-
 def test_window_starts(window):
     assert window.status.text() == MainWindow.NO_FILE_STATUS
 

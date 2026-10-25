@@ -113,6 +113,25 @@ class VisibleNodeSelectionManager:
                 ]
             )
 
+    def refresh_positions(
+        self,
+        nodes
+    ):
+        for node_data in nodes:
+            selection_item = (
+                self.visible_selection_items.get(
+                    node_data.node_id
+                )
+            )
+
+            if selection_item is None:
+                continue
+
+            selection_item.setPos(
+                node_data.x,
+                node_data.z
+            )
+
     def clear(self):
         for node_id in list(
             self.visible_selection_items

@@ -76,3 +76,26 @@ def write_xml(tmp_path):
         return path
 
     return _write
+
+
+@pytest.fixture
+def window(qapp):
+    from ui.main_window import MainWindow
+
+    main_window = MainWindow()
+    main_window.show()
+    qapp.processEvents()
+
+    yield main_window
+
+    main_window.close()
+    main_window.deleteLater()
+    qapp.processEvents()
+
+
+@pytest.fixture
+def loaded_window(window, write_xml, qapp):
+    path = write_xml(x="0;10;20", z="0;0;0", out="2;3;", incoming=";1;2")
+    window.project_coordinator.load_xml_file(path)
+    qapp.processEvents()
+    return window
