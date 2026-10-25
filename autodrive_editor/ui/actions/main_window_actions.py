@@ -170,6 +170,8 @@ class MainWindowActions:
         self._create_undo_actions()
         self._create_delete_selection_action()
 
+        self._create_clipboard_actions()
+
         self._create_map_scale_actions()
 
     def _create_map_scale_actions(self):
@@ -249,6 +251,27 @@ class MainWindowActions:
 
         self.delete_selection_action.triggered.connect(self.window.delete_selection)
 
+    def _create_clipboard_actions(self):
+        clipboard = self.window.clipboard_operation
+
+        definitions = (
+            ("copy_action", "Kopieren", QKeySequence.Copy, clipboard.copy),
+            ("cut_action", "Ausschneiden", QKeySequence.Cut, clipboard.cut),
+            ("paste_action", "Einfügen", QKeySequence.Paste, clipboard.paste),
+            (
+                "paste_at_original_action",
+                "An Originalposition einfügen",
+                QKeySequence("Ctrl+Shift+V"),
+                lambda: clipboard.paste(at_original_position=True),
+            ),
+        )
+
+        for name, text, shortcut, trigger in definitions:
+            action = QAction(text, self.window)
+            action.setShortcut(shortcut)
+            action.triggered.connect(trigger)
+            setattr(self, name, action)
+
     def _create_history_action(
         self, icon: str, base_text: str, shortcut, trigger, can_run_changed, text_changed
     ) -> QAction:
@@ -301,6 +324,16 @@ class MainWindowActions:
         edit_menu.addAction(self.undo_action)
 
         edit_menu.addAction(self.redo_action)
+
+        edit_menu.addSeparator()
+
+        edit_menu.addAction(self.copy_action)
+
+        edit_menu.addAction(self.cut_action)
+
+        edit_menu.addAction(self.paste_action)
+
+        edit_menu.addAction(self.paste_at_original_action)
 
         edit_menu.addSeparator()
 
