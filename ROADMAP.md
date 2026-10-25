@@ -30,15 +30,16 @@ Damit alle folgenden Funktionen mit echten Spieldaten getestet werden können.
 - [x] Savegame: `terrain.heightmap.png` neben der Config als Heightmap verwenden
 - [x] Kartengröße aus der Kartenkonfiguration im Mod übernehmen statt sie von Hand zu wählen
 - [x] Prüfen, ob die Grundspiel-Karten aus dem Installationsordner lesbar sind: ja, sie liegen entpackt unter `<Installationsordner>\data\maps\mapUS`, `mapEU` und `mapAS` (Kartenkonfiguration, `textures\ui\overview.dds`, i3d, `data\dem.png`; Pfade beginnen mit `$data/`)
-- [ ] Grundspiel-Karten importierbar machen; offen ist, welchen Kartennamen AutoDrive für sie verwendet (es gibt keine `modDesc.xml` mit Titel). Klären mit einem Savegame oder einer Route auf einer Grundspiel-Karte
+- [x] Grundspiel-Karten importierbar machen: Der Installationsordner wird über die Steam-Bibliotheken erkannt und ist in den Einstellungen änderbar; „Karten scannen“ bietet Riverbend Springs, Zielonka und Hutan Pantai an. Die Titel stehen fest im Editor (die Sprachdateien des Spiels sind gepackt); AutoDrive benennt die Karten wie Mod-Karten, z. B. `Riverbend_Springs`
 
 Kartenbilder werden nicht mit dem Editor ausgeliefert. Jeder Nutzer erzeugt sie aus seinen eigenen Mods; einmal importiert, werden sie ohne erneuten Zip-Import wiederverwendet.
 
 **Flags**
 
 - [x] unbekannte Flag-Werte unverändert im Datenmodell behalten, wie Regular-Nodes darstellen und von „Typ wechseln“ ausnehmen (bisher gilt jedes Flag ungleich `0` als Subprio)
+- [x] Flag `2` als Regular behandeln: „Typ wechseln“ macht daraus Subprio, die Node-Info zeigt „Regular Node (aus Karten-Scan)“
 
-Laut altem Editor stehen die Flags `2` und `4` für Nodes, die AutoDrive aus Karten-Splines erzeugt. In echten FS25-Daten kommen sie nicht vor: Alle sieben Routen im RoutesManager und die Savegame-Config enthalten nur `0` und `1`. Eine eigene Behandlung ist deshalb nicht nötig; unbekannte Werte werden lediglich erhalten.
+Flag `2` markiert Nodes, die AutoDrive beim Karten-Scan (Frage beim ersten Start auf einer Karte ohne Netz) aus den Verkehrswegen der Karte erzeugt; das zeigt ein neues Savegame. Flag `4` kam in echten FS25-Daten bisher nicht vor und wird nur erhalten.
 
 **Erkenntnisse aus einer echten FS25-Installation**
 
@@ -153,7 +154,7 @@ Gespeichert wird in das Format, aus dem geladen wurde. Es gibt drei Wege:
 
 - Genauigkeit wie im Original: Savegame-Configs speichern Koordinaten mit drei Nachkommastellen, Routendateien mit zwei.
 - Node-IDs sind die Positionen in den Listen; Lücken durch gelöschte Nodes müssen beim Speichern geschlossen und alle Verweise und Marker umgeschrieben werden.
-- Flags `2` und `4` je nach Ergebnis der Klärung in Phase 1 zurückschreiben.
+- Flags unverändert zurückschreiben (auch `2` und `4`), außer der Typ einer Node wurde geändert.
 
 ## 9. Veröffentlichung — sobald Funktionsgleichheit mit dem alten Editor erreicht ist
 

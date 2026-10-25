@@ -1,6 +1,7 @@
 import os
 import sys
 import traceback
+from pathlib import Path
 
 # Must be set before PySide6 creates an application, so no window opens.
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -29,6 +30,15 @@ def test_user_data(tmp_path_factory):
         os.environ.pop("AUTODRIVE_EDITOR_DATA_DIR", None)
     else:
         os.environ["AUTODRIVE_EDITOR_DATA_DIR"] = previous
+
+
+@pytest.fixture(autouse=True)
+def no_installed_game(monkeypatch):
+    """Tests never find the real FS25 install folder and its base maps."""
+    from autodrive_editor.game import game_installation
+
+    monkeypatch.setattr(game_installation, "STEAM_LIBRARY_FILE", Path("missing.vdf"))
+    monkeypatch.setattr(game_installation, "STANDALONE_PATHS", ())
 
 
 @pytest.fixture
