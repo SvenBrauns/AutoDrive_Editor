@@ -144,14 +144,15 @@ def test_move_marker_with_two_clicks(marker_window):
     assert marker_window.marker_operation.move_source_id is None
 
 
-def test_picked_up_marker_node_is_selected_and_target_afterwards(marker_window):
+def test_picked_up_marker_node_is_selected_until_the_move(marker_window):
+    marker_window.node_selection.replace({2}, 2)
     use(marker_window, InteractionMode.MOVE_MARKER)
 
     click(marker_window, at(marker_window, 0))
     assert marker_window.node_selection.selected_node_ids == {1}
 
     click(marker_window, at(marker_window, 20))
-    assert marker_window.node_selection.selected_node_ids == {3}
+    assert marker_window.node_selection.selected_node_ids == {2}
 
 
 @pytest.mark.parametrize("finish", ["escape", "click_source", "other_tool"])

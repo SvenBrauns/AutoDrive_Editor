@@ -55,7 +55,7 @@ class MarkerOperation(QObject):
         # Node whose marker the move tool has picked up.
         self.move_source_id: int | None = None
 
-        # Selection before a marker was picked up; restored on cancel.
+        # Selection before a marker was picked up; restored afterwards.
         self._selection_before_move: tuple[set[int], int | None] | None = None
 
     def add_at(self, view_position: QPoint) -> bool:
@@ -176,10 +176,7 @@ class MarkerOperation(QObject):
         marker = autodrive_data.get_marker(self.move_source_id)
         self.edit_history.push(MoveMarkerCommand(autodrive_data, self.move_source_id, node_id))
         self.move_source_id = None
-        self._selection_before_move = None
-
-        # The target stays selected, so it is visible where the marker went.
-        self.node_selection.replace({node_id}, node_id)
+        self._restore_selection()
         self.status_changed.emit(f"Marker „{marker.name}“ auf Node {node_id} verschoben")
 
         return True
