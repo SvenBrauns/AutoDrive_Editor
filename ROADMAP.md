@@ -72,7 +72,7 @@ Für das spätere Speichern muss diese Phase schon beachten: Markergruppen sind 
 
 - [x] Kopieren, Ausschneiden, Einfügen (`Strg+C/X/V`, an der Maus zentriert; `Strg+Umschalt+V` an der ursprünglichen Position). Kopiert werden Nodes, ihre Connections untereinander und ihre Marker; doppelte Markernamen in einer Gruppe bekommen eine Nummer
 - [x] Werkzeug „Richtung umkehren“ (`U`): Connection anklicken; liegt sie in der Auswahl, werden alle Connections der Auswahl umgekehrt. Dual-Connections bleiben unverändert
-- [ ] Ausrichten: horizontal, vertikal und in der Höhe
+- [x] Ausrichten: horizontal, vertikal und in der Höhe (Werkzeuggruppe `Ausrichten`: Nodes auswählen, Referenz-Node anklicken; dazu „Höhe aus Heightmap“)
 - [x] Position einer Node als Zahlen eingeben (Werkzeug „Position eingeben“, `P`: Node anklicken, X/Y/Z im Dialog)
 - [x] Einrasten am Raster beim Erstellen und Verschieben (`G` oder Raster-Menü; beachtet Abstand und Drehung des Rasters, beim Verschieben rastet die gegriffene Node ein)
 - [x] Freihand-Auswahl (Lasso): im Auswahl-Werkzeug Umschalt+Rechtsziehen; Strg ergänzt die Auswahl wie beim Rechteck
