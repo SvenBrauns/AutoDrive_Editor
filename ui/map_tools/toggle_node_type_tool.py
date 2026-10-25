@@ -41,6 +41,12 @@ class ToggleNodeTypeTool(MapTool):
 
         return True
 
+    def status_hint(self) -> str | None:
+        return (
+            "Node anklicken, um zwischen Regular und Subprio "
+            "zu wechseln"
+        )
+
     def cursor_at(
         self,
         view_position: QPoint

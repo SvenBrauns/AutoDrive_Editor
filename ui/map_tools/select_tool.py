@@ -122,6 +122,12 @@ class SelectTool(MapTool):
 
         return True
 
+    def status_hint(self) -> str | None:
+        return (
+            "Klick wählt eine Node, Strg+Klick schaltet um, "
+            "Rechtsziehen wählt einen Bereich"
+        )
+
     def cursor_at(
         self,
         view_position: QPoint

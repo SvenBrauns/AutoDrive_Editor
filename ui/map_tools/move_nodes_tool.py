@@ -100,6 +100,12 @@ class MoveNodesTool(MapTool):
 
         return True
 
+    def status_hint(self) -> str | None:
+        return (
+            "Node ziehen; eine ausgewählte Node bewegt die ganze "
+            "Auswahl. Esc bricht ab"
+        )
+
     def cursor_at(
         self,
         view_position: QPoint

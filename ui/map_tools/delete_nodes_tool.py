@@ -40,6 +40,12 @@ class DeleteNodesTool(MapTool):
 
         return True
 
+    def status_hint(self) -> str | None:
+        return (
+            "Node anklicken zum Löschen; eine ausgewählte Node "
+            "löscht die ganze Auswahl"
+        )
+
     def cursor_at(
         self,
         view_position: QPoint

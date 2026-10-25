@@ -4,6 +4,7 @@ from PySide6.QtCore import (
 )
 from PySide6.QtGui import QMouseEvent
 
+from autodrive.models import REGULAR_FLAG
 from editing.node_create_coordinator import (
     NodeCreateCoordinator
 )
@@ -43,6 +44,18 @@ class CreateNodeTool(MapTool):
             )
 
         return True
+
+    def status_hint(self) -> str | None:
+        node_type = (
+            "Regular"
+            if self.flag == REGULAR_FLAG
+            else "Subprio"
+        )
+
+        return (
+            f"Auf freie Fläche klicken, um eine {node_type}-Node "
+            f"zu erstellen"
+        )
 
     def cursor_at(
         self,

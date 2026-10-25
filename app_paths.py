@@ -16,3 +16,7 @@ ICON_DIRECTORY = (
 MARKER_ICON_PATH = (
     ICON_DIRECTORY / "marker.svg"
 )
+
+TOOL_ICON_DIRECTORY = (
+    ICON_DIRECTORY / "tools"
+)

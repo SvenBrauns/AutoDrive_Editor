@@ -108,6 +108,12 @@ class ConnectNodesTool(MapTool):
 
         return cancelled
 
+    def status_hint(self) -> str | None:
+        return (
+            "Start-Node, dann weitere Nodes anklicken. Gleicher Typ "
+            "entfernt eine Connection. Esc beendet"
+        )
+
     def cursor_at(
         self,
         view_position: QPoint

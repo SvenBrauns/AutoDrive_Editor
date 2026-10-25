@@ -82,7 +82,10 @@ class RotateSelectionTool(MapTool):
         if self._ring is None:
             return "Zum Rotieren mindestens zwei Nodes auswählen"
 
-        return None
+        return (
+            "Ring ziehen zum Drehen, Umschalt rastet in "
+            "15°-Schritten ein. Esc bricht ab"
+        )
 
     def deactivate(self):
         super().deactivate()

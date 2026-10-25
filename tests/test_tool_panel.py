@@ -1,4 +1,6 @@
 from PySide6.QtCore import QEvent, QPoint, Qt
+from PySide6.QtWidgets import QToolButton
+import pytest
 
 from measurement.measurement_mode import MeasurementMode
 from ui.interaction_mode import InteractionMode
@@ -27,7 +29,7 @@ def test_clicking_move_tool_activates_it(window):
 
     assert window.view.interaction_mode == InteractionMode.MOVE_NODES
     assert checked_tools(window) == {InteractionMode.MOVE_NODES}
-    assert window.status.text() == "Modus: Nodes verschieben"
+    assert window.status.text().startswith("Modus: Nodes verschieben – ")
 
 
 def test_exactly_one_tool_is_checked(window):
@@ -71,17 +73,158 @@ def test_debug_dock_shows_move_tool_name(window, qapp):
     assert window.debug_dock.interaction_mode_value.text() == "Nodes verschieben"
 
 
-def test_node_group_lists_all_node_tools_in_order(window):
-    texts = [action.text() for action in window.actions.tool_panel.tool_buttons]
-
-    assert texts == [
-        "Erstellen (Regular)", "Erstellen (Subprio)", "Typ wechseln",
-        "Verschieben", "Rotieren", "Löschen",
-        "Verbinden (Regular)", "Verbinden (Dual)", "Verbinden (Reverse)",
-    ]
-
-
 def test_tool_buttons_follow_mode_changes_from_code(window):
     window.set_interaction_mode(InteractionMode.CONNECT_DUAL)
 
     assert checked_tools(window) == {InteractionMode.CONNECT_DUAL}
+
+
+# --- layout: icons, two columns, groups, labels, shortcuts --------------
+
+from PySide6.QtCore import QSize
+from PySide6.QtTest import QTest
+
+
+def nodes_group(window):
+    return window.actions.tool_panel.groups["Nodes"]
+
+
+def grid_text(window, row, column):
+    item = nodes_group(window).grid.itemAtPosition(row, column)
+    return None if item is None else item.widget().defaultAction().text()
+
+
+def test_node_tools_are_paired_in_two_columns(window):
+    layout = [
+        [grid_text(window, row, column) for column in (0, 1)]
+        for row in range(5)
+    ]
+
+    assert layout == [
+        ["Verschieben", "Verbinden (Regular)"],
+        ["Erstellen (Regular)", "Verbinden (Dual)"],
+        ["Erstellen (Subprio)", "Verbinden (Reverse)"],
+        ["Typ wechseln", None],
+        ["Rotieren", "Löschen"],
+    ]
+
+
+def test_tool_buttons_show_icons_only_by_default(window):
+    for action, button in window.actions.tool_panel.tool_buttons.items():
+        assert not action.icon().isNull(), action.text()
+        assert button.toolButtonStyle() == Qt.ToolButtonIconOnly
+
+
+def test_tooltips_name_tool_and_shortcut(window):
+    tooltip = window.actions.tool_actions[InteractionMode.MOVE_NODES].toolTip()
+
+    assert "<b>Verschieben</b> (V)" in tooltip
+    assert "verschieben" in tooltip
+
+
+def test_labels_can_be_shown(window):
+    window.actions.tool_labels_action.trigger()
+
+    for button in window.actions.tool_panel.tool_buttons.values():
+        assert button.toolButtonStyle() == Qt.ToolButtonTextBesideIcon
+
+    window.actions.tool_labels_action.trigger()
+    assert all(
+        button.toolButtonStyle() == Qt.ToolButtonIconOnly
+        for button in window.actions.tool_panel.tool_buttons.values()
+    )
+
+
+def test_group_can_be_collapsed(window, qapp):
+    group = nodes_group(window)
+    button = window.actions.tool_panel.tool_buttons[
+        window.actions.tool_actions[InteractionMode.MOVE_NODES]
+    ]
+
+    group.header_button.click()
+    qapp.processEvents()
+    assert not group.is_expanded
+    assert not button.isVisible()
+
+    group.header_button.click()
+    qapp.processEvents()
+    assert button.isVisible()
+
+
+@pytest.mark.parametrize(("keys", "mode"), [
+    ("V", InteractionMode.MOVE_NODES),
+    ("R", InteractionMode.ROTATE_SELECTION),
+    ("L", InteractionMode.DELETE_NODES),
+    ("E", InteractionMode.CREATE_NODES),
+    ("T", InteractionMode.TOGGLE_NODE_TYPE),
+    ("1", InteractionMode.CONNECT_REGULAR),
+    ("2", InteractionMode.CONNECT_DUAL),
+    ("3", InteractionMode.CONNECT_REVERSE),
+    ("A", InteractionMode.SELECT),
+])
+def test_keyboard_shortcuts_pick_tools(window, qapp, keys, mode):
+    window.activateWindow()
+    window.view.setFocus()
+    qapp.processEvents()
+
+    QTest.keyClick(window.view, keys)
+    qapp.processEvents()
+
+    assert window.view.interaction_mode == mode
+    assert checked_tools(window) == {mode}
+
+
+def test_shift_e_picks_subprio_create_tool(window, qapp):
+    window.activateWindow()
+    window.view.setFocus()
+
+    QTest.keyClick(window.view, Qt.Key_E, Qt.ShiftModifier)
+    qapp.processEvents()
+
+    assert window.view.interaction_mode == InteractionMode.CREATE_SUBPRIO_NODES
+
+
+def test_shortcuts_work_with_hidden_panel(window, qapp):
+    window.actions.tool_panel.hide()
+    window.activateWindow()
+    window.view.setFocus()
+
+    QTest.keyClick(window.view, "V")
+    qapp.processEvents()
+
+    assert window.view.interaction_mode == InteractionMode.MOVE_NODES
+
+
+def test_undo_and_redo_are_icon_buttons_in_top_toolbar(window):
+    buttons = [
+        widget for widget in window.actions.quick_access_toolbar.findChildren(QToolButton)
+        if widget.defaultAction() in (window.actions.undo_action, window.actions.redo_action)
+    ]
+
+    assert len(buttons) == 2
+    assert all(button.toolButtonStyle() == Qt.ToolButtonIconOnly for button in buttons)
+    assert all(not button.icon().isNull() for button in buttons)
+
+
+@pytest.mark.parametrize("mode", [m for m in InteractionMode if m != InteractionMode.NAVIGATE])
+def test_every_tool_explains_itself_in_the_status_bar(window, mode):
+    window.set_interaction_mode(mode)
+
+    text = window.status.text()
+    assert text.startswith(f"Modus: {mode.display_name} – ")
+    assert len(text) > len(f"Modus: {mode.display_name} – ") + 10
+
+
+def test_panel_widens_for_labels_and_shrinks_again(window, qapp):
+    panel = window.actions.tool_panel
+    icons_only = panel.width()
+
+    window.actions.tool_labels_action.trigger()
+    qapp.processEvents()
+    with_labels = panel.width()
+
+    window.actions.tool_labels_action.trigger()
+    qapp.processEvents()
+
+    assert with_labels > icons_only + 50
+    assert panel.width() == icons_only
