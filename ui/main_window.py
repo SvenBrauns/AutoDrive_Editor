@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QFileDialog,
@@ -16,10 +14,12 @@ from autodrive.models import (
     AutoDriveData,
     NodeData
 )
-from autodrive.xml_parser import AutoDriveXmlParser
 from map.background_manager import BackgroundManager
 from map.heightmap_manager import HeightmapManager
 from project.project_manager import ProjectManager
+from project.project_coordinator import (
+    ProjectCoordinator
+)
 from rendering.scene_renderer import SceneRenderer
 from rendering.display_style import DisplayStyle
 from ui.display_options_dialog import (
@@ -60,12 +60,6 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.autodrive_data: AutoDriveData | None = None
-
-        self.current_xml_path: str | None = None
-        self.current_config_path: str | None = None
-        self.current_heightmap_path: str | None = None
-
         self.local_projects_directory = (
             LOCAL_PROJECTS_DIRECTORY
         )
@@ -99,7 +93,7 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            self.background_manager.load(
+            self.project_coordinator.load_background_file(
                 filename
             )
 
@@ -107,16 +101,6 @@ class MainWindow(QMainWindow):
             self._set_status(
                 f"DDS konnte nicht geladen werden: {ex}"
             )
-            return
-
-        self._update_scene_rect()
-
-        if self.autodrive_data is None:
-            self._fit_scene_in_view()
-
-        self._set_status(
-            "DDS-Hintergrund geladen"
-        )
 
     def select_heightmap(self):
         filename, _ = QFileDialog.getOpenFileName(
@@ -130,66 +114,22 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            heightmap_data = (
-                self.heightmap_manager.load(
-                    filename
-                )
+            self.project_coordinator.load_heightmap_file(
+                filename
             )
 
         except Exception as ex:
             self._set_status(
                 f"Heightmap konnte nicht geladen werden: {ex}"
             )
-            return
-
-        self._set_heightmap_path(
-            heightmap_data.file_path
-        )
-
-        self._set_status(
-            f"Heightmap geladen: "
-            f"{heightmap_data.width} × "
-            f"{heightmap_data.height}, "
-            f"{heightmap_data.format_description}"
-        )
-
-        self.selection_coordinator.refresh_info()
 
     def remove_heightmap(self):
-        self.heightmap_manager.clear()
-
-        self._set_heightmap_path(
-            None
-        )
-
-        self._set_status(
-            "Heightmap entfernt"
-        )
-
-        self.selection_coordinator.refresh_info()
+        self.project_coordinator.remove_heightmap()
 
     def set_map_scale(
         self,
         map_scale: int
     ):
-        try:
-            self.background_manager.set_map_scale(
-                map_scale
-            )
-
-        except Exception as ex:
-            self._set_status(
-                "Kartengröße konnte nicht geändert werden: "
-                f"{ex}"
-            )
-            return
-
-        self.actions.set_current_map_scale(
-            map_scale
-        )
-
-        self._update_scene_rect()
-
         action = self.actions.map_scale_actions.get(
             map_scale
         )
@@ -200,11 +140,17 @@ class MainWindow(QMainWindow):
             else str(map_scale)
         )
 
-        self._set_status(
-            f"Kartengröße: {map_scale_label}"
-        )
+        try:
+            self.project_coordinator.set_map_scale(
+                map_scale=map_scale,
+                map_scale_label=map_scale_label
+            )
 
-        self.selection_coordinator.refresh_info()
+        except Exception as ex:
+            self._set_status(
+                "Kartengröße konnte nicht geändert werden: "
+                f"{ex}"
+            )
 
     def load_xml(self):
         filename, _ = QFileDialog.getOpenFileName(
@@ -218,7 +164,7 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            self.load_xml_file(
+            self.project_coordinator.load_xml_file(
                 filename
             )
 
@@ -231,54 +177,23 @@ class MainWindow(QMainWindow):
         self,
         filename
     ):
-        xml_path = Path(
+        self.project_coordinator.load_xml_file(
             filename
-        ).resolve()
-
-        autodrive_data = AutoDriveXmlParser.load(
-            xml_path
         )
-
-        self._clear_scene_content()
-
-        self.current_xml_path = str(
-            xml_path
-        )
-
-        self.autodrive_data = autodrive_data
-
-        self.selection_coordinator.clear()
-
-        self.background_manager.restore()
-
-        self.scene_renderer.render(
-            self.autodrive_data
-        )
-
-        self.selection_coordinator.synchronize()
-
-        self._update_scene_rect()
-        self._fit_scene_in_view()
-
-        self.measurement_coordinator.restore_scene_items()
-
-        self._set_status(
-            f"{len(self.autodrive_data)} Waypoints geladen"
-        )
-
-        self._refresh_debug_dock()
 
     def save_project(self):
-        if not self.current_xml_path:
+        if not self.project_coordinator.current_xml_path:
             self._set_status(
                 "Bitte zuerst eine AutoDrive-XML laden"
             )
             return
 
         default_path = (
-            self.current_config_path
-            if self.current_config_path
-            else str(self.local_projects_directory)
+            self.project_coordinator.current_config_path
+            if self.project_coordinator.current_config_path
+            else str(
+                self.local_projects_directory
+            )
         )
 
         config_path, _ = QFileDialog.getSaveFileName(
@@ -297,41 +212,23 @@ class MainWindow(QMainWindow):
             config_path += ".json"
 
         try:
-            saved_path = (
-                self.project_manager.save_project(
-                    config_path=config_path,
-                    xml_path=self.current_xml_path,
-                    background_path=(
-                        self.background_manager.file_path
-                    ),
-                    map_scale=(
-                        self.background_manager.map_scale
-                    ),
-                    heightmap_path=(
-                        self.current_heightmap_path
-                    )
-                )
+            self.project_coordinator.save_project_file(
+                config_path
             )
 
         except Exception as ex:
             self._set_status(
-                f"Projekt konnte nicht gespeichert werden: {ex}"
+                f"Projekt konnte nicht gespeichert werden: "
+                f"{ex}"
             )
-            return
-
-        self.current_config_path = str(
-            saved_path
-        )
-
-        self._set_status(
-            f"Projekt gespeichert: {saved_path.name}"
-        )
 
     def load_project(self):
         config_path, _ = QFileDialog.getOpenFileName(
             self,
             "Projektkonfiguration öffnen",
-            str(self.local_projects_directory),
+            str(
+                self.local_projects_directory
+            ),
             "JSON-Konfiguration (*.json)"
         )
 
@@ -339,38 +236,15 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            project_data = (
-                self.project_manager.load_project(
-                    config_path
-                )
-            )
-
-            self._apply_project_data(
-                project_data
+            self.project_coordinator.load_project_file(
+                config_path
             )
 
         except Exception as ex:
             self._set_status(
-                f"Projekt konnte nicht geladen werden: {ex}"
+                f"Projekt konnte nicht geladen werden: "
+                f"{ex}"
             )
-            return
-
-        self.current_config_path = config_path
-
-        project_name = Path(
-            config_path
-        ).name
-
-        status_text = (
-            f"Projekt geladen: {project_name}"
-        )
-
-        if self.heightmap_manager.has_heightmap():
-            status_text += " mit Heightmap"
-
-        self._set_status(
-            status_text
-        )
 
     def show_node_info(
         self,
@@ -460,58 +334,11 @@ class MainWindow(QMainWindow):
                 "Der Darstellungsstil ist ungültig."
             )
 
-        viewport_center = (
-            self.view.viewport()
-            .rect()
-            .center()
-        )
-
-        scene_center = self.view.mapToScene(
-            viewport_center
-        )
-
         self.scene_renderer.set_display_style(
             display_style
         )
 
-        if self.autodrive_data is None:
-            self._set_status(
-                "Darstellungsoptionen übernommen"
-            )
-
-            self._refresh_debug_dock()
-            return
-
-        self._clear_scene_content()
-
-        self.background_manager.restore()
-
-        self.scene_renderer.render(
-            self.autodrive_data
-        )
-
-        self.selection_coordinator.synchronize()
-        self.measurement_coordinator.restore_scene_items()
-
-        self._update_scene_rect()
-
-        self.view.centerOn(
-            scene_center
-        )
-
-        self.scene_renderer.update_visibility_for_zoom(
-            self.view.zoom_level
-        )
-
-        self.scene_renderer.update_visible_scene_rect(
-            self.view.get_visible_scene_rect()
-        )
-
-        self._set_status(
-            "Darstellungsoptionen übernommen"
-        )
-
-        self._refresh_debug_dock()
+        self.project_coordinator.rebuild_scene_after_style_change()
 
     def _configure_window(self):
         self.setWindowTitle(
@@ -596,10 +423,39 @@ class MainWindow(QMainWindow):
             )
         )
 
+        self.project_coordinator = (
+            ProjectCoordinator(
+                scene=self.scene,
+                view=self.view,
+                project_manager=(
+                    self.project_manager
+                ),
+                background_manager=(
+                    self.background_manager
+                ),
+                heightmap_manager=(
+                    self.heightmap_manager
+                ),
+                scene_renderer=(
+                    self.scene_renderer
+                ),
+                selection_coordinator=(
+                    self.selection_coordinator
+                ),
+                measurement_coordinator=(
+                    self.measurement_coordinator
+                ),
+                parent=self
+            )
+        )
+
     def _get_autodrive_data(
         self
     ) -> AutoDriveData | None:
-        return self.autodrive_data
+        return (
+            self.project_coordinator
+            .autodrive_data
+        )
 
     def _create_status_widgets(self):
         self.status = QLabel(
@@ -697,6 +553,22 @@ class MainWindow(QMainWindow):
             self._refresh_debug_dock
         )
 
+        self.project_coordinator.status_changed.connect(
+            self._set_status
+        )
+
+        self.project_coordinator.debug_refresh_requested.connect(
+            self._refresh_debug_dock
+        )
+
+        self.project_coordinator.map_scale_changed.connect(
+            self._handle_map_scale_changed
+        )
+
+        self.project_coordinator.heightmap_path_changed.connect(
+            self._handle_heightmap_path_changed
+        )
+
         self.view.zoom_changed.connect(
             self._refresh_debug_dock
         )
@@ -776,111 +648,20 @@ class MainWindow(QMainWindow):
         if visible:
             self._refresh_debug_dock()
 
-    def _apply_project_data(
-        self,
-        project_data: dict
-    ):
-        map_scale = project_data[
-            "map_scale"
-        ]
-
-        if map_scale not in self.actions.map_scale_actions:
-            raise ValueError(
-                f"Unbekannte Kartengröße: {map_scale}"
-            )
-
-        self.selection_coordinator.clear()
-
-        self.set_map_scale(
-            map_scale
-        )
-
-        background_path = project_data[
-            "background_dds"
-        ]
-
-        if background_path:
-            self.background_manager.load(
-                background_path
-            )
-
-        else:
-            self.background_manager.remove_from_scene(
-                preserve_file_path=False
-            )
-
-        heightmap_path = project_data[
-            "heightmap"
-        ]
-
-        if heightmap_path:
-            heightmap_data = (
-                self.heightmap_manager.load(
-                    heightmap_path
-                )
-            )
-
-            self._set_heightmap_path(
-                heightmap_data.file_path
-            )
-
-        else:
-            self.heightmap_manager.clear()
-
-            self._set_heightmap_path(
-                None
-            )
-
-        self.load_xml_file(
-            project_data["autodrive_xml"]
-        )
-
-    def _set_heightmap_path(
+    def _handle_heightmap_path_changed(
         self,
         file_path
     ):
-        self.current_heightmap_path = (
-            str(file_path)
-            if file_path is not None
-            else None
-        )
-
         self.actions.remove_heightmap_action.setEnabled(
             file_path is not None
         )
 
-    def _clear_scene_content(self):
-        self.measurement_coordinator.remove_scene_items()
-
-        self.background_manager.remove_from_scene(
-            preserve_file_path=True
-        )
-
-        self.scene_renderer.reset()
-        self.scene.clear()
-
-    def _update_scene_rect(self):
-        scene_rect = (
-            self.scene.itemsBoundingRect()
-        )
-
-        self.scene.setSceneRect(
-            scene_rect
-        )
-
-        self.scene_renderer.update_scene_rect(
-            scene_rect
-        )
-
-    def _fit_scene_in_view(self):
-        scene_rect = self.scene.sceneRect()
-
-        if scene_rect.isEmpty():
-            return
-
-        self.view.fitInView(
-            scene_rect,
-            Qt.KeepAspectRatio
+    def _handle_map_scale_changed(
+        self,
+        map_scale: int
+    ):
+        self.actions.set_current_map_scale(
+            map_scale
         )
 
     def _set_status(
