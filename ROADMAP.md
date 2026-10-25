@@ -75,7 +75,7 @@ Für das spätere Speichern muss diese Phase schon beachten: Markergruppen sind 
 - [ ] Ausrichten: horizontal, vertikal und in der Höhe
 - [x] Position einer Node als Zahlen eingeben (Werkzeug „Position eingeben“, `P`: Node anklicken, X/Y/Z im Dialog)
 - [x] Einrasten am Raster beim Erstellen und Verschieben (`G` oder Raster-Menü; beachtet Abstand und Drehung des Rasters, beim Verschieben rastet die gegriffene Node ein)
-- [ ] Freihand-Auswahl (Lasso)
+- [x] Freihand-Auswahl (Lasso): im Auswahl-Werkzeug Umschalt+Rechtsziehen; Strg ergänzt die Auswahl wie beim Rechteck
 
 Hinweis zum Ausrichten: Die Werkzeuge müssen auch bei gedrehter Kartenansicht funktionieren. „Horizontal“ und „vertikal“ beziehen sich dann auf die Bildschirmachsen der aktuellen Ansicht, nicht auf die Kartenachsen. Das macht sie aufwendiger als die übrigen Punkte dieser Phase.
 

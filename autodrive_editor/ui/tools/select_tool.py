@@ -8,7 +8,8 @@ from autodrive_editor.ui.tools.map_tool import MapTool
 
 class SelectTool(MapTool):
     """Left click selects a node, Ctrl + left click toggles it.
-    Right dragging selects all nodes in a box. Left dragging pans."""
+    Right dragging selects all nodes in a box, Shift + right dragging
+    in a freehand lasso. Left dragging pans."""
 
     # The right button draws the selection box.
     RIGHT_CLICK_CANCELS = False
@@ -38,7 +39,9 @@ class SelectTool(MapTool):
         if event.button() == Qt.RightButton:
             self._right_button_pressed = True
 
-            self._area_selection.begin(event.position().toPoint())
+            self._area_selection.begin(
+                event.position().toPoint(), lasso=bool(event.modifiers() & Qt.ShiftModifier)
+            )
 
             return True
 
@@ -79,7 +82,10 @@ class SelectTool(MapTool):
         return True
 
     def status_hint(self) -> str | None:
-        return "Klick wählt eine Node, Strg+Klick schaltet um, Rechtsziehen wählt einen Bereich"
+        return (
+            "Klick wählt eine Node, Strg+Klick schaltet um, Rechtsziehen wählt einen Bereich, "
+            "Umschalt+Rechtsziehen zeichnet ein Lasso"
+        )
 
     def cursor_at(self, view_position: QPoint) -> Qt.CursorShape:
         if self._area_selection.drag_active:
