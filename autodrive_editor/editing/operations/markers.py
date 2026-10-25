@@ -12,6 +12,7 @@ from autodrive_editor.editing.commands.markers import (
 )
 from autodrive_editor.editing.edit_history import EditHistory
 from autodrive_editor.model.autodrive_data import AutoDriveData, MarkerData
+from autodrive_editor.selection.node_selection import NodeSelection
 from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
 
 # Asks the user for a marker's name and group. Arguments: dialog title,
@@ -34,6 +35,7 @@ class MarkerOperation(QObject):
     def __init__(
         self,
         selection_coordinator: SelectionCoordinator,
+        node_selection: NodeSelection,
         edit_history: EditHistory,
         autodrive_data_provider: Callable[[], AutoDriveData | None],
         ask_marker: MarkerRequest,
@@ -42,6 +44,7 @@ class MarkerOperation(QObject):
         super().__init__(parent)
 
         self.selection_coordinator = selection_coordinator
+        self.node_selection = node_selection
         self.edit_history = edit_history
         self.autodrive_data_provider = autodrive_data_provider
         self.ask_marker = ask_marker
@@ -51,6 +54,9 @@ class MarkerOperation(QObject):
 
         # Node whose marker the move tool has picked up.
         self.move_source_id: int | None = None
+
+        # Selection before a marker was picked up; restored on cancel.
+        self._selection_before_move: tuple[set[int], int | None] | None = None
 
     def add_at(self, view_position: QPoint) -> bool:
         target = self._node_at(view_position)
@@ -170,6 +176,10 @@ class MarkerOperation(QObject):
         marker = autodrive_data.get_marker(self.move_source_id)
         self.edit_history.push(MoveMarkerCommand(autodrive_data, self.move_source_id, node_id))
         self.move_source_id = None
+        self._selection_before_move = None
+
+        # The target stays selected, so it is visible where the marker went.
+        self.node_selection.replace({node_id}, node_id)
         self.status_changed.emit(f"Marker „{marker.name}“ auf Node {node_id} verschoben")
 
         return True
@@ -179,6 +189,7 @@ class MarkerOperation(QObject):
             return False
 
         self.move_source_id = None
+        self._restore_selection()
         self.status_changed.emit("Marker verschieben abgebrochen")
 
         return True
@@ -228,10 +239,39 @@ class MarkerOperation(QObject):
             self.status_changed.emit(f"Node {node_id} hat keinen Marker")
             return False
 
+        if self._selection_before_move is None:
+            self._selection_before_move = (
+                self.node_selection.selected_node_ids,
+                self.node_selection.primary_node_id,
+            )
+
+        # The picked-up marker's node is shown as selected while moving.
         self.move_source_id = node_id
+        self.node_selection.replace({node_id}, node_id)
         self.status_changed.emit(f"Marker „{marker.name}“ gewählt – jetzt die Ziel-Node anklicken")
 
         return True
+
+    def reset_move(self):
+        """Forgets a picked-up marker without touching the selection, e.g.
+        when other data is loaded."""
+
+        self.move_source_id = None
+        self._selection_before_move = None
+
+    def _restore_selection(self):
+        if self._selection_before_move is None:
+            return
+
+        node_ids, primary_node_id = self._selection_before_move
+        self._selection_before_move = None
+
+        autodrive_data = self.autodrive_data_provider()
+        existing = autodrive_data.nodes if autodrive_data is not None else {}
+
+        self.node_selection.replace(
+            {node_id for node_id in node_ids if node_id in existing}, primary_node_id
+        )
 
     def _node_at(self, view_position: QPoint) -> tuple[AutoDriveData, int] | None:
         autodrive_data = self.autodrive_data_provider()

@@ -144,6 +144,33 @@ def test_move_marker_with_two_clicks(marker_window):
     assert marker_window.marker_operation.move_source_id is None
 
 
+def test_picked_up_marker_node_is_selected_and_target_afterwards(marker_window):
+    use(marker_window, InteractionMode.MOVE_MARKER)
+
+    click(marker_window, at(marker_window, 0))
+    assert marker_window.node_selection.selected_node_ids == {1}
+
+    click(marker_window, at(marker_window, 20))
+    assert marker_window.node_selection.selected_node_ids == {3}
+
+
+@pytest.mark.parametrize("finish", ["escape", "click_source", "other_tool"])
+def test_cancelled_move_restores_the_selection(marker_window, finish):
+    marker_window.node_selection.replace({2, 3}, 3)
+    use(marker_window, InteractionMode.MOVE_MARKER)
+    click(marker_window, at(marker_window, 0))
+
+    if finish == "escape":
+        press_escape(marker_window)
+    elif finish == "click_source":
+        click(marker_window, at(marker_window, 0))
+    else:
+        use(marker_window, InteractionMode.NAVIGATE)
+
+    assert marker_window.node_selection.selected_node_ids == {2, 3}
+    assert marker_window.node_selection.primary_node_id == 3
+
+
 @pytest.mark.parametrize("cancel", ["escape", "right_click"])
 def test_move_can_be_cancelled(marker_window, cancel):
     use(marker_window, InteractionMode.MOVE_MARKER)

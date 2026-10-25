@@ -759,6 +759,7 @@ class MainWindow(QMainWindow):
 
         self.marker_operation = MarkerOperation(
             selection_coordinator=self.selection_coordinator,
+            node_selection=self.node_selection,
             edit_history=self.edit_history,
             autodrive_data_provider=self._get_autodrive_data,
             # Looked up on each call, so tests can replace _ask_marker.
@@ -1015,7 +1016,7 @@ class MainWindow(QMainWindow):
 
         self.connect_nodes_operation.end_chain()
 
-        self.marker_operation.move_source_id = None
+        self.marker_operation.reset_move()
 
         self.marker_dock.set_data(autodrive_data)
 
