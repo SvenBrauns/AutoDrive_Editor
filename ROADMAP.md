@@ -56,12 +56,15 @@ Flag `2` markiert Nodes, die AutoDrive beim Karten-Scan (Frage beim ersten Start
 
 Neue Werkzeuggruppe `Marker`.
 
-- [ ] Marker hinzufügen (an einer Node, Name und Gruppe)
-- [ ] Marker bearbeiten (Name, Gruppe)
-- [ ] Marker löschen
-- [ ] Übersicht der Markergruppen
-- [ ] Markernamen auf der Karte ein- und ausblenden
-- [ ] alles rückgängig machbar
+- [x] Marker hinzufügen (an einer Node, Name und Gruppe; neue Gruppen entstehen durch Eintippen)
+- [x] Marker bearbeiten (Name, Gruppe)
+- [x] Marker verschieben (auf eine andere Node; Name, Gruppe und Nummer bleiben)
+- [x] Marker löschen
+- [x] Übersicht der Markergruppen (Dock `Marker`: Klick zeigt den Marker, Doppelklick bearbeitet, Gruppen umbenennen, leere Gruppen löschen)
+- [x] Markernamen auf der Karte ein- und ausblenden (`Ansicht → Markernamen anzeigen`, wird gespeichert)
+- [x] alles rückgängig machbar
+
+Neue Marker kommen ans Ende der Liste, damit sich die Nummern vorhandener Marker nicht ändern. Löschen verschiebt die Nummern der folgenden Marker; das ist beim Speichern von Savegames zu beachten (Parkziele der Fahrzeuge).
 
 Für das spätere Speichern muss diese Phase schon beachten: Markergruppen sind eine eigene Liste mit ID (`<g i n>` im RoutesManager-Format). In der Savegame-Config ist die Reihenfolge der Marker zugleich ihre Nummer (`mm1`, `mm2`, …), auf die Fahrzeuge als Parkziel verweisen. Gruppenliste und Markerreihenfolge müssen deshalb im Datenmodell erhalten bleiben.
 

@@ -145,6 +145,39 @@ CONNECT_REVERSE_TOOL = ToolDefinition(
 )
 
 
+ADD_MARKER_TOOL = ToolDefinition(
+    InteractionMode.ADD_MARKER,
+    "Marker hinzufügen",
+    "Node anklicken und Name und Gruppe des neuen Markers eingeben",
+    "marker_add",
+    "M",
+)
+
+EDIT_MARKER_TOOL = ToolDefinition(
+    InteractionMode.EDIT_MARKER,
+    "Marker bearbeiten",
+    "Node mit Marker anklicken, um Name und Gruppe zu ändern",
+    "marker_edit",
+    "Shift+M",
+)
+
+MOVE_MARKER_TOOL = ToolDefinition(
+    InteractionMode.MOVE_MARKER,
+    "Marker verschieben",
+    "Node mit Marker, dann die Ziel-Node anklicken; Name, Gruppe und Nummer bleiben",
+    "marker_move",
+    "Ctrl+M",
+)
+
+DELETE_MARKER_TOOL = ToolDefinition(
+    InteractionMode.DELETE_MARKER,
+    "Marker löschen",
+    "Node mit Marker anklicken, um den Marker zu löschen; die Node bleibt",
+    "marker_delete",
+    "Ctrl+Shift+M",
+)
+
+
 # Tool groups in the left tool panel. Each row holds two tools:
 # node actions on the left, connection actions on the right.
 # None leaves a cell empty.
@@ -157,6 +190,13 @@ TOOL_GROUPS = (
             (CREATE_SUBPRIO_TOOL, CONNECT_REVERSE_TOOL),
             (TOGGLE_TYPE_TOOL, None),
             (ROTATE_TOOL, DELETE_TOOL),
+        ),
+    ),
+    (
+        "Marker",
+        (
+            (ADD_MARKER_TOOL, EDIT_MARKER_TOOL),
+            (MOVE_MARKER_TOOL, DELETE_MARKER_TOOL),
         ),
     ),
 )

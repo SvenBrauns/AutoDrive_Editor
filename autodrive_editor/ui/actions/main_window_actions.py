@@ -316,7 +316,13 @@ class MainWindowActions:
 
         view_menu.addAction(self.tool_labels_action)
 
+        view_menu.addAction(self.window.marker_dock.toggleViewAction())
+
         view_menu.addAction(self.window.debug_dock.toggleViewAction())
+
+        view_menu.addSeparator()
+
+        view_menu.addAction(self.marker_names_action)
 
         view_menu.addSeparator()
 
@@ -440,6 +446,11 @@ class MainWindowActions:
         self.tool_labels_action.setCheckable(True)
 
         self.tool_labels_action.toggled.connect(self.tool_panel.set_labels_visible)
+
+        self.marker_names_action = QAction("Markernamen anzeigen", self.window)
+        self.marker_names_action.setCheckable(True)
+        self.marker_names_action.setChecked(self.window.settings.marker_names_visible)
+        self.marker_names_action.toggled.connect(self.window.set_marker_names_visible)
 
         self.window.addDockWidget(Qt.LeftDockWidgetArea, self.tool_panel)
 

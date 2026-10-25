@@ -3,6 +3,7 @@ from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
     QGraphicsScene,
+    QInputDialog,
     QLabel,
     QMainWindow,
     QMessageBox,
@@ -14,6 +15,7 @@ from autodrive_editor.editing.edit_history import EditHistory
 from autodrive_editor.editing.operations.connect_nodes import ConnectNodesOperation
 from autodrive_editor.editing.operations.create_nodes import CreateNodesOperation
 from autodrive_editor.editing.operations.delete_nodes import DeleteNodesOperation
+from autodrive_editor.editing.operations.markers import MarkerOperation
 from autodrive_editor.editing.operations.move_nodes import MoveNodesOperation
 from autodrive_editor.editing.operations.node_types import NodeTypeOperation
 from autodrive_editor.editing.operations.rotate_selection import RotateSelectionOperation
@@ -48,12 +50,14 @@ from autodrive_editor.ui.controls.grid_coordinator import GridCoordinator
 from autodrive_editor.ui.dialogs.first_start_dialog import FirstStartDialog
 from autodrive_editor.ui.dialogs.list_choice_dialog import ListChoiceDialog
 from autodrive_editor.ui.dialogs.map_import_dialog import MapImportDialog
+from autodrive_editor.ui.dialogs.marker_dialog import MarkerDialog
 from autodrive_editor.ui.dialogs.settings_dialog import SettingsDialog
 from autodrive_editor.ui.map_view.map_view import MapView
 from autodrive_editor.ui.map_view.rotation_controller import ViewRotationController
 from autodrive_editor.ui.panels.debug_dock import DebugDock
 from autodrive_editor.ui.panels.debug_dock_coordinator import DebugDockCoordinator
 from autodrive_editor.ui.panels.display_options_dialog import DisplayOptionsDialog
+from autodrive_editor.ui.panels.marker_dock import MarkerDock
 from autodrive_editor.ui.panels.node_info_formatter import NodeInfoFormatter
 from autodrive_editor.ui.tools.connect_nodes_tool import ConnectNodesTool
 from autodrive_editor.ui.tools.create_node_tool import CreateNodeTool
@@ -61,6 +65,7 @@ from autodrive_editor.ui.tools.delete_nodes_tool import DeleteNodesTool
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 from autodrive_editor.ui.tools.measure_tool import MeasureTool
 from autodrive_editor.ui.tools.move_nodes_tool import MoveNodesTool
+from autodrive_editor.ui.tools.node_click_tool import NodeClickTool
 from autodrive_editor.ui.tools.rotate_selection_tool import RotateSelectionTool
 from autodrive_editor.ui.tools.select_tool import SelectTool
 from autodrive_editor.ui.tools.toggle_node_type_tool import ToggleNodeTypeTool
@@ -117,7 +122,10 @@ class MainWindow(QMainWindow):
 
         self._create_status_widgets()
         self._create_central_widget()
+        self._create_marker_dock()
         self._create_debug_dock()
+
+        self.scene_renderer.set_marker_names_visible(self.settings.marker_names_visible)
 
         self.actions = MainWindowActions(self)
         self.actions.set_current_map_scale(self.background_map.map_scale)
@@ -583,6 +591,53 @@ class MainWindow(QMainWindow):
             else:
                 self._set_status(f"Spielordner ist kein FS25-Benutzerordner: {folder.path}")
 
+    def set_marker_names_visible(self, visible: bool):
+        self.scene_renderer.set_marker_names_visible(visible)
+        self.settings.set_marker_names_visible(visible)
+
+    def focus_marker(self, node_id: int):
+        """Centers the map on a marker's node and selects it."""
+
+        autodrive_data = self._get_autodrive_data()
+        node = autodrive_data.get_node(node_id) if autodrive_data is not None else None
+
+        if node is None:
+            return
+
+        # Zoom in far enough for the marker to be drawn.
+        marker_zoom = self.scene_renderer.display_style.marker_min_zoom
+
+        if self.view.zoom_level < marker_zoom:
+            self.view.set_zoom_level(marker_zoom)
+
+        self.view.centerOn(node.x, node.z)
+        self.node_selection.replace({node_id}, node_id)
+
+    def rename_marker_group(self, name: str):
+        new_name = self._ask_group_name(name)
+
+        if new_name is not None:
+            self.marker_operation.rename_group(name, new_name)
+
+    def _ask_group_name(self, name: str) -> str | None:
+        new_name, accepted = QInputDialog.getText(
+            self, "Markergruppe umbenennen", "Neuer Name:", text=name
+        )
+
+        return new_name if accepted else None
+
+    def _ask_marker(self, title, marker, group, groups, taken_names):
+        dialog = MarkerDialog(
+            title,
+            marker.name if marker is not None else "",
+            group,
+            groups,
+            taken_names,
+            parent=self,
+        )
+
+        return dialog.values if dialog.exec() else None
+
     def open_display_options(self):
         dialog = DisplayOptionsDialog(display_style=self.scene_renderer.display_style, parent=self)
 
@@ -702,6 +757,15 @@ class MainWindow(QMainWindow):
             parent=self,
         )
 
+        self.marker_operation = MarkerOperation(
+            selection_coordinator=self.selection_coordinator,
+            edit_history=self.edit_history,
+            autodrive_data_provider=self._get_autodrive_data,
+            # Looked up on each call, so tests can replace _ask_marker.
+            ask_marker=lambda *args: self._ask_marker(*args),
+            parent=self,
+        )
+
     def _create_project_coordinator(self):
         self.project_coordinator = ProjectCoordinator(
             scene=self.scene,
@@ -771,7 +835,30 @@ class MainWindow(QMainWindow):
                 ),
             )
 
+        self._register_marker_tools()
+
         self.view.register_measure_tool(MeasureTool(self.view, self.measurement_coordinator))
+
+    def _register_marker_tools(self):
+        operation = self.marker_operation
+
+        def move_hint():
+            if operation.move_source_id is None:
+                return "Node mit Marker anklicken, um den Marker aufzunehmen"
+
+            return "Ziel-Node anklicken (Rechtsklick oder Esc bricht ab)"
+
+        tools = (
+            (InteractionMode.ADD_MARKER, operation.add_at, "Node ohne Marker anklicken", None),
+            (InteractionMode.EDIT_MARKER, operation.edit_at, "Node mit Marker anklicken", None),
+            (InteractionMode.MOVE_MARKER, operation.move_click, move_hint, operation.cancel_move),
+            (InteractionMode.DELETE_MARKER, operation.delete_at, "Node mit Marker anklicken", None),
+        )
+
+        for interaction_mode, click, hint, cancel in tools:
+            self.view.register_tool(
+                interaction_mode, NodeClickTool(self.view, click, hint, cancel=cancel)
+            )
 
     def _create_grid_coordinator(self):
         self.grid_coordinator = GridCoordinator(
@@ -821,6 +908,16 @@ class MainWindow(QMainWindow):
 
     def _create_central_widget(self):
         self.setCentralWidget(self.view)
+
+    def _create_marker_dock(self):
+        self.marker_dock = MarkerDock(self)
+
+        self.addDockWidget(Qt.RightDockWidgetArea, self.marker_dock)
+
+        self.marker_dock.marker_activated.connect(self.focus_marker)
+        self.marker_dock.edit_requested.connect(self.marker_operation.edit_marker)
+        self.marker_dock.rename_group_requested.connect(self.rename_marker_group)
+        self.marker_dock.delete_group_requested.connect(self.marker_operation.delete_group)
 
     def _create_debug_dock(self):
         self.debug_dock = DebugDock(self)
@@ -876,6 +973,8 @@ class MainWindow(QMainWindow):
 
         self.node_type_operation.status_changed.connect(self._set_status)
 
+        self.marker_operation.status_changed.connect(self._set_status)
+
         self.rotate_selection_operation.status_changed.connect(self._set_status)
 
         # Keeps the tool buttons right even when the mode is changed
@@ -916,6 +1015,10 @@ class MainWindow(QMainWindow):
 
         self.connect_nodes_operation.end_chain()
 
+        self.marker_operation.move_source_id = None
+
+        self.marker_dock.set_data(autodrive_data)
+
         self.setWindowModified(False)
 
         source = self.project_coordinator.config_source
@@ -932,7 +1035,11 @@ class MainWindow(QMainWindow):
             removed_node_ids=data_change.removed_node_ids,
             connection_node_ids=data_change.connection_node_ids,
             changed_flag_node_ids=data_change.changed_flag_node_ids,
+            changed_marker_node_ids=data_change.changed_marker_node_ids,
         )
+
+        if data_change.affects_markers:
+            self.marker_dock.set_data(self._get_autodrive_data())
 
         if data_change.removed_node_ids:
             self.node_selection.remove(data_change.removed_node_ids)

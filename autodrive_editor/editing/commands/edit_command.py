@@ -24,6 +24,24 @@ class DataChange:
     # Nodes whose flag (regular or subprio) changed.
     changed_flag_node_ids: frozenset[int] = field(default_factory=frozenset)
 
+    # Nodes whose marker was added, removed, renamed or regrouped.
+    changed_marker_node_ids: frozenset[int] = field(default_factory=frozenset)
+
+    # The list of marker groups changed.
+    marker_groups_changed: bool = False
+
+    @property
+    def affects_markers(self) -> bool:
+        """True if the marker list may look different after this change.
+        Deleting or restoring nodes also removes or restores markers."""
+
+        return bool(
+            self.changed_marker_node_ids
+            or self.marker_groups_changed
+            or self.added_node_ids
+            or self.removed_node_ids
+        )
+
 
 class EditCommand(QUndoCommand):
     """Base class for all undoable edits.
