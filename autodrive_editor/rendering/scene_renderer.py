@@ -1,9 +1,12 @@
+import math
+
 from PySide6.QtCore import QRectF, Qt, QTimer
 from PySide6.QtGui import QColor, QPainterPath, QPen
 from PySide6.QtWidgets import QGraphicsPathItem, QGraphicsScene
 
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
 from autodrive_editor.model.connections import ConnectionType, get_connection_type
+from autodrive_editor.rendering.connections.connection_data import ConnectionData
 from autodrive_editor.rendering.connections.connection_geometry import (
     calculate_connection_endpoints,
 )
@@ -454,6 +457,29 @@ class SceneRenderer:
     def get_nodes_in_selection_path(self, selection_path: QPainterPath) -> list[NodeData]:
         return self.node_spatial_index.get_nodes_in_path(selection_path)
 
+    def get_connection_at(self, x: float, z: float, tolerance: float) -> ConnectionData | None:
+        """The connection closest to the scene point, if it is within
+        tolerance (in scene units)."""
+
+        search_rect = QRectF(x - tolerance, z - tolerance, 2 * tolerance, 2 * tolerance)
+
+        closest, closest_distance = None, tolerance
+
+        for connection in self.connection_spatial_index.get_connections_in_rect(search_rect):
+            distance = _distance_to_segment(
+                x,
+                z,
+                connection.source_x,
+                connection.source_z,
+                connection.target_x,
+                connection.target_z,
+            )
+
+            if distance <= closest_distance:
+                closest, closest_distance = connection, distance
+
+        return closest
+
     def get_debug_state(self) -> dict:
         visible_nodes = 0
 
@@ -559,3 +585,15 @@ class SceneRenderer:
                 self.scene.removeItem(connection_item)
 
         self.connection_items.clear()
+
+
+def _distance_to_segment(x, z, x1, z1, x2, z2) -> float:
+    dx, dz = x2 - x1, z2 - z1
+    length_squared = dx * dx + dz * dz
+
+    if length_squared == 0:
+        return math.hypot(x - x1, z - z1)
+
+    t = max(0.0, min(1.0, ((x - x1) * dx + (z - z1) * dz) / length_squared))
+
+    return math.hypot(x - (x1 + t * dx), z - (z1 + t * dz))
