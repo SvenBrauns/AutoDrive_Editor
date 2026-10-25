@@ -19,9 +19,9 @@ from autodrive_editor.model.autodrive_data import (
     AutoDriveData,
     NodeData,
 )
+from autodrive_editor.model.connections import ConnectionType
 from autodrive_editor.paths import LOCAL_PROJECTS_DIRECTORY, MARKER_ICON_PATH
 from autodrive_editor.project.project_coordinator import ProjectCoordinator
-from autodrive_editor.rendering.connections.connection_data import ConnectionType
 from autodrive_editor.rendering.display_style import DisplayStyle
 from autodrive_editor.rendering.scene_renderer import SceneRenderer
 from autodrive_editor.selection.node_selection import NodeSelectionManager

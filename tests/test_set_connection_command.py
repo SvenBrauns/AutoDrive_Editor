@@ -1,14 +1,14 @@
 import pytest
 
-from autodrive_editor.editing.commands.set_connection import (
+from autodrive_editor.editing.commands.set_connection import SetConnectionCommand
+from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
+from autodrive_editor.model.connections import (
     CONNECTION_STATES,
     NO_CONNECTION,
-    SetConnectionCommand,
+    ConnectionType,
+    get_connection_type,
     read_connection_state,
 )
-from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
-from autodrive_editor.rendering.connections.connection_data import ConnectionType
-from autodrive_editor.rendering.connections.connection_geometry import get_connection_type
 
 
 @pytest.fixture

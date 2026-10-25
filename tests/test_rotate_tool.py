@@ -1,7 +1,7 @@
 """The "Rotieren" tool, driven by real mouse and key input."""
 
 import pytest
-from mouse_helpers import click, cursor_shape, drag, hover, press_escape, send_mouse, view_pos
+from mouse_helpers import cursor_shape, drag, hover, press_escape, send_mouse, view_pos
 from PySide6.QtCore import QEvent, QPoint, QRectF, Qt
 from PySide6.QtGui import QPainterPath
 

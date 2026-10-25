@@ -1,33 +1,10 @@
 from autodrive_editor.editing.commands.edit_command import DataChange, EditCommand
 from autodrive_editor.model.autodrive_data import AutoDriveData
-from autodrive_editor.rendering.connections.connection_data import ConnectionType
-
-# Which of the four connection entries between source A and target B
-# are set: (A.outgoing has B, A.incoming has B,
-#           B.outgoing has A, B.incoming has A)
-ConnectionState = tuple[bool, bool, bool, bool]
-
-NO_CONNECTION: ConnectionState = (False, False, False, False)
-
-CONNECTION_STATES: dict[ConnectionType, ConnectionState] = {
-    ConnectionType.REGULAR: (True, False, False, True),
-    ConnectionType.DUAL: (True, True, True, True),
-    ConnectionType.REVERSE: (True, False, False, False),
-}
-
-
-def read_connection_state(
-    autodrive_data: AutoDriveData, source_id: int, target_id: int
-) -> ConnectionState:
-    source = autodrive_data.nodes[source_id]
-    target = autodrive_data.nodes[target_id]
-
-    return (
-        target_id in source.outgoing,
-        target_id in source.incoming,
-        source_id in target.outgoing,
-        source_id in target.incoming,
-    )
+from autodrive_editor.model.connections import (
+    NO_CONNECTION,
+    ConnectionState,
+    read_connection_state,
+)
 
 
 class SetConnectionCommand(EditCommand):

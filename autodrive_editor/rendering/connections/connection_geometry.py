@@ -4,9 +4,6 @@ from dataclasses import dataclass
 from PySide6.QtCore import QPointF
 from PySide6.QtGui import QPolygonF
 
-from autodrive_editor.model.autodrive_data import NodeData
-from autodrive_editor.rendering.connections.connection_data import ConnectionType
-
 MINIMUM_CONNECTION_LENGTH = 0.000001
 MINIMUM_VISIBLE_LENGTH = 0.0001
 
@@ -21,32 +18,6 @@ class ConnectionGeometry:
 
     distance: float
     endpoint_offset: float
-
-
-def get_connection_type(source_node: NodeData, target_node: NodeData) -> ConnectionType:
-    if is_dual_connection(source_node, target_node):
-        return ConnectionType.DUAL
-
-    if is_reverse_connection(source_node, target_node):
-        return ConnectionType.REVERSE
-
-    return ConnectionType.REGULAR
-
-
-def is_dual_connection(source_node: NodeData, target_node: NodeData) -> bool:
-    return (
-        target_node.node_id in source_node.outgoing
-        and target_node.node_id in source_node.incoming
-        and source_node.node_id in target_node.outgoing
-        and source_node.node_id in target_node.incoming
-    )
-
-
-def is_reverse_connection(source_node: NodeData, target_node: NodeData) -> bool:
-    return (
-        target_node.node_id in source_node.outgoing
-        and source_node.node_id not in target_node.incoming
-    )
 
 
 def calculate_connection_endpoints(

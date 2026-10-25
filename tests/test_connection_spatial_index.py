@@ -1,7 +1,7 @@
 from PySide6.QtCore import QRectF
 
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
-from autodrive_editor.rendering.connections.connection_data import ConnectionType
+from autodrive_editor.model.connections import ConnectionType
 from autodrive_editor.rendering.spatial.connection_index import ConnectionSpatialIndex
 
 
@@ -159,11 +159,8 @@ def test_incremental_updates_match_a_fresh_build():
     always equal an index built from scratch."""
     import random
 
-    from autodrive_editor.editing.commands.set_connection import (
-        CONNECTION_STATES,
-        NO_CONNECTION,
-        SetConnectionCommand,
-    )
+    from autodrive_editor.editing.commands.set_connection import SetConnectionCommand
+    from autodrive_editor.model.connections import CONNECTION_STATES, NO_CONNECTION
 
     rng = random.Random(7)
     data = AutoDriveData()

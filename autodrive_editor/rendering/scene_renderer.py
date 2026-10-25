@@ -3,10 +3,9 @@ from PySide6.QtGui import QColor, QPainterPath, QPen
 from PySide6.QtWidgets import QGraphicsPathItem, QGraphicsScene
 
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
-from autodrive_editor.rendering.connections.connection_data import ConnectionType
+from autodrive_editor.model.connections import ConnectionType, get_connection_type
 from autodrive_editor.rendering.connections.connection_geometry import (
     calculate_connection_endpoints,
-    get_connection_type,
 )
 from autodrive_editor.rendering.connections.detail_render_item import ConnectionRenderItem
 from autodrive_editor.rendering.display_style import DisplayStyle

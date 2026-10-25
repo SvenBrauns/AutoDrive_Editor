@@ -4,12 +4,12 @@ import pytest
 from mouse_helpers import click, cursor_shape, drag, hover, press_escape, view_pos
 from PySide6.QtCore import QPoint, QRectF, Qt
 
-from autodrive_editor.editing.commands.set_connection import (
+from autodrive_editor.model.connections import (
     CONNECTION_STATES,
     NO_CONNECTION,
+    ConnectionType,
     read_connection_state,
 )
-from autodrive_editor.rendering.connections.connection_data import ConnectionType
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
 # Test network from conftest: 1 -> 2 -> 3 (regular) on z=0 at x = 0, 10, 20.

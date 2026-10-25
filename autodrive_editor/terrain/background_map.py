@@ -1,4 +1,3 @@
-from PySide6.QtCore import QRectF
 from PySide6.QtWidgets import QGraphicsPixmapItem, QGraphicsScene
 
 from autodrive_editor.file_io.background_image import load_dds_as_pixmap

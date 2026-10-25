@@ -5,7 +5,7 @@ from PySide6.QtGui import QColor, QMouseEvent, QPen
 from PySide6.QtWidgets import QGraphicsLineItem
 
 from autodrive_editor.editing.operations.connect_nodes import NodeConnectCoordinator
-from autodrive_editor.rendering.connections.connection_data import ConnectionType
+from autodrive_editor.model.connections import ConnectionType
 from autodrive_editor.ui.tools.map_tool import MapTool, is_alive_in_scene
 
 

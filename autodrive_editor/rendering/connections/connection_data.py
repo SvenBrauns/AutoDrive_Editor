@@ -1,13 +1,8 @@
 from dataclasses import dataclass
-from enum import Enum
 
 from PySide6.QtCore import QRectF
 
-
-class ConnectionType(str, Enum):
-    REGULAR = "regular"
-    DUAL = "dual"
-    REVERSE = "reverse"
+from autodrive_editor.model.connections import ConnectionType
 
 
 @dataclass(frozen=True)

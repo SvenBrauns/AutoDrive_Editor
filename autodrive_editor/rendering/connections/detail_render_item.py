@@ -2,7 +2,8 @@ from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QBrush, QColor, QPainter, QPen
 from PySide6.QtWidgets import QGraphicsItem
 
-from autodrive_editor.rendering.connections.connection_data import ConnectionData, ConnectionType
+from autodrive_editor.model.connections import ConnectionType
+from autodrive_editor.rendering.connections.connection_data import ConnectionData
 from autodrive_editor.rendering.connections.connection_geometry import (
     MINIMUM_VISIBLE_LENGTH,
     calculate_connection_geometry,

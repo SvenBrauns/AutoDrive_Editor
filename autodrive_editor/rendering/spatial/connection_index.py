@@ -4,8 +4,8 @@ from collections import defaultdict
 from PySide6.QtCore import QRectF
 
 from autodrive_editor.model.autodrive_data import AutoDriveData
+from autodrive_editor.model.connections import get_connection_type
 from autodrive_editor.rendering.connections.connection_data import ConnectionData
-from autodrive_editor.rendering.connections.connection_geometry import get_connection_type
 
 
 class ConnectionSpatialIndex:
