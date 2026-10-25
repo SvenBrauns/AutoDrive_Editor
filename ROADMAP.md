@@ -15,6 +15,8 @@ Neue Werkzeuggruppe `Marker`.
 - [ ] Markernamen auf der Karte ein- und ausblenden
 - [ ] alles rückgängig machbar
 
+Für das spätere Speichern muss diese Phase schon beachten: Markergruppen sind eine eigene Liste mit ID (`<g i n>` im RoutesManager-Format). In der Savegame-Config ist die Reihenfolge der Marker zugleich ihre Nummer (`mm1`, `mm2`, …), auf die Fahrzeuge als Parkziel verweisen. Gruppenliste und Markerreihenfolge müssen deshalb im Datenmodell erhalten bleiben.
+
 ## 2. Schneller bearbeiten — hohe Priorität
 
 - [ ] Kopieren, Ausschneiden, Einfügen (auch an der ursprünglichen Position)
@@ -43,7 +45,11 @@ Neue Werkzeuggruppe für ganze Streckenabschnitte.
 - [ ] Einstellungsdialog mit änderbaren Tastenkürzeln
 - [ ] verständliche Fehlerdialoge
 - [ ] Logging
-- [ ] Karten automatisch erkennen oder aus einem Mod-Zip importieren
+- [ ] Laden über den RoutesManager: `routes.xml` öffnen, Route aus der Liste wählen (bevorzugter Weg, da AutoDrive Routen im laufenden Spiel neu laden kann)
+- [ ] Laden der Savegame-Config (`AutoDrive_config.xml`)
+- [ ] Kartenerkennung: Kartenname aus `routes.xml` (`map`) bzw. Savegame (`MapName`); passendes Kartenbild und Heightmap automatisch laden
+- [ ] Kartenbild und Heightmap aus einem Mod-Zip importieren und für die Erkennung ablegen
+- [ ] Kartengröße je Karte merken
 
 ## 5. Anzeige — niedrige Priorität
 
@@ -80,7 +86,35 @@ Speichern kommt erst gegen Ende, damit jede Änderung vorher ohne Speichern gete
 
 ### Hinweise zum Speichern
 
-_Noch zu ergänzen._
+Gespeichert wird in das Format, aus dem geladen wurde. Es gibt drei Wege:
+
+**RoutesManager (bevorzugt)**
+
+- `routes.xml` (Wurzel `autoDriveRoutesManager`) listet die Routen mit `name`, `fileName`, `map`, `revision`, `date` und `serverId`.
+- Die Routendateien liegen im Unterordner `routes/` (Wurzel `routeExport`).
+- `<waypoints c="Anzahl">` mit `x`, `y`, `z`, `out`, `in`, `flags`; Werte durch `;` getrennt, mehrere Verbindungen einer Node durch `,`, `-1` für keine Verbindung.
+- Marker als `<markers><m i n g/>`, Markergruppen als `<groups><g i n/>`.
+- AutoDrive kann Routen im laufenden Spiel neu laden; deshalb ist dies der bevorzugte Weg.
+- Offen: ob beim Speichern `revision` und `date` in `routes.xml` angepasst werden müssen.
+
+**Savegame-Config (`AutoDrive_config.xml`)**
+
+- Wurzel `AutoDrive`; `version` bestimmt das Spiel (1 = FS19, 2 = FS22, 3 = FS25); `MapName` nennt die Karte.
+- `<waypoints>` mit `id`, `x`, `y`, `z`, `out`, `incoming`, `flags`; Koordinaten und Flags durch `,` getrennt, Verbindungen je Node durch `;`, `-1` für keine Verbindung.
+- Marker als `<mapmarker><mm1><id/><name/><group/></mm1>…`.
+- Sehr alte Configs (vor AutoDrive 1.1.0.6, erkennbar an `markerID`) nur anzeigen, nicht bearbeiten.
+- Speichern bearbeitet die vorhandene Datei, damit alle übrigen Einstellungen erhalten bleiben; fehlt `flags`, wird es ergänzt.
+- `vehicles.xml` im selben Ordner: Fahrzeuge speichern ihr Parkziel als Markernummer (`parkDestination`, FS25 mit `uniqueId`). Ändert sich die Markerreihenfolge, müssen diese Verweise mit angepasst werden.
+- Eine `terrain.heightmap.png` neben der Config ist die passende Heightmap.
+
+**Einzelne XML-Datei**
+
+- Kann jedes der beiden Formate enthalten; gespeichert wird im selben Format.
+
+**Für alle Formate**
+
+- Node-IDs sind die Positionen in den Listen; Lücken durch gelöschte Nodes müssen beim Speichern geschlossen und alle Verweise und Marker umgeschrieben werden.
+- Flags `2` und `4` unverändert zurückschreiben.
 
 ## 8. Veröffentlichung — sobald Funktionsgleichheit mit dem alten Editor erreicht ist
 
@@ -90,6 +124,8 @@ Ziel ist, dass der Editor alles kann, was der bisherige AutoDrive Course Editor 
 - [ ] Lizenz festlegen
 - [ ] Lizenzen der verwendeten Bibliotheken prüfen (PySide6/LGPL, Pillow)
 - [ ] als Windows-Programm (.exe) bereitstellen
+- [ ] Kartenbilder und Heightmaps der beliebtesten Karten für die Kartenerkennung mitliefern
+- [ ] vorher klären, ob die Kartenbilder weitergegeben werden dürfen (Rechte bei Giants bzw. den Mod-Autoren); der alte Editor liefert keine Bilder mit, sondern verlinkt einen separaten Download
 - [ ] englische README, optional englische Oberfläche
 
 ## Technische Punkte nebenher
@@ -100,4 +136,5 @@ Werden erledigt, wenn eine Phase den betroffenen Code ohnehin berührt.
 - [ ] Heightmap-Werte zwischen Pixeln interpolieren statt den nächsten Pixel zu nehmen
 - [ ] an Nodes gebundene Messpunkte folgen verschobenen Nodes
 - [ ] leere Einträge in der `flags`-Liste der XML verschieben nachfolgende Flags
+- [ ] Flags `2` und `4` (FS22/FS25: von AutoDrive aus Karten-Splines erzeugt) im Datenmodell unverändert behalten und als Regular anzeigen; bisher gilt jedes Flag ungleich `0` als Subprio
 - [ ] `scene_renderer.py` aufteilen
