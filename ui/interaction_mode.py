@@ -6,6 +6,7 @@ class InteractionMode(Enum):
 
     NAVIGATE = auto()
     SELECT = auto()
+    CREATE_NODES = auto()
     MOVE_NODES = auto()
     ROTATE_SELECTION = auto()
     DELETE_NODES = auto()
@@ -18,6 +19,7 @@ class InteractionMode(Enum):
         display_names = {
             InteractionMode.NAVIGATE: "Navigation",
             InteractionMode.SELECT: "Auswahl",
+            InteractionMode.CREATE_NODES: "Nodes erstellen",
             InteractionMode.MOVE_NODES: "Nodes verschieben",
             InteractionMode.ROTATE_SELECTION: "Auswahl rotieren",
             InteractionMode.DELETE_NODES: "Nodes löschen",

@@ -29,6 +29,11 @@ class MainWindowActions:
             "Nodes",
             [
                 (
+                    InteractionMode.CREATE_NODES,
+                    "Erstellen",
+                    "Per Linksklick auf freie Fläche eine Node erstellen"
+                ),
+                (
                     InteractionMode.MOVE_NODES,
                     "Verschieben",
                     "Node oder Auswahl per Linkes Ziehen verschieben"

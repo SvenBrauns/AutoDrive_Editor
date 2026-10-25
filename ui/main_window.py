@@ -29,6 +29,7 @@ from ui.interaction_mode import InteractionMode
 from ui.main_window_actions import MainWindowActions
 from rendering.connection_data import ConnectionType
 from ui.map_tools.connect_nodes_tool import ConnectNodesTool
+from ui.map_tools.create_node_tool import CreateNodeTool
 from ui.map_tools.delete_nodes_tool import DeleteNodesTool
 from ui.map_tools.measure_tool import MeasureTool
 from ui.map_tools.rotate_selection_tool import RotateSelectionTool
@@ -43,6 +44,7 @@ from ui.grid_coordinator import GridCoordinator
 from editing.edit_command import DataChange
 from editing.edit_coordinator import EditCoordinator
 from editing.node_connect_coordinator import NodeConnectCoordinator
+from editing.node_create_coordinator import NodeCreateCoordinator
 from editing.node_delete_coordinator import NodeDeleteCoordinator
 from editing.node_drag_coordinator import NodeDragCoordinator
 from editing.selection_rotate_coordinator import SelectionRotateCoordinator
@@ -512,6 +514,15 @@ class MainWindow(QMainWindow):
             parent=self
         )
 
+        self.node_create_coordinator = NodeCreateCoordinator(
+            view=self.view,
+            selection_coordinator=self.selection_coordinator,
+            edit_coordinator=self.edit_coordinator,
+            autodrive_data_provider=self._get_autodrive_data,
+            terrain_height_at=self._get_terrain_height,
+            parent=self
+        )
+
         self._register_map_tools()
 
         self.project_coordinator = (
@@ -546,6 +557,14 @@ class MainWindow(QMainWindow):
             SelectTool(
                 self.view,
                 self.selection_coordinator
+            )
+        )
+
+        self.view.register_tool(
+            InteractionMode.CREATE_NODES,
+            CreateNodeTool(
+                self.view,
+                self.node_create_coordinator
             )
         )
 
@@ -748,6 +767,10 @@ class MainWindow(QMainWindow):
         )
 
         self.node_connect_coordinator.status_changed.connect(
+            self._set_status
+        )
+
+        self.node_create_coordinator.status_changed.connect(
             self._set_status
         )
 
