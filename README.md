@@ -4,6 +4,8 @@ Desktop-Editor für AutoDrive-Streckennetze aus dem Landwirtschafts-Simulator 25
 
 Der Editor lädt eine AutoDrive-Konfiguration (XML), zeigt sie auf der Karte (`overview.dds`) mit Höhendaten (`dem.png`) und bietet Werkzeuge zum Bearbeiten des Netzes: Nodes erstellen, verschieben, rotieren, löschen, ihren Typ wechseln und Connections (Regular, Dual, Reverse) setzen. Alle Änderungen lassen sich rückgängig machen.
 
+Geplante Funktionen stehen in der [Roadmap](ROADMAP.md).
+
 ## Starten
 
 ```text
