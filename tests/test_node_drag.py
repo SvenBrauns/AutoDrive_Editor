@@ -2,56 +2,17 @@
 
 import pytest
 
-from PySide6.QtCore import QEvent, QPoint, QPointF, QRectF, Qt
-from PySide6.QtGui import QKeyEvent, QMouseEvent, QPainterPath
-from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QEvent, QPoint, QRectF, Qt
+from PySide6.QtGui import QPainterPath
 
+from mouse_helpers import drag, press_escape, send_mouse, view_pos
 from ui.interaction_mode import InteractionMode
 
 
 @pytest.fixture
-def editor(loaded_window, qapp):
-    """Window with the move tool active, zoomed in so nodes 1 (x=0),
-    2 (x=10) and 3 (x=20) are drawn as clickable items."""
-
-    window = loaded_window
-    window.set_interaction_mode(InteractionMode.MOVE_NODES)
-    window.view.set_zoom_level(4.0)
-    window.view.centerOn(10, 0)
-    qapp.processEvents()
-
-    window.scene_renderer.update_visible_scene_rect(window.view.get_visible_scene_rect())
-    assert set(window.scene_renderer.visible_node_manager.visible_node_items) == {1, 2, 3}
-
-    return window
-
-
-def view_pos(window, x, z) -> QPoint:
-    return window.view.mapFromScene(QPointF(x, z))
-
-
-def send_mouse(window, event_type, pos, button, buttons, modifiers=Qt.NoModifier):
-    viewport = window.view.viewport()
-    event = QMouseEvent(
-        event_type, QPointF(pos), QPointF(viewport.mapToGlobal(pos)),
-        button, buttons, modifiers
-    )
-    QApplication.sendEvent(viewport, event)
-
-
-def drag(window, start, end, steps=5, modifiers=Qt.NoModifier, release=True):
-    send_mouse(window, QEvent.MouseButtonPress, start, Qt.LeftButton, Qt.LeftButton, modifiers)
-
-    for step in range(1, steps + 1):
-        pos = start + (end - start) * step / steps
-        send_mouse(window, QEvent.MouseMove, pos, Qt.NoButton, Qt.LeftButton, modifiers)
-
-    if release:
-        send_mouse(window, QEvent.MouseButtonRelease, end, Qt.LeftButton, Qt.NoButton, modifiers)
-
-
-def press_escape(window):
-    QApplication.sendEvent(window.view, QKeyEvent(QEvent.KeyPress, Qt.Key_Escape, Qt.NoModifier))
+def editor(zoomed_window):
+    zoomed_window.set_interaction_mode(InteractionMode.MOVE_NODES)
+    return zoomed_window
 
 
 def node_xz(window, node_id):
@@ -67,7 +28,7 @@ def scene_delta(window, start, end):
 def select_area(window, rect):
     path = QPainterPath()
     path.addRect(rect)
-    window.view.selection_area_requested.emit(path, Qt.NoModifier)
+    window.selection_coordinator.handle_area(path, Qt.NoModifier)
 
 
 def test_dragging_unselected_node_moves_only_that_node(editor):

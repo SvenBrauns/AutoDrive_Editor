@@ -8,6 +8,7 @@ from PySide6.QtCore import QPoint, QRectF, Qt
 from PySide6.QtGui import QPainterPath
 
 from editing.move_nodes_command import MoveNodesCommand
+from mouse_helpers import click
 from measurement.measurement_mode import MeasurementMode
 from ui.interaction_mode import InteractionMode
 from ui.main_window import MainWindow
@@ -31,14 +32,11 @@ def test_measurement_clicks_create_complete_measurement(window, qapp):
     window.set_measurement_mode(MeasurementMode.DISTANCE)
     assert window.view.measurement_active
 
-    for position in (QPoint(50, 50), QPoint(150, 120)):
-        window.view.measurement_press_requested.emit(position, Qt.NoModifier)
-        window.view.measurement_release_requested.emit(position, Qt.NoModifier)
-
+    click(window, QPoint(300, 300))
+    click(window, QPoint(450, 380))
     qapp.processEvents()
-    assert window.measurement_controller.is_complete
 
-    window.view.measurement_cancel_requested.emit()
+    assert window.measurement_controller.is_complete
 
 
 def test_grid_controls_update_grid_and_status(window):
@@ -82,7 +80,7 @@ def test_area_selection_selects_nodes(loaded_window, qapp):
     path = QPainterPath()
     path.addRect(QRectF(-5, -5, 20, 10))  # covers nodes 1 (x=0) and 2 (x=10)
 
-    loaded_window.view.selection_area_requested.emit(path, Qt.NoModifier)
+    loaded_window.selection_coordinator.handle_area(path, Qt.NoModifier)
     qapp.processEvents()
 
     selection = loaded_window.node_selection_manager

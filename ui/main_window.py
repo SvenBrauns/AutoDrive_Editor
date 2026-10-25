@@ -27,6 +27,9 @@ from ui.display_options_dialog import (
 )
 from ui.interaction_mode import InteractionMode
 from ui.main_window_actions import MainWindowActions
+from ui.map_tools.measure_tool import MeasureTool
+from ui.map_tools.move_nodes_tool import MoveNodesTool
+from ui.map_tools.select_tool import SelectTool
 from ui.map_view import MapView
 from ui.node_info_formatter import NodeInfoFormatter
 from ui.view_rotation_controller import ViewRotationController
@@ -468,6 +471,8 @@ class MainWindow(QMainWindow):
             parent=self
         )
 
+        self._register_map_tools()
+
         self.project_coordinator = (
             ProjectCoordinator(
                 scene=self.scene,
@@ -491,6 +496,30 @@ class MainWindow(QMainWindow):
                     self.measurement_coordinator
                 ),
                 parent=self
+            )
+        )
+
+    def _register_map_tools(self):
+        self.view.register_tool(
+            InteractionMode.SELECT,
+            SelectTool(
+                self.view,
+                self.selection_coordinator
+            )
+        )
+
+        self.view.register_tool(
+            InteractionMode.MOVE_NODES,
+            MoveNodesTool(
+                self.view,
+                self.node_drag_coordinator
+            )
+        )
+
+        self.view.register_measure_tool(
+            MeasureTool(
+                self.view,
+                self.measurement_coordinator
             )
         )
 
@@ -542,40 +571,8 @@ class MainWindow(QMainWindow):
             self.scene_renderer.update_visible_scene_rect
         )
 
-        self.view.selection_click_requested.connect(
-            self.selection_coordinator.handle_click
-        )
-
         self.view.rotation_changed.connect(
             self._handle_rotation_changed
-        )
-
-        self.view.selection_area_requested.connect(
-            self.selection_coordinator.handle_area
-        )
-
-        self.view.selection_area_preview_requested.connect(
-            self.selection_coordinator.handle_area_preview
-        )
-
-        self.view.selection_area_preview_cleared.connect(
-            self.selection_coordinator.clear_area_preview
-        )
-
-        self.view.measurement_press_requested.connect(
-            self.measurement_coordinator.handle_press
-        )
-
-        self.view.measurement_move_requested.connect(
-            self.measurement_coordinator.handle_move
-        )
-
-        self.view.measurement_release_requested.connect(
-            self.measurement_coordinator.handle_release
-        )
-
-        self.view.measurement_cancel_requested.connect(
-            self.measurement_coordinator.cancel
         )
 
         self.measurement_coordinator.status_changed.connect(

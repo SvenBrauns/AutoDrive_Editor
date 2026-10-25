@@ -67,37 +67,23 @@ class NodeDragCoordinator(QObject):
 
         self._reset_state()
 
-        self.view.node_drag_press_requested.connect(
-            self.handle_press
-        )
-
-        self.view.node_drag_move_requested.connect(
-            self.handle_move
-        )
-
-        self.view.node_drag_finish_requested.connect(
-            self.handle_finish
-        )
-
-        self.view.node_drag_cancel_requested.connect(
-            self.handle_cancel
-        )
-
     @property
     def is_dragging(self) -> bool:
         return self._moved
 
-    def handle_press(
+    def begin_drag(
         self,
-        view_position: QPoint,
-        modifiers
-    ):
+        view_position: QPoint
+    ) -> bool:
+        """Prepares a drag of the node at the given view position.
+        Returns False if there is no node to drag there."""
+
         self._end_drag()
 
         autodrive_data = self.autodrive_data_provider()
 
         if autodrive_data is None:
-            return
+            return False
 
         node_item = (
             self.selection_coordinator
@@ -107,7 +93,7 @@ class NodeDragCoordinator(QObject):
         )
 
         if node_item is None:
-            return
+            return False
 
         pressed_node_id = node_item.node_id
 
@@ -139,11 +125,9 @@ class NodeDragCoordinator(QObject):
             self._merge_keys
         )
 
-        self.view.set_node_drag_candidate(
-            True
-        )
+        return True
 
-    def handle_move(
+    def update_drag(
         self,
         view_position: QPoint
     ):
@@ -179,7 +163,7 @@ class NodeDragCoordinator(QObject):
             }
         )
 
-    def handle_finish(self):
+    def finish_drag(self):
         if self._moved:
             moved_count = len(
                 self._start_positions
@@ -193,7 +177,7 @@ class NodeDragCoordinator(QObject):
 
         self._end_drag()
 
-    def handle_cancel(self):
+    def cancel_drag(self):
         if self._moved:
             # Moving back to the start merges into the drag's command,
             # which then becomes obsolete and leaves the undo history.

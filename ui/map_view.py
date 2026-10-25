@@ -1,5 +1,3 @@
-from dataclasses import dataclass, field
-
 from PySide6.QtCore import (
     QPoint,
     QRectF,
@@ -8,68 +6,34 @@ from PySide6.QtCore import (
 )
 from PySide6.QtGui import (
     QCursor,
+    QKeyEvent,
     QMouseEvent,
     QResizeEvent,
-    QWheelEvent,
-    QKeyEvent
+    QWheelEvent
 )
 from PySide6.QtWidgets import (
-    QApplication,
     QGraphicsItem,
     QGraphicsView
 )
 
 from ui.interaction_mode import InteractionMode
+from ui.map_tools.map_tool import (
+    DragGesture,
+    MapTool
+)
+from ui.map_tools.navigate_tool import NavigateTool
 from ui.view_rotation_controller import (
     ViewRotationController
 )
 from ui.view_zoom_controller import (
     ViewZoomController
 )
-from ui.view_selection_controller import (
-    ViewSelectionController
-)
-
-
-@dataclass
-class PointerDragState:
-
-    pressed_button: Qt.MouseButton = Qt.NoButton
-    drag_active: bool = False
-
-    press_position: QPoint = field(
-        default_factory=QPoint
-    )
-
-    last_position: QPoint = field(
-        default_factory=QPoint
-    )
-
-    def begin(
-        self,
-        button: Qt.MouseButton,
-        position: QPoint
-    ):
-        self.pressed_button = button
-        self.drag_active = False
-
-        self.press_position = QPoint(
-            position
-        )
-
-        self.last_position = QPoint(
-            position
-        )
-
-    def reset(self):
-        self.pressed_button = Qt.NoButton
-        self.drag_active = False
-
-        self.press_position = QPoint()
-        self.last_position = QPoint()
 
 
 class MapView(QGraphicsView):
+    """The map. Zooming with the wheel and rotating with the middle
+    button work for every tool. Everything else is forwarded to the
+    active MapTool."""
 
     zoom_changed = Signal(
         float
@@ -91,53 +55,6 @@ class MapView(QGraphicsView):
         object
     )
 
-    selection_click_requested = Signal(
-        QPoint,
-        object
-    )
-
-    selection_area_requested = Signal(
-        object,
-        object
-    )
-
-    selection_area_preview_requested = Signal(
-        object,
-        object
-    )
-
-    selection_area_preview_cleared = Signal()
-
-    measurement_press_requested = Signal(
-        QPoint,
-        object
-    )
-
-    measurement_move_requested = Signal(
-        QPoint,
-        object
-    )
-
-    measurement_release_requested = Signal(
-        QPoint,
-        object
-    )
-
-    measurement_cancel_requested = Signal()
-
-    node_drag_press_requested = Signal(
-        QPoint,
-        object
-    )
-
-    node_drag_move_requested = Signal(
-        QPoint
-    )
-
-    node_drag_finish_requested = Signal()
-
-    node_drag_cancel_requested = Signal()
-
     def __init__(self):
         super().__init__()
 
@@ -145,37 +62,20 @@ class MapView(QGraphicsView):
             InteractionMode.NAVIGATE
         )
 
+        self._tools: dict[InteractionMode, MapTool] = {
+            InteractionMode.NAVIGATE: NavigateTool(
+                self
+            )
+        }
+
+        # While measuring, the measure tool replaces the tool of the
+        # current interaction mode.
+        self._measure_tool: MapTool | None = None
         self._measurement_active = False
-        self._measurement_point_drag_active = False
 
-        # Set by the node drag coordinator while handling a press on
-        # a draggable node. Left dragging then moves nodes, not the map.
-        self._node_drag_candidate = False
-
-        self._pointer_state = (
-            PointerDragState()
-        )
+        self._rotation_drag = DragGesture()
 
         self._configure_view()
-
-        self._selection_controller = (
-            ViewSelectionController(
-                view=self,
-                parent=self
-            )
-        )
-
-        self._selection_controller.area_requested.connect(
-            self.selection_area_requested.emit
-        )
-
-        self._selection_controller.area_preview_requested.connect(
-            self.selection_area_preview_requested.emit
-        )
-
-        self._selection_controller.area_preview_cleared.connect(
-            self.selection_area_preview_cleared.emit
-        )
 
         self._zoom_controller = (
             ViewZoomController(
@@ -211,7 +111,7 @@ class MapView(QGraphicsView):
             self.rotation_step_changed.emit
         )
 
-        self._apply_interaction_mode()
+        self.refresh_cursor()
 
     @property
     def zoom_level(self) -> float:
@@ -243,6 +143,55 @@ class MapView(QGraphicsView):
     @property
     def measurement_active(self) -> bool:
         return self._measurement_active
+
+    @property
+    def active_tool(self) -> MapTool:
+        if (
+            self._measurement_active
+            and self._measure_tool is not None
+        ):
+            return self._measure_tool
+
+        return self._tools[
+            self._interaction_mode
+        ]
+
+    def register_tool(
+        self,
+        interaction_mode: InteractionMode,
+        tool: MapTool
+    ):
+        if not isinstance(
+            tool,
+            MapTool
+        ):
+            raise TypeError(
+                "Das Werkzeug ist ungültig."
+            )
+
+        if interaction_mode == self._interaction_mode:
+            self.active_tool.deactivate()
+
+        self._tools[
+            interaction_mode
+        ] = tool
+
+        if interaction_mode == self._interaction_mode:
+            tool.activate()
+
+    def register_measure_tool(
+        self,
+        tool: MapTool
+    ):
+        if not isinstance(
+            tool,
+            MapTool
+        ):
+            raise TypeError(
+                "Das Messwerkzeug ist ungültig."
+            )
+
+        self._measure_tool = tool
 
     def set_zoom_level(
         self,
@@ -297,23 +246,20 @@ class MapView(QGraphicsView):
         ):
             return
 
-        if (
-            interaction_mode
-            != InteractionMode.SELECT
-        ):
-            self._selection_controller.cancel()
+        if interaction_mode not in self._tools:
+            raise ValueError(
+                f"Für den Modus "
+                f"{interaction_mode.display_name} "
+                f"ist kein Werkzeug registriert."
+            )
 
-        if (
-            interaction_mode
-            != InteractionMode.MOVE_NODES
-        ):
-            self._cancel_node_drag()
-
-        self._interaction_mode = (
-            interaction_mode
+        self._switch_tool(
+            lambda: setattr(
+                self,
+                "_interaction_mode",
+                interaction_mode
+            )
         )
-
-        self._apply_interaction_mode()
 
         self.interaction_mode_changed.emit(
             interaction_mode
@@ -330,30 +276,12 @@ class MapView(QGraphicsView):
         if active == self._measurement_active:
             return
 
-        self._measurement_active = active
-        self._measurement_point_drag_active = False
-
-        self._selection_controller.cancel()
-        self._cancel_node_drag()
-
-        self._pointer_state.reset()
-
-        self._restore_interaction_cursor()
-
-    def set_measurement_point_drag_active(
-        self,
-        active: bool
-    ):
-        self._measurement_point_drag_active = bool(
-            active
-        )
-
-    def set_node_drag_candidate(
-        self,
-        candidate: bool
-    ):
-        self._node_drag_candidate = bool(
-            candidate
+        self._switch_tool(
+            lambda: setattr(
+                self,
+                "_measurement_active",
+                active
+            )
         )
 
     def get_visible_scene_rect(
@@ -362,6 +290,61 @@ class MapView(QGraphicsView):
         return (
             self._zoom_controller
             .get_visible_scene_rect()
+        )
+
+    def pan_by(
+        self,
+        movement: QPoint
+    ):
+        """Moves the visible map area with the mouse movement."""
+
+        self.horizontalScrollBar().setValue(
+            self.horizontalScrollBar().value()
+            - movement.x()
+        )
+
+        self.verticalScrollBar().setValue(
+            self.verticalScrollBar().value()
+            - movement.y()
+        )
+
+    def has_selectable_item_at(
+        self,
+        view_position: QPoint
+    ) -> bool:
+        for item in self.items(
+            view_position
+        ):
+            if (
+                item.flags()
+                & QGraphicsItem.ItemIsSelectable
+            ):
+                return True
+
+        return False
+
+    def refresh_cursor(
+        self,
+        view_position: QPoint | None = None
+    ):
+        if view_position is None:
+            view_position = (
+                self.viewport()
+                .mapFromGlobal(
+                    QCursor.pos()
+                )
+            )
+
+        if self._rotation_drag.is_pressed:
+            cursor_shape = Qt.SizeAllCursor
+
+        else:
+            cursor_shape = self.active_tool.cursor_at(
+                view_position
+            )
+
+        self.viewport().setCursor(
+            cursor_shape
         )
 
     def fitInView(
@@ -410,76 +393,32 @@ class MapView(QGraphicsView):
         self,
         event: QMouseEvent
     ):
-        pressed_button = event.button()
-
         mouse_position = (
             event.position().toPoint()
         )
 
-        if (
-            self._measurement_active
-            and pressed_button == Qt.LeftButton
-        ):
-            self._handle_measurement_press(
-                mouse_position,
-                event.modifiers()
+        if event.button() == Qt.MiddleButton:
+            self._rotation_drag.press(
+                Qt.MiddleButton,
+                mouse_position
             )
 
-            event.accept()
-            return
+            handled = True
 
-        supported_button = (
-            pressed_button
-            in (
-                Qt.LeftButton,
-                Qt.MiddleButton
+        else:
+            handled = self.active_tool.mouse_press(
+                event
             )
-        )
 
-        right_selection_button = (
-            pressed_button == Qt.RightButton
-            and self._interaction_mode
-            == InteractionMode.SELECT
-            and not self._measurement_active
-        )
-
-        if (
-            not supported_button
-            and not right_selection_button
-        ):
+        if not handled:
             super().mousePressEvent(
                 event
             )
             return
 
-        self._pointer_state.begin(
-            button=pressed_button,
-            position=mouse_position
+        self.refresh_cursor(
+            mouse_position
         )
-
-        if right_selection_button:
-            self._selection_controller.begin(
-                mouse_position
-            )
-
-        if (
-            pressed_button == Qt.LeftButton
-            and self._interaction_mode
-            == InteractionMode.MOVE_NODES
-        ):
-            self._node_drag_candidate = False
-
-            # The coordinator calls set_node_drag_candidate(True)
-            # while handling this if the press hit a draggable node.
-            self.node_drag_press_requested.emit(
-                mouse_position,
-                event.modifiers()
-            )
-
-        if pressed_button == Qt.MiddleButton:
-            self.viewport().setCursor(
-                Qt.SizeAllCursor
-            )
 
         event.accept()
 
@@ -491,74 +430,37 @@ class MapView(QGraphicsView):
             event.position().toPoint()
         )
 
-        if self._is_button_drag(
-            event,
-            Qt.MiddleButton
+        if (
+            self._rotation_drag.is_pressed
+            and event.buttons() & Qt.MiddleButton
         ):
-            self._handle_rotation_drag(
+            movement = self._rotation_drag.move(
                 mouse_position
             )
 
-            event.accept()
-            return
+            if movement is not None:
+                self._rotation_controller.rotate_by_horizontal_pixels(
+                    movement.x()
+                )
 
-        if self._measurement_active:
-            self._handle_measurement_move(
-                event,
-                mouse_position
+            handled = True
+
+        else:
+            handled = self.active_tool.mouse_move(
+                event
             )
 
-            event.accept()
-            return
-
-        if self._is_button_drag(
-            event,
-            Qt.RightButton
-        ):
-            selection_drag_active = (
-                self._selection_controller
-                .handle_drag(
-                    current_position=mouse_position,
-                    modifiers=event.modifiers()
-                )
-            )
-
-            self._pointer_state.drag_active = (
-                selection_drag_active
-            )
-
-            if selection_drag_active:
-                self.viewport().setCursor(
-                    Qt.CrossCursor
-                )
-
-            event.accept()
-            return
-
-        if self._is_button_drag(
-            event,
-            Qt.LeftButton
-        ):
-            if self._node_drag_candidate:
-                self._handle_node_drag(
-                    mouse_position
-                )
-
-            else:
-                self._handle_pan_drag(
-                    mouse_position
-                )
-
-            event.accept()
-            return
-
-        self._update_hover_cursor(
+        self.refresh_cursor(
             mouse_position
         )
 
-        super().mouseMoveEvent(
-            event
-        )
+        if handled:
+            event.accept()
+
+        else:
+            super().mouseMoveEvent(
+                event
+            )
 
     def mouseReleaseEvent(
         self,
@@ -569,94 +471,39 @@ class MapView(QGraphicsView):
         )
 
         if (
-            self._measurement_active
-            and event.button() == Qt.LeftButton
-            and self._pointer_state.pressed_button
-            == Qt.LeftButton
+            event.button() == Qt.MiddleButton
+            and self._rotation_drag.is_pressed
         ):
-            self._handle_measurement_release(
-                mouse_position,
-                event.modifiers()
-            )
+            self._rotation_drag.reset()
 
-            event.accept()
-            return
+            handled = True
 
-        if (
-            event.button()
-            != self._pointer_state.pressed_button
-        ):
-            super().mouseReleaseEvent(
+        else:
+            handled = self.active_tool.mouse_release(
                 event
             )
-            return
 
-        released_button = (
-            self._pointer_state.pressed_button
-        )
-
-        was_dragging = (
-            self._pointer_state.drag_active
-        )
-
-        if released_button == Qt.RightButton:
-            if was_dragging:
-                self._selection_controller.finish(
-                    event.modifiers()
-                )
-
-            else:
-                self._selection_controller.cancel()
-
-        if (
-            released_button == Qt.LeftButton
-            and self._node_drag_candidate
-        ):
-            self._node_drag_candidate = False
-
-            self.node_drag_finish_requested.emit()
-
-        self._pointer_state.reset()
-
-        self._restore_interaction_cursor(
+        self.refresh_cursor(
             mouse_position
         )
 
-        if (
-            released_button == Qt.LeftButton
-            and not was_dragging
-            and self._interaction_mode
-            == InteractionMode.SELECT
-        ):
-            self.selection_click_requested.emit(
-                mouse_position,
-                event.modifiers()
-            )
+        if handled:
+            event.accept()
 
-        event.accept()
+        else:
+            super().mouseReleaseEvent(
+                event
+            )
 
     def keyPressEvent(
         self,
         event: QKeyEvent
     ):
         if (
-            self._measurement_active
-            and event.key() == Qt.Key_Escape
+            event.key() == Qt.Key_Escape
+            and self.active_tool.cancel()
         ):
-            self.measurement_cancel_requested.emit()
-
-            event.accept()
-            return
-
-        if (
-            self._node_drag_candidate
-            and event.key() == Qt.Key_Escape
-        ):
-            self._cancel_node_drag()
-
-            self._pointer_state.reset()
-
-            self._restore_interaction_cursor()
+            self.refresh_cursor()
 
             event.accept()
             return
@@ -664,6 +511,25 @@ class MapView(QGraphicsView):
         super().keyPressEvent(
             event
         )
+
+    def _switch_tool(
+        self,
+        change_state
+    ):
+        """Deactivates the current tool, applies the state change and
+        activates the tool that is active afterwards."""
+
+        previous_tool = self.active_tool
+
+        change_state()
+
+        next_tool = self.active_tool
+
+        if next_tool is not previous_tool:
+            previous_tool.deactivate()
+            next_tool.activate()
+
+        self.refresh_cursor()
 
     def _configure_view(self):
         self.setMouseTracking(
@@ -689,350 +555,3 @@ class MapView(QGraphicsView):
         self.setResizeAnchor(
             QGraphicsView.AnchorViewCenter
         )
-
-    def _apply_interaction_mode(self):
-        self._restore_interaction_cursor()
-
-    def _handle_node_drag(
-        self,
-        mouse_position: QPoint
-    ):
-        if not self._pointer_state.drag_active:
-            if not self._drag_threshold_reached(
-                mouse_position
-            ):
-                return
-
-            self._pointer_state.drag_active = True
-
-            self.viewport().setCursor(
-                Qt.SizeAllCursor
-            )
-
-        self.node_drag_move_requested.emit(
-            mouse_position
-        )
-
-    def _cancel_node_drag(self):
-        if not self._node_drag_candidate:
-            return
-
-        self._node_drag_candidate = False
-
-        self.node_drag_cancel_requested.emit()
-
-    def _handle_measurement_press(
-        self,
-        mouse_position: QPoint,
-        modifiers
-    ):
-        self._pointer_state.begin(
-            button=Qt.LeftButton,
-            position=mouse_position
-        )
-
-        # The coordinator re-enables this while handling the press
-        # if the press hit a draggable measurement point.
-        self._measurement_point_drag_active = False
-
-        self.measurement_press_requested.emit(
-            mouse_position,
-            modifiers
-        )
-
-    def _handle_measurement_move(
-        self,
-        event: QMouseEvent,
-        mouse_position: QPoint
-    ):
-        if not self._is_button_drag(
-            event,
-            Qt.LeftButton
-        ):
-            self._emit_measurement_move(
-                mouse_position,
-                event.modifiers()
-            )
-            return
-
-        # Left drag on free space pans the map.
-        if not self._measurement_point_drag_active:
-            self._handle_pan_drag(
-                mouse_position
-            )
-            return
-
-        if (
-            not self._pointer_state.drag_active
-            and not self._drag_threshold_reached(
-                mouse_position
-            )
-        ):
-            return
-
-        self._pointer_state.drag_active = True
-
-        self._emit_measurement_move(
-            mouse_position,
-            event.modifiers()
-        )
-
-    def _emit_measurement_move(
-        self,
-        mouse_position: QPoint,
-        modifiers
-    ):
-        self.measurement_move_requested.emit(
-            mouse_position,
-            modifiers
-        )
-
-        self._update_hover_cursor(
-            mouse_position
-        )
-
-    def _handle_measurement_release(
-        self,
-        mouse_position: QPoint,
-        modifiers
-    ):
-        # Releasing after panning the map is not a measurement click.
-        panned_map = (
-            self._pointer_state.drag_active
-            and not self._measurement_point_drag_active
-        )
-
-        if not panned_map:
-            self.measurement_release_requested.emit(
-                mouse_position,
-                modifiers
-            )
-
-        self._measurement_point_drag_active = False
-
-        self._pointer_state.reset()
-
-        self._restore_interaction_cursor(
-            mouse_position
-        )
-
-    def _is_button_drag(
-        self,
-        event: QMouseEvent,
-        button: Qt.MouseButton
-    ) -> bool:
-        return (
-            self._pointer_state.pressed_button
-            == button
-            and bool(
-                event.buttons()
-                & button
-            )
-        )
-
-    def _drag_threshold_reached(
-        self,
-        mouse_position: QPoint
-    ) -> bool:
-        drag_distance = (
-            mouse_position
-            - self._pointer_state.press_position
-        ).manhattanLength()
-
-        return (
-            drag_distance
-            >= QApplication.startDragDistance()
-        )
-
-    def _handle_pan_drag(
-        self,
-        mouse_position: QPoint
-    ):
-        if not self._pointer_state.drag_active:
-            if not self._drag_threshold_reached(
-                mouse_position
-            ):
-                return
-
-            self._begin_panning(
-                mouse_position
-            )
-            return
-
-        self._pan_to(
-            mouse_position
-        )
-
-    def _handle_rotation_drag(
-        self,
-        mouse_position: QPoint
-    ):
-        if not self._pointer_state.drag_active:
-            if not self._drag_threshold_reached(
-                mouse_position
-            ):
-                return
-
-            self._pointer_state.drag_active = True
-
-            self._pointer_state.last_position = QPoint(
-                mouse_position
-            )
-
-            self.viewport().setCursor(
-                Qt.SizeAllCursor
-            )
-
-            return
-
-        movement = (
-            mouse_position
-            - self._pointer_state.last_position
-        )
-
-        self._pointer_state.last_position = QPoint(
-            mouse_position
-        )
-
-        self._rotation_controller.rotate_by_horizontal_pixels(
-            movement.x()
-        )
-
-    def _begin_panning(
-        self,
-        mouse_position: QPoint
-    ):
-        self._pointer_state.drag_active = True
-
-        self._pointer_state.last_position = QPoint(
-            mouse_position
-        )
-
-        self.viewport().setCursor(
-            Qt.ClosedHandCursor
-        )
-
-    def _pan_to(
-        self,
-        mouse_position: QPoint
-    ):
-        movement = (
-            mouse_position
-            - self._pointer_state.last_position
-        )
-
-        self.horizontalScrollBar().setValue(
-            self.horizontalScrollBar().value()
-            - movement.x()
-        )
-
-        self.verticalScrollBar().setValue(
-            self.verticalScrollBar().value()
-            - movement.y()
-        )
-
-        self._pointer_state.last_position = QPoint(
-            mouse_position
-        )
-
-    def _restore_interaction_cursor(
-        self,
-        view_position=None
-    ):
-        if view_position is None:
-            view_position = (
-                self.viewport()
-                .mapFromGlobal(
-                    QCursor.pos()
-                )
-            )
-
-        self._update_hover_cursor(
-            view_position
-        )
-
-    def _update_hover_cursor(
-        self,
-        view_position: QPoint
-    ):
-        if self._pointer_state.drag_active:
-            if (
-                self._pointer_state.pressed_button
-                == Qt.MiddleButton
-            ):
-                self.viewport().setCursor(
-                    Qt.SizeAllCursor
-                )
-
-            elif (
-                self._pointer_state.pressed_button
-                == Qt.RightButton
-            ):
-                self.viewport().setCursor(
-                    Qt.CrossCursor
-                )
-
-            elif (
-                self._node_drag_candidate
-                or (
-                    self._measurement_active
-                    and self._measurement_point_drag_active
-                )
-            ):
-                self.viewport().setCursor(
-                    Qt.SizeAllCursor
-                )
-
-            else:
-                self.viewport().setCursor(
-                    Qt.ClosedHandCursor
-                )
-
-            return
-
-        if self._measurement_active:
-            self.viewport().setCursor(
-                Qt.CrossCursor
-            )
-
-            return
-
-        if (
-            self._interaction_mode
-            == InteractionMode.NAVIGATE
-        ):
-            self.viewport().setCursor(
-                Qt.OpenHandCursor
-            )
-
-            return
-
-        if self._has_selectable_item_at(
-            view_position
-        ):
-            self.viewport().setCursor(
-                Qt.SizeAllCursor
-                if self._interaction_mode
-                == InteractionMode.MOVE_NODES
-                else Qt.ArrowCursor
-            )
-
-        else:
-            self.viewport().setCursor(
-                Qt.OpenHandCursor
-            )
-
-    def _has_selectable_item_at(
-        self,
-        view_position: QPoint
-    ) -> bool:
-        for item in self.items(
-            view_position
-        ):
-            if (
-                item.flags()
-                & QGraphicsItem.ItemIsSelectable
-            ):
-                return True
-
-        return False
