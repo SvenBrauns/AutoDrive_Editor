@@ -7,6 +7,7 @@ import pytest
 from PySide6.QtCore import QPoint, QRectF, Qt
 from PySide6.QtGui import QPainterPath
 
+from editing.move_nodes_command import MoveNodesCommand
 from measurement.measurement_mode import MeasurementMode
 from ui.interaction_mode import InteractionMode
 from ui.main_window import MainWindow
@@ -108,3 +109,44 @@ def test_area_selection_selects_nodes(loaded_window, qapp):
     selection = loaded_window.node_selection_manager
     assert selection.selected_node_ids == {1, 2}
     assert selection.primary_node_id == 1
+
+
+def push_move(window, end_x):
+    data = window.project_coordinator.autodrive_data
+    node = data.get_node(1)
+    window.edit_coordinator.push(
+        MoveNodesCommand(data, {1: (node.x, node.y, node.z)}, {1: (end_x, node.y, node.z)})
+    )
+
+
+def test_undo_actions_start_disabled(window):
+    assert not window.actions.undo_action.isEnabled()
+    assert not window.actions.redo_action.isEnabled()
+    assert window.actions.undo_action.text() == "Rückgängig"
+
+
+def test_undo_action_follows_history(loaded_window):
+    actions = loaded_window.actions
+    node = loaded_window.project_coordinator.autodrive_data.get_node(1)
+
+    push_move(loaded_window, 50)
+    assert actions.undo_action.isEnabled()
+    assert actions.undo_action.text() == "Rückgängig: Node verschieben"
+    assert loaded_window.isWindowModified()
+
+    actions.undo_action.trigger()
+    assert node.x == 0
+    assert actions.redo_action.text() == "Wiederholen: Node verschieben"
+    assert not loaded_window.isWindowModified()
+
+    actions.redo_action.trigger()
+    assert node.x == 50
+
+
+def test_loading_xml_clears_undo_history(loaded_window, write_xml):
+    push_move(loaded_window, 50)
+
+    loaded_window.project_coordinator.load_xml_file(write_xml())
+
+    assert not loaded_window.actions.undo_action.isEnabled()
+    assert not loaded_window.isWindowModified()

@@ -1,7 +1,8 @@
 from PySide6.QtCore import Qt
 from PySide6.QtGui import (
     QAction,
-    QActionGroup
+    QActionGroup,
+    QKeySequence
 )
 from PySide6.QtWidgets import (
     QMainWindow,
@@ -259,6 +260,8 @@ class MainWindowActions:
             False
         )
 
+        self._create_undo_actions()
+
         self._create_map_scale_actions()
 
     def _create_map_scale_actions(self):
@@ -301,6 +304,70 @@ class MainWindowActions:
                 map_scale
             ] = action
 
+    UNDO_TEXT = "Rückgängig"
+    REDO_TEXT = "Wiederholen"
+
+    def _create_undo_actions(self):
+        undo_stack = (
+            self.window.edit_coordinator.undo_stack
+        )
+
+        self.undo_action = self._create_history_action(
+            base_text=self.UNDO_TEXT,
+            shortcut=QKeySequence.Undo,
+            trigger=undo_stack.undo,
+            can_run_changed=undo_stack.canUndoChanged,
+            text_changed=undo_stack.undoTextChanged
+        )
+
+        self.redo_action = self._create_history_action(
+            base_text=self.REDO_TEXT,
+            shortcut=QKeySequence.Redo,
+            trigger=undo_stack.redo,
+            can_run_changed=undo_stack.canRedoChanged,
+            text_changed=undo_stack.redoTextChanged
+        )
+
+    def _create_history_action(
+        self,
+        base_text: str,
+        shortcut,
+        trigger,
+        can_run_changed,
+        text_changed
+    ) -> QAction:
+        action = QAction(
+            base_text,
+            self.window
+        )
+
+        action.setShortcuts(
+            shortcut
+        )
+
+        action.setEnabled(
+            False
+        )
+
+        action.triggered.connect(
+            trigger
+        )
+
+        can_run_changed.connect(
+            action.setEnabled
+        )
+
+        # Shows e.g. "Rückgängig: Node verschieben".
+        text_changed.connect(
+            lambda command_text: action.setText(
+                f"{base_text}: {command_text}"
+                if command_text
+                else base_text
+            )
+        )
+
+        return action
+
     def _create_menu_bar(self):
         menu_bar = self.window.menuBar()
 
@@ -326,6 +393,18 @@ class MainWindowActions:
 
         file_menu.addAction(
             self.exit_action
+        )
+
+        edit_menu = menu_bar.addMenu(
+            "Bearbeiten"
+        )
+
+        edit_menu.addAction(
+            self.undo_action
+        )
+
+        edit_menu.addAction(
+            self.redo_action
         )
 
         view_menu = menu_bar.addMenu(

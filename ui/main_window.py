@@ -33,6 +33,7 @@ from ui.view_rotation_controller import ViewRotationController
 from ui.debug_dock import DebugDock
 from ui.debug_dock_coordinator import DebugDockCoordinator
 from ui.grid_coordinator import GridCoordinator
+from editing.edit_coordinator import EditCoordinator
 from selection.node_selection_manager import (
     NodeSelectionManager
 )
@@ -375,8 +376,9 @@ class MainWindow(QMainWindow):
         self.project_coordinator.rebuild_scene_after_style_change()
 
     def _configure_window(self):
+        # Qt shows "*" in place of "[*]" while the window is modified.
         self.setWindowTitle(
-            self.WINDOW_TITLE
+            f"{self.WINDOW_TITLE}[*]"
         )
 
         self.resize(
@@ -455,6 +457,10 @@ class MainWindow(QMainWindow):
                 ),
                 parent=self
             )
+        )
+
+        self.edit_coordinator = EditCoordinator(
+            parent=self
         )
 
         self.project_coordinator = (
@@ -599,6 +605,14 @@ class MainWindow(QMainWindow):
             self._handle_heightmap_path_changed
         )
 
+        self.project_coordinator.autodrive_data_loaded.connect(
+            self._handle_autodrive_data_loaded
+        )
+
+        self.edit_coordinator.clean_changed.connect(
+            self._handle_edit_clean_changed
+        )
+
         self.view.rotation_step_changed.connect(
             self._handle_rotation_step_changed
         )
@@ -642,6 +656,25 @@ class MainWindow(QMainWindow):
     ):
         self.actions.set_current_map_scale(
             map_scale
+        )
+
+    def _handle_autodrive_data_loaded(
+        self,
+        autodrive_data
+    ):
+        # Edits of the previous data cannot be undone on new data.
+        self.edit_coordinator.clear()
+
+        self.setWindowModified(
+            False
+        )
+
+    def _handle_edit_clean_changed(
+        self,
+        clean: bool
+    ):
+        self.setWindowModified(
+            not clean
         )
 
     def _set_status(
