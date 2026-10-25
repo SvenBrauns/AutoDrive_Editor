@@ -25,6 +25,9 @@ from PySide6.QtWidgets import (
 )
 
 from ui.interaction_mode import InteractionMode
+from ui.view_rotation_controller import (
+    ViewRotationController
+)
 
 
 @dataclass
@@ -128,9 +131,20 @@ class MapView(QGraphicsView):
     VIEWPORT_UPDATE_DELAY_MS = 50
     ZOOM_COMPARISON_TOLERANCE = 0.000001
 
-    ROTATION_DEGREES_PER_PIXEL = 0.3
-    ROTATION_COMPARISON_TOLERANCE = 0.000001
-    DEFAULT_ROTATION_STEP = 1.0
+    ROTATION_DEGREES_PER_PIXEL = (
+        ViewRotationController
+        .ROTATION_DEGREES_PER_PIXEL
+    )
+
+    ROTATION_COMPARISON_TOLERANCE = (
+        ViewRotationController
+        .ROTATION_COMPARISON_TOLERANCE
+    )
+
+    DEFAULT_ROTATION_STEP = (
+        ViewRotationController
+        .DEFAULT_ROTATION_STEP
+    )
 
     def __init__(self):
         super().__init__()
@@ -142,13 +156,6 @@ class MapView(QGraphicsView):
         self._measurement_active = False
         self._measurement_point_drag_active = False
 
-        self._rotation_angle = 0.0
-        self._raw_rotation_angle = 0.0
-
-        self._rotation_step = (
-            self.DEFAULT_ROTATION_STEP
-        )
-
         self._pointer_state = (
             PointerDragState()
         )
@@ -159,6 +166,24 @@ class MapView(QGraphicsView):
         )
 
         self._selection_rubber_band.hide()
+
+        self._rotation_controller = (
+            ViewRotationController(
+                view=self,
+                viewport_update_callback=(
+                    self._schedule_viewport_update
+                ),
+                parent=self
+            )
+        )
+
+        self._rotation_controller.rotation_changed.connect(
+            self.rotation_changed.emit
+        )
+
+        self._rotation_controller.rotation_step_changed.connect(
+            self.rotation_step_changed.emit
+        )
 
         self._configure_view()
         self._create_viewport_update_timer()
@@ -177,11 +202,17 @@ class MapView(QGraphicsView):
 
     @property
     def rotation_angle(self) -> float:
-        return self._rotation_angle
+        return (
+            self._rotation_controller
+            .rotation_angle
+        )
 
     @property
     def rotation_step(self) -> float:
-        return self._rotation_step
+        return (
+            self._rotation_controller
+            .rotation_step
+        )
 
     @property
     def interaction_mode(
@@ -233,85 +264,28 @@ class MapView(QGraphicsView):
         self,
         rotation_angle: float
     ):
-        self._raw_rotation_angle = (
-            self._normalize_rotation_angle(
-                rotation_angle
-            )
-        )
-
-        target_angle = self._snap_rotation_angle(
-            self._raw_rotation_angle
-        )
-
-        self._apply_rotation_angle(
-            target_angle
+        self._rotation_controller.set_rotation_angle(
+            rotation_angle
         )
 
     def set_exact_rotation_angle(
         self,
         rotation_angle: float
     ):
-        target_angle = (
-            self._normalize_rotation_angle(
-                rotation_angle
-            )
-        )
-
-        self._raw_rotation_angle = target_angle
-
-        self._apply_rotation_angle(
-            target_angle
+        self._rotation_controller.set_exact_rotation_angle(
+            rotation_angle
         )
 
     def set_rotation_step(
         self,
         rotation_step: float
     ):
-        rotation_step = float(
+        self._rotation_controller.set_rotation_step(
             rotation_step
         )
 
-        if rotation_step < 0.0:
-            raise ValueError(
-                "Das Rotationsraster darf "
-                "nicht negativ sein."
-            )
-
-        if rotation_step > 90.0:
-            raise ValueError(
-                "Das Rotationsraster darf "
-                "höchstens 90 Grad betragen."
-            )
-
-        if (
-            abs(
-                rotation_step
-                - self._rotation_step
-            )
-            < self.ROTATION_COMPARISON_TOLERANCE
-        ):
-            return
-
-        self._rotation_step = rotation_step
-
-        target_angle = self._snap_rotation_angle(
-            self._raw_rotation_angle
-        )
-
-        self._apply_rotation_angle(
-            target_angle
-        )
-
-        self.rotation_step_changed.emit(
-            self._rotation_step
-        )
-
     def reset_view_rotation(self):
-        self._raw_rotation_angle = 0.0
-
-        self._apply_rotation_angle(
-            0.0
-        )
+        self._rotation_controller.reset_rotation()
 
     def set_interaction_mode(
         self,
@@ -1006,129 +980,12 @@ class MapView(QGraphicsView):
             - self._pointer_state.last_position
         )
 
-        rotation_delta = (
-            movement.x()
-            * self.ROTATION_DEGREES_PER_PIXEL
-        )
-
         self._pointer_state.last_position = QPoint(
             mouse_position
         )
 
-        if (
-            abs(rotation_delta)
-            < self.ROTATION_COMPARISON_TOLERANCE
-        ):
-            return
-
-        self._raw_rotation_angle = (
-            self._normalize_rotation_angle(
-                self._raw_rotation_angle
-                + rotation_delta
-            )
-        )
-
-        target_angle = self._snap_rotation_angle(
-            self._raw_rotation_angle
-        )
-
-        self._apply_rotation_angle(
-            target_angle
-        )
-
-    def _apply_rotation_angle(
-        self,
-        target_angle: float
-    ):
-        target_angle = (
-            self._normalize_rotation_angle(
-                target_angle
-            )
-        )
-
-        rotation_delta = (
-            (
-                target_angle
-                - self._rotation_angle
-                + 180.0
-            )
-            % 360.0
-            - 180.0
-        )
-
-        if (
-            abs(rotation_delta)
-            < self.ROTATION_COMPARISON_TOLERANCE
-        ):
-            return
-
-        viewport_center = (
-            self.viewport()
-            .rect()
-            .center()
-        )
-
-        scene_center = self.mapToScene(
-            viewport_center
-        )
-
-        self.rotate(
-            rotation_delta
-        )
-
-        self._rotation_angle = target_angle
-
-        self.centerOn(
-            scene_center
-        )
-
-        self.rotation_changed.emit(
-            self._rotation_angle
-        )
-
-        self._schedule_viewport_update()
-
-    @staticmethod
-    def _normalize_rotation_angle(
-        rotation_angle: float
-    ) -> float:
-        normalized_angle = (
-            float(rotation_angle)
-            % 360.0
-        )
-
-        if (
-            abs(normalized_angle)
-            < 0.000001
-            or abs(normalized_angle - 360.0)
-            < 0.000001
-        ):
-            return 0.0
-
-        return normalized_angle
-
-    def _snap_rotation_angle(
-        self,
-        rotation_angle: float
-    ) -> float:
-        if (
-            self._rotation_step
-            <= self.ROTATION_COMPARISON_TOLERANCE
-        ):
-            return self._normalize_rotation_angle(
-                rotation_angle
-            )
-
-        snapped_angle = (
-            round(
-                rotation_angle
-                / self._rotation_step
-            )
-            * self._rotation_step
-        )
-
-        return self._normalize_rotation_angle(
-            snapped_angle
+        self._rotation_controller.rotate_by_horizontal_pixels(
+            movement.x()
         )
 
     def _begin_panning(

@@ -583,6 +583,11 @@ class MainWindowActions:
             == MeasurementMode.ANGLE
         )
 
+        measurement_active = (
+            distance_active
+            or angle_active
+        )
+
         self.distance_measurement_action.blockSignals(
             True
         )
@@ -607,6 +612,68 @@ class MainWindowActions:
             False
         )
 
+        if measurement_active:
+            self._set_interaction_actions_checked(
+                navigation_checked=False,
+                selection_checked=False
+            )
+
+        else:
+            self._restore_interaction_action()
+
+    def _set_interaction_actions_checked(
+        self,
+        navigation_checked: bool,
+        selection_checked: bool
+    ):
+        self.interaction_action_group.setExclusive(
+            False
+        )
+
+        self.navigation_action.blockSignals(
+            True
+        )
+
+        self.selection_action.blockSignals(
+            True
+        )
+
+        self.navigation_action.setChecked(
+            navigation_checked
+        )
+
+        self.selection_action.setChecked(
+            selection_checked
+        )
+
+        self.navigation_action.blockSignals(
+            False
+        )
+
+        self.selection_action.blockSignals(
+            False
+        )
+
+        self.interaction_action_group.setExclusive(
+            True
+        )
+
+    def _restore_interaction_action(self):
+        interaction_mode = (
+            self.window.view.interaction_mode
+        )
+
+        self._set_interaction_actions_checked(
+            navigation_checked=(
+                interaction_mode
+                == InteractionMode.NAVIGATE
+            ),
+            selection_checked=(
+                interaction_mode
+                == InteractionMode.SELECT
+            )
+        )
+
     def set_measurement_alignment_enabled(
         self,
         enabled: bool
@@ -622,12 +689,12 @@ class MainWindowActions:
         if not checked:
             return
 
-        self.window.set_measurement_mode(
-            MeasurementMode.INACTIVE
-        )
-
         self.window.set_interaction_mode(
             InteractionMode.NAVIGATE
+        )
+
+        self.window.set_measurement_mode(
+            MeasurementMode.INACTIVE
         )
 
     def _activate_selection_mode(
@@ -637,12 +704,12 @@ class MainWindowActions:
         if not checked:
             return
 
-        self.window.set_measurement_mode(
-            MeasurementMode.INACTIVE
-        )
-
         self.window.set_interaction_mode(
             InteractionMode.SELECT
+        )
+
+        self.window.set_measurement_mode(
+            MeasurementMode.INACTIVE
         )
 
     def _toggle_distance_measurement(
