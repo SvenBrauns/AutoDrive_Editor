@@ -29,7 +29,8 @@ Damit alle folgenden Funktionen mit echten Spieldaten getestet werden können.
 - [x] beim Laden einer Route oder eines Savegames die passende importierte Karte automatisch laden
 - [x] Savegame: `terrain.heightmap.png` neben der Config als Heightmap verwenden
 - [x] Kartengröße aus der Kartenkonfiguration im Mod übernehmen statt sie von Hand zu wählen
-- [ ] Prüfen, ob die Grundspiel-Karten aus dem Installationsordner lesbar sind; vermutlich liegen sie in einem Archivformat von Giants und können nicht importiert werden
+- [x] Prüfen, ob die Grundspiel-Karten aus dem Installationsordner lesbar sind: ja, sie liegen entpackt unter `<Installationsordner>\data\maps\mapUS`, `mapEU` und `mapAS` (Kartenkonfiguration, `textures\ui\overview.dds`, i3d, `data\dem.png`; Pfade beginnen mit `$data/`)
+- [ ] Grundspiel-Karten importierbar machen; offen ist, welchen Kartennamen AutoDrive für sie verwendet (es gibt keine `modDesc.xml` mit Titel). Klären mit einem Savegame oder einer Route auf einer Grundspiel-Karte
 
 Kartenbilder werden nicht mit dem Editor ausgeliefert. Jeder Nutzer erzeugt sie aus seinen eigenen Mods; einmal importiert, werden sie ohne erneuten Zip-Import wiederverwendet.
 
