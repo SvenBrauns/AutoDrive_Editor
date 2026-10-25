@@ -11,7 +11,7 @@ from autodrive_editor.ui.tools.map_tool import DragGesture, MapTool, is_alive_in
 class RotateSelectionTool(MapTool):
     """Shows a ring around the average center of the selection (at
     least two nodes). Dragging the ring rotates the selection, Shift
-    snaps to 15° steps and Esc cancels. Dragging elsewhere pans."""
+    snaps to 15° steps and Esc or a right-click cancels. Dragging elsewhere pans."""
 
     RING_COLOR = QColor(255, 190, 0)
 
@@ -52,7 +52,10 @@ class RotateSelectionTool(MapTool):
         if self._ring is None:
             return "Zum Rotieren mindestens zwei Nodes auswählen"
 
-        return "Ring ziehen zum Drehen, Umschalt rastet in 15°-Schritten ein. Esc bricht ab"
+        return (
+            "Ring ziehen zum Drehen, Umschalt rastet in 15°-Schritten ein. "
+            "Esc oder Rechtsklick bricht ab"
+        )
 
     def deactivate(self):
         super().deactivate()

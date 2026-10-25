@@ -10,6 +10,9 @@ class SelectTool(MapTool):
     """Left click selects a node, Ctrl + left click toggles it.
     Right dragging selects all nodes in a box. Left dragging pans."""
 
+    # The right button draws the selection box.
+    RIGHT_CLICK_CANCELS = False
+
     def __init__(self, view, selection_coordinator: SelectionCoordinator):
         super().__init__(view)
 

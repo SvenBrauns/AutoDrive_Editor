@@ -8,6 +8,7 @@ from autodrive_editor.ui.actions.tool_catalog import (
     SELECTION_TOOL,
     TOOL_GROUPS,
     ToolDefinition,
+    history_icon,
     tool_icon,
     tool_tooltip,
 )
@@ -227,7 +228,7 @@ class MainWindowActions:
     def _create_history_action(
         self, icon: str, base_text: str, shortcut, trigger, can_run_changed, text_changed
     ) -> QAction:
-        action = QAction(tool_icon(icon), base_text, self.window)
+        action = QAction(history_icon(icon), base_text, self.window)
 
         action.setShortcuts(shortcut)
 

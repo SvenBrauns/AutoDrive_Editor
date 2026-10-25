@@ -80,7 +80,12 @@ class MapTool:
     The default behaviour pans the map by left dragging. Tools override
     the mouse methods for their own gestures and fall back to the
     panning helpers where the map should still move.
+
+    A right-click does the same as Esc and calls cancel(). Tools that
+    use the right button themselves set RIGHT_CLICK_CANCELS to False.
     """
+
+    RIGHT_CLICK_CANCELS = True
 
     def __init__(self, view: MapView):
         self.view = view
@@ -113,7 +118,8 @@ class MapTool:
         return True
 
     def cancel(self) -> bool:
-        """Called on Esc. Returns True if something was cancelled."""
+        """Called on Esc and right-click. Returns True if something was
+        cancelled."""
 
         return False
 

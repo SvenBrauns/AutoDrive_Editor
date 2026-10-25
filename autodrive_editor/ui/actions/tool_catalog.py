@@ -3,7 +3,9 @@ how they are grouped in the tool panel."""
 
 from dataclasses import dataclass
 
-from PySide6.QtGui import QIcon
+from PySide6.QtCore import QByteArray, Qt
+from PySide6.QtGui import QIcon, QPainter, QPixmap
+from PySide6.QtSvg import QSvgRenderer
 
 from autodrive_editor.paths import TOOL_ICON_DIRECTORY
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
@@ -22,6 +24,40 @@ class ToolDefinition:
 
 def tool_icon(name: str) -> QIcon:
     return QIcon(str(TOOL_ICON_DIRECTORY / f"{name}.svg"))
+
+
+# Undo/redo icons are recolored so it is obvious whether they can be
+# used: blue when available, very light grey when not. Qt's automatic
+# disabled look of the dark grey icons was too similar.
+HISTORY_ICON_SOURCE_COLOR = "#444"
+HISTORY_ICON_COLOR = "#1f6fd1"
+HISTORY_ICON_DISABLED_COLOR = "#cdcdcd"
+HISTORY_ICON_SIZES = (16, 20, 24, 32, 40, 48)
+
+
+def history_icon(name: str) -> QIcon:
+    svg = (TOOL_ICON_DIRECTORY / f"{name}.svg").read_text(encoding="utf-8")
+    icon = QIcon()
+
+    for mode, color in (
+        (QIcon.Mode.Normal, HISTORY_ICON_COLOR),
+        (QIcon.Mode.Disabled, HISTORY_ICON_DISABLED_COLOR),
+    ):
+        renderer = QSvgRenderer(
+            QByteArray(svg.replace(HISTORY_ICON_SOURCE_COLOR, color).encode("utf-8"))
+        )
+
+        for size in HISTORY_ICON_SIZES:
+            pixmap = QPixmap(size, size)
+            pixmap.fill(Qt.GlobalColor.transparent)
+
+            painter = QPainter(pixmap)
+            renderer.render(painter)
+            painter.end()
+
+            icon.addPixmap(pixmap, mode)
+
+    return icon
 
 
 def tool_tooltip(text: str, shortcut: str, description: str) -> str:
