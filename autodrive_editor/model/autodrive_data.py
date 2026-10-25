@@ -107,6 +107,64 @@ class AutoDriveData:
         ordered.insert(position, (marker.node_id, marker))
         self.markers = dict(ordered)
 
+    def remove_marker(self, node_id: int) -> tuple[int, MarkerData]:
+        """Removes a node's marker. Returns its former position and the
+        marker, so it can be put back in place."""
+
+        position = self.marker_position(node_id)
+
+        if position is None:
+            raise ValueError(f"Node {node_id} hat keinen Marker.")
+
+        return position, self.markers.pop(node_id)
+
+    def move_marker(self, from_node_id: int, to_node_id: int) -> None:
+        """Attaches a marker to another node. Its position in the marker
+        order stays the same."""
+
+        if from_node_id not in self.markers:
+            raise ValueError(f"Node {from_node_id} hat keinen Marker.")
+
+        if to_node_id not in self.nodes:
+            raise ValueError(f"Die Node-ID {to_node_id} ist nicht vorhanden.")
+
+        if to_node_id in self.markers:
+            raise ValueError(f"Node {to_node_id} hat bereits einen Marker.")
+
+        marker = self.markers[from_node_id]
+        marker.node_id = to_node_id
+
+        self.markers = {
+            (to_node_id if node_id == from_node_id else node_id): existing
+            for node_id, existing in self.markers.items()
+        }
+
+    def find_marker_group(self, name: str) -> MarkerGroup | None:
+        return next((group for group in self.marker_groups if group.name == name), None)
+
+    def marker_group_names(self) -> list[str]:
+        """All group names: the group list plus groups only named on
+        markers, without duplicates."""
+
+        names = [group.name for group in self.marker_groups]
+
+        for marker in self.markers.values():
+            if marker.group not in names:
+                names.append(marker.group)
+
+        return names
+
+    def markers_in_group(self, name: str) -> list[MarkerData]:
+        return [marker for marker in self.markers.values() if marker.group == name]
+
+    def next_marker_group_id(self) -> int | None:
+        """Id for a new group. Groups from savegame configs have no ids;
+        then new groups get none either."""
+
+        ids = [group.group_id for group in self.marker_groups if group.group_id is not None]
+
+        return max(ids) + 1 if ids else None
+
     def marker_position(self, node_id: int) -> int | None:
         """Position of a node's marker in the marker order."""
 

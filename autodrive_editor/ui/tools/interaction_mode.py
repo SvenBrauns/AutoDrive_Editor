@@ -15,6 +15,10 @@ class InteractionMode(Enum):
     CONNECT_REGULAR = auto()
     CONNECT_DUAL = auto()
     CONNECT_REVERSE = auto()
+    ADD_MARKER = auto()
+    EDIT_MARKER = auto()
+    MOVE_MARKER = auto()
+    DELETE_MARKER = auto()
 
     @property
     def display_name(self) -> str:
@@ -30,6 +34,10 @@ class InteractionMode(Enum):
             InteractionMode.CONNECT_REGULAR: "Verbinden (Regular)",
             InteractionMode.CONNECT_DUAL: "Verbinden (Dual)",
             InteractionMode.CONNECT_REVERSE: "Verbinden (Reverse)",
+            InteractionMode.ADD_MARKER: "Marker hinzufügen",
+            InteractionMode.EDIT_MARKER: "Marker bearbeiten",
+            InteractionMode.MOVE_MARKER: "Marker verschieben",
+            InteractionMode.DELETE_MARKER: "Marker löschen",
         }
 
         return display_names[self]

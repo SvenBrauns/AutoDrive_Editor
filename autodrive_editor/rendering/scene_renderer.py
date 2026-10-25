@@ -42,6 +42,8 @@ class SceneRenderer:
         self.visible_marker_manager = None
         self.visible_node_selection_manager = None
 
+        self.marker_names_visible = True
+
         self.current_visible_rect = None
 
         self.node_layer = None
@@ -95,6 +97,7 @@ class SceneRenderer:
         removed_node_ids=(),
         connection_node_ids=(),
         changed_flag_node_ids=(),
+        changed_marker_node_ids=(),
     ):
         """Updates the drawing after an edit without redrawing
         everything.
@@ -104,6 +107,7 @@ class SceneRenderer:
         removed_node_ids:    nodes removed from the data
         connection_node_ids: nodes whose connections changed
         changed_flag_node_ids: nodes whose flag changed
+        changed_marker_node_ids: nodes whose marker changed
         """
 
         if self.autodrive_data is None:
@@ -125,6 +129,12 @@ class SceneRenderer:
             for manager in (self.visible_node_manager, self.visible_node_selection_manager):
                 if manager is not None:
                     manager.recreate_items(flag_changed_nodes)
+
+        if changed_marker_node_ids and self.visible_marker_manager is not None:
+            self.visible_marker_manager.remove_items(changed_marker_node_ids)
+
+            if self.markers_visible and self.current_visible_rect is not None:
+                self.visible_marker_manager.update(self.current_visible_rect)
 
         if not (moved_nodes or added_nodes or removed_node_ids or connection_node_ids):
             return
@@ -202,6 +212,8 @@ class SceneRenderer:
             display_style=self.display_style,
             padding=self.VISIBILITY_PADDING,
         )
+
+        self.visible_marker_manager.set_names_visible(self.marker_names_visible)
 
         self.visible_node_selection_manager = VisibleNodeSelectionManager(
             scene=self.scene,
@@ -480,6 +492,12 @@ class SceneRenderer:
             "nodes_visible": self.nodes_visible,
             "markers_visible": self.markers_visible,
         }
+
+    def set_marker_names_visible(self, visible: bool):
+        self.marker_names_visible = bool(visible)
+
+        if self.visible_marker_manager is not None:
+            self.visible_marker_manager.set_names_visible(self.marker_names_visible)
 
     def set_display_style(self, display_style: DisplayStyle):
         if not isinstance(display_style, DisplayStyle):

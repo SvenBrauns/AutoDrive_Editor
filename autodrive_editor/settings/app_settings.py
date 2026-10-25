@@ -15,6 +15,7 @@ class AppSettings:
     GAME_FOLDER_KEY = "game/folder"
     INSTALL_FOLDER_KEY = "game/install_folder"
     SETUP_DONE_KEY = "app/setup_done"
+    MARKER_NAMES_KEY = "view/marker_names"
 
     def __init__(self, settings_path: Path | None = None):
         if settings_path is None:
@@ -51,6 +52,14 @@ class AppSettings:
         else:
             self._settings.remove(self.INSTALL_FOLDER_KEY)
 
+        self._settings.sync()
+
+    @property
+    def marker_names_visible(self) -> bool:
+        return self._settings.value(self.MARKER_NAMES_KEY, True, type=bool)
+
+    def set_marker_names_visible(self, visible: bool):
+        self._settings.setValue(self.MARKER_NAMES_KEY, bool(visible))
         self._settings.sync()
 
     @property

@@ -37,6 +37,8 @@ class VisibleMarkerManager:
 
         self.visible_marker_items: dict[int, MarkerItem] = {}
 
+        self.names_visible = True
+
     def update(self, visible_rect: QRectF):
         visible_nodes = self.node_spatial_index.get_nodes_in_rect(
             visible_rect, padding=self.padding
@@ -66,8 +68,22 @@ class VisibleMarkerManager:
         for node_id in list(self.visible_marker_items):
             self._remove_marker_item(node_id)
 
+    def set_names_visible(self, visible: bool):
+        self.names_visible = bool(visible)
+
+        for marker_item in self.visible_marker_items.values():
+            marker_item.set_name_visible(self.names_visible)
+
+    def remove_items(self, node_ids):
+        """Drops the items of changed markers; update() creates them again
+        with the current name and position."""
+
+        for node_id in node_ids:
+            self._remove_marker_item(node_id)
+
     def _add_marker_item(self, node_data: NodeData):
-        marker_item = MarkerItem(self.marker_icon_path)
+        marker = self.autodrive_data.markers[node_data.node_id]
+        marker_item = MarkerItem(self.marker_icon_path, marker.name, self.names_visible)
 
         marker_scale = self.display_style.marker_scale
 
