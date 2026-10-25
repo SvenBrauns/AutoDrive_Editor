@@ -202,6 +202,12 @@ class MapView(QGraphicsView):
 
             handled = True
 
+        elif event.button() == Qt.RightButton and self.active_tool.RIGHT_CLICK_CANCELS:
+            # Same as Esc: cancels the running step of the tool.
+            self.active_tool.cancel()
+
+            handled = True
+
         else:
             handled = self.active_tool.mouse_press(event)
 

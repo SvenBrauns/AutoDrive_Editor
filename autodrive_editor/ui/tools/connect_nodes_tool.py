@@ -12,7 +12,8 @@ from autodrive_editor.ui.tools.map_tool import MapTool, is_alive_in_scene
 class ConnectNodesTool(MapTool):
     """Click nodes one after another to connect them with one
     connection type. A dashed line shows the next connection. Left
-    dragging pans; a click on empty map or Esc ends the chain."""
+    dragging pans; a click on empty map, Esc or a right-click ends the
+    chain."""
 
     def __init__(
         self,
@@ -77,7 +78,7 @@ class ConnectNodesTool(MapTool):
     def status_hint(self) -> str | None:
         return (
             "Start-Node, dann weitere Nodes anklicken. Gleicher Typ "
-            "entfernt eine Connection. Esc beendet"
+            "entfernt eine Connection. Esc oder Rechtsklick beendet"
         )
 
     def cursor_at(self, view_position: QPoint) -> Qt.CursorShape:

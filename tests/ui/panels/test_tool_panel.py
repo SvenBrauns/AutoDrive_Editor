@@ -227,3 +227,29 @@ def test_panel_widens_for_labels_and_shrinks_again(window, qapp):
 
     assert with_labels > icons_only + 50
     assert panel.width() == icons_only
+
+
+def test_undo_icon_is_blue_when_usable_and_light_when_not(window):
+    from collections import Counter
+
+    from PySide6.QtGui import QColor, QIcon
+
+    icon = window.actions.undo_action.icon()
+
+    def main_color(mode):
+        # The most common opaque color, ignoring smoothed edges.
+        image = icon.pixmap(48, 48, mode).toImage()
+        colors = Counter(
+            QColor.fromRgba(image.pixel(x, y)).name()
+            for x in range(image.width())
+            for y in range(image.height())
+            if QColor.fromRgba(image.pixel(x, y)).alpha() == 255
+        )
+        return QColor(colors.most_common(1)[0][0])
+
+    usable = main_color(QIcon.Mode.Normal)
+    unusable = main_color(QIcon.Mode.Disabled)
+
+    assert usable.blue() > usable.red() + 80  # clearly blue
+    assert unusable.lightness() > 190  # very light grey
+    assert unusable.lightness() - usable.lightness() > 60
