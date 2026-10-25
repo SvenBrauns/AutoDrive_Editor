@@ -107,7 +107,15 @@ class MainWindowActions:
 
         self.save_project_action.triggered.connect(self.window.save_project)
 
-        self.load_xml_action = QAction("AutoDrive-XML laden", self.window)
+        self.open_route_action = QAction("Route öffnen…", self.window)
+        self.open_route_action.setStatusTip("Route aus dem RoutesManager des Spielordners öffnen")
+        self.open_route_action.triggered.connect(self.window.open_route)
+
+        self.open_savegame_action = QAction("Savegame öffnen…", self.window)
+        self.open_savegame_action.setStatusTip("AutoDrive-Daten eines Savegames öffnen")
+        self.open_savegame_action.triggered.connect(self.window.open_savegame)
+
+        self.load_xml_action = QAction("XML-Datei öffnen…", self.window)
 
         self.load_xml_action.triggered.connect(self.window.load_xml)
 
@@ -256,13 +264,17 @@ class MainWindowActions:
 
         file_menu = menu_bar.addMenu("Datei")
 
-        file_menu.addAction(self.load_project_action)
+        file_menu.addAction(self.open_route_action)
 
-        file_menu.addAction(self.save_project_action)
+        file_menu.addAction(self.open_savegame_action)
+
+        file_menu.addAction(self.load_xml_action)
 
         file_menu.addSeparator()
 
-        file_menu.addAction(self.load_xml_action)
+        file_menu.addAction(self.load_project_action)
+
+        file_menu.addAction(self.save_project_action)
 
         file_menu.addSeparator()
 

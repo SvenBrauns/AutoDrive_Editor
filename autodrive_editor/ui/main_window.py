@@ -1,5 +1,5 @@
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QFileDialog, QGraphicsScene, QLabel, QMainWindow
+from PySide6.QtWidgets import QFileDialog, QGraphicsScene, QLabel, QMainWindow, QMessageBox
 
 from autodrive_editor.editing.commands.edit_command import DataChange
 from autodrive_editor.editing.edit_history import EditHistory
@@ -10,6 +10,8 @@ from autodrive_editor.editing.operations.move_nodes import MoveNodesOperation
 from autodrive_editor.editing.operations.node_types import NodeTypeOperation
 from autodrive_editor.editing.operations.rotate_selection import RotateSelectionOperation
 from autodrive_editor.file_io.project_file import ProjectFileStore
+from autodrive_editor.file_io.routes_index import read_routes_index
+from autodrive_editor.game.savegame_info import savegames_with_autodrive
 from autodrive_editor.measurement.controller import MeasurementController
 from autodrive_editor.measurement.coordinator import MeasurementCoordinator
 from autodrive_editor.measurement.mode import MeasurementMode
@@ -31,6 +33,7 @@ from autodrive_editor.terrain.background_map import BackgroundMap
 from autodrive_editor.terrain.heightmap import Heightmap
 from autodrive_editor.ui.actions.main_window_actions import MainWindowActions
 from autodrive_editor.ui.controls.grid_coordinator import GridCoordinator
+from autodrive_editor.ui.dialogs.list_choice_dialog import ListChoiceDialog
 from autodrive_editor.ui.dialogs.settings_dialog import SettingsDialog
 from autodrive_editor.ui.map_view.map_view import MapView
 from autodrive_editor.ui.map_view.rotation_controller import ViewRotationController
@@ -146,8 +149,92 @@ class MainWindow(QMainWindow):
         except Exception as ex:
             self._set_status(f"Kartengröße konnte nicht geändert werden: {ex}")
 
+    def open_route(self):
+        game_folder = self._valid_game_folder()
+
+        if game_folder is None:
+            return
+
+        if not game_folder.routes_xml_path.is_file():
+            self._inform(
+                "Im Spielordner wurde keine AutoDrive-Routenliste gefunden:\n"
+                f"{game_folder.routes_xml_path}\n\n"
+                "Routen entstehen im Spiel über den RoutesManager von AutoDrive."
+            )
+            return
+
+        try:
+            entries = [
+                entry
+                for entry in read_routes_index(game_folder.routes_xml_path)
+                if entry.path.is_file()
+            ]
+        except ValueError as ex:
+            self._inform(str(ex))
+            return
+
+        if not entries:
+            self._inform("Die Routenliste enthält keine vorhandenen Routen.")
+            return
+
+        entry = self._choose(
+            "Route öffnen",
+            "Routen aus dem RoutesManager von AutoDrive. AutoDrive kann sie im laufenden "
+            "Spiel neu laden.",
+            ["Name", "Karte", "Revision", "Datum"],
+            [
+                ([entry.name, entry.map_name, str(entry.revision), entry.date], entry)
+                for entry in entries
+            ],
+            sort_column=3,
+            newest_first=True,
+        )
+
+        if entry is None:
+            return
+
+        self._load_config(entry.path, display_name=entry.name, map_name=entry.map_name)
+
+    def open_savegame(self):
+        game_folder = self._valid_game_folder()
+
+        if game_folder is None:
+            return
+
+        savegames = savegames_with_autodrive(game_folder)
+
+        if not savegames:
+            self._inform("Kein Savegame im Spielordner enthält AutoDrive-Daten.")
+            return
+
+        savegame = self._choose(
+            "Savegame öffnen",
+            "Savegames mit AutoDrive-Daten (AutoDrive_config.xml).",
+            ["Nr.", "Name", "Karte", "Gespeichert"],
+            [
+                (
+                    [f"{info.number:2d}", info.display_name, info.map_title, info.save_date],
+                    info,
+                )
+                for info in savegames
+            ],
+        )
+
+        if savegame is None:
+            return
+
+        self._load_config(savegame.autodrive_config_path, display_name=savegame.display_name)
+
     def load_xml(self):
-        filename, _ = QFileDialog.getOpenFileName(self, "AutoDrive XML öffnen", "", "XML (*.xml)")
+        game_folder = self.settings.game_folder
+        start = ""
+
+        if game_folder is not None and game_folder.routes_directory.is_dir():
+            start = str(game_folder.routes_directory)
+
+        filename, _ = QFileDialog.getOpenFileName(
+            self, "AutoDrive-XML öffnen", start, "AutoDrive-XML (*.xml)"
+        )
 
         if not filename:
             return
@@ -160,6 +247,45 @@ class MainWindow(QMainWindow):
 
     def load_xml_file(self, filename):
         self.project_coordinator.load_xml_file(filename)
+
+    def _load_config(self, path, display_name=None, map_name=None):
+        try:
+            self.project_coordinator.load_xml_file(
+                path, display_name=display_name, map_name=map_name
+            )
+        except Exception as ex:
+            self._inform(f"Die AutoDrive-Daten konnten nicht geladen werden:\n{ex}")
+
+    def _valid_game_folder(self):
+        """The configured FS25 folder, or None after telling the user how
+        to set one."""
+
+        game_folder = self.settings.game_folder
+
+        if game_folder is None or not game_folder.is_valid:
+            self._inform(
+                "Es ist kein gültiger FS25-Spielordner eingestellt.\n"
+                "Bitte unter Datei → Einstellungen festlegen."
+            )
+            return None
+
+        return game_folder
+
+    def _choose(self, title, hint, columns, rows, sort_column=0, newest_first=False):
+        dialog = ListChoiceDialog(
+            title,
+            hint,
+            columns,
+            rows,
+            sort_column=sort_column,
+            newest_first=newest_first,
+            parent=self,
+        )
+
+        return dialog.chosen_value if dialog.exec() else None
+
+    def _inform(self, message: str):
+        QMessageBox.information(self, self.WINDOW_TITLE, message)
 
     def save_project(self):
         if not self.project_coordinator.current_xml_path:
@@ -588,6 +714,13 @@ class MainWindow(QMainWindow):
         self.connect_nodes_operation.end_chain()
 
         self.setWindowModified(False)
+
+        source = self.project_coordinator.config_source
+
+        if source is not None:
+            self.setWindowTitle(
+                f"{self.WINDOW_TITLE} – {source.display_name} ({source.format_label})[*]"
+            )
 
     def _handle_data_changed(self, data_change: DataChange):
         self.scene_renderer.apply_changes(

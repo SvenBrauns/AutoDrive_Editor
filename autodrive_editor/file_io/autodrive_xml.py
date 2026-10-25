@@ -55,6 +55,13 @@ class ConfigSource:
     map_name: str | None = None
     version: str | None = None
 
+    # Shown in the window title, e.g. the route or savegame name.
+    display_name: str | None = None
+
+    @property
+    def format_label(self) -> str:
+        return "Route" if self.format == ConfigFormat.ROUTE_EXPORT else "Savegame"
+
 
 @dataclass(frozen=True)
 class LoadedConfig:

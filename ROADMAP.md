@@ -16,14 +16,14 @@ Damit alle folgenden Funktionen mit echten Spieldaten getestet werden können.
 
 **Routen und Savegames**
 
-- [ ] RoutesManager: Routenliste direkt aus dem Spielordner anzeigen und eine Route laden (bevorzugter Weg, da AutoDrive Routen im laufenden Spiel neu laden kann)
-- [ ] Savegame-Config: Liste der Savegames anzeigen und `AutoDrive_config.xml` laden
-- [ ] einzelne XML-Datei weiterhin von Hand öffnen
-- [ ] nur FS25-Configs annehmen (`version` 3), sonst verständliche Meldung
+- [x] RoutesManager: Routenliste direkt aus dem Spielordner anzeigen und eine Route laden (bevorzugter Weg, da AutoDrive Routen im laufenden Spiel neu laden kann)
+- [x] Savegame-Config: Liste der Savegames anzeigen und `AutoDrive_config.xml` laden
+- [x] einzelne XML-Datei weiterhin von Hand öffnen
+- [x] nur FS25-Configs annehmen (`version` 3), sonst verständliche Meldung
 
 **Karten**
 
-- [ ] Kartenname aus `routes.xml` (`map`) bzw. aus der Savegame-Config (`MapName`) lesen
+- [x] Kartenname aus `routes.xml` (`map`) bzw. aus der Savegame-Config (`MapName`) lesen
 - [ ] Mod-Zip einer Karte importieren: Kartenbild und Heightmap auslesen und im Datenordner des Editors ablegen (z. B. `%APPDATA%\AutoDrive Editor\maps\<Kartenname>\`), zusammen mit der Kartengröße
 - [ ] Schaltfläche „Karten scannen“: `mods`-Ordner nach Kartenmods durchsuchen (Zips und entpackte Ordner) und zum Import anbieten; bereits importierte Karten kennzeichnen
 - [ ] beim Laden einer Route oder eines Savegames die passende importierte Karte automatisch laden

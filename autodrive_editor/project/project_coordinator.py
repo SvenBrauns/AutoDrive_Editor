@@ -1,10 +1,16 @@
+from dataclasses import replace
 from pathlib import Path
 
 from PySide6.QtCore import QObject, Qt, Signal
 from PySide6.QtWidgets import QGraphicsScene
 
-from autodrive_editor.file_io.autodrive_xml import AutoDriveXmlReader, ConfigSource
+from autodrive_editor.file_io.autodrive_xml import (
+    AutoDriveXmlReader,
+    ConfigFormat,
+    ConfigSource,
+)
 from autodrive_editor.file_io.project_file import ProjectFileStore
+from autodrive_editor.file_io.routes_index import find_route_entry
 from autodrive_editor.measurement.coordinator import MeasurementCoordinator
 from autodrive_editor.model.autodrive_data import AutoDriveData
 from autodrive_editor.rendering.scene_renderer import SceneRenderer
@@ -114,17 +120,35 @@ class ProjectCoordinator(QObject):
 
         self.debug_refresh_requested.emit()
 
-    def load_xml_file(self, file_path):
+    def load_xml_file(self, file_path, display_name=None, map_name=None):
+        """Loads a route file or savegame config. Route files do not contain
+        their map name; it comes from the caller or from routes.xml."""
+
         xml_path = Path(file_path).resolve()
 
         loaded = AutoDriveXmlReader.read(xml_path)
+
+        source = loaded.source
+
+        if source.format == ConfigFormat.ROUTE_EXPORT and map_name is None:
+            entry = find_route_entry(xml_path)
+
+            if entry is not None:
+                map_name = entry.map_name
+                display_name = display_name or entry.name
+
+        source = replace(
+            source,
+            map_name=map_name or source.map_name,
+            display_name=display_name or xml_path.stem,
+        )
 
         self.clear_scene_content()
 
         self.current_xml_path = str(xml_path)
 
         self.autodrive_data = loaded.data
-        self.config_source = loaded.source
+        self.config_source = source
 
         self.selection_coordinator.clear()
 
@@ -141,7 +165,10 @@ class ProjectCoordinator(QObject):
 
         self.autodrive_data_loaded.emit(self.autodrive_data)
 
-        self.status_changed.emit(f"{len(self.autodrive_data)} Waypoints geladen")
+        self.status_changed.emit(
+            f"{source.format_label} „{source.display_name}“ geladen: "
+            f"{len(self.autodrive_data)} Waypoints"
+        )
 
         self.debug_refresh_requested.emit()
 
