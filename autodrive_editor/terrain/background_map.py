@@ -2,7 +2,7 @@ from PySide6.QtWidgets import QGraphicsPixmapItem, QGraphicsScene
 
 from autodrive_editor.file_io.background_image import load_dds_as_pixmap
 from autodrive_editor.rendering.items.map_grid_item import MapGridItem
-from autodrive_editor.terrain.background_transform import MapTransform
+from autodrive_editor.terrain.background_transform import BackgroundTransform
 
 
 class BackgroundMap:
@@ -100,9 +100,9 @@ class BackgroundMap:
         if pixmap.isNull():
             return
 
-        background_scale = MapTransform.calculate_background_scale(self.map_scale)
+        background_scale = BackgroundTransform.calculate_background_scale(self.map_scale)
 
-        position_x, position_z = MapTransform.calculate_background_position(
+        position_x, position_z = BackgroundTransform.calculate_background_position(
             pixmap.width(), pixmap.height(), self.map_scale
         )
 

@@ -1,4 +1,4 @@
-class MapTransform:
+class BackgroundTransform:
     @staticmethod
     def calculate_background_scale(map_scale):
         return float(map_scale)
