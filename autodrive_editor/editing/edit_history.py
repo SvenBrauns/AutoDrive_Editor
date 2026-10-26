@@ -74,5 +74,11 @@ class EditHistory(QObject):
     def mark_clean(self):
         self.undo_stack.setClean()
 
+    def mark_unsaved(self):
+        """Counts the data as changed although nothing is in the history,
+        e.g. after restoring an autosave."""
+
+        self.undo_stack.resetClean()
+
     def _handle_data_change(self, data_change: DataChange):
         self.data_changed.emit(data_change)

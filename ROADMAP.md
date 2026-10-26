@@ -123,13 +123,13 @@ Menü `Prüfen` mit einer Ergebnisliste, die zur jeweiligen Stelle springt.
 Speichern kommt erst gegen Ende, damit jede Änderung vorher ohne Speichern getestet werden kann. Die Funktion ist aufwendiger als ein einfacher XML-Export; die Details stehen unten unter „Hinweise zum Speichern“.
 
 - [x] Speichern im Format, aus dem geladen wurde
-- [ ] Speichern unter
+- [x] Speichern unter (Routen als neue Route im RoutesManager, sonst Dateidialog)
 - [x] Node-IDs lückenlos ab 1 vergeben und alle Verweise und Marker umschreiben
 - [ ] Prüfung vor dem Speichern
 - [x] Sicherungskopie der Originaldatei
 - [x] Nachfrage bei ungespeicherten Änderungen vor dem Laden und Schließen
 - [x] Fenstertitel-`*` nach dem Speichern zurücksetzen (`EditHistory.mark_clean()`)
-- [ ] Autosave
+- [x] Autosave (Datenordner des Editors, Wiederherstellung beim nächsten Start)
 
 ### Hinweise zum Speichern
 

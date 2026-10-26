@@ -1,4 +1,7 @@
-from PySide6.QtCore import Qt
+from datetime import datetime
+from pathlib import Path
+
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import (
     QApplication,
@@ -27,7 +30,7 @@ from autodrive_editor.editing.operations.rotate_selection import RotateSelection
 from autodrive_editor.file_io.base_game_maps import read_base_game_maps
 from autodrive_editor.file_io.map_mod import read_map_mod
 from autodrive_editor.file_io.project_file import ProjectFileStore
-from autodrive_editor.file_io.routes_index import read_routes_index
+from autodrive_editor.file_io.routes_index import find_route_entry, read_routes_index
 from autodrive_editor.game.map_scanner import ScanResult, scan_for_map_mods
 from autodrive_editor.game.savegame_info import savegames_with_autodrive
 from autodrive_editor.measurement.controller import MeasurementController
@@ -40,7 +43,8 @@ from autodrive_editor.model.autodrive_data import (
     NodeData,
 )
 from autodrive_editor.model.connections import ConnectionType
-from autodrive_editor.paths import LOCAL_PROJECTS_DIRECTORY, MARKER_ICON_PATH
+from autodrive_editor.paths import LOCAL_PROJECTS_DIRECTORY, MARKER_ICON_PATH, user_data_directory
+from autodrive_editor.project.autosave import AutosaveStore
 from autodrive_editor.project.project_coordinator import ProjectCoordinator
 from autodrive_editor.rendering.display_style import DisplayStyle
 from autodrive_editor.rendering.scene_renderer import SceneRenderer
@@ -145,6 +149,12 @@ class MainWindow(QMainWindow):
         # Created after the renderer is connected to the view, so the
         # dock reads the renderer state after it has been updated.
         self._create_debug_dock_coordinator()
+
+        # Unsaved changes are backed up here regularly.
+        self.autosave_store = AutosaveStore(user_data_directory() / "autosave")
+        self.autosave_timer = QTimer(self)
+        self.autosave_timer.timeout.connect(self.autosave)
+        self._apply_autosave_interval()
 
     def select_background(self):
         filename, _ = QFileDialog.getOpenFileName(
@@ -521,7 +531,49 @@ class MainWindow(QMainWindow):
             self._inform(f"Die AutoDrive-Daten konnten nicht gespeichert werden:\n{ex}")
             return False
 
+        self._after_save(affected_vehicles)
+
+        return True
+
+    def save_xml_as(self) -> bool:
+        """Routes from the RoutesManager are saved as a new route there,
+        everything else into a file chosen in a dialog."""
+
+        source = self.project_coordinator.config_source
+
+        if source is None:
+            self._set_status("Bitte zuerst eine AutoDrive-XML laden")
+            return False
+
+        affected_vehicles = []
+
+        try:
+            if find_route_entry(source.path) is not None:
+                name = self._ask_route_name(source.display_name)
+
+                if not name:
+                    return False
+
+                self.project_coordinator.save_as_route(name, source.map_name or "")
+            else:
+                target = self._ask_save_path(source.path)
+
+                if target is None:
+                    return False
+
+                affected_vehicles = self.project_coordinator.save_as_file(target)
+        except Exception as ex:
+            self._inform(f"Die AutoDrive-Daten konnten nicht gespeichert werden:\n{ex}")
+            return False
+
+        self._after_save(affected_vehicles)
+
+        return True
+
+    def _after_save(self, affected_vehicles: list[str]):
         self.edit_history.mark_clean()
+        self.autosave_store.clear()
+        self._update_window_title()
 
         if affected_vehicles:
             self._inform(
@@ -529,13 +581,93 @@ class MainWindow(QMainWindow):
                 "Marker 1, ein Parkziel wurde entfernt:\n\n" + "\n".join(affected_vehicles)
             )
 
-        return True
+    def _ask_route_name(self, default_name: str | None) -> str | None:
+        name, accepted = QInputDialog.getText(
+            self, "Als neue Route speichern", "Name der Route:", text=default_name or ""
+        )
+
+        return name.strip() if accepted else None
+
+    def _ask_save_path(self, current_path: Path) -> Path | None:
+        filename, _ = QFileDialog.getSaveFileName(
+            self, "Speichern unter", str(current_path), "AutoDrive-XML (*.xml)"
+        )
+
+        if not filename:
+            return None
+
+        return Path(filename if filename.lower().endswith(".xml") else filename + ".xml")
+
+    def autosave(self):
+        """Backs up unsaved changes into the editor's data folder."""
+
+        if self.project_coordinator.config_source is None or self.edit_history.is_clean:
+            return
+
+        try:
+            self.project_coordinator.write_autosave(self.autosave_store)
+        except Exception as ex:
+            self._set_status(f"Automatische Sicherung fehlgeschlagen: {ex}")
+            return
+
+        self._set_status(f"Automatisch gesichert um {datetime.now():%H:%M}")
+
+    def offer_autosave_restore(self):
+        """After the editor ended with unsaved changes, offers to restore
+        them from the autosave."""
+
+        info = self.autosave_store.read()
+
+        if info is None:
+            return
+
+        if not Path(info.source_path).is_file():
+            self._inform(
+                f"Es gibt eine automatische Sicherung von „{info.display_name}“, aber die "
+                f"Originaldatei fehlt:\n{info.source_path}\n\n"
+                f"Die Sicherung kann über „XML-Datei öffnen…“ geladen werden:\n"
+                f"{self.autosave_store.xml_path}"
+            )
+            return
+
+        if not self._ask_restore_autosave(info):
+            self.autosave_store.clear()
+            return
+
+        try:
+            self.project_coordinator.restore_autosave(self.autosave_store, info)
+        except Exception as ex:
+            self._inform(f"Die automatische Sicherung konnte nicht geladen werden:\n{ex}")
+            return
+
+        self.edit_history.mark_unsaved()
+
+    def _ask_restore_autosave(self, info) -> bool:
+        answer = QMessageBox.question(
+            self,
+            self.WINDOW_TITLE,
+            f"Der Editor wurde mit ungespeicherten Änderungen an „{info.display_name}“ beendet. "
+            f"Die automatische Sicherung vom {info.saved_at} wiederherstellen?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.Yes,
+        )
+
+        return answer == QMessageBox.Yes
+
+    def _apply_autosave_interval(self):
+        minutes = self.settings.autosave_minutes
+
+        if minutes > 0:
+            self.autosave_timer.start(minutes * 60_000)
+        else:
+            self.autosave_timer.stop()
 
     def _confirm_discard_changes(self) -> bool:
         """Offers to save unsaved changes before they would be lost. Returns
-        whether to go on."""
+        whether to go on. Going on drops the autosave as well."""
 
         if self.edit_history.is_clean:
+            self.autosave_store.clear()
             return True
 
         answer = self._ask_save_changes()
@@ -543,7 +675,11 @@ class MainWindow(QMainWindow):
         if answer == QMessageBox.Save:
             return self.save_xml()
 
-        return answer == QMessageBox.Discard
+        if answer == QMessageBox.Discard:
+            self.autosave_store.clear()
+            return True
+
+        return False
 
     def _ask_save_changes(self):
         return QMessageBox.question(
@@ -653,6 +789,8 @@ class MainWindow(QMainWindow):
         dialog = SettingsDialog(self.settings, parent=self)
 
         if dialog.exec():
+            self._apply_autosave_interval()
+
             folder = self.settings.game_folder
 
             if folder is None:
@@ -1208,7 +1346,11 @@ class MainWindow(QMainWindow):
 
         self.setWindowModified(False)
         self.actions.save_xml_action.setEnabled(True)
+        self.actions.save_xml_as_action.setEnabled(True)
 
+        self._update_window_title()
+
+    def _update_window_title(self):
         source = self.project_coordinator.config_source
 
         if source is not None:

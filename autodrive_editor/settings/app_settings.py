@@ -16,6 +16,9 @@ class AppSettings:
     INSTALL_FOLDER_KEY = "game/install_folder"
     SETUP_DONE_KEY = "app/setup_done"
     MARKER_NAMES_KEY = "view/marker_names"
+    AUTOSAVE_MINUTES_KEY = "app/autosave_minutes"
+
+    DEFAULT_AUTOSAVE_MINUTES = 5
 
     def __init__(self, settings_path: Path | None = None):
         if settings_path is None:
@@ -60,6 +63,18 @@ class AppSettings:
 
     def set_marker_names_visible(self, visible: bool):
         self._settings.setValue(self.MARKER_NAMES_KEY, bool(visible))
+        self._settings.sync()
+
+    @property
+    def autosave_minutes(self) -> int:
+        """Minutes between autosaves; 0 turns autosave off."""
+
+        return self._settings.value(
+            self.AUTOSAVE_MINUTES_KEY, self.DEFAULT_AUTOSAVE_MINUTES, type=int
+        )
+
+    def set_autosave_minutes(self, minutes: int):
+        self._settings.setValue(self.AUTOSAVE_MINUTES_KEY, max(0, int(minutes)))
         self._settings.sync()
 
     @property

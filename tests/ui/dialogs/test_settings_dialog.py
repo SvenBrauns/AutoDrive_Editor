@@ -95,3 +95,15 @@ def test_detect_install_button_fills_in_the_folder(qapp, tmp_path, monkeypatch):
     dialog.folders._detect_install()
 
     assert dialog.folders.install_folder_input.text() == str(install)
+
+
+def test_autosave_interval_is_shown_and_stored(qapp):
+    settings = AppSettings()
+    dialog = SettingsDialog(settings)
+    assert dialog.autosave_input.value() == AppSettings.DEFAULT_AUTOSAVE_MINUTES
+
+    dialog.autosave_input.setValue(0)
+    dialog.accept()
+
+    assert settings.autosave_minutes == 0
+    assert dialog.autosave_input.text() == "aus"
