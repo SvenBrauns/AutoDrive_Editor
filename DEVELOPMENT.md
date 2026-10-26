@@ -43,9 +43,9 @@ autodrive_editor/
   project/      loading XML, map, heightmap and projects
   rendering/    map drawing
     spatial/    spatial indexes for nodes and connections
-    visible/    graphics items only for the visible area
-    connections/ connection data, geometry and detail drawing
-    items/      individual graphics items
+    layers/     the network layers (connections, nodes, markers, selection) and their tile cache
+    connections/ connection data
+    items/      other graphics items (grid, measurement)
   ui/
     main_window.py  main window, assembles all parts
     actions/    tool catalog, menus, toolbars
@@ -64,7 +64,7 @@ packaging/      app icon and license texts for the Windows version
 
 - Every change to the data model is an `EditCommand` and goes through `EditHistory.push()`, so it can be undone.
 - After each change, the command reports a `DataChange`; the `SceneRenderer` then updates only the affected nodes.
-- Only nodes, markers and selection rings in the visible area exist as graphics items, so networks with over 100,000 nodes stay responsive.
+- Nodes, connections, markers and the selection are not graphics items. Four layer items paint them straight from the spatial indexes, using drawing data cached per 256 m tile; after an edit only the changed tiles are rebuilt. This keeps networks with over 100,000 nodes responsive. Clicks find nodes through `SceneRenderer.get_node_at()`.
 - Each tool is a `MapTool` subclass under `ui/tools/` and is described in `ui/actions/tool_catalog.py` with its icon and shortcut.
 
 ## Translations
@@ -103,7 +103,7 @@ tr("Marker “{name}” added", name=name)
 - **Maps**: for FS22/FS25, `overview.dds` has a middle quarter that must be cropped (4096² → 2048²). The map size (`map_scale` 1/2/4/8 for original/4x/16x/64x) comes from the map configuration, never from the network bounds. For a 16x map: 8192 × 8192 m, world coordinates −4096 to +4096.
 - **Heightmap** (`dem.png`, 16-bit grayscale): `height = raw_value / 65535.0 * 255.0`. Compared with the Y values of a test network with 113,058 nodes, the median difference is 0.02 m; larger differences occur only on bridges, ramps and building platforms.
 - **Angles**: map angle 0° = up, 90° = right; independent of view and grid rotation.
-- **Zoom**: below technical zoom 1.0, only three bundled connection paths are drawn; from 1.0 on, nodes, markers, selection rings and connections with arrows are drawn. Visible-area changes are reported with a 50 ms delay.
+- **Zoom**: there are no zoom thresholds. Every size in `DisplayStyle` is in metres and grows with the zoom, but stays between a minimum and maximum size on screen. Nodes fade in while they grow from 1.5 to 4 px, and only drawn nodes can be clicked (selected nodes always). Arrows sit in the middle of one-way connections once the connection is long enough on screen. Marker icons are drawn at every zoom level; their names fade in just below `marker_name_min_zoom` (1.0), and names that would overlap an earlier one are left out.
 
 ## File formats when saving
 
@@ -117,6 +117,6 @@ Saving always uses the format the data was loaded from.
 
 ## Performance (test network with 113,058 nodes and 116,260 connections)
 
-Proven: native `QGraphicsEllipseItem` nodes, graphics items only for the visible area plus a buffer (256 m tiles, 128 m buffer), three bundled global connection paths, spatial indexes, selection stored only as node IDs, separate preview and final selection.
+Proven: one layer item per kind of object that paints from the spatial indexes; per 256 m tile one `QPainterPath` per connection type and one `QPolygonF` of node positions, drawn with one Qt call each (`drawPath`, `drawPoints` with a round pen for dots); cosmetic pens with the width set per paint; arrows computed per paint from the one-way connections sorted by length, so the loop stops at the first one too short; selection stored only as node IDs. A full repaint of the whole map takes about 30 ms, zoomed in about 20 ms.
 
-Not suitable: custom `paint()` per node, permanent NodeItems for all nodes, one graphics item per connection, large stored arrow paths, permanent selection rings for all selected nodes.
+Not suitable: a graphics item per node or connection (creating and deleting them while panning stutters), one path for the whole network (every edit rebuilds it), `Qt.RoundCap` on connection pens (wide lines become 20–50 times slower; flat caps look the same since nodes cover the joints).
