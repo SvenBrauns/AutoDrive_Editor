@@ -1,0 +1,41 @@
+name: Release
+
+# Push a tag like v0.1.0 to build the Windows app and publish a release.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    env:
+      QT_QPA_PLATFORM: offscreen
+      APP_FOLDER: dist/AutoDrive Editor
+      ZIP_NAME: AutoDrive-Editor-${{ github.ref_name }}-windows.zip
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - run: pip install -r requirements-dev.txt pyinstaller
+      - run: python -m pytest
+
+      - name: Build
+        run: >
+          pyinstaller --noconfirm --windowed --name "AutoDrive Editor"
+          --icon packaging/app.ico
+          --add-data "autodrive_editor/resources;autodrive_editor/resources"
+          main.py
+
+      - name: Add license files and zip
+        run: |
+          Copy-Item LICENSE, README.md, packaging/LGPL-3.0.txt, packaging/THIRD_PARTY_NOTICES.md "$env:APP_FOLDER"
+          Compress-Archive -Path "$env:APP_FOLDER" -DestinationPath "$env:ZIP_NAME"
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ github.ref_name }}" "$env:ZIP_NAME" --title "${{ github.ref_name }}" --generate-notes
