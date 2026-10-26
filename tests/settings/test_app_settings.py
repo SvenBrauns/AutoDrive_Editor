@@ -2,8 +2,11 @@ import pytest
 from base_game_helpers import make_installation
 from game_folder_helpers import make_game_folder
 
+from autodrive_editor.editing.path_shapes import PathOptions
 from autodrive_editor.game.game_folder import GameFolder
 from autodrive_editor.game.game_installation import GameInstallation
+from autodrive_editor.model.autodrive_data import SUBPRIO_FLAG
+from autodrive_editor.model.connections import ConnectionType
 from autodrive_editor.settings.app_settings import AppSettings
 
 pytestmark = pytest.mark.usefixtures("isolated_user_data")
@@ -99,3 +102,23 @@ def test_empty_folders_do_not_ask_again(isolated_user_data):
     settings.mark_setup_done()
 
     assert not settings.needs_setup
+
+
+def test_path_options_are_kept_between_sessions():
+    options = PathOptions(7.5, ConnectionType.DUAL, SUBPRIO_FLAG)
+
+    AppSettings().set_path_options(options)
+
+    assert AppSettings().path_options == options
+
+
+def test_path_options_default_without_stored_values():
+    assert AppSettings().path_options == PathOptions()
+
+
+def test_invalid_stored_path_options_fall_back_to_defaults():
+    settings = AppSettings()
+    settings.set_path_options(PathOptions(7.5, ConnectionType.DUAL, SUBPRIO_FLAG))
+    settings._settings.setValue(AppSettings.PATH_CONNECTION_KEY, "nonsense")
+
+    assert AppSettings().path_options == PathOptions()

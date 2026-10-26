@@ -21,6 +21,9 @@ class InteractionMode(Enum):
     ALIGN_VERTICAL = auto()
     ALIGN_HEIGHT = auto()
     HEIGHT_FROM_TERRAIN = auto()
+    DRAW_LINE = auto()
+    DRAW_BEZIER = auto()
+    DRAW_ARC = auto()
     ADD_MARKER = auto()
     EDIT_MARKER = auto()
     MOVE_MARKER = auto()
@@ -46,6 +49,9 @@ class InteractionMode(Enum):
             InteractionMode.ALIGN_VERTICAL: "Vertikal ausrichten",
             InteractionMode.ALIGN_HEIGHT: "Höhe wie Referenz",
             InteractionMode.HEIGHT_FROM_TERRAIN: "Höhe aus Heightmap",
+            InteractionMode.DRAW_LINE: "Linie",
+            InteractionMode.DRAW_BEZIER: "Bézierkurve",
+            InteractionMode.DRAW_ARC: "Kreisbogen",
             InteractionMode.ADD_MARKER: "Marker hinzufügen",
             InteractionMode.EDIT_MARKER: "Marker bearbeiten",
             InteractionMode.MOVE_MARKER: "Marker verschieben",

@@ -78,3 +78,24 @@ def read_connection_state(
         source_id in target.outgoing,
         source_id in target.incoming,
     )
+
+
+def write_connection_state(
+    autodrive_data: AutoDriveData, source_id: int, target_id: int, state: ConnectionState
+) -> None:
+    source = autodrive_data.nodes[source_id]
+    target = autodrive_data.nodes[target_id]
+
+    entries = (
+        (source.outgoing, target_id),
+        (source.incoming, target_id),
+        (target.outgoing, source_id),
+        (target.incoming, source_id),
+    )
+
+    for (connections, node_id), present in zip(entries, state, strict=True):
+        if present:
+            connections.add(node_id)
+
+        else:
+            connections.discard(node_id)

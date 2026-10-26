@@ -83,10 +83,12 @@ Hinweis zum Ausrichten: Die Werkzeuge müssen auch bei gedrehter Kartenansicht f
 
 Neue Werkzeuggruppe für ganze Streckenabschnitte.
 
-- [ ] gerade Linie mit gleichmäßigem Node-Abstand
-- [ ] Bézierkurve
-- [ ] Kreisbogen
-- [ ] Höhen der neuen Nodes aus der Heightmap
+- [x] gerade Linie mit gleichmäßigem Node-Abstand (`I`)
+- [x] Bézierkurve (`B`, kubisch mit zwei Griffen)
+- [x] Kreisbogen (`K`, Griff liegt auf dem Bogen)
+- [x] Höhen der neuen Nodes aus der Heightmap (ohne Heightmap linear zwischen Start und Ende)
+
+Werkzeuggruppe `Linien`: Start und Ende anklicken, jeweils eine Node oder eine freie Stelle (beachtet das Einrasten am Raster). Die Linie entsteht sofort; Kurven zeigen erst eine Vorschau mit Griffen und werden mit Enter oder „Anwenden“ erstellt, Esc verwirft sie. Das Ende ist der Start der nächsten Strecke. Abstand, Connection-Typ und Node-Typ stehen unter den Werkzeugen und werden gespeichert. Der Abstand wird so angepasst, dass die Strecke in gleich lange Stücke aufgeht. Jede Strecke ist ein Schritt im Rückgängig-Verlauf.
 
 ## 5. Projekt und Anwendung — mittlere Priorität
 

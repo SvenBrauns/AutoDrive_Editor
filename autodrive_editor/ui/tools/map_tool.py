@@ -123,6 +123,11 @@ class MapTool:
 
         return False
 
+    def confirm(self) -> bool:
+        """Called on Enter. Returns True if something was confirmed."""
+
+        return False
+
     def status_hint(self) -> str | None:
         """Optional hint shown in the status bar when the tool is
         selected, e.g. what has to be done first."""
