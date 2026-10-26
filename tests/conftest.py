@@ -111,12 +111,18 @@ def write_xml(tmp_path):
 
 
 @pytest.fixture
-def window(qapp):
+def window(qapp, tmp_path):
+    from PySide6.QtWidgets import QMessageBox
+
+    from autodrive_editor.project.autosave import AutosaveStore
     from autodrive_editor.ui.main_window import MainWindow
 
     main_window = MainWindow()
+    main_window.autosave_store = AutosaveStore(tmp_path / "autosave")
     # Tests that need the missing-map question replace this again.
     main_window._ask_missing_map = lambda map_name: None
+    # Closing at the end of a test drops unsaved edits without asking.
+    main_window._ask_save_changes = lambda: QMessageBox.Discard
     main_window.show()
     qapp.processEvents()
 

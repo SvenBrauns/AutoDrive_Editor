@@ -16,5 +16,6 @@ def run() -> int:
 
     # After the window is visible, so the setup dialog appears on top of it.
     QTimer.singleShot(0, window.run_first_start)
+    QTimer.singleShot(0, window.offer_autosave_restore)
 
     return app.exec()

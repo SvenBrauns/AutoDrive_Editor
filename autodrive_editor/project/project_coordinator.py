@@ -1,4 +1,6 @@
+import shutil
 from dataclasses import replace
+from datetime import datetime
 from pathlib import Path
 
 from PySide6.QtCore import QObject, Qt, Signal
@@ -9,10 +11,18 @@ from autodrive_editor.file_io.autodrive_xml import (
     ConfigFormat,
     ConfigSource,
 )
+from autodrive_editor.file_io.autodrive_xml_writer import save_config
 from autodrive_editor.file_io.project_file import ProjectFileStore
-from autodrive_editor.file_io.routes_index import find_route_entry
+from autodrive_editor.file_io.routes_index import (
+    add_route,
+    find_route_entry,
+    mark_route_saved,
+    routes_index_for,
+)
+from autodrive_editor.file_io.savegame_vehicles import renumber_vehicle_markers
 from autodrive_editor.measurement.coordinator import MeasurementCoordinator
 from autodrive_editor.model.autodrive_data import AutoDriveData
+from autodrive_editor.project.autosave import AutosaveInfo, AutosaveStore
 from autodrive_editor.rendering.scene_renderer import SceneRenderer
 from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
 from autodrive_editor.terrain.background_map import BackgroundMap
@@ -79,6 +89,16 @@ class ProjectCoordinator(QObject):
         self.current_config_path: str | None = None
         self.current_heightmap_path: str | None = None
 
+        # Markers in the order of the file on disk, to renumber vehicle targets on save.
+        self._file_markers = []
+
+        # vehicles.xml of the loaded savegame. Only saving into that
+        # savegame updates it, not saving a copy elsewhere.
+        self._vehicles_path: Path | None = None
+
+        # Files backed up as .bak in this session.
+        self._backed_up_paths: set[Path] = set()
+
     def load_background_file(self, file_path):
         self.background_map.load(file_path)
 
@@ -131,17 +151,22 @@ class ProjectCoordinator(QObject):
 
         self.debug_refresh_requested.emit()
 
-    def load_xml_file(self, file_path, display_name=None, map_name=None, detect_map=True):
+    def load_xml_file(
+        self, file_path, display_name=None, map_name=None, detect_map=True, original_path=None
+    ):
         """Loads a route file or savegame config. Route files do not contain
         their map name; it comes from the caller or from routes.xml.
 
         With detect_map, the imported map with that name is loaded as
         background together with its heightmap and map size. Project files
-        bring their own map settings and turn this off."""
+        bring their own map settings and turn this off.
 
-        xml_path = Path(file_path).resolve()
+        original_path is set when an autosave copy is restored: the data
+        then counts as loaded from that file and is saved there."""
 
-        loaded = AutoDriveXmlReader.read(xml_path)
+        loaded = AutoDriveXmlReader.read(Path(file_path).resolve())
+
+        xml_path = Path(original_path or file_path).resolve()
 
         source = loaded.source
 
@@ -154,6 +179,7 @@ class ProjectCoordinator(QObject):
 
         source = replace(
             source,
+            path=xml_path,
             map_name=map_name or source.map_name,
             display_name=display_name or xml_path.stem,
         )
@@ -164,6 +190,10 @@ class ProjectCoordinator(QObject):
 
         self.autodrive_data = loaded.data
         self.config_source = source
+        self._file_markers = list(loaded.data.markers.values())
+        self._vehicles_path = (
+            xml_path.parent / "vehicles.xml" if source.format == ConfigFormat.SAVEGAME else None
+        )
 
         self.selection_coordinator.clear()
 
@@ -214,6 +244,139 @@ class ProjectCoordinator(QObject):
             and bool(source.map_name)
             and self.map_cache.find(source.map_name) is None
         )
+
+    def save_xml_file(self) -> list[str]:
+        """Saves the data into the file it was loaded from. Routes listed in
+        routes.xml get a new revision; in savegames the marker numbers in
+        vehicles.xml are updated. Each written file is backed up as .bak
+        once per session. Returns the names of vehicles whose marker was
+        deleted."""
+
+        source = self.config_source
+
+        if source is None:
+            raise ValueError("Bitte zuerst eine AutoDrive-XML laden")
+
+        self._back_up(source.path)
+        save_config(self.autodrive_data, source)
+
+        affected_vehicles = []
+
+        if source.format == ConfigFormat.ROUTE_EXPORT:
+            routes_xml_path = routes_index_for(source.path)
+
+            if routes_xml_path.is_file():
+                self._back_up(routes_xml_path)
+                mark_route_saved(source.path, datetime.now())
+        elif self._vehicles_path is not None:
+            affected_vehicles = self._renumber_vehicle_markers(self._vehicles_path)
+
+        self._file_markers = list(self.autodrive_data.markers.values())
+
+        self.status_changed.emit(f"{source.format_label} „{source.display_name}“ gespeichert")
+
+        return affected_vehicles
+
+    def _renumber_vehicle_markers(self, vehicles_path: Path) -> list[str]:
+        """Markers are recognised by object, so moved and renamed markers
+        keep their identity."""
+
+        positions = {
+            id(marker): number
+            for number, marker in enumerate(self.autodrive_data.markers.values(), start=1)
+        }
+        new_numbers = {
+            number: positions.get(id(marker))
+            for number, marker in enumerate(self._file_markers, start=1)
+        }
+
+        if not vehicles_path.is_file() or all(old == new for old, new in new_numbers.items()):
+            return []
+
+        self._back_up(vehicles_path)
+
+        return renumber_vehicle_markers(vehicles_path, new_numbers)
+
+    def save_as_route(self, name: str, map_name: str):
+        """Saves the data as a new route in the RoutesManager the current
+        route is listed in, and goes on with that route."""
+
+        routes_xml_path = routes_index_for(self.config_source.path)
+        self._back_up(routes_xml_path)
+        target = add_route(routes_xml_path, name, map_name, datetime.now())
+
+        self._save_as(target, display_name=name, map_name=map_name)
+
+    def save_as_file(self, target: Path) -> list[str]:
+        """Saves the data into another file in the same format and goes on
+        with that file. Returns affected vehicles like save_xml_file."""
+
+        target = Path(target).resolve()
+
+        if target == self.config_source.path:
+            return self.save_xml_file()
+
+        if target.is_file():
+            self._back_up(target)
+
+        self._save_as(target, display_name=target.stem, map_name=self.config_source.map_name)
+
+        return []
+
+    def _save_as(self, target: Path, display_name: str, map_name: str | None):
+        # The loaded file is the template, so its other settings are kept.
+        shutil.copyfile(self.config_source.path, target)
+
+        source = replace(
+            self.config_source, path=target, display_name=display_name, map_name=map_name
+        )
+        save_config(self.autodrive_data, source)
+
+        self.config_source = source
+        self.current_xml_path = str(target)
+        self._file_markers = list(self.autodrive_data.markers.values())
+        self._vehicles_path = None
+
+        self.status_changed.emit(f"{source.format_label} „{display_name}“ gespeichert")
+
+    def write_autosave(self, store: AutosaveStore):
+        positions = {id(marker): number for number, marker in enumerate(self._file_markers, 1)}
+        markers = self.autodrive_data.markers.values()
+
+        store.write(
+            self.autodrive_data,
+            self.config_source,
+            [positions.get(id(marker)) for marker in markers],
+            len(self._file_markers),
+        )
+
+    def restore_autosave(self, store: AutosaveStore, info: AutosaveInfo):
+        """Loads the autosaved data as if it was loaded from its original
+        file, so saving writes there and still updates vehicles.xml."""
+
+        self.load_xml_file(
+            store.xml_path,
+            display_name=info.display_name,
+            map_name=info.map_name,
+            original_path=info.source_path,
+        )
+
+        # Placeholders stand for markers deleted before the autosave.
+        file_markers = [object() for _ in range(info.file_marker_count)]
+        markers = self.autodrive_data.markers.values()
+
+        for marker, number in zip(markers, info.marker_numbers, strict=False):
+            if number is not None and number <= len(file_markers):
+                file_markers[number - 1] = marker
+
+        self._file_markers = file_markers
+
+    def _back_up(self, path: Path):
+        if path in self._backed_up_paths:
+            return
+
+        shutil.copy2(path, path.with_name(path.name + ".bak"))
+        self._backed_up_paths.add(path)
 
     def save_project_file(self, config_path) -> Path:
         if not self.current_xml_path:

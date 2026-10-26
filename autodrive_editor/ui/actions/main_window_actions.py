@@ -119,6 +119,20 @@ class MainWindowActions:
 
         self.load_xml_action.triggered.connect(self.window.load_xml)
 
+        self.save_xml_action = QAction("Speichern", self.window)
+        self.save_xml_action.setShortcut(QKeySequence.Save)
+        self.save_xml_action.setStatusTip("AutoDrive-Daten in die geladene Datei speichern")
+        self.save_xml_action.setEnabled(False)
+        self.save_xml_action.triggered.connect(self.window.save_xml)
+
+        self.save_xml_as_action = QAction("Speichern unter…", self.window)
+        self.save_xml_as_action.setShortcut(QKeySequence.SaveAs)
+        self.save_xml_as_action.setStatusTip(
+            "Routen als neue Route im RoutesManager speichern, sonst in eine andere Datei"
+        )
+        self.save_xml_as_action.setEnabled(False)
+        self.save_xml_as_action.triggered.connect(self.window.save_xml_as)
+
         self.settings_action = QAction("Einstellungen…", self.window)
 
         self.settings_action.triggered.connect(self.window.open_settings)
@@ -311,6 +325,10 @@ class MainWindowActions:
         file_menu.addAction(self.open_savegame_action)
 
         file_menu.addAction(self.load_xml_action)
+
+        file_menu.addAction(self.save_xml_action)
+
+        file_menu.addAction(self.save_xml_as_action)
 
         file_menu.addSeparator()
 

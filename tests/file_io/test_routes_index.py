@@ -1,7 +1,10 @@
+import re
+from datetime import datetime
+
 import pytest
 from game_folder_helpers import add_routes
 
-from autodrive_editor.file_io.routes_index import find_route_entry, read_routes_index
+from autodrive_editor.file_io.routes_index import add_route, find_route_entry, read_routes_index
 
 ROUTES = [
     ("Thueringen", "g8Cq.xml", "LS25_Thüringen_2_0_16x", 1),
@@ -50,3 +53,17 @@ def test_route_file_outside_routes_manager_has_no_entry(tmp_path):
     loose.write_text("<routeExport/>", encoding="utf-8")
 
     assert find_route_entry(loose) is None
+
+
+def test_new_route_is_added_with_revision_one(tmp_path):
+    manager = add_routes(tmp_path, ROUTES)
+
+    path = add_route(manager / "routes.xml", "Neu", "LS25_X", datetime(2026, 10, 26, 8, 0, 0))
+
+    entries = read_routes_index(manager / "routes.xml")
+    assert [e.name for e in entries] == ["Thueringen", "NF Marsch", "Neu"]
+    new = entries[-1]
+    assert (new.map_name, new.revision, new.date) == ("LS25_X", 1, "2026/10/26 08:00:00")
+    assert new.path == path
+    assert re.fullmatch(r"[A-Za-z0-9]{16}\.xml", path.name)
+    assert not path.exists()
