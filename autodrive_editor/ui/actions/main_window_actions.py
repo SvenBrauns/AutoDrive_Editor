@@ -18,6 +18,9 @@ from autodrive_editor.ui.controls.rotation_controls import RotationControls
 from autodrive_editor.ui.panels.tool_panel import ToolPanel
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
+TOOLBAR_ICON_SIZE = QSize(28, 28)
+TOOLBAR_GAP_WIDTH = 8
+
 
 class MainWindowActions:
     """Creates the window's actions, menus, toolbars and tool panel, and keeps the tool buttons in
@@ -69,7 +72,7 @@ class MainWindowActions:
 
         self.navigation_action.setChecked(True)
 
-        self.distance_measurement_action = QAction("↔", self.window)
+        self.distance_measurement_action = QAction(tool_icon("measure_distance"), "↔", self.window)
 
         self.distance_measurement_action.setCheckable(True)
 
@@ -81,7 +84,7 @@ class MainWindowActions:
 
         self.distance_measurement_action.triggered.connect(self._toggle_distance_measurement)
 
-        self.angle_measurement_action = QAction("∠", self.window)
+        self.angle_measurement_action = QAction(tool_icon("measure_angle"), "∠", self.window)
 
         self.angle_measurement_action.setCheckable(True)
 
@@ -93,7 +96,7 @@ class MainWindowActions:
 
         self.angle_measurement_action.triggered.connect(self._toggle_angle_measurement)
 
-        self.align_measurement_action = QAction("━", self.window)
+        self.align_measurement_action = QAction(tool_icon("measure_align"), "━", self.window)
 
         self.align_measurement_action.setToolTip(tr("Align the measuring line horizontally"))
 
@@ -196,7 +199,7 @@ class MainWindowActions:
 
         self._create_clipboard_actions()
 
-        self.grid_snap_action = QAction(tr("Snap to grid"), self.window)
+        self.grid_snap_action = QAction(tool_icon("grid_snap"), tr("Snap to grid"), self.window)
         self.grid_snap_action.setCheckable(True)
         self.grid_snap_action.setShortcut(QKeySequence("G"))
         self.grid_snap_action.toggled.connect(
@@ -286,19 +289,20 @@ class MainWindowActions:
         clipboard = self.window.clipboard_operation
 
         definitions = (
-            ("copy_action", tr("Copy"), QKeySequence.Copy, clipboard.copy),
-            ("cut_action", tr("Cut"), QKeySequence.Cut, clipboard.cut),
-            ("paste_action", tr("Paste"), QKeySequence.Paste, clipboard.paste),
+            ("copy_action", "copy", tr("Copy"), QKeySequence.Copy, clipboard.copy),
+            ("cut_action", "cut", tr("Cut"), QKeySequence.Cut, clipboard.cut),
+            ("paste_action", "paste", tr("Paste"), QKeySequence.Paste, clipboard.paste),
             (
                 "paste_at_original_action",
+                "paste",
                 tr("Paste at original position"),
                 QKeySequence("Ctrl+Shift+V"),
                 lambda: clipboard.paste(at_original_position=True),
             ),
         )
 
-        for name, text, shortcut, trigger in definitions:
-            action = QAction(text, self.window)
+        for name, icon, text, shortcut, trigger in definitions:
+            action = QAction(tool_icon(icon), text, self.window)
             action.setShortcut(shortcut)
             action.triggered.connect(trigger)
             setattr(self, name, action)
@@ -434,7 +438,9 @@ class MainWindowActions:
 
         self.quick_access_toolbar.setFloatable(False)
 
-        self.quick_access_toolbar.setToolButtonStyle(Qt.ToolButtonTextOnly)
+        self.quick_access_toolbar.setToolButtonStyle(Qt.ToolButtonIconOnly)
+
+        self.quick_access_toolbar.setIconSize(TOOLBAR_ICON_SIZE)
 
         self.window.addToolBar(Qt.TopToolBarArea, self.quick_access_toolbar)
 
@@ -447,17 +453,22 @@ class MainWindowActions:
 
             button.setToolButtonStyle(Qt.ToolButtonIconOnly)
 
-            button.setIconSize(QSize(20, 20))
+            button.setIconSize(TOOLBAR_ICON_SIZE)
 
             button.setAutoRaise(True)
 
             self.quick_access_toolbar.addWidget(button)
 
-        self.quick_access_toolbar.addSeparator()
+        self._add_toolbar_gap()
 
         self.quick_access_toolbar.addAction(self.navigation_action)
 
         self.quick_access_toolbar.addAction(self.selection_action)
+
+        self._add_toolbar_gap()
+
+        for action in (self.copy_action, self.cut_action, self.paste_action):
+            self.quick_access_toolbar.addAction(action)
 
         spacer = QWidget(self.quick_access_toolbar)
 
@@ -477,6 +488,8 @@ class MainWindowActions:
 
         self.rotation_controls.reset_requested.connect(self.window.reset_view_rotation)
 
+        self._show_as_icon(self.rotation_controls, "view_rotation")
+
         self.quick_access_toolbar.addWidget(self.rotation_controls)
 
         self.grid_controls = GridControls(
@@ -486,7 +499,11 @@ class MainWindowActions:
             parent=self.quick_access_toolbar,
         )
 
+        self._show_as_icon(self.grid_controls, "grid")
+
         self.quick_access_toolbar.addWidget(self.grid_controls)
+
+        self.quick_access_toolbar.addAction(self.grid_snap_action)
 
         self.grid_controls.snap_requested.connect(self.grid_snap_action.setChecked)
 
@@ -497,6 +514,28 @@ class MainWindowActions:
         self.quick_access_toolbar.addAction(self.angle_measurement_action)
 
         self.quick_access_toolbar.addAction(self.align_measurement_action)
+
+    def _add_toolbar_gap(self):
+        """Separator with some free space on both sides, between button groups."""
+        toolbar = self.quick_access_toolbar
+
+        for item in ("gap", "separator", "gap"):
+            if item == "separator":
+                toolbar.addSeparator()
+            else:
+                gap = QWidget(toolbar)
+                gap.setFixedWidth(TOOLBAR_GAP_WIDTH)
+                toolbar.addWidget(gap)
+
+    @staticmethod
+    def _show_as_icon(button: QToolButton, icon: str):
+        button.setIcon(tool_icon(icon))
+
+        button.setIconSize(TOOLBAR_ICON_SIZE)
+
+        button.setToolButtonStyle(Qt.ToolButtonIconOnly)
+
+        button.setAutoRaise(True)
 
     def _create_tool_panel(self):
         self.tool_panel = ToolPanel(self.window)
