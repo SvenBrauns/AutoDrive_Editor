@@ -367,6 +367,9 @@ class MainWindow(QMainWindow):
         return imported
 
     def open_route(self):
+        if not self._confirm_discard_changes():
+            return
+
         game_folder = self._valid_game_folder()
 
         if game_folder is None:
@@ -413,6 +416,9 @@ class MainWindow(QMainWindow):
         self._load_config(entry.path, display_name=entry.name, map_name=entry.map_name)
 
     def open_savegame(self):
+        if not self._confirm_discard_changes():
+            return
+
         game_folder = self._valid_game_folder()
 
         if game_folder is None:
@@ -443,6 +449,9 @@ class MainWindow(QMainWindow):
         self._load_config(savegame.autodrive_config_path, display_name=savegame.display_name)
 
     def load_xml(self):
+        if not self._confirm_discard_changes():
+            return
+
         game_folder = self.settings.game_folder
         start = ""
 
@@ -501,6 +510,56 @@ class MainWindow(QMainWindow):
 
         return dialog.chosen_value if dialog.exec() else None
 
+    def save_xml(self) -> bool:
+        if self.project_coordinator.config_source is None:
+            self._set_status("Bitte zuerst eine AutoDrive-XML laden")
+            return False
+
+        try:
+            affected_vehicles = self.project_coordinator.save_xml_file()
+        except Exception as ex:
+            self._inform(f"Die AutoDrive-Daten konnten nicht gespeichert werden:\n{ex}")
+            return False
+
+        self.edit_history.mark_clean()
+
+        if affected_vehicles:
+            self._inform(
+                "Diese Fahrzeuge hatten einen gelöschten Marker als Ziel. Das Ziel ist jetzt "
+                "Marker 1, ein Parkziel wurde entfernt:\n\n" + "\n".join(affected_vehicles)
+            )
+
+        return True
+
+    def _confirm_discard_changes(self) -> bool:
+        """Offers to save unsaved changes before they would be lost. Returns
+        whether to go on."""
+
+        if self.edit_history.is_clean:
+            return True
+
+        answer = self._ask_save_changes()
+
+        if answer == QMessageBox.Save:
+            return self.save_xml()
+
+        return answer == QMessageBox.Discard
+
+    def _ask_save_changes(self):
+        return QMessageBox.question(
+            self,
+            self.WINDOW_TITLE,
+            "Die Änderungen sind noch nicht gespeichert. Jetzt speichern?",
+            QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
+            QMessageBox.Save,
+        )
+
+    def closeEvent(self, event):
+        if self._confirm_discard_changes():
+            event.accept()
+        else:
+            event.ignore()
+
     def _inform(self, message: str):
         QMessageBox.information(self, self.WINDOW_TITLE, message)
 
@@ -532,6 +591,9 @@ class MainWindow(QMainWindow):
             self._set_status(f"Projekt konnte nicht gespeichert werden: {ex}")
 
     def load_project(self):
+        if not self._confirm_discard_changes():
+            return
+
         config_path, _ = QFileDialog.getOpenFileName(
             self,
             "Projektkonfiguration öffnen",
@@ -1145,6 +1207,7 @@ class MainWindow(QMainWindow):
         self.marker_dock.set_data(autodrive_data)
 
         self.setWindowModified(False)
+        self.actions.save_xml_action.setEnabled(True)
 
         source = self.project_coordinator.config_source
 

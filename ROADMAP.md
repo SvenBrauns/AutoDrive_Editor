@@ -122,12 +122,13 @@ Menü `Prüfen` mit einer Ergebnisliste, die zur jeweiligen Stelle springt.
 
 Speichern kommt erst gegen Ende, damit jede Änderung vorher ohne Speichern getestet werden kann. Die Funktion ist aufwendiger als ein einfacher XML-Export; die Details stehen unten unter „Hinweise zum Speichern“.
 
-- [ ] Speichern und Speichern unter, jeweils im Format, aus dem geladen wurde
-- [ ] Node-IDs lückenlos ab 1 vergeben und alle Verweise und Marker umschreiben
+- [x] Speichern im Format, aus dem geladen wurde
+- [ ] Speichern unter
+- [x] Node-IDs lückenlos ab 1 vergeben und alle Verweise und Marker umschreiben
 - [ ] Prüfung vor dem Speichern
-- [ ] Sicherungskopie der Originaldatei
-- [ ] Nachfrage bei ungespeicherten Änderungen vor dem Laden und Schließen
-- [ ] Fenstertitel-`*` nach dem Speichern zurücksetzen (`EditHistory.mark_clean()`)
+- [x] Sicherungskopie der Originaldatei
+- [x] Nachfrage bei ungespeicherten Änderungen vor dem Laden und Schließen
+- [x] Fenstertitel-`*` nach dem Speichern zurücksetzen (`EditHistory.mark_clean()`)
 - [ ] Autosave
 
 ### Hinweise zum Speichern
@@ -141,7 +142,7 @@ Gespeichert wird in das Format, aus dem geladen wurde. Es gibt drei Wege:
 - `<waypoints c="Anzahl">` mit `x`, `y`, `z`, `out`, `in`, `flags`; Werte durch `;` getrennt, mehrere Verbindungen einer Node durch `,`, `-1` für keine Verbindung.
 - Marker als `<markers><m i n g/>`, Markergruppen als `<groups><g i n/>`.
 - AutoDrive kann Routen im laufenden Spiel neu laden; deshalb ist dies der bevorzugte Weg.
-- Offen: ob beim Speichern `revision` und `date` in `routes.xml` angepasst werden müssen. Wird geklärt, wenn diese Phase ansteht.
+- Beim Speichern bekommt der Eintrag in `routes.xml` `revision` + 1 und das aktuelle Datum, wie beim Speichern durch AutoDrive.
 
 **Savegame-Config (`AutoDrive_config.xml`)**
 
@@ -149,7 +150,7 @@ Gespeichert wird in das Format, aus dem geladen wurde. Es gibt drei Wege:
 - `<waypoints>` mit `id`, `x`, `y`, `z`, `out`, `incoming`, `flags`; Koordinaten und Flags durch `,` getrennt, Verbindungen je Node durch `;`, `-1` für keine Verbindung.
 - Marker als `<mapmarker><mm1><id/><name/><group/></mm1>…`.
 - Speichern bearbeitet die vorhandene Datei, damit alle übrigen Einstellungen erhalten bleiben; fehlt `flags`, wird es ergänzt.
-- `vehicles.xml` im selben Ordner: Fahrzeuge speichern ihr Parkziel als Markernummer (`parkDestination`, Fahrzeug über `uniqueId`). Ändert sich die Markerreihenfolge, müssen diese Verweise mit angepasst werden.
+- `vehicles.xml` im selben Ordner: Fahrzeuge speichern Ziele und Parkziel als Markernummer (`firstMarker`, `secondMarker`, `parkDestination`). Ändert sich die Markerreihenfolge, werden diese Verweise mit angepasst.
 
 **Einzelne XML-Datei**
 

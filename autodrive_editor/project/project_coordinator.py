@@ -1,4 +1,6 @@
+import shutil
 from dataclasses import replace
+from datetime import datetime
 from pathlib import Path
 
 from PySide6.QtCore import QObject, Qt, Signal
@@ -9,8 +11,14 @@ from autodrive_editor.file_io.autodrive_xml import (
     ConfigFormat,
     ConfigSource,
 )
+from autodrive_editor.file_io.autodrive_xml_writer import save_config
 from autodrive_editor.file_io.project_file import ProjectFileStore
-from autodrive_editor.file_io.routes_index import find_route_entry
+from autodrive_editor.file_io.routes_index import (
+    find_route_entry,
+    mark_route_saved,
+    routes_index_for,
+)
+from autodrive_editor.file_io.savegame_vehicles import renumber_vehicle_markers
 from autodrive_editor.measurement.coordinator import MeasurementCoordinator
 from autodrive_editor.model.autodrive_data import AutoDriveData
 from autodrive_editor.rendering.scene_renderer import SceneRenderer
@@ -78,6 +86,12 @@ class ProjectCoordinator(QObject):
         self.config_source: ConfigSource | None = None
         self.current_config_path: str | None = None
         self.current_heightmap_path: str | None = None
+
+        # Markers in the order of the file on disk, to renumber vehicle targets on save.
+        self._file_markers = []
+
+        # Files backed up as .bak in this session.
+        self._backed_up_paths: set[Path] = set()
 
     def load_background_file(self, file_path):
         self.background_map.load(file_path)
@@ -164,6 +178,7 @@ class ProjectCoordinator(QObject):
 
         self.autodrive_data = loaded.data
         self.config_source = source
+        self._file_markers = list(loaded.data.markers.values())
 
         self.selection_coordinator.clear()
 
@@ -214,6 +229,65 @@ class ProjectCoordinator(QObject):
             and bool(source.map_name)
             and self.map_cache.find(source.map_name) is None
         )
+
+    def save_xml_file(self) -> list[str]:
+        """Saves the data into the file it was loaded from. Routes listed in
+        routes.xml get a new revision; in savegames the marker numbers in
+        vehicles.xml are updated. Each written file is backed up as .bak
+        once per session. Returns the names of vehicles whose marker was
+        deleted."""
+
+        source = self.config_source
+
+        if source is None:
+            raise ValueError("Bitte zuerst eine AutoDrive-XML laden")
+
+        self._back_up(source.path)
+        save_config(self.autodrive_data, source)
+
+        affected_vehicles = []
+
+        if source.format == ConfigFormat.ROUTE_EXPORT:
+            routes_xml_path = routes_index_for(source.path)
+
+            if routes_xml_path.is_file():
+                self._back_up(routes_xml_path)
+                mark_route_saved(source.path, datetime.now())
+        else:
+            affected_vehicles = self._renumber_vehicle_markers(source.path.parent / "vehicles.xml")
+
+        self._file_markers = list(self.autodrive_data.markers.values())
+
+        self.status_changed.emit(f"{source.format_label} „{source.display_name}“ gespeichert")
+
+        return affected_vehicles
+
+    def _renumber_vehicle_markers(self, vehicles_path: Path) -> list[str]:
+        """Markers are recognised by object, so moved and renamed markers
+        keep their identity."""
+
+        positions = {
+            id(marker): number
+            for number, marker in enumerate(self.autodrive_data.markers.values(), start=1)
+        }
+        new_numbers = {
+            number: positions.get(id(marker))
+            for number, marker in enumerate(self._file_markers, start=1)
+        }
+
+        if not vehicles_path.is_file() or all(old == new for old, new in new_numbers.items()):
+            return []
+
+        self._back_up(vehicles_path)
+
+        return renumber_vehicle_markers(vehicles_path, new_numbers)
+
+    def _back_up(self, path: Path):
+        if path in self._backed_up_paths:
+            return
+
+        shutil.copy2(path, path.with_name(path.name + ".bak"))
+        self._backed_up_paths.add(path)
 
     def save_project_file(self, config_path) -> Path:
         if not self.current_xml_path:

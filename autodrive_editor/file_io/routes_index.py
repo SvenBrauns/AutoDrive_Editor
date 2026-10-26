@@ -15,9 +15,15 @@ are not listed in routes.xml.
 import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
+from autodrive_editor.file_io.autodrive_xml_writer import write_xml
+
 ROUTES_INDEX_ROOT = "autoDriveRoutesManager"
+
+# Date format of the route entries, e.g. 2026/10/23 19:13:30.
+ROUTE_DATE_FORMAT = "%Y/%m/%d %H:%M:%S"
 
 _AUTOSAVE_SUFFIX = re.compile(r"_autosave_\d+$")
 
@@ -74,7 +80,7 @@ def find_route_entry(route_file: Path) -> RouteEntry | None:
     route they belong to."""
 
     route_file = Path(route_file)
-    routes_xml_path = route_file.parent.parent / "routes.xml"
+    routes_xml_path = routes_index_for(route_file)
 
     if not routes_xml_path.is_file():
         return None
@@ -87,3 +93,33 @@ def find_route_entry(route_file: Path) -> RouteEntry | None:
         return None
 
     return next((entry for entry in entries if entry.file_name == base_name), None)
+
+
+def routes_index_for(route_file: Path) -> Path:
+    """routes.xml of a route file: one folder above the routes folder."""
+
+    return Path(route_file).parent.parent / "routes.xml"
+
+
+def mark_route_saved(route_file: Path, now: datetime) -> bool:
+    """Raises the revision of the route file's entry in routes.xml and sets
+    its date, as AutoDrive does when it saves a route. Returns False if
+    the file is not listed there (e.g. an autosave)."""
+
+    routes_xml_path = routes_index_for(route_file)
+
+    if not routes_xml_path.is_file():
+        return False
+
+    root = ET.parse(routes_xml_path).getroot()
+    route = next((r for r in root.iter("route") if r.get("fileName") == route_file.name), None)
+
+    if route is None:
+        return False
+
+    revision = route.get("revision", "0")
+    route.set("revision", str(int(revision) + 1 if revision.isdigit() else 1))
+    route.set("date", now.strftime(ROUTE_DATE_FORMAT))
+    write_xml(routes_xml_path, root)
+
+    return True
