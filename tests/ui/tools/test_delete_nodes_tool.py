@@ -1,6 +1,7 @@
 """The "Delete" tool and the Del shortcut, driven by real input."""
 
 import pytest
+from drawing_helpers import RED, drawn_color
 from mouse_helpers import click, cursor_shape, drag, hover, view_pos
 from PySide6.QtCore import QPoint, QRectF, Qt
 from PySide6.QtGui import QPainterPath
@@ -21,8 +22,12 @@ def data(window):
     return window.project_coordinator.autodrive_data
 
 
-def visible_items(window):
-    return set(window.scene_renderer.visible_node_manager.visible_node_items)
+def drawn_nodes(window):
+    """Which of the nodes 1 (x=0), 2 (x=10) and 3 (x=20) on z=0 are drawn."""
+
+    return {
+        node_id for node_id, x in ((1, 0), (2, 10), (3, 20)) if drawn_color(window, x, 0) == RED
+    }
 
 
 def select_area(window, rect):
@@ -36,7 +41,7 @@ def test_click_on_node_deletes_it(deleting):
 
     assert sorted(data(deleting).nodes) == [1, 3]
     assert data(deleting).get_node(1).outgoing == set()
-    assert visible_items(deleting) == {1, 3}
+    assert drawn_nodes(deleting) == {1, 3}
     assert deleting.status.text() == "Node deleted"
     assert deleting.actions.undo_action.text() == "Undo: Delete node"
 
@@ -75,14 +80,14 @@ def test_dragging_from_a_node_pans_instead_of_deleting(deleting):
     assert len(data(deleting)) == 3
 
 
-def test_undo_brings_node_items_and_connections_back(deleting):
+def test_undo_brings_nodes_and_connections_back(deleting):
     click(deleting, view_pos(deleting, 10, 0))
 
     deleting.actions.undo_action.trigger()
 
     assert sorted(data(deleting).nodes) == [1, 2, 3]
     assert data(deleting).get_node(1).outgoing == {2}
-    assert visible_items(deleting) == {1, 2, 3}
+    assert drawn_nodes(deleting) == {1, 2, 3}
     connections = deleting.scene_renderer.connection_spatial_index.get_connections_in_rect(
         QRectF(-100, -100, 200, 200)
     )

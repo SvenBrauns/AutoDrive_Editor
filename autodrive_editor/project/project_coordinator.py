@@ -484,10 +484,6 @@ class ProjectCoordinator(QObject):
 
         self.view.centerOn(scene_center)
 
-        self.scene_renderer.update_visibility_for_zoom(self.view.zoom_level)
-
-        self.scene_renderer.update_visible_scene_rect(self.view.get_visible_scene_rect())
-
         self.status_changed.emit(tr("Display options applied"))
 
         self.debug_refresh_requested.emit()
@@ -505,8 +501,6 @@ class ProjectCoordinator(QObject):
         scene_rect = self.scene.itemsBoundingRect()
 
         self.scene.setSceneRect(scene_rect)
-
-        self.scene_renderer.update_scene_rect(scene_rect)
 
     def fit_scene_in_view(self):
         scene_rect = self.scene.sceneRect()

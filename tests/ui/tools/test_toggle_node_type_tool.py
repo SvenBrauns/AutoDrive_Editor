@@ -1,6 +1,7 @@
 """Switching nodes between regular and subprio."""
 
 import pytest
+from drawing_helpers import ORANGE, RED, drawn_color
 from mouse_helpers import click, cursor_shape, drag, hover, view_pos
 from PySide6.QtCore import QPoint, QRectF, Qt
 from PySide6.QtGui import QPainterPath
@@ -13,10 +14,6 @@ from autodrive_editor.model.autodrive_data import (
     NodeData,
 )
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
-
-ORANGE = "#ffa500"
-RED = "#ff0000"
-
 
 # --- command ------------------------------------------------------------
 
@@ -70,8 +67,8 @@ def flag(window, node_id):
 
 
 def color(window, node_id):
-    item = window.scene_renderer.visible_node_manager.visible_node_items[node_id]
-    return item.brush().color().name()
+    node = window.project_coordinator.autodrive_data.get_node(node_id)
+    return drawn_color(window, node.x, node.z)
 
 
 def select(window, rect):
@@ -111,15 +108,13 @@ def test_mixed_selection_gets_opposite_of_clicked_node(toggling):
     assert toggling.status.text() == "2 nodes set to Subprio"
 
 
-def test_selection_rings_are_redrawn_too(toggling):
+def test_selected_nodes_are_redrawn_too(toggling):
     select(toggling, QRectF(-5, -5, 10, 10))  # node 1
-    ring = toggling.scene_renderer.visible_node_selection_manager.visible_selection_items[1]
-    assert ring.brush().color().name() == RED
+    assert color(toggling, 1) == RED
 
     click(toggling, view_pos(toggling, 0, 0))
 
-    ring = toggling.scene_renderer.visible_node_selection_manager.visible_selection_items[1]
-    assert ring.brush().color().name() == ORANGE
+    assert color(toggling, 1) == ORANGE
 
 
 def test_click_on_unselected_node_keeps_selection(toggling):

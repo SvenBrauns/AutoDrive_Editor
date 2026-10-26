@@ -1,6 +1,7 @@
 """Marker tools, dock and names on the map in the main window."""
 
 import pytest
+from drawing_helpers import shown_marker_names
 from mouse_helpers import click, drag, press_escape, view_pos
 from PySide6.QtCore import QPoint, Qt
 
@@ -17,7 +18,6 @@ def marker_window(zoomed_window, qapp):
     data.marker_groups = [MarkerGroup("All", 1)]
     data.add_marker(MarkerData(1, "Hof", "All"))
     window.marker_dock.set_data(data)
-    window.scene_renderer.update_visible_scene_rect(window.view.get_visible_scene_rect())
 
     window.questions = []
     window.answer = ("Silo", "All")
@@ -210,21 +210,14 @@ def test_dragging_pans_instead_of_acting(marker_window):
 # --- names on the map -------------------------------------------------------
 
 
-def marker_item(window, node_id):
-    return window.scene_renderer.visible_marker_manager.visible_marker_items.get(node_id)
-
-
 def test_marker_shows_its_name(marker_window):
-    item = marker_item(marker_window, 1)
-
-    assert item.label_item.text == "Hof"
-    assert item.label_item.isVisible()
+    assert shown_marker_names(marker_window) == {1: "Hof"}
 
 
 def test_names_can_be_hidden_and_the_choice_is_kept(marker_window):
     marker_window.actions.marker_names_action.setChecked(False)
 
-    assert not marker_item(marker_window, 1).label_item.isVisible()
+    assert shown_marker_names(marker_window) == {}
     assert not marker_window.settings.marker_names_visible
 
     marker_window.actions.marker_names_action.setChecked(True)
@@ -237,20 +230,21 @@ def test_renamed_marker_label_updates(marker_window):
 
     click(marker_window, at(marker_window, 0))
 
-    assert marker_item(marker_window, 1).label_item.text == "Hof Süd"
+    assert shown_marker_names(marker_window) == {1: "Hof Süd"}
 
 
 def test_added_and_moved_markers_are_drawn(marker_window):
+    # Far enough in that the names of neighboring nodes do not overlap.
+    marker_window.view.set_zoom_level(8.0)
     use(marker_window, InteractionMode.ADD_MARKER)
     click(marker_window, at(marker_window, 10))
-    assert marker_item(marker_window, 2) is not None
+    assert shown_marker_names(marker_window) == {1: "Hof", 2: "Silo"}
 
     use(marker_window, InteractionMode.MOVE_MARKER)
     click(marker_window, at(marker_window, 10))
     click(marker_window, at(marker_window, 20))
 
-    assert marker_item(marker_window, 2) is None
-    assert marker_item(marker_window, 3).label_item.text == "Silo"
+    assert shown_marker_names(marker_window) == {1: "Hof", 3: "Silo"}
 
 
 # --- dock -------------------------------------------------------------------------

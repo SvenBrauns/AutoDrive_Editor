@@ -35,17 +35,17 @@ class DeleteNodesOperation(QObject):
         selection if that node is selected. Returns False if there is
         no node at the position."""
 
-        node_item = self.selection_coordinator.get_node_item_at(view_position)
+        clicked_node = self.selection_coordinator.get_node_at(view_position)
 
-        if node_item is None:
+        if clicked_node is None:
             return False
 
         selected_node_ids = self.node_selection.selected_node_ids
 
-        if node_item.node_id in selected_node_ids:
+        if clicked_node.node_id in selected_node_ids:
             return self.delete_nodes(selected_node_ids)
 
-        return self.delete_nodes({node_item.node_id})
+        return self.delete_nodes({clicked_node.node_id})
 
     def delete_selection(self) -> bool:
         return self.delete_nodes(self.node_selection.selected_node_ids)

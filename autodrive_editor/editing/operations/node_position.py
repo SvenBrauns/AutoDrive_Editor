@@ -38,12 +38,12 @@ class NodePositionOperation(QObject):
         if autodrive_data is None or self.edit_history.history_locked:
             return False
 
-        node_item = self.selection_coordinator.get_node_item_at(view_position)
+        clicked_node = self.selection_coordinator.get_node_at(view_position)
 
-        if node_item is None:
+        if clicked_node is None:
             return False
 
-        node = autodrive_data.nodes[node_item.node_id]
+        node = autodrive_data.nodes[clicked_node.node_id]
         old_position = (node.x, node.y, node.z)
         new_position = self.ask_position(node)
 

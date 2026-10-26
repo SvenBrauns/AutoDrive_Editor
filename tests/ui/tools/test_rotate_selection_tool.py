@@ -61,7 +61,9 @@ def test_dragging_the_ring_rotates_the_selection(rotating):
     assert xz(rotating, 3) == pytest.approx((10, 10), abs=0.2)
     assert rotating.edit_history.undo_stack.count() == 1
     assert rotating.actions.undo_action.text() == "Undo: Rotate 3 nodes"
-    assert rotating.status.text().startswith("3 nodes rotated by 90")
+    # Mouse positions are whole pixels, so the angle is only about 90°.
+    angle = rotating.status.text().removeprefix("3 nodes rotated by ").removesuffix("°")
+    assert float(angle) == pytest.approx(90, abs=0.5)
 
 
 def test_shift_snaps_while_dragging(rotating):

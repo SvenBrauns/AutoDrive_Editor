@@ -22,7 +22,7 @@ class Fixture:
         self.terrain = None
         self.operation = CreatePathOperation(
             view=SimpleNamespace(mapToScene=lambda p: QPointF(p)),
-            selection_coordinator=SimpleNamespace(get_node_item_at=self.node_item_at),
+            selection_coordinator=SimpleNamespace(get_node_at=self.node_at),
             edit_history=self.history,
             autodrive_data_provider=lambda: self.data,
             height_for_new_node=lambda data, x, z: 7.0,
@@ -30,10 +30,10 @@ class Fixture:
             snap_point=None,
         )
 
-    def node_item_at(self, position):
+    def node_at(self, position):
         for node in self.data.nodes.values():
             if abs(node.x - position.x()) < 1 and abs(node.z - position.y()) < 1:
-                return SimpleNamespace(node_id=node.node_id)
+                return node
 
         return None
 

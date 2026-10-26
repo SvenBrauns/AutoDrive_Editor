@@ -5,7 +5,6 @@ from PySide6.QtGui import QPainterPath
 
 from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
-from autodrive_editor.rendering.items.node_item import NodeItem
 from autodrive_editor.rendering.scene_renderer import SceneRenderer
 from autodrive_editor.selection.node_selection import NodeSelection
 from autodrive_editor.ui.map_view.map_view import MapView
@@ -75,17 +74,15 @@ class SelectionCoordinator(QObject):
         self.node_selection.replace({node_data.node_id}, primary_node_id=node_data.node_id)
 
     def handle_click(self, view_position: QPoint, modifiers):
-        clicked_node_item = self.get_node_item_at(view_position)
+        clicked_node = self.get_node_at(view_position)
 
         control_pressed = bool(modifiers & Qt.ControlModifier)
 
-        if clicked_node_item is None:
+        if clicked_node is None:
             if not control_pressed:
                 self.node_selection.clear()
 
             return
-
-        clicked_node = clicked_node_item.node_data
 
         if control_pressed:
             self.node_selection.toggle(clicked_node.node_id)
@@ -149,12 +146,14 @@ class SelectionCoordinator(QObject):
             self.node_selection.selected_node_ids, self.node_selection.primary_node_id
         )
 
-    def get_node_item_at(self, view_position: QPoint) -> NodeItem | None:
-        for item in self.view.items(view_position):
-            if isinstance(item, NodeItem):
-                return item
+    def get_node_at(self, view_position: QPoint) -> NodeData | None:
+        """The node drawn under the view position, if any."""
 
-        return None
+        scene_position = self.view.mapToScene(view_position)
+
+        return self.renderer.get_node_at(
+            scene_position.x(), scene_position.y(), self.view.zoom_level
+        )
 
     def _handle_selection_changed(self, selected_node_ids, primary_node_id):
         self.renderer.set_selected_node_ids(selected_node_ids)

@@ -289,12 +289,12 @@ class MarkerOperation(QObject):
         if autodrive_data is None or self.edit_history.history_locked:
             return None
 
-        node_item = self.selection_coordinator.get_node_item_at(view_position)
+        clicked_node = self.selection_coordinator.get_node_at(view_position)
 
-        if node_item is None:
+        if clicked_node is None:
             return None
 
-        return autodrive_data, node_item.node_id
+        return autodrive_data, clicked_node.node_id
 
     def _suggested_group(self, autodrive_data: AutoDriveData) -> str:
         groups = autodrive_data.marker_group_names()

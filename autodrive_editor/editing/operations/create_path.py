@@ -114,11 +114,11 @@ class CreatePathOperation(QObject):
     def end_at(self, view_position: QPoint) -> PathEnd:
         """The node under the mouse, otherwise the (snapped) map point."""
 
-        node_item = self.selection_coordinator.get_node_item_at(view_position)
+        clicked_node = self.selection_coordinator.get_node_at(view_position)
         autodrive_data = self.autodrive_data_provider()
 
-        if node_item is not None and autodrive_data is not None:
-            node = autodrive_data.get_node(node_item.node_id)
+        if clicked_node is not None and autodrive_data is not None:
+            node = autodrive_data.get_node(clicked_node.node_id)
 
             if node is not None:
                 return PathEnd(node.x, node.z, node.node_id)

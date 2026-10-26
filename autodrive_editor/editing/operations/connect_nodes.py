@@ -68,16 +68,16 @@ class ConnectNodesOperation(QObject):
     def click(self, view_position: QPoint, connection_type: ConnectionType):
         autodrive_data = self.autodrive_data_provider()
 
-        node_item = self.selection_coordinator.get_node_item_at(view_position)
+        clicked_node = self.selection_coordinator.get_node_at(view_position)
 
-        if autodrive_data is None or node_item is None:
+        if autodrive_data is None or clicked_node is None:
             if self.start_node is not None:
                 self.status_changed.emit(tr("Connecting finished"))
 
             self.end_chain()
             return
 
-        clicked_id = node_item.node_id
+        clicked_id = clicked_node.node_id
         start_node = self.start_node
 
         if start_node is None:

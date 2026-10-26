@@ -141,12 +141,12 @@ class AlignNodesOperation(QObject):
         if autodrive_data is None or self.edit_history.history_locked:
             return None
 
-        node_item = self.selection_coordinator.get_node_item_at(view_position)
+        clicked_node = self.selection_coordinator.get_node_at(view_position)
 
-        if node_item is None:
+        if clicked_node is None:
             return None
 
-        reference = autodrive_data.nodes[node_item.node_id]
+        reference = autodrive_data.nodes[clicked_node.node_id]
 
         nodes = [
             autodrive_data.nodes[node_id]
