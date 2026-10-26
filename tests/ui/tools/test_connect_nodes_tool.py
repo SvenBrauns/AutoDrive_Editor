@@ -86,7 +86,7 @@ def test_same_type_removes_existing_connection(connecting):
 
     assert state(window, 1, 2) == NO_CONNECTION
     assert connections_between(window, 1, 2) == []
-    assert window.status.text() == "Regular-Connection 1 → 2 entfernt"
+    assert window.status.text() == "Regular connection 1 → 2 removed"
 
 
 def test_other_type_replaces_existing_connection(connecting):
@@ -96,7 +96,7 @@ def test_other_type_replaces_existing_connection(connecting):
     click(window, view_pos(window, 10, 0))
 
     assert state(window, 1, 2) == CONNECTION_STATES[ConnectionType.REVERSE]
-    assert window.actions.undo_action.text() == "Rückgängig: Connection ändern"
+    assert window.actions.undo_action.text() == "Undo: Change connection"
 
 
 def test_clicking_opposite_direction_flips_regular_connection(connecting):

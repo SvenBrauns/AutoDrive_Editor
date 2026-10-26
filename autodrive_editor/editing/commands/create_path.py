@@ -28,19 +28,19 @@ class CreatePathCommand(EditCommand):
         new_ids = {node.node_id for node in new_nodes}
 
         if new_ids & set(autodrive_data.nodes):
-            raise ValueError("Neue Nodes brauchen neue Node-IDs.")
+            raise ValueError("New nodes need new node IDs.")
 
         if len(chain) < 2:
-            raise ValueError("Eine Strecke braucht mindestens zwei Punkte.")
+            raise ValueError("A path needs at least two points.")
 
         for node_id in chain:
             if node_id not in new_ids and node_id not in autodrive_data.nodes:
-                raise ValueError(f"Die Node-ID {node_id} ist nicht vorhanden.")
+                raise ValueError(f"Node ID {node_id} does not exist.")
 
         self.pairs = list(pairwise(chain))
 
         if any(source == target for source, target in self.pairs):
-            raise ValueError("Eine Node kann nicht mit sich selbst verbunden werden.")
+            raise ValueError("A node cannot be connected to itself.")
 
         self.new_nodes = list(new_nodes)
         self.new_ids = frozenset(new_ids)

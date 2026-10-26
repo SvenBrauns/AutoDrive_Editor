@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 
 from autodrive_editor.game.game_folder import GameFolder
 from autodrive_editor.game.game_installation import GAME_EXECUTABLE, GameInstallation
+from autodrive_editor.i18n import tr
 from autodrive_editor.settings.app_settings import AppSettings
 
 
@@ -25,12 +26,15 @@ class FolderSettingsWidget(QWidget):
     savegames, map mods) and the FS25 install folder (base game maps).
     Nothing is stored until store() is called."""
 
-    VALID_TEXT = "✔ FS25-Ordner gefunden"
-    INVALID_TEXT = "✖ Kein FS25-Benutzerordner (game.xml fehlt)"
-    EMPTY_TEXT = "Kein Ordner gewählt"
+    VALID_TEXT = tr("✔ FS25 folder found")
+    INVALID_TEXT = tr("✖ Not an FS25 user folder (game.xml is missing)")
+    EMPTY_TEXT = tr("No folder chosen")
 
-    INSTALL_VALID_TEXT = "✔ FS25-Installation gefunden"
-    INSTALL_INVALID_TEXT = f"✖ Keine FS25-Installation ({GAME_EXECUTABLE} oder data\\maps fehlt)"
+    INSTALL_VALID_TEXT = tr("✔ FS25 installation found")
+    INSTALL_INVALID_TEXT = tr(
+        "✖ Not an FS25 installation ({executable} or data\\maps is missing)",
+        executable=GAME_EXECUTABLE,
+    )
 
     def __init__(self, settings: AppSettings, parent=None):
         super().__init__(parent)
@@ -70,7 +74,7 @@ class FolderSettingsWidget(QWidget):
         self.settings.set_install_folder(installation.path if installation else None)
 
     def _create_game_group(self) -> QGroupBox:
-        group = QGroupBox("Spielordner", self)
+        group = QGroupBox(tr("Game folder"), self)
 
         self.game_folder_input = QLineEdit(group)
         self.game_folder_input.setPlaceholderText(str(GameFolder.default_path()))
@@ -80,19 +84,21 @@ class FolderSettingsWidget(QWidget):
 
         self._fill_group(
             group,
-            "FS25-Ordner:",
+            tr("FS25 folder:"),
             self.game_folder_input,
             self.status_label,
             self._browse,
             self._detect,
-            "Der FS25-Benutzerordner enthält die Savegames, den Mods-Ordner und die "
-            "AutoDrive-Routen (modSettings\\FS25_AutoDrive\\routesManager).",
+            tr(
+                "The FS25 user folder contains the savegames, the mods folder and the "
+                "AutoDrive routes (modSettings\\FS25_AutoDrive\\routesManager)."
+            ),
         )
 
         return group
 
     def _create_install_group(self) -> QGroupBox:
-        group = QGroupBox("Installationsordner", self)
+        group = QGroupBox(tr("Installation folder"), self)
 
         self.install_folder_input = QLineEdit(group)
         self.install_folder_input.textChanged.connect(self._update_install_status)
@@ -101,24 +107,26 @@ class FolderSettingsWidget(QWidget):
 
         self._fill_group(
             group,
-            "LS25-Installation:",
+            tr("FS25 installation:"),
             self.install_folder_input,
             self.install_status_label,
             self._browse_install,
             self._detect_install,
-            "Der Ordner, in dem LS25 installiert ist (bei Steam z. B. "
-            "steamapps\\common\\Farming Simulator 25). Er enthält die Grundspiel-Karten "
-            "Riverbend Springs, Zielonka und Hutan Pantai.",
+            tr(
+                "The folder FS25 is installed in (on Steam e.g. "
+                "steamapps\\common\\Farming Simulator 25). It contains the base game maps "
+                "Riverbend Springs, Zielonka and Hutan Pantai."
+            ),
         )
 
         return group
 
     @staticmethod
     def _fill_group(group, label, folder_input, status_label, browse, detect, hint_text):
-        browse_button = QPushButton("Durchsuchen…", group)
+        browse_button = QPushButton(tr("Browse…"), group)
         browse_button.clicked.connect(browse)
 
-        detect_button = QPushButton("Automatisch erkennen", group)
+        detect_button = QPushButton(tr("Detect automatically"), group)
         detect_button.clicked.connect(detect)
 
         folder_row = QHBoxLayout()
@@ -137,7 +145,7 @@ class FolderSettingsWidget(QWidget):
     def _browse(self):
         start = self.game_folder_input.text().strip() or str(GameFolder.default_path().parent)
 
-        chosen = QFileDialog.getExistingDirectory(self, "FS25-Benutzerordner wählen", start)
+        chosen = QFileDialog.getExistingDirectory(self, tr("Choose the FS25 user folder"), start)
 
         if chosen:
             self.game_folder_input.setText(str(Path(chosen)))
@@ -149,8 +157,10 @@ class FolderSettingsWidget(QWidget):
             self.game_folder_input.setText(str(detected.path))
         else:
             self.status_label.setText(
-                f"✖ Nicht gefunden unter {GameFolder.default_path()}. "
-                "Bitte über „Durchsuchen…“ wählen."
+                tr(
+                    "✖ Not found at {path}. Please choose it with “Browse…”.",
+                    path=GameFolder.default_path(),
+                )
             )
 
     def _update_status(self):
@@ -166,7 +176,9 @@ class FolderSettingsWidget(QWidget):
     def _browse_install(self):
         start = self.install_folder_input.text().strip()
 
-        chosen = QFileDialog.getExistingDirectory(self, "LS25-Installationsordner wählen", start)
+        chosen = QFileDialog.getExistingDirectory(
+            self, tr("Choose the FS25 installation folder"), start
+        )
 
         if chosen:
             self.install_folder_input.setText(str(Path(chosen)))
@@ -177,7 +189,7 @@ class FolderSettingsWidget(QWidget):
         if detected is not None:
             self.install_folder_input.setText(str(detected.path))
         else:
-            self.install_status_label.setText("✖ Nicht gefunden. Bitte über „Durchsuchen…“ wählen.")
+            self.install_status_label.setText(tr("✖ Not found. Please choose it with “Browse…”."))
 
     def _update_install_status(self):
         installation = self.chosen_installation

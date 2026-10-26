@@ -2,6 +2,7 @@ from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QAction, QIcon
 from PySide6.QtWidgets import QLabel, QPushButton, QVBoxLayout, QWidget
 
+from autodrive_editor.i18n import tr
 from autodrive_editor.paths import APP_ICON_PATH
 
 
@@ -30,7 +31,7 @@ class WelcomePanel(QWidget):
         title.setStyleSheet("font-size: 22px; font-weight: bold;")
         layout.addWidget(title)
 
-        hint = QLabel("Öffne eine Route, ein Savegame oder eine XML-Datei, um zu beginnen.", self)
+        hint = QLabel(tr("Open a route, a savegame or an XML file to get started."), self)
         hint.setAlignment(Qt.AlignCenter)
         hint.setEnabled(False)
         layout.addWidget(hint)

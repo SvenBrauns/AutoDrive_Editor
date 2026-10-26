@@ -77,28 +77,28 @@ def test_missing_file_raises_file_not_found(tmp_path):
 def test_malformed_xml_raises_value_error(write_xml):
     path = write_xml(raw="<AutoDrive><waypoints>")
 
-    with pytest.raises(ValueError, match="ungültig"):
+    with pytest.raises(ValueError, match="invalid"):
         AutoDriveXmlReader.load(path)
 
 
 def test_missing_waypoints_raises_value_error(write_xml):
     path = write_xml(raw="<routeExport></routeExport>")
 
-    with pytest.raises(ValueError, match="Waypoint"):
+    with pytest.raises(ValueError, match="waypoints"):
         AutoDriveXmlReader.load(path)
 
 
 def test_missing_coordinate_element_raises_value_error(write_xml):
     path = write_xml(raw="<routeExport><waypoints><x>1</x><y>1</y></waypoints></routeExport>")
 
-    with pytest.raises(ValueError, match="z-Koordinaten"):
+    with pytest.raises(ValueError, match="z coordinates"):
         AutoDriveXmlReader.load(path)
 
 
 def test_mismatched_coordinate_counts_raise_value_error(write_xml):
     path = write_xml(x="1;2;3", y="1;2", z="1;2;3")
 
-    with pytest.raises(ValueError, match="stimmt nicht"):
+    with pytest.raises(ValueError, match="does not match"):
         AutoDriveXmlReader.load(path)
 
 
@@ -112,7 +112,7 @@ def test_invalid_coordinate_value_raises_value_error(write_xml):
 def test_invalid_connection_id_raises_value_error(write_xml):
     path = write_xml(out="2;x;")
 
-    with pytest.raises(ValueError, match="Verbindungs-ID"):
+    with pytest.raises(ValueError, match="connection ID"):
         AutoDriveXmlReader.load(path)
 
 
@@ -167,7 +167,7 @@ def test_map_scan_and_unknown_flags_are_kept_and_shown_as_regular(write_xml):
 def test_unknown_root_element_is_rejected(write_xml):
     path = write_xml(raw="<Courseplay><waypoints/></Courseplay>")
 
-    with pytest.raises(ValueError, match="Unbekanntes Format"):
+    with pytest.raises(ValueError, match="Unknown format"):
         AutoDriveXmlReader.load(path)
 
 
@@ -241,12 +241,12 @@ def test_savegame_groups_are_collected_from_markers(write_savegame):
 
 @pytest.mark.parametrize("version", ["2.0.1.8", "1.1.0.6"])
 def test_configs_from_older_games_are_rejected(write_savegame, version):
-    with pytest.raises(ValueError, match="LS25"):
+    with pytest.raises(ValueError, match="FS25"):
         AutoDriveXmlReader.load(write_savegame(version=version))
 
 
 def test_savegame_without_version_is_rejected(write_savegame):
     text = SAVEGAME.format(version="").replace("<version></version>", "")
 
-    with pytest.raises(ValueError, match="Version"):
+    with pytest.raises(ValueError, match="version"):
         AutoDriveXmlReader.load(write_savegame(text=text))

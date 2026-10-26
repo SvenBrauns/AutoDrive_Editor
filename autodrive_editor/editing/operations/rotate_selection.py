@@ -6,6 +6,7 @@ from PySide6.QtCore import QObject, QPointF, Signal
 
 from autodrive_editor.editing.commands.move_nodes import MoveNodesCommand, NodePosition
 from autodrive_editor.editing.edit_history import EditHistory
+from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData
 from autodrive_editor.selection.node_selection import NodeSelection
 from autodrive_editor.terrain.terrain_follower import TerrainFollower, TerrainHeightProvider
@@ -142,14 +143,18 @@ class RotateSelectionOperation(QObject):
 
         self._push_positions(self._rotated_positions(angle))
 
-        self.status_changed.emit(f"Rotation: {angle:.1f}°")
+        self.status_changed.emit(tr("Rotation: {angle:.1f}°", angle=angle))
 
         return angle
 
     def finish_rotation(self):
         if self.is_rotating and self._history_locked:
             self.status_changed.emit(
-                f"{len(self._start_positions)} Nodes um {self._angle:.1f}° rotiert"
+                tr(
+                    "{count} nodes rotated by {angle:.1f}°",
+                    count=len(self._start_positions),
+                    angle=self._angle,
+                )
             )
 
         self._end_rotation()
@@ -160,7 +165,7 @@ class RotateSelectionOperation(QObject):
             # command, which then becomes obsolete and disappears.
             self._push_positions(dict(self._start_positions))
 
-            self.status_changed.emit("Rotation abgebrochen")
+            self.status_changed.emit(tr("Rotation cancelled"))
 
         self._end_rotation()
 
@@ -203,7 +208,7 @@ class RotateSelectionOperation(QObject):
                 },
                 new_positions=target_positions,
                 merge_key=("rotate", self._merge_key),
-                text=f"{len(target_positions)} Nodes rotieren",
+                text=tr("Rotate {count} nodes", count=len(target_positions)),
             )
         )
 

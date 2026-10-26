@@ -7,6 +7,7 @@ from autodrive_editor.game.game_folder import GameFolder
 from autodrive_editor.game.game_installation import GameInstallation
 from autodrive_editor.model.autodrive_data import SUBPRIO_FLAG
 from autodrive_editor.model.connections import ConnectionType
+from autodrive_editor.settings import app_settings
 from autodrive_editor.settings.app_settings import AppSettings
 
 pytestmark = pytest.mark.usefixtures("isolated_user_data")
@@ -122,3 +123,19 @@ def test_invalid_stored_path_options_fall_back_to_defaults():
     settings._settings.setValue(AppSettings.PATH_CONNECTION_KEY, "nonsense")
 
     assert AppSettings().path_options == PathOptions()
+
+
+def test_language_follows_windows_until_one_is_chosen(monkeypatch):
+    monkeypatch.setattr(app_settings, "system_language", lambda: "de")
+    assert AppSettings().language == "de"
+
+    AppSettings().set_language("en")
+
+    assert AppSettings().language == "en"
+
+
+def test_unknown_stored_language_falls_back_to_windows(monkeypatch):
+    monkeypatch.setattr(app_settings, "system_language", lambda: "de")
+    AppSettings().set_language("fr")
+
+    assert AppSettings().language == "de"

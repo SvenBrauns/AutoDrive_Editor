@@ -4,7 +4,7 @@ user data folder so a mod only has to be imported once.
     <user data>\\maps\\<folder>\\
         overview.png   map image, already cut to the map area (2048 px)
         dem.png        terrain heightmap, as in the mod
-        map.json       names, title, map size and which mod it came from
+        map.json       names, titles, map size and which mod it came from
 
 The editor ships no map images; each user imports them from their own
 mods.
@@ -18,7 +18,7 @@ from pathlib import Path
 
 from autodrive_editor.file_io.background_image import map_image_from_dds_bytes
 from autodrive_editor.file_io.base_game_maps import open_mod_archive
-from autodrive_editor.file_io.map_mod import MapEntry, MapMod
+from autodrive_editor.file_io.map_mod import MapEntry, MapMod, pick_title
 from autodrive_editor.file_io.mod_archive import ModArchive
 from autodrive_editor.paths import user_data_directory
 
@@ -30,12 +30,17 @@ HEIGHTMAP_FILE = "dem.png"
 @dataclass(frozen=True)
 class CachedMap:
     directory: Path
-    title: str
+    titles: dict[str, str]
+    fallback_title: str
     autodrive_names: list[str]
     map_scale: int
     mod_name: str
     map_id: str
     config_file: str
+
+    @property
+    def title(self) -> str:
+        return pick_title(self.titles, self.fallback_title)
 
     @property
     def overview_path(self) -> Path:
@@ -109,6 +114,7 @@ class MapCache:
 
             info = {
                 "title": map_entry.title,
+                "titles": map_entry.titles,
                 "autodrive_names": map_entry.autodrive_names,
                 "map_scale": map_entry.map_scale,
                 "mod_name": archive.name,
@@ -153,7 +159,9 @@ class MapCache:
 
         return CachedMap(
             directory=folder,
-            title=info.get("title", folder.name),
+            # Imports from older versions only have "title".
+            titles=dict(info.get("titles", {})),
+            fallback_title=info.get("title", folder.name),
             autodrive_names=list(info.get("autodrive_names", [])),
             map_scale=int(info.get("map_scale", 1)),
             mod_name=info.get("mod_name", ""),

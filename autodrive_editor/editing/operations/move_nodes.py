@@ -5,6 +5,7 @@ from PySide6.QtCore import QObject, QPoint, QPointF, Signal
 
 from autodrive_editor.editing.commands.move_nodes import MoveNodesCommand, NodePosition
 from autodrive_editor.editing.edit_history import EditHistory
+from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData
 from autodrive_editor.selection.node_selection import NodeSelection
 from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
@@ -135,7 +136,9 @@ class MoveNodesOperation(QObject):
             moved_count = len(self._start_positions)
 
             self.status_changed.emit(
-                "Node verschoben" if moved_count == 1 else f"{moved_count} Nodes verschoben"
+                tr("Node moved")
+                if moved_count == 1
+                else tr("{count} nodes moved", count=moved_count)
             )
 
         self._end_drag()
@@ -146,7 +149,7 @@ class MoveNodesOperation(QObject):
             # which then becomes obsolete and leaves the undo history.
             self._push_positions(dict(self._start_positions))
 
-            self.status_changed.emit("Verschieben abgebrochen")
+            self.status_changed.emit(tr("Moving cancelled"))
 
         self._end_drag()
 

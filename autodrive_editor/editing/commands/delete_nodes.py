@@ -1,4 +1,5 @@
 from autodrive_editor.editing.commands.edit_command import DataChange, EditCommand
+from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData, MarkerData, NodeData
 
 
@@ -14,16 +15,18 @@ class DeleteNodesCommand(EditCommand):
         node_ids = frozenset(int(node_id) for node_id in node_ids)
 
         super().__init__(
-            "Node löschen" if len(node_ids) == 1 else f"{len(node_ids)} Nodes löschen",
+            tr("Delete node")
+            if len(node_ids) == 1
+            else tr("Delete {count} nodes", count=len(node_ids)),
             autodrive_data,
         )
 
         if not node_ids:
-            raise ValueError("Es wurden keine Nodes zum Löschen angegeben.")
+            raise ValueError("No nodes to delete were given.")
 
         for node_id in node_ids:
             if node_id not in autodrive_data.nodes:
-                raise ValueError(f"Die Node-ID {node_id} ist nicht vorhanden.")
+                raise ValueError(f"Node ID {node_id} does not exist.")
 
         self.node_ids = node_ids
 

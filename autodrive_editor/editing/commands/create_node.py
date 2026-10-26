@@ -1,4 +1,5 @@
 from autodrive_editor.editing.commands.edit_command import DataChange, EditCommand
+from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import REGULAR_FLAG, AutoDriveData, NodeData
 
 
@@ -15,14 +16,14 @@ class CreateNodeCommand(EditCommand):
         flag: int = 0,
     ):
         super().__init__(
-            "Node erstellen" if int(flag) == REGULAR_FLAG else "Subprio-Node erstellen",
+            tr("Create node") if int(flag) == REGULAR_FLAG else tr("Create subprio node"),
             autodrive_data,
         )
 
         node_id = int(node_id)
 
         if node_id in autodrive_data.nodes:
-            raise ValueError(f"Die Node-ID {node_id} ist bereits vorhanden.")
+            raise ValueError(f"Node ID {node_id} already exists.")
 
         self.node = NodeData(node_id=node_id, x=float(x), y=float(y), z=float(z), flag=int(flag))
 

@@ -11,6 +11,7 @@ from autodrive_editor.editing.commands.markers import (
     RenameMarkerGroupCommand,
 )
 from autodrive_editor.editing.edit_history import EditHistory
+from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData, MarkerData
 from autodrive_editor.selection.node_selection import NodeSelection
 from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
@@ -68,11 +69,13 @@ class MarkerOperation(QObject):
         existing = autodrive_data.get_marker(node_id)
 
         if existing is not None:
-            self.status_changed.emit(f"Node {node_id} hat bereits den Marker „{existing.name}“")
+            self.status_changed.emit(
+                tr("Node {node} already has the marker “{name}”", node=node_id, name=existing.name)
+            )
             return False
 
         values = self.ask_marker(
-            "Marker hinzufügen",
+            tr("Add marker"),
             None,
             self._suggested_group(autodrive_data),
             autodrive_data.marker_group_names(),
@@ -85,7 +88,7 @@ class MarkerOperation(QObject):
         name, group = values
         self.edit_history.push(AddMarkerCommand(autodrive_data, node_id, name, group))
         self.last_group = group
-        self.status_changed.emit(f"Marker „{name}“ hinzugefügt")
+        self.status_changed.emit(tr("Marker “{name}” added", name=name))
 
         return True
 
@@ -98,7 +101,7 @@ class MarkerOperation(QObject):
         autodrive_data, node_id = target
 
         if autodrive_data.get_marker(node_id) is None:
-            self.status_changed.emit(f"Node {node_id} hat keinen Marker")
+            self.status_changed.emit(tr("Node {node} has no marker", node=node_id))
             return False
 
         return self.edit_marker(node_id)
@@ -115,7 +118,7 @@ class MarkerOperation(QObject):
             return False
 
         values = self.ask_marker(
-            "Marker bearbeiten",
+            tr("Edit marker"),
             marker,
             marker.group,
             autodrive_data.marker_group_names(),
@@ -128,7 +131,7 @@ class MarkerOperation(QObject):
         name, group = values
         self.edit_history.push(EditMarkerCommand(autodrive_data, node_id, name, group))
         self.last_group = group
-        self.status_changed.emit(f"Marker „{name}“ geändert")
+        self.status_changed.emit(tr("Marker “{name}” changed", name=name))
 
         return True
 
@@ -142,11 +145,11 @@ class MarkerOperation(QObject):
         marker = autodrive_data.get_marker(node_id)
 
         if marker is None:
-            self.status_changed.emit(f"Node {node_id} hat keinen Marker")
+            self.status_changed.emit(tr("Node {node} has no marker", node=node_id))
             return False
 
         self.edit_history.push(DeleteMarkerCommand(autodrive_data, node_id))
-        self.status_changed.emit(f"Marker „{marker.name}“ gelöscht")
+        self.status_changed.emit(tr("Marker “{name}” deleted", name=marker.name))
 
         return True
 
@@ -170,14 +173,18 @@ class MarkerOperation(QObject):
         existing = autodrive_data.get_marker(node_id)
 
         if existing is not None:
-            self.status_changed.emit(f"Node {node_id} hat bereits den Marker „{existing.name}“")
+            self.status_changed.emit(
+                tr("Node {node} already has the marker “{name}”", node=node_id, name=existing.name)
+            )
             return False
 
         marker = autodrive_data.get_marker(self.move_source_id)
         self.edit_history.push(MoveMarkerCommand(autodrive_data, self.move_source_id, node_id))
         self.move_source_id = None
         self._restore_selection()
-        self.status_changed.emit(f"Marker „{marker.name}“ auf Node {node_id} verschoben")
+        self.status_changed.emit(
+            tr("Marker “{name}” moved to node {node}", name=marker.name, node=node_id)
+        )
 
         return True
 
@@ -187,7 +194,7 @@ class MarkerOperation(QObject):
 
         self.move_source_id = None
         self._restore_selection()
-        self.status_changed.emit("Marker verschieben abgebrochen")
+        self.status_changed.emit(tr("Moving the marker cancelled"))
 
         return True
 
@@ -199,7 +206,7 @@ class MarkerOperation(QObject):
             return False
 
         if new_name in autodrive_data.marker_group_names():
-            self.status_changed.emit(f"Die Markergruppe „{new_name}“ gibt es bereits")
+            self.status_changed.emit(tr("The marker group “{name}” already exists", name=new_name))
             return False
 
         self.edit_history.push(RenameMarkerGroupCommand(autodrive_data, old_name, new_name))
@@ -207,7 +214,9 @@ class MarkerOperation(QObject):
         if self.last_group == old_name:
             self.last_group = new_name
 
-        self.status_changed.emit(f"Markergruppe „{old_name}“ in „{new_name}“ umbenannt")
+        self.status_changed.emit(
+            tr("Marker group “{old}” renamed to “{new}”", old=old_name, new=new_name)
+        )
 
         return True
 
@@ -218,14 +227,16 @@ class MarkerOperation(QObject):
             return False
 
         if autodrive_data.markers_in_group(name):
-            self.status_changed.emit(f"Die Markergruppe „{name}“ enthält noch Marker")
+            self.status_changed.emit(
+                tr("The marker group “{name}” still contains markers", name=name)
+            )
             return False
 
         if autodrive_data.find_marker_group(name) is None:
             return False
 
         self.edit_history.push(DeleteMarkerGroupCommand(autodrive_data, name))
-        self.status_changed.emit(f"Markergruppe „{name}“ gelöscht")
+        self.status_changed.emit(tr("Marker group “{name}” deleted", name=name))
 
         return True
 
@@ -233,7 +244,7 @@ class MarkerOperation(QObject):
         marker = autodrive_data.get_marker(node_id)
 
         if marker is None:
-            self.status_changed.emit(f"Node {node_id} hat keinen Marker")
+            self.status_changed.emit(tr("Node {node} has no marker", node=node_id))
             return False
 
         if self._selection_before_move is None:
@@ -245,7 +256,9 @@ class MarkerOperation(QObject):
         # The picked-up marker's node is shown as selected while moving.
         self.move_source_id = node_id
         self.node_selection.replace({node_id}, node_id)
-        self.status_changed.emit(f"Marker „{marker.name}“ gewählt – jetzt die Ziel-Node anklicken")
+        self.status_changed.emit(
+            tr("Marker “{name}” picked – now click the target node", name=marker.name)
+        )
 
         return True
 

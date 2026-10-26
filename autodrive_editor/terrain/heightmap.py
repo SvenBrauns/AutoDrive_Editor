@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 from autodrive_editor.file_io.heightmap_image import HeightmapData, HeightmapFormat, load_heightmap
+from autodrive_editor.i18n import tr
 from autodrive_editor.terrain.heightmap_transform import HeightmapTransform
 
 
@@ -125,7 +126,7 @@ class Heightmap:
 
     def _require_heightmap(self) -> HeightmapData:
         if self.heightmap_data is None:
-            raise RuntimeError("Es wurde keine Heightmap geladen.")
+            raise RuntimeError(tr("No heightmap has been loaded."))
 
         return self.heightmap_data
 
@@ -146,10 +147,10 @@ class Heightmap:
             raw_value = (red << 8) + green
 
         else:
-            raise ValueError("Das Heightmap-Format wird nicht unterstützt.")
+            raise ValueError(tr("The heightmap format is not supported."))
 
         if raw_value < 0 or raw_value > self.MAX_16_BIT_VALUE:
-            raise ValueError(f"Ungültiger Heightmap-Rohwert: {raw_value}")
+            raise ValueError(tr("Invalid raw heightmap value: {value}", value=raw_value))
 
         return raw_value
 
@@ -158,6 +159,6 @@ class Heightmap:
         height_scale = float(height_scale)
 
         if height_scale <= 0:
-            raise ValueError("Der Height-Scale muss größer als 0 sein.")
+            raise ValueError(tr("The height scale must be greater than 0."))
 
         return height_scale

@@ -3,25 +3,26 @@ to import the maps right away, so loaded routes find their map."""
 
 from PySide6.QtWidgets import QCheckBox, QDialog, QDialogButtonBox, QLabel, QVBoxLayout
 
+from autodrive_editor.i18n import tr
 from autodrive_editor.settings.app_settings import AppSettings
 from autodrive_editor.ui.dialogs.folder_settings_widget import FolderSettingsWidget
 
 
 class FirstStartDialog(QDialog):
-    INTRO_TEXT = (
-        "Willkommen im AutoDrive Editor für LS25.\n\n"
-        "Der Editor braucht zwei Ordner: den LS25-Benutzerordner mit Routen, Savegames "
-        "und Mods sowie den Installationsordner mit den Grundspiel-Karten. Beide wurden, "
-        "wenn möglich, automatisch erkannt. Alles lässt sich später unter "
-        "Datei → Einstellungen ändern."
+    INTRO_TEXT = tr(
+        "Welcome to the AutoDrive Editor for FS25.\n\n"
+        "The editor needs two folders: the FS25 user folder with routes, savegames "
+        "and mods, and the installation folder with the base game maps. Both were "
+        "detected automatically where possible. Everything can be changed later under "
+        "File → Settings."
     )
 
-    SCAN_TEXT = "Danach Karten scannen (Grundspiel-Karten und Kartenmods im Mods-Ordner)"
+    SCAN_TEXT = tr("Then scan maps (base game maps and map mods in the mods folder)")
 
     def __init__(self, settings: AppSettings, parent=None):
         super().__init__(parent)
 
-        self.setWindowTitle("Einrichtung")
+        self.setWindowTitle(tr("Setup"))
         self.setMinimumWidth(680)
 
         intro = QLabel(self.INTRO_TEXT, self)
@@ -33,9 +34,9 @@ class FirstStartDialog(QDialog):
         self.scan_check_box.setChecked(True)
 
         buttons = QDialogButtonBox(self)
-        start_button = buttons.addButton("Fertig", QDialogButtonBox.ButtonRole.AcceptRole)
+        start_button = buttons.addButton(tr("Done"), QDialogButtonBox.ButtonRole.AcceptRole)
         start_button.setDefault(True)
-        buttons.addButton("Überspringen", QDialogButtonBox.ButtonRole.RejectRole)
+        buttons.addButton(tr("Skip"), QDialogButtonBox.ButtonRole.RejectRole)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
 

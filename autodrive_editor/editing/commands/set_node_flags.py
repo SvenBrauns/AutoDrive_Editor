@@ -1,4 +1,5 @@
 from autodrive_editor.editing.commands.edit_command import DataChange, EditCommand
+from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import REGULAR_FLAG, AutoDriveData
 
 
@@ -9,20 +10,20 @@ class SetNodeFlagsCommand(EditCommand):
         node_ids = frozenset(int(node_id) for node_id in node_ids)
 
         if not node_ids:
-            raise ValueError("Es wurden keine Nodes angegeben.")
+            raise ValueError("No nodes were given.")
 
         for node_id in node_ids:
             if node_id not in autodrive_data.nodes:
-                raise ValueError(f"Die Node-ID {node_id} ist nicht vorhanden.")
+                raise ValueError(f"Node ID {node_id} does not exist.")
 
         flag = int(flag)
 
         type_name = "Regular" if flag == REGULAR_FLAG else "Subprio"
 
         super().__init__(
-            f"Node auf {type_name} setzen"
+            tr("Set node to {type}", type=type_name)
             if len(node_ids) == 1
-            else f"{len(node_ids)} Nodes auf {type_name} setzen",
+            else tr("Set {count} nodes to {type}", count=len(node_ids), type=type_name),
             autodrive_data,
         )
 

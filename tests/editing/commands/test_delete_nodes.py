@@ -95,8 +95,8 @@ def test_command_text():
     data.add_node(NodeData(1, 0, 0, 0))
     data.add_node(NodeData(2, 0, 0, 0))
 
-    assert DeleteNodesCommand(data, {1}).text() == "Node löschen"
-    assert DeleteNodesCommand(data, {1, 2}).text() == "2 Nodes löschen"
+    assert DeleteNodesCommand(data, {1}).text() == "Delete node"
+    assert DeleteNodesCommand(data, {1, 2}).text() == "Delete 2 nodes"
 
 
 def test_rejects_unknown_or_empty(data):

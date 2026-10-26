@@ -4,6 +4,7 @@ from PySide6.QtCore import QObject, QPoint, Signal
 
 from autodrive_editor.editing.commands.delete_nodes import DeleteNodesCommand
 from autodrive_editor.editing.edit_history import EditHistory
+from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData
 from autodrive_editor.selection.node_selection import NodeSelection
 from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
@@ -68,7 +69,9 @@ class DeleteNodesOperation(QObject):
         self.edit_history.push(DeleteNodesCommand(autodrive_data, node_ids))
 
         self.status_changed.emit(
-            "Node gelöscht" if len(node_ids) == 1 else f"{len(node_ids)} Nodes gelöscht"
+            tr("Node deleted")
+            if len(node_ids) == 1
+            else tr("{count} nodes deleted", count=len(node_ids))
         )
 
         return True

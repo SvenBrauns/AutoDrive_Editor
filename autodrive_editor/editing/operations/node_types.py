@@ -4,6 +4,7 @@ from PySide6.QtCore import QObject, QPoint, Signal
 
 from autodrive_editor.editing.commands.set_node_flags import SetNodeFlagsCommand
 from autodrive_editor.editing.edit_history import EditHistory
+from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import REGULAR_FLAG, SUBPRIO_FLAG, AutoDriveData
 from autodrive_editor.selection.node_selection import NodeSelection
 from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
@@ -49,8 +50,11 @@ class NodeTypeOperation(QObject):
         # Nodes with flags other than regular/subprio keep their value.
         if not clicked_node.has_known_flag:
             self.status_changed.emit(
-                f"Node {clicked_node.node_id} hat einen unbekannten Typ "
-                f"(Flag {clicked_node.flag}) und wird nicht geändert"
+                tr(
+                    "Node {node} has an unknown type (flag {flag}) and is not changed",
+                    node=clicked_node.node_id,
+                    flag=clicked_node.flag,
+                )
             )
             return False
 
@@ -77,9 +81,9 @@ class NodeTypeOperation(QObject):
         type_name = "Regular" if new_flag == REGULAR_FLAG else "Subprio"
 
         self.status_changed.emit(
-            f"Node {clicked_node.node_id} auf {type_name} gesetzt"
+            tr("Node {node} set to {type}", node=clicked_node.node_id, type=type_name)
             if len(node_ids) == 1
-            else f"{changed_count} Nodes auf {type_name} gesetzt"
+            else tr("{count} nodes set to {type}", count=changed_count, type=type_name)
         )
 
         return True

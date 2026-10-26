@@ -42,7 +42,7 @@ def test_dragging_unselected_node_moves_only_that_node(editor):
     assert node_xz(editor, 2) == (10, 0)
     assert editor.node_selection.selected_node_ids == {2, 3}
     assert editor.edit_history.undo_stack.count() == 1
-    assert editor.status.text() == "Node verschoben"
+    assert editor.status.text() == "Node moved"
 
 
 def test_dragging_selected_node_moves_whole_selection(editor):
@@ -57,7 +57,7 @@ def test_dragging_selected_node_moves_whole_selection(editor):
     assert node_xz(editor, 2) == pytest.approx((10 + dx, dz))
     assert node_xz(editor, 3) == (20, 0)
     assert editor.edit_history.undo_stack.count() == 1
-    assert editor.edit_history.undo_stack.undoText() == "2 Nodes verschieben"
+    assert editor.edit_history.undo_stack.undoText() == "Move 2 nodes"
 
 
 def test_undo_and_redo_restore_data_and_drawing(editor):

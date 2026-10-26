@@ -1,4 +1,5 @@
 from autodrive_editor.editing.commands.edit_command import DataChange, EditCommand
+from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData
 
 NodePosition = tuple[float, float, float]
@@ -24,19 +25,21 @@ class MoveNodesCommand(EditCommand):
         node_count = len(new_positions)
 
         if text is None:
-            text = "Node verschieben" if node_count == 1 else f"{node_count} Nodes verschieben"
+            text = (
+                tr("Move node") if node_count == 1 else tr("Move {count} nodes", count=node_count)
+            )
 
         super().__init__(text, autodrive_data)
 
         if set(old_positions) != set(new_positions):
-            raise ValueError("Alte und neue Positionen müssen dieselben Nodes enthalten.")
+            raise ValueError("Old and new positions must contain the same nodes.")
 
         if not new_positions:
-            raise ValueError("Es wurden keine Nodes zum Verschieben angegeben.")
+            raise ValueError("No nodes to move were given.")
 
         for node_id in new_positions:
             if node_id not in autodrive_data.nodes:
-                raise ValueError(f"Die Node-ID {node_id} ist nicht vorhanden.")
+                raise ValueError(f"Node ID {node_id} does not exist.")
 
         self.old_positions = self._normalize_positions(old_positions)
 

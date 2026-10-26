@@ -1,5 +1,6 @@
 from autodrive_editor.editing.commands.edit_command import DataChange, EditCommand
 from autodrive_editor.editing.commands.markers import GroupCreation
+from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData, MarkerData, NodeData
 
 
@@ -12,20 +13,20 @@ class PasteNodesCommand(EditCommand):
         self, autodrive_data: AutoDriveData, nodes: list[NodeData], markers: list[MarkerData]
     ):
         super().__init__(
-            "Node einfügen" if len(nodes) == 1 else f"{len(nodes)} Nodes einfügen",
+            tr("Paste node") if len(nodes) == 1 else tr("Paste {count} nodes", count=len(nodes)),
             autodrive_data,
         )
 
         if not nodes:
-            raise ValueError("Es wurden keine Nodes zum Einfügen angegeben.")
+            raise ValueError("No nodes to paste were given.")
 
         node_ids = {node.node_id for node in nodes}
 
         if node_ids & set(autodrive_data.nodes):
-            raise ValueError("Eingefügte Nodes brauchen neue Node-IDs.")
+            raise ValueError("Pasted nodes need new node IDs.")
 
         if any(marker.node_id not in node_ids for marker in markers):
-            raise ValueError("Ein eingefügter Marker gehört zu keiner eingefügten Node.")
+            raise ValueError("A pasted marker does not belong to a pasted node.")
 
         self.nodes = list(nodes)
         self.markers = list(markers)

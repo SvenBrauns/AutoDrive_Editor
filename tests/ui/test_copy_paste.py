@@ -31,7 +31,7 @@ def test_copy_and_paste_centered_on_the_mouse(paste_window):
     assert positions(paste_window, {4, 5}) == [(95, 50), (105, 50)]
     assert paste_window.data.nodes[4].outgoing == {5}
     assert paste_window.node_selection.selected_node_ids == {4, 5}
-    assert paste_window.status.text() == "2 Nodes eingefügt"
+    assert paste_window.status.text() == "2 nodes pasted"
 
 
 def test_pasted_markers_appear_in_the_dock(paste_window):
@@ -70,7 +70,7 @@ def test_cut_removes_the_selection_and_can_be_pasted(paste_window):
 
     paste_window.actions.cut_action.trigger()
     assert set(paste_window.data.nodes) == {1, 2}
-    assert paste_window.status.text() == "1 Node ausgeschnitten"
+    assert paste_window.status.text() == "1 node cut"
 
     paste_window.actions.paste_action.trigger()
     assert positions(paste_window, {3}) == [(100, 50)]  # freed id 3 is used again
@@ -92,13 +92,13 @@ def test_clipboard_survives_loading_other_data(paste_window, write_xml):
 def test_copy_without_selection_says_so(paste_window):
     paste_window.actions.copy_action.trigger()
 
-    assert paste_window.status.text() == "Keine Nodes ausgewählt"
+    assert paste_window.status.text() == "No nodes selected"
 
 
 def test_paste_with_empty_clipboard_says_so(paste_window):
     paste_window.actions.paste_action.trigger()
 
-    assert paste_window.status.text() == "Die Zwischenablage ist leer"
+    assert paste_window.status.text() == "The clipboard is empty"
     assert not paste_window.edit_history.can_undo
 
 

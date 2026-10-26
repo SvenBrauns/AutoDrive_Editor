@@ -13,6 +13,7 @@ from autodrive_editor.editing.path_shapes import (
     shape_polyline,
     spaced_points,
 )
+from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
 from autodrive_editor.model.connections import CONNECTION_STATES
 from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
@@ -20,9 +21,16 @@ from autodrive_editor.terrain.terrain_follower import TerrainHeightProvider
 from autodrive_editor.ui.map_view.map_view import MapView
 
 SHAPE_NAMES = {
-    PathShape.LINE: "Linie",
-    PathShape.BEZIER: "Bézierkurve",
-    PathShape.ARC: "Kreisbogen",
+    PathShape.LINE: tr("Line"),
+    PathShape.BEZIER: tr("Bézier curve"),
+    PathShape.ARC: tr("Arc"),
+}
+
+# Undo texts. Separate from the names, because English writes them in lower case here.
+COMMAND_TEXTS = {
+    PathShape.LINE: tr("Create line"),
+    PathShape.BEZIER: tr("Create Bézier curve"),
+    PathShape.ARC: tr("Create arc"),
 }
 
 # Clicks closer than this to the start do not count as an end point, in metres.
@@ -125,7 +133,7 @@ class CreatePathOperation(QObject):
 
     def click(self, view_position: QPoint):
         if self.autodrive_data_provider() is None:
-            self.status_changed.emit("Zuerst eine AutoDrive-XML laden")
+            self.status_changed.emit(tr("Load an AutoDrive XML first"))
             return
 
         if self.is_adjusting:
@@ -136,7 +144,7 @@ class CreatePathOperation(QObject):
 
         if start is None:
             self._start = clicked
-            self.status_changed.emit("Start gesetzt. Endpunkt anklicken")
+            self.status_changed.emit(tr("Start set. Click the end point"))
             self.preview_changed.emit()
             return
 
@@ -150,7 +158,7 @@ class CreatePathOperation(QObject):
             return
 
         self.handles = default_handles(self.shape, (start.x, start.z), (clicked.x, clicked.z))
-        self.status_changed.emit("Griffe ziehen, Enter erstellt die Kurve, Esc bricht ab")
+        self.status_changed.emit(tr("Drag the handles, Enter creates the curve, Esc cancels"))
         self.preview_changed.emit()
 
     def move_handle(self, index: int, x: float, z: float):
@@ -229,7 +237,7 @@ class CreatePathOperation(QObject):
 
         self.edit_history.push(
             CreatePathCommand(
-                f"{name} erstellen",
+                COMMAND_TEXTS[self.shape],
                 autodrive_data,
                 [start_id, *inner_ids, end_id],
                 new_nodes,
@@ -238,7 +246,11 @@ class CreatePathOperation(QObject):
         )
 
         self.status_changed.emit(
-            f"{name} mit {len(new_nodes)} neuen Nodes erstellt. Nächsten Endpunkt anklicken"
+            tr(
+                "{shape} with {count} new nodes created. Click the next end point",
+                shape=name,
+                count=len(new_nodes),
+            )
         )
 
         # The end is the start of the next path.
@@ -256,11 +268,11 @@ class CreatePathOperation(QObject):
         if self.is_adjusting:
             self._end = None
             self.handles = []
-            self.status_changed.emit("Kurve verworfen. Endpunkt anklicken")
+            self.status_changed.emit(tr("Curve discarded. Click the end point"))
 
         elif self.start is not None:
             self._start = None
-            self.status_changed.emit("Strecke beendet")
+            self.status_changed.emit(tr("Path finished"))
 
         else:
             return False

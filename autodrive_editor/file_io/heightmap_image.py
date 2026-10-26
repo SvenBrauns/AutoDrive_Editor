@@ -4,13 +4,15 @@ from pathlib import Path
 
 from PIL import Image
 
+from autodrive_editor.i18n import tr
+
 
 class HeightmapFormat(Enum):
     """Pixel formats a dem.png can have."""
 
-    GRAYSCALE_8 = "8-Bit-Graustufen"
-    GRAYSCALE_16 = "16-Bit-Graustufen"
-    RGB_ENCODED_8 = "8-Bit-RGB-kodiert"
+    GRAYSCALE_8 = "grayscale_8"
+    GRAYSCALE_16 = "grayscale_16"
+    RGB_ENCODED_8 = "rgb_encoded_8"
 
 
 @dataclass
@@ -32,19 +34,25 @@ class HeightmapData:
 
     @property
     def format_description(self) -> str:
-        return self.heightmap_format.value
+        descriptions = {
+            HeightmapFormat.GRAYSCALE_8: tr("8-bit grayscale"),
+            HeightmapFormat.GRAYSCALE_16: tr("16-bit grayscale"),
+            HeightmapFormat.RGB_ENCODED_8: tr("8-bit RGB encoded"),
+        }
+
+        return descriptions[self.heightmap_format]
 
 
 def load_heightmap(file_path) -> HeightmapData:
     heightmap_path = Path(file_path).resolve()
 
     if not heightmap_path.is_file():
-        raise FileNotFoundError(f"Die Heightmap wurde nicht gefunden: {heightmap_path}")
+        raise FileNotFoundError(tr("The heightmap was not found: {path}", path=heightmap_path))
 
     try:
         with Image.open(heightmap_path) as source_image:
             if source_image.format != "PNG":
-                raise ValueError("Die Heightmap muss eine PNG-Datei sein.")
+                raise ValueError(tr("The heightmap must be a PNG file."))
 
             source_image.load()
 
@@ -54,10 +62,10 @@ def load_heightmap(file_path) -> HeightmapData:
         raise
 
     except Exception as ex:
-        raise ValueError(f"Die Heightmap konnte nicht geöffnet werden: {ex}") from ex
+        raise ValueError(tr("The heightmap could not be opened: {error}", error=ex)) from ex
 
     if image.width <= 0 or image.height <= 0:
-        raise ValueError("Die Heightmap besitzt eine ungültige Bildgröße.")
+        raise ValueError(tr("The heightmap has an invalid image size."))
 
     heightmap_format = _detect_heightmap_format(image)
 
@@ -85,7 +93,7 @@ def _detect_heightmap_format(image: Image.Image) -> HeightmapFormat:
 
         if minimum < 0 or maximum > 65535:
             raise ValueError(
-                "Die Integer-Heightmap enthält Werte außerhalb des unterstützten 16-Bit-Bereichs."
+                tr("The integer heightmap contains values outside the supported 16-bit range.")
             )
 
         return HeightmapFormat.GRAYSCALE_16
@@ -93,4 +101,4 @@ def _detect_heightmap_format(image: Image.Image) -> HeightmapFormat:
     if image.mode in ("RGB", "RGBA"):
         return HeightmapFormat.RGB_ENCODED_8
 
-    raise ValueError(f"Nicht unterstützter Heightmap-Bildmodus: {image.mode}")
+    raise ValueError(tr("Unsupported heightmap image mode: {mode}", mode=image.mode))

@@ -46,8 +46,8 @@ def test_command_text_and_change(data):
 
     command.redo()
 
-    assert command.text() == "Node auf Subprio setzen"
-    assert SetNodeFlagsCommand(data, {1, 2}, REGULAR_FLAG).text() == "2 Nodes auf Regular setzen"
+    assert command.text() == "Set node to Subprio"
+    assert SetNodeFlagsCommand(data, {1, 2}, REGULAR_FLAG).text() == "Set 2 nodes to Regular"
     assert changes[0].changed_flag_node_ids == {1}
 
 
@@ -84,7 +84,7 @@ def test_click_switches_node_and_redraws_it(toggling):
     click(toggling, view_pos(toggling, 10, 0))
     assert flag(toggling, 2) == SUBPRIO_FLAG
     assert color(toggling, 2) == ORANGE
-    assert toggling.status.text() == "Node 2 auf Subprio gesetzt"
+    assert toggling.status.text() == "Node 2 set to Subprio"
 
     click(toggling, view_pos(toggling, 10, 0))
     assert flag(toggling, 2) == REGULAR_FLAG
@@ -97,8 +97,8 @@ def test_click_on_selected_node_switches_whole_selection(toggling):
     click(toggling, view_pos(toggling, 0, 0))
 
     assert (flag(toggling, 1), flag(toggling, 2), flag(toggling, 3)) == (1, 1, 0)
-    assert toggling.status.text() == "2 Nodes auf Subprio gesetzt"
-    assert toggling.actions.undo_action.text() == "Rückgängig: 2 Nodes auf Subprio setzen"
+    assert toggling.status.text() == "2 nodes set to Subprio"
+    assert toggling.actions.undo_action.text() == "Undo: Set 2 nodes to Subprio"
 
 
 def test_mixed_selection_gets_opposite_of_clicked_node(toggling):
@@ -108,7 +108,7 @@ def test_mixed_selection_gets_opposite_of_clicked_node(toggling):
     click(toggling, view_pos(toggling, 10, 0))  # clicked node is regular
 
     assert (flag(toggling, 1), flag(toggling, 2), flag(toggling, 3)) == (1, 1, 1)
-    assert toggling.status.text() == "2 Nodes auf Subprio gesetzt"
+    assert toggling.status.text() == "2 nodes set to Subprio"
 
 
 def test_selection_rings_are_redrawn_too(toggling):
@@ -142,11 +142,11 @@ def test_undo_restores_type_and_color(toggling):
 
 def test_node_info_shows_new_type(toggling):
     select(toggling, QRectF(5, -5, 10, 10))  # node 2
-    assert "Regular Node" in toggling.debug_dock.node_info_value.text()
+    assert "Regular node" in toggling.debug_dock.node_info_value.text()
 
     click(toggling, view_pos(toggling, 10, 0))
 
-    assert "Subprio Node" in toggling.debug_dock.node_info_value.text()
+    assert "Subprio node" in toggling.debug_dock.node_info_value.text()
 
 
 def test_click_on_empty_map_and_drag_change_nothing(toggling):
@@ -170,7 +170,7 @@ def test_nodes_with_unknown_flag_are_not_changed(toggling):
 
     assert flag(toggling, 2) == 4
     assert toggling.edit_history.undo_stack.count() == 0
-    assert "unbekannten Typ" in toggling.status.text()
+    assert "unknown type" in toggling.status.text()
 
 
 def test_selection_skips_nodes_with_unknown_flag(toggling):
@@ -214,5 +214,5 @@ def test_node_info_names_map_scan_and_unknown_flags(toggling):
     data.get_node(3).flag = 4
     formatter = toggling.node_info_formatter
 
-    assert "Regular Node (aus Karten-Scan)" in formatter.format_node_info(data.get_node(2), data)
-    assert "Regular Node (Flag 4)" in formatter.format_node_info(data.get_node(3), data)
+    assert "Regular node (from map scan)" in formatter.format_node_info(data.get_node(2), data)
+    assert "Regular node (flag 4)" in formatter.format_node_info(data.get_node(3), data)

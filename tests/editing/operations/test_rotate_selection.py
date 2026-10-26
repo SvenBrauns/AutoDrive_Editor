@@ -90,7 +90,7 @@ def test_whole_rotation_is_one_undo_step(setup):
     rotate(coordinator, [(30, 0), (25, 10), (20, 15), (10, 20)])
 
     assert edits.undo_stack.count() == 1
-    assert edits.undo_stack.undoText() == "2 Nodes rotieren"
+    assert edits.undo_stack.undoText() == "Rotate 2 nodes"
 
     edits.undo()
     assert xz(data, 1) == (0, 0)

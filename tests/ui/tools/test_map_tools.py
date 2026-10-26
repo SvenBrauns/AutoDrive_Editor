@@ -238,7 +238,7 @@ def test_dragging_a_free_point_moves_it(measuring):
 
     end_point = measuring.measurement_controller.state.end_point
     assert end_point.x == pytest.approx(25, abs=0.5)
-    assert measuring.status.text() == "Messpunkt verschoben"
+    assert measuring.status.text() == "Measuring point moved"
 
 
 def test_escape_clears_measurement_then_ends_measuring(measuring):

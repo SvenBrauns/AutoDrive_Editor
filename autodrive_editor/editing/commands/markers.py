@@ -6,6 +6,7 @@ vehicles refer to these numbers as parking destination).
 """
 
 from autodrive_editor.editing.commands.edit_command import DataChange, EditCommand
+from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData, MarkerData, MarkerGroup
 
 
@@ -13,7 +14,7 @@ def _require_marker(autodrive_data: AutoDriveData, node_id: int) -> MarkerData:
     marker = autodrive_data.get_marker(node_id)
 
     if marker is None:
-        raise ValueError(f"Node {node_id} hat keinen Marker.")
+        raise ValueError(f"Node {node_id} has no marker.")
 
     return marker
 
@@ -51,15 +52,15 @@ class AddMarkerCommand(EditCommand):
     creates the group."""
 
     def __init__(self, autodrive_data: AutoDriveData, node_id: int, name: str, group: str):
-        super().__init__("Marker hinzufügen", autodrive_data)
+        super().__init__(tr("Add marker"), autodrive_data)
 
         node_id = int(node_id)
 
         if node_id not in autodrive_data.nodes:
-            raise ValueError(f"Die Node-ID {node_id} ist nicht vorhanden.")
+            raise ValueError(f"Node ID {node_id} does not exist.")
 
         if node_id in autodrive_data.markers:
-            raise ValueError(f"Node {node_id} hat bereits einen Marker.")
+            raise ValueError(f"Node {node_id} already has a marker.")
 
         self.marker = MarkerData(node_id=node_id, name=name, group=group)
         self._group = GroupCreation(autodrive_data, group)
@@ -87,7 +88,7 @@ class EditMarkerCommand(EditCommand):
     """Changes a marker's name and group."""
 
     def __init__(self, autodrive_data: AutoDriveData, node_id: int, name: str, group: str):
-        super().__init__("Marker bearbeiten", autodrive_data)
+        super().__init__(tr("Edit marker"), autodrive_data)
 
         self.marker = _require_marker(autodrive_data, int(node_id))
 
@@ -120,7 +121,7 @@ class DeleteMarkerCommand(EditCommand):
     it becomes empty."""
 
     def __init__(self, autodrive_data: AutoDriveData, node_id: int):
-        super().__init__("Marker löschen", autodrive_data)
+        super().__init__(tr("Delete marker"), autodrive_data)
 
         self.node_id = int(node_id)
         _require_marker(autodrive_data, self.node_id)
@@ -143,7 +144,7 @@ class MoveMarkerCommand(EditCommand):
     """Attaches a marker to another node without changing its number."""
 
     def __init__(self, autodrive_data: AutoDriveData, from_node_id: int, to_node_id: int):
-        super().__init__("Marker verschieben", autodrive_data)
+        super().__init__(tr("Move marker"), autodrive_data)
 
         self.from_node_id = int(from_node_id)
         self.to_node_id = int(to_node_id)
@@ -151,10 +152,10 @@ class MoveMarkerCommand(EditCommand):
         _require_marker(autodrive_data, self.from_node_id)
 
         if self.to_node_id not in autodrive_data.nodes:
-            raise ValueError(f"Die Node-ID {self.to_node_id} ist nicht vorhanden.")
+            raise ValueError(f"Node ID {self.to_node_id} does not exist.")
 
         if self.to_node_id in autodrive_data.markers:
-            raise ValueError(f"Node {self.to_node_id} hat bereits einen Marker.")
+            raise ValueError(f"Node {self.to_node_id} already has a marker.")
 
     def apply(self) -> DataChange:
         self.autodrive_data.move_marker(self.from_node_id, self.to_node_id)
@@ -174,13 +175,13 @@ class RenameMarkerGroupCommand(EditCommand):
     """Renames a group and moves all its markers along."""
 
     def __init__(self, autodrive_data: AutoDriveData, old_name: str, new_name: str):
-        super().__init__("Markergruppe umbenennen", autodrive_data)
+        super().__init__(tr("Rename marker group"), autodrive_data)
 
         if old_name not in autodrive_data.marker_group_names():
-            raise ValueError(f"Die Markergruppe „{old_name}“ ist nicht vorhanden.")
+            raise ValueError(f"Marker group “{old_name}” does not exist.")
 
         if new_name != old_name and new_name in autodrive_data.marker_group_names():
-            raise ValueError(f"Die Markergruppe „{new_name}“ ist bereits vorhanden.")
+            raise ValueError(f"Marker group “{new_name}” already exists.")
 
         self.old_name = old_name
         self.new_name = new_name
@@ -213,15 +214,15 @@ class DeleteMarkerGroupCommand(EditCommand):
     """Removes an empty group from the group list."""
 
     def __init__(self, autodrive_data: AutoDriveData, name: str):
-        super().__init__("Markergruppe löschen", autodrive_data)
+        super().__init__(tr("Delete marker group"), autodrive_data)
 
         group = autodrive_data.find_marker_group(name)
 
         if group is None:
-            raise ValueError(f"Die Markergruppe „{name}“ ist nicht vorhanden.")
+            raise ValueError(f"Marker group “{name}” does not exist.")
 
         if autodrive_data.markers_in_group(name):
-            raise ValueError(f"Die Markergruppe „{name}“ enthält noch Marker.")
+            raise ValueError(f"Marker group “{name}” still contains markers.")
 
         self.group = group
         self.position = autodrive_data.marker_groups.index(group)

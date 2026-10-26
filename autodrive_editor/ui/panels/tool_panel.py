@@ -11,6 +11,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from autodrive_editor.i18n import tr
+
 
 class ToolGroup(QWidget):
     """A titled group of tool buttons that can be collapsed."""
@@ -89,7 +91,7 @@ class ToolPanel(QDockWidget):
     ICON_SIZE = QSize(28, 28)
 
     def __init__(self, parent=None):
-        super().__init__("Werkzeuge", parent)
+        super().__init__(tr("Tools"), parent)
 
         self.setObjectName("tool_panel")
 

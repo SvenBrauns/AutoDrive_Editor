@@ -12,6 +12,7 @@ from pathlib import Path, PurePosixPath
 
 from autodrive_editor.file_io.map_mod import MapMod, read_map_entry
 from autodrive_editor.file_io.mod_archive import ModArchive
+from autodrive_editor.i18n import tr
 
 BASE_GAME_MOD_NAME = "FS25 Grundspiel"
 
@@ -35,7 +36,7 @@ class GameDataArchive(ModArchive):
         self._zip = None
 
         if not self.path.is_dir():
-            raise FileNotFoundError(f"Spieldaten nicht gefunden: {self.path}")
+            raise FileNotFoundError(tr("Game data not found: {path}", path=self.path))
 
     @property
     def name(self) -> str:

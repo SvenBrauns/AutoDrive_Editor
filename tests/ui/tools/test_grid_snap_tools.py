@@ -59,12 +59,12 @@ def test_without_snapping_positions_are_free(snap_window):
 def test_checkbox_shortcut_and_button_stay_in_sync(snap_window):
     controls = snap_window.actions.grid_controls
     assert controls.snap_input.isChecked()
-    assert controls.text() == "Raster an · Einrasten"
+    assert controls.text() == "Grid on · Snap"
     assert snap_window.actions.grid_snap_action.shortcut().toString() == "G"
 
     controls.snap_input.setChecked(False)
 
     assert not snap_window.actions.grid_snap_action.isChecked()
     assert not snap_window.background_map.grid_snap_enabled
-    assert controls.text() == "Raster an"
-    assert snap_window.status.text() == "Einrasten aus"
+    assert controls.text() == "Grid on"
+    assert snap_window.status.text() == "Snap off"

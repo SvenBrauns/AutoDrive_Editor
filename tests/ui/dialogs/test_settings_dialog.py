@@ -4,6 +4,7 @@ from game_folder_helpers import make_game_folder
 
 from autodrive_editor.game.game_folder import GameFolder
 from autodrive_editor.game.game_installation import GameInstallation
+from autodrive_editor.settings import app_settings
 from autodrive_editor.settings.app_settings import AppSettings
 from autodrive_editor.ui.dialogs.folder_settings_widget import FolderSettingsWidget
 from autodrive_editor.ui.dialogs.settings_dialog import SettingsDialog
@@ -65,7 +66,7 @@ def test_detect_button_fills_in_default_folder(qapp, tmp_path, monkeypatch):
 
 
 def test_settings_menu_entry_exists(window, isolated_user_data):
-    assert window.actions.settings_action.text() == "Einstellungen…"
+    assert window.actions.settings_action.text() == "Settings…"
     assert "user_data" in window.settings.settings_path.parent.name
 
 
@@ -106,4 +107,25 @@ def test_autosave_interval_is_shown_and_stored(qapp):
     dialog.accept()
 
     assert settings.autosave_minutes == 0
-    assert dialog.autosave_input.text() == "aus"
+    assert dialog.autosave_input.text() == "off"
+
+
+def test_language_is_shown_and_stored(qapp):
+    settings = AppSettings()
+    settings.set_language("en")
+    dialog = SettingsDialog(settings)
+    assert dialog.language_input.currentText() == "English"
+
+    dialog.language_input.setCurrentIndex(dialog.language_input.findData("de"))
+    dialog.accept()
+
+    assert AppSettings().language == "de"
+
+
+def test_unchanged_language_keeps_following_windows(qapp, monkeypatch):
+    monkeypatch.setattr(app_settings, "system_language", lambda: "de")
+    SettingsDialog(AppSettings()).accept()
+
+    monkeypatch.setattr(app_settings, "system_language", lambda: "en")
+
+    assert AppSettings().language == "en"

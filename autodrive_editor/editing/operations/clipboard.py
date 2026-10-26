@@ -5,6 +5,7 @@ from PySide6.QtCore import QObject, Signal
 from autodrive_editor.editing.clipboard import ClipboardContent, copy_nodes, nodes_for_paste
 from autodrive_editor.editing.commands.paste_nodes import PasteNodesCommand
 from autodrive_editor.editing.edit_history import EditHistory
+from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData
 from autodrive_editor.selection.node_selection import NodeSelection
 
@@ -44,7 +45,7 @@ class ClipboardOperation(QObject):
             return False
 
         self.content = content
-        self.status_changed.emit(f"{self._count_text(len(content.nodes))} kopiert")
+        self.status_changed.emit(tr("{nodes} copied", nodes=self._count_text(len(content.nodes))))
 
         return True
 
@@ -59,7 +60,7 @@ class ClipboardOperation(QObject):
 
         self.content = content
         self.delete_nodes({node.node_id for node in content.nodes})
-        self.status_changed.emit(f"{self._count_text(len(content.nodes))} ausgeschnitten")
+        self.status_changed.emit(tr("{nodes} cut", nodes=self._count_text(len(content.nodes))))
 
         return True
 
@@ -73,7 +74,7 @@ class ClipboardOperation(QObject):
             return False
 
         if self.content is None:
-            self.status_changed.emit("Die Zwischenablage ist leer")
+            self.status_changed.emit(tr("The clipboard is empty"))
             return False
 
         if at_original_position:
@@ -90,7 +91,7 @@ class ClipboardOperation(QObject):
         new_ids = {node.node_id for node in nodes}
         self.node_selection.replace(new_ids, min(new_ids))
 
-        self.status_changed.emit(f"{self._count_text(len(nodes))} eingefügt")
+        self.status_changed.emit(tr("{nodes} pasted", nodes=self._count_text(len(nodes))))
 
         return True
 
@@ -103,11 +104,11 @@ class ClipboardOperation(QObject):
         content = copy_nodes(autodrive_data, self.node_selection.selected_node_ids)
 
         if not content.nodes:
-            self.status_changed.emit("Keine Nodes ausgewählt")
+            self.status_changed.emit(tr("No nodes selected"))
             return None
 
         return content
 
     @staticmethod
     def _count_text(count: int) -> str:
-        return "1 Node" if count == 1 else f"{count} Nodes"
+        return tr("1 node") if count == 1 else tr("{count} nodes", count=count)

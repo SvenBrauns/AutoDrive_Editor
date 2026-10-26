@@ -2,6 +2,7 @@ from collections.abc import Callable
 
 from PySide6.QtCore import QObject, QPoint, QPointF, Signal
 
+from autodrive_editor.i18n import tr
 from autodrive_editor.measurement.calculations import calculate_horizontal_alignment_rotation
 from autodrive_editor.measurement.controller import MeasurementController
 from autodrive_editor.measurement.mode import MeasurementMode
@@ -32,13 +33,13 @@ class MeasurementCoordinator(QObject):
         super().__init__(parent)
 
         if not isinstance(view, MapView):
-            raise TypeError("Die Kartenansicht ist ungültig.")
+            raise TypeError("Invalid map view.")
 
         if not isinstance(controller, MeasurementController):
-            raise TypeError("Der MeasurementController ist ungültig.")
+            raise TypeError("Invalid MeasurementController.")
 
         if not callable(node_item_provider):
-            raise TypeError("Der NodeItem-Provider ist ungültig.")
+            raise TypeError("Invalid NodeItem provider.")
 
         self.view = view
         self.controller = controller
@@ -69,7 +70,7 @@ class MeasurementCoordinator(QObject):
 
     def set_mode(self, measurement_mode: MeasurementMode):
         if not isinstance(measurement_mode, MeasurementMode):
-            raise TypeError("Der Messmodus ist ungültig.")
+            raise TypeError("Invalid measurement mode.")
 
         self._reset_drag_state()
 
@@ -82,7 +83,7 @@ class MeasurementCoordinator(QObject):
 
             self.alignment_available_changed.emit(False)
 
-            self.status_changed.emit("Messwerkzeug deaktiviert")
+            self.status_changed.emit(tr("Measuring tool turned off"))
 
             return
 
@@ -95,10 +96,10 @@ class MeasurementCoordinator(QObject):
         self.alignment_available_changed.emit(False)
 
         if measurement_mode == MeasurementMode.DISTANCE:
-            self.status_changed.emit("Abstandsmessung aktiv: Messpunkt A setzen")
+            self.status_changed.emit(tr("Distance measurement active: set point A"))
 
         elif measurement_mode == MeasurementMode.ANGLE:
-            self.status_changed.emit("Winkelmessung aktiv: Messpunkt A setzen")
+            self.status_changed.emit(tr("Angle measurement active: set point A"))
 
     def handle_press(self, view_position: QPoint, modifiers):
         if not self.controller.is_active:
@@ -154,7 +155,7 @@ class MeasurementCoordinator(QObject):
 
             self._set_drag_active(False)
 
-            self.status_changed.emit("Messpunkt verschoben")
+            self.status_changed.emit(tr("Measuring point moved"))
 
             return
 
@@ -167,7 +168,7 @@ class MeasurementCoordinator(QObject):
         if measurement_state.is_awaiting_start_point or measurement_state.is_complete:
             self.controller.set_start_point(measurement_point)
 
-            self.status_changed.emit("Messpunkt A gesetzt")
+            self.status_changed.emit(tr("Point A set"))
 
             return
 
@@ -177,10 +178,12 @@ class MeasurementCoordinator(QObject):
             measurement_result = self.controller.state.calculate_result()
 
             if measurement_result is not None:
-                self.status_changed.emit(f"Messung: {measurement_result.display_text}")
+                self.status_changed.emit(
+                    tr("Measurement: {result}", result=measurement_result.display_text)
+                )
 
             else:
-                self.status_changed.emit("Messpunkt B gesetzt")
+                self.status_changed.emit(tr("Point B set"))
 
     def cancel(self):
         if not self.controller.is_active:
@@ -191,14 +194,14 @@ class MeasurementCoordinator(QObject):
 
             self._set_drag_active(False)
 
-            self.status_changed.emit("Verschieben des Messpunkts abgebrochen")
+            self.status_changed.emit(tr("Moving the measuring point cancelled"))
 
             return
 
         if self.controller.state.has_start_point:
             self.controller.clear_measurement()
 
-            self.status_changed.emit("Messung gelöscht: Messpunkt A setzen")
+            self.status_changed.emit(tr("Measurement cleared: set point A"))
 
             return
 
@@ -210,7 +213,7 @@ class MeasurementCoordinator(QObject):
         if not measurement_state.is_complete:
             self.alignment_available_changed.emit(False)
 
-            self.status_changed.emit("Für die Ausrichtung müssen Messpunkt A und B gesetzt sein")
+            self.status_changed.emit(tr("Points A and B must be set to align the view"))
 
             return
 
@@ -228,14 +231,16 @@ class MeasurementCoordinator(QObject):
             )
 
         except ValueError as ex:
-            self.status_changed.emit(f"Messlinie konnte nicht ausgerichtet werden: {ex}")
+            self.status_changed.emit(
+                tr("The measuring line could not be aligned: {error}", error=ex)
+            )
 
             return
 
         self.view.set_exact_rotation_angle(target_rotation)
 
         self.status_changed.emit(
-            f"Messlinie horizontal ausgerichtet: Rotation {target_rotation:.2f}°"
+            tr("Measuring line aligned horizontally: rotation {angle:.2f}°", angle=target_rotation)
         )
 
     def remove_scene_items(self):
@@ -275,7 +280,7 @@ class MeasurementCoordinator(QObject):
             return None
 
         if not isinstance(node_item, NodeItem):
-            raise TypeError("Der NodeItem-Provider hat ein ungültiges Objekt zurückgegeben.")
+            raise TypeError("The NodeItem provider returned an invalid object.")
 
         return node_item
 

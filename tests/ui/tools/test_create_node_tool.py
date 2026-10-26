@@ -85,8 +85,8 @@ def test_click_on_empty_map_creates_a_node_there(creating):
     assert node.flag == 0
     assert node.incoming == node.outgoing == set()
     assert 4 in visible_items(creating)
-    assert creating.status.text() == "Node 4 erstellt"
-    assert creating.actions.undo_action.text() == "Rückgängig: Node erstellen"
+    assert creating.status.text() == "Node 4 created"
+    assert creating.actions.undo_action.text() == "Undo: Create node"
 
 
 def test_each_click_creates_the_next_id(creating):
@@ -163,7 +163,7 @@ def test_without_loaded_data_nothing_is_created(window):
     click(window, QPoint(300, 300))
 
     assert window.project_coordinator.autodrive_data is None
-    assert window.status.text() == "Zuerst eine AutoDrive-XML laden"
+    assert window.status.text() == "Load an AutoDrive XML first"
 
 
 # --- subprio ------------------------------------------------------------
@@ -177,8 +177,8 @@ def test_subprio_tool_creates_subprio_node(zoomed_window):
     node = data(zoomed_window).get_node(4)
     assert node.flag == 1
     assert node.is_subprio
-    assert zoomed_window.status.text() == "Subprio-Node 4 erstellt"
-    assert zoomed_window.actions.undo_action.text() == "Rückgängig: Subprio-Node erstellen"
+    assert zoomed_window.status.text() == "Subprio node 4 created"
+    assert zoomed_window.actions.undo_action.text() == "Undo: Create subprio node"
 
 
 def test_subprio_node_is_drawn_orange(zoomed_window):

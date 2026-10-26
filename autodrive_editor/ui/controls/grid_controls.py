@@ -11,6 +11,8 @@ from PySide6.QtWidgets import (
     QWidgetAction,
 )
 
+from autodrive_editor.i18n import tr
+
 
 class GridControls(QToolButton):
     """Toolbar menu for grid visibility, spacing and rotation."""
@@ -34,9 +36,9 @@ class GridControls(QToolButton):
     ):
         super().__init__(parent)
 
-        self.setText("Raster")
+        self.setText(tr("Grid"))
 
-        self.setToolTip("Hintergrundraster einstellen")
+        self.setToolTip(tr("Set up the background grid"))
 
         self.setPopupMode(QToolButton.InstantPopup)
 
@@ -51,11 +53,11 @@ class GridControls(QToolButton):
     def _create_menu(self):
         self.grid_menu = QMenu(self)
 
-        self.visibility_input = QCheckBox("Raster anzeigen")
+        self.visibility_input = QCheckBox(tr("Show grid"))
 
         self.visibility_input.toggled.connect(self._emit_visibility)
 
-        self.snap_input = QCheckBox("Am Raster einrasten (G)")
+        self.snap_input = QCheckBox(tr("Snap to grid (G)"))
 
         self.snap_input.toggled.connect(self._emit_snap)
 
@@ -91,11 +93,11 @@ class GridControls(QToolButton):
 
         form_layout = QFormLayout()
 
-        form_layout.addRow("Rasterabstand:", self.spacing_input)
+        form_layout.addRow(tr("Grid spacing:"), self.spacing_input)
 
-        form_layout.addRow("Rasterrotation:", self.rotation_input)
+        form_layout.addRow(tr("Grid rotation:"), self.rotation_input)
 
-        reset_button = QPushButton("Raster zurücksetzen")
+        reset_button = QPushButton(tr("Reset grid"))
 
         reset_button.clicked.connect(self._request_reset)
 
@@ -192,9 +194,9 @@ class GridControls(QToolButton):
         self.grid_menu.close()
 
     def _update_button_text(self):
-        text = "Raster an" if self.visibility_input.isChecked() else "Raster aus"
+        text = tr("Grid on") if self.visibility_input.isChecked() else tr("Grid off")
 
         if self.snap_input.isChecked():
-            text += " · Einrasten"
+            text += tr(" · Snap")
 
         self.setText(text)

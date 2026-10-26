@@ -20,6 +20,7 @@ from autodrive_editor.file_io.routes_index import (
     routes_index_for,
 )
 from autodrive_editor.file_io.savegame_vehicles import renumber_vehicle_markers
+from autodrive_editor.i18n import tr
 from autodrive_editor.measurement.coordinator import MeasurementCoordinator
 from autodrive_editor.model.autodrive_data import AutoDriveData
 from autodrive_editor.project.autosave import AutosaveInfo, AutosaveStore
@@ -107,7 +108,7 @@ class ProjectCoordinator(QObject):
         if self.autodrive_data is None:
             self.fit_scene_in_view()
 
-        self.status_changed.emit("DDS-Hintergrund geladen")
+        self.status_changed.emit(tr("DDS background loaded"))
 
         self.debug_refresh_requested.emit()
 
@@ -119,10 +120,12 @@ class ProjectCoordinator(QObject):
         self.selection_coordinator.refresh_info()
 
         self.status_changed.emit(
-            f"Heightmap geladen: "
-            f"{heightmap_data.width} × "
-            f"{heightmap_data.height}, "
-            f"{heightmap_data.format_description}"
+            tr(
+                "Heightmap loaded: {width} × {height}, {format}",
+                width=heightmap_data.width,
+                height=heightmap_data.height,
+                format=heightmap_data.format_description,
+            )
         )
 
         self.debug_refresh_requested.emit()
@@ -134,7 +137,7 @@ class ProjectCoordinator(QObject):
 
         self.selection_coordinator.refresh_info()
 
-        self.status_changed.emit("Heightmap entfernt")
+        self.status_changed.emit(tr("Heightmap removed"))
 
         self.debug_refresh_requested.emit()
 
@@ -147,7 +150,7 @@ class ProjectCoordinator(QObject):
 
         self.map_scale_changed.emit(self.background_map.map_scale)
 
-        self.status_changed.emit(f"Kartengröße: {map_scale_label}")
+        self.status_changed.emit(tr("Map size: {size}", size=map_scale_label))
 
         self.debug_refresh_requested.emit()
 
@@ -214,8 +217,13 @@ class ProjectCoordinator(QObject):
         self.autodrive_data_loaded.emit(self.autodrive_data)
 
         self.status_changed.emit(
-            f"{source.format_label} „{source.display_name}“ geladen: "
-            f"{len(self.autodrive_data)} Waypoints{map_note}"
+            tr(
+                "{format} “{name}” loaded: {count} waypoints{map_note}",
+                format=source.format_label,
+                name=source.display_name,
+                count=len(self.autodrive_data),
+                map_note=map_note,
+            )
         )
 
         self.debug_refresh_requested.emit()
@@ -234,7 +242,7 @@ class ProjectCoordinator(QObject):
 
         if map_loaded:
             self.update_scene_rect()
-            self.status_changed.emit(f"Karte geladen{map_note}")
+            self.status_changed.emit(tr("Map loaded{map_note}", map_note=map_note))
 
         return map_loaded
 
@@ -255,7 +263,7 @@ class ProjectCoordinator(QObject):
         source = self.config_source
 
         if source is None:
-            raise ValueError("Bitte zuerst eine AutoDrive-XML laden")
+            raise ValueError(tr("Load an AutoDrive XML first"))
 
         self._back_up(source.path)
         save_config(self.autodrive_data, source)
@@ -273,7 +281,9 @@ class ProjectCoordinator(QObject):
 
         self._file_markers = list(self.autodrive_data.markers.values())
 
-        self.status_changed.emit(f"{source.format_label} „{source.display_name}“ gespeichert")
+        self.status_changed.emit(
+            tr("{format} “{name}” saved", format=source.format_label, name=source.display_name)
+        )
 
         return affected_vehicles
 
@@ -337,7 +347,9 @@ class ProjectCoordinator(QObject):
         self._file_markers = list(self.autodrive_data.markers.values())
         self._vehicles_path = None
 
-        self.status_changed.emit(f"{source.format_label} „{display_name}“ gespeichert")
+        self.status_changed.emit(
+            tr("{format} “{name}” saved", format=source.format_label, name=display_name)
+        )
 
     def write_autosave(self, store: AutosaveStore):
         positions = {id(marker): number for number, marker in enumerate(self._file_markers, 1)}
@@ -380,7 +392,7 @@ class ProjectCoordinator(QObject):
 
     def save_project_file(self, config_path) -> Path:
         if not self.current_xml_path:
-            raise ValueError("Bitte zuerst eine AutoDrive-XML laden")
+            raise ValueError(tr("Load an AutoDrive XML first"))
 
         saved_path = self.project_files.save_project(
             config_path=config_path,
@@ -392,7 +404,7 @@ class ProjectCoordinator(QObject):
 
         self.current_config_path = str(saved_path)
 
-        self.status_changed.emit(f"Projekt gespeichert: {saved_path.name}")
+        self.status_changed.emit(tr("Project saved: {name}", name=saved_path.name))
 
         return saved_path
 
@@ -405,10 +417,10 @@ class ProjectCoordinator(QObject):
 
         project_name = Path(config_path).name
 
-        status_text = f"Projekt geladen: {project_name}"
-
         if self.heightmap.has_heightmap():
-            status_text += " mit Heightmap"
+            status_text = tr("Project loaded with heightmap: {name}", name=project_name)
+        else:
+            status_text = tr("Project loaded: {name}", name=project_name)
 
         self.status_changed.emit(status_text)
 
@@ -418,7 +430,7 @@ class ProjectCoordinator(QObject):
         map_scale = int(project_data["map_scale"])
 
         if map_scale not in self.project_files.VALID_MAP_SCALES:
-            raise ValueError(f"Unbekannte Kartengröße: {map_scale}")
+            raise ValueError(tr("Unknown map size: {scale}", scale=map_scale))
 
         self.selection_coordinator.clear()
 
@@ -450,7 +462,7 @@ class ProjectCoordinator(QObject):
 
     def rebuild_scene_after_style_change(self):
         if self.autodrive_data is None:
-            self.status_changed.emit("Darstellungsoptionen übernommen")
+            self.status_changed.emit(tr("Display options applied"))
 
             self.debug_refresh_requested.emit()
             return
@@ -476,7 +488,7 @@ class ProjectCoordinator(QObject):
 
         self.scene_renderer.update_visible_scene_rect(self.view.get_visible_scene_rect())
 
-        self.status_changed.emit("Darstellungsoptionen übernommen")
+        self.status_changed.emit(tr("Display options applied"))
 
         self.debug_refresh_requested.emit()
 
@@ -515,7 +527,7 @@ class ProjectCoordinator(QObject):
 
         if cached is None:
             return False, (
-                f" – Karte „{source.map_name}“ ist nicht importiert (Karte → Karten scannen)"
+                tr(" – map “{name}” is not imported (Map → Scan maps)", name=source.map_name)
             )
 
         self.background_map.set_map_scale(cached.map_scale)
@@ -537,7 +549,7 @@ class ProjectCoordinator(QObject):
             self.heightmap.clear()
             self._set_heightmap_path(None)
 
-        return True, f" – Karte „{cached.title}“"
+        return True, tr(" – map “{name}”", name=cached.title)
 
     def _set_heightmap_path(self, file_path):
         self.current_heightmap_path = str(file_path) if file_path is not None else None

@@ -35,7 +35,7 @@ def test_line_tool_creates_nodes_with_two_clicks(zoomed_window):
     click(window, view_pos(window, 12, 20))
 
     assert len(new_nodes(window)) == 3
-    assert window.actions.undo_action.text() == "Rückgängig: Linie erstellen"
+    assert window.actions.undo_action.text() == "Undo: Create line"
     assert window.view.scene().items()
 
 
@@ -102,7 +102,7 @@ def test_changing_options_updates_the_operation_and_settings(window):
 
 
 def test_tool_panel_has_the_lines_group_with_the_options(window):
-    group = window.actions.tool_panel.groups["Linien"]
+    group = window.actions.tool_panel.groups["Lines"]
 
     assert window.path_options_widget.parent() is not None
     assert group.isAncestorOf(window.path_options_widget)

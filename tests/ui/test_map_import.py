@@ -35,7 +35,7 @@ def test_scan_imports_the_chosen_maps(map_window, monkeypatch):
     map_window.scan_map_mods()
 
     assert [m.title for m in map_window.map_cache.maps()] == ["Karte B"]
-    assert map_window.status.text() == "1 Karte(n) importiert"
+    assert map_window.status.text() == "1 map(s) imported"
 
 
 def test_scan_without_map_mods_explains_it(map_window):
@@ -43,7 +43,7 @@ def test_scan_without_map_mods_explains_it(map_window):
 
     map_window.scan_map_mods()
 
-    assert "keine Kartenmods" in map_window.messages[0]
+    assert "No map mods" in map_window.messages[0]
 
 
 def test_failed_imports_are_reported(map_window, tmp_path):
@@ -53,7 +53,7 @@ def test_failed_imports_are_reported(map_window, tmp_path):
 
     map_window._import_maps([(map_mod, map_mod.maps[0])])
 
-    assert "Nicht importiert" in map_window.messages[0]
+    assert "Not imported" in map_window.messages[0]
 
 
 def test_import_dialog_marks_imported_and_broken_maps(qapp, tmp_path, isolated_user_data):
@@ -70,9 +70,9 @@ def test_import_dialog_marks_imported_and_broken_maps(qapp, tmp_path, isolated_u
         for i in range(dialog.table.topLevelItemCount())
     }
 
-    assert rows["Alt"].text(3) == "bereits importiert"
-    assert rows["Neu"].text(3) == "neu"
-    assert "Kartengröße" in rows["Kaputt"].text(3)
+    assert rows["Alt"].text(3) == "already imported"
+    assert rows["Neu"].text(3) == "new"
+    assert "Map size" in rows["Kaputt"].text(3)
     assert not rows["Kaputt"].flags() & Qt.ItemFlag.ItemIsEnabled
     assert not dialog.import_button.isEnabled()
 
@@ -83,10 +83,10 @@ def test_import_dialog_marks_imported_and_broken_maps(qapp, tmp_path, isolated_u
 
 
 def test_map_menu_offers_scan_and_import(window):
-    map_menu = next(a.menu() for a in window.menuBar().actions() if a.text() == "Karte")
+    map_menu = next(a.menu() for a in window.menuBar().actions() if a.text() == "Map")
     texts = [action.text() for action in map_menu.actions()]
 
-    assert texts[:2] == ["Karten scannen…", "Karte aus Mod importieren…"]
+    assert texts[:2] == ["Scan maps…", "Import map from mod…"]
 
 
 def test_scan_lists_base_game_maps_first(map_window, tmp_path, monkeypatch):

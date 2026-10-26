@@ -26,7 +26,7 @@ def test_rejects_other_files(tmp_path):
     path = tmp_path / "routes.xml"
     path.write_text("<something/>", encoding="utf-8")
 
-    with pytest.raises(ValueError, match="unbekanntes Format"):
+    with pytest.raises(ValueError, match="unknown format"):
         read_routes_index(path)
 
 

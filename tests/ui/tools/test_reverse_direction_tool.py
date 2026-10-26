@@ -51,8 +51,8 @@ def test_undo_restores_the_directions(data):
 
 
 def test_command_text_counts_connections(data):
-    assert ReverseConnectionsCommand(data, {(1, 2)}).text() == "Richtung umkehren"
-    assert ReverseConnectionsCommand(data, {(1, 2), (2, 3)}).text() == "2 Richtungen umkehren"
+    assert ReverseConnectionsCommand(data, {(1, 2)}).text() == "Reverse direction"
+    assert ReverseConnectionsCommand(data, {(1, 2), (2, 3)}).text() == "Reverse 2 directions"
 
 
 # --- tool ------------------------------------------------------------------------
@@ -83,7 +83,7 @@ def test_click_on_a_connection_reverses_it(reverse_window):
     click(reverse_window, view_pos(reverse_window, 5, 0))
 
     assert connection(reverse_window.data, 2, 1) == ConnectionType.REGULAR
-    assert reverse_window.status.text() == "Richtung umgekehrt"
+    assert reverse_window.status.text() == "Direction reversed"
 
 
 def test_click_slightly_next_to_the_line_still_hits(reverse_window):
@@ -117,7 +117,7 @@ def test_connection_inside_selection_reverses_the_whole_selection(reverse_window
     assert connection(reverse_window.data, 2, 1) == ConnectionType.REGULAR
     assert connection(reverse_window.data, 4, 3) == ConnectionType.REGULAR
     assert connection(reverse_window.data, 2, 3) == ConnectionType.DUAL
-    assert reverse_window.status.text() == "2 Richtungen umgekehrt"
+    assert reverse_window.status.text() == "2 directions reversed"
 
     reverse_window.edit_history.undo()
     assert connection(reverse_window.data, 1, 2) == ConnectionType.REGULAR

@@ -100,7 +100,7 @@ def test_map_scanned_from_the_question_is_loaded(route_window, tmp_path, monkeyp
     route_window.open_route_file()
 
     assert route_window.background_map.background_item is not None
-    assert "Karte geladen" in route_window.status.text()
+    assert "Map loaded" in route_window.status.text()
 
 
 def test_scan_works_with_only_the_install_folder(window, tmp_path, isolated_user_data, monkeypatch):

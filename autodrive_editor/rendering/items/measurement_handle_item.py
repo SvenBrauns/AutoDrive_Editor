@@ -25,12 +25,12 @@ class MeasurementHandleItem(QGraphicsObject):
         super().__init__(parent)
 
         if point_index not in (0, 1):
-            raise ValueError("Der Messpunktindex muss 0 oder 1 sein.")
+            raise ValueError("The measuring point index must be 0 or 1.")
 
         label = str(label).strip()
 
         if not label:
-            raise ValueError("Die Messpunktbezeichnung darf nicht leer sein.")
+            raise ValueError("The measuring point label must not be empty.")
 
         self.point_index = point_index
         self.label = label

@@ -8,6 +8,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+from autodrive_editor.i18n import tr
+
 
 class MarkerDialog(QDialog):
     """Asks for a marker's name and group. The group list can be typed
@@ -16,10 +18,9 @@ class MarkerDialog(QDialog):
     The same name may appear in different groups (e.g. "Tankstelle"),
     but not twice in one group."""
 
-    EMPTY_NAME_TEXT = "Bitte einen Namen eingeben."
-    TAKEN_NAME_TEXT = "In dieser Gruppe heißt bereits ein Marker so."
-    EMPTY_GROUP_TEXT = "Bitte eine Gruppe wählen oder eingeben."
-    NEW_GROUP_TEXT = "Die Gruppe „{}“ wird neu angelegt."
+    EMPTY_NAME_TEXT = tr("Please enter a name.")
+    TAKEN_NAME_TEXT = tr("A marker in this group already has this name.")
+    EMPTY_GROUP_TEXT = tr("Please choose or enter a group.")
 
     def __init__(
         self,
@@ -56,8 +57,8 @@ class MarkerDialog(QDialog):
         self.buttons.rejected.connect(self.reject)
 
         form = QFormLayout()
-        form.addRow("Name:", self.name_input)
-        form.addRow("Gruppe:", self.group_input)
+        form.addRow(tr("Name:"), self.name_input)
+        form.addRow(tr("Group:"), self.group_input)
 
         layout = QVBoxLayout(self)
         layout.addLayout(form)
@@ -93,6 +94,6 @@ class MarkerDialog(QDialog):
         self.buttons.button(QDialogButtonBox.StandardButton.Ok).setEnabled(problem is None)
 
         if problem is None and group not in self.groups:
-            self.hint_label.setText(self.NEW_GROUP_TEXT.format(group))
+            self.hint_label.setText(tr("The group “{name}” will be created.", name=group))
         else:
             self.hint_label.setText(problem or "")

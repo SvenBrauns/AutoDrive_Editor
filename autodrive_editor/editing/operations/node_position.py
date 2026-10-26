@@ -4,6 +4,7 @@ from PySide6.QtCore import QObject, QPoint, Signal
 
 from autodrive_editor.editing.commands.move_nodes import MoveNodesCommand
 from autodrive_editor.editing.edit_history import EditHistory
+from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
 from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
 
@@ -54,10 +55,10 @@ class NodePositionOperation(QObject):
                 autodrive_data,
                 {node.node_id: old_position},
                 {node.node_id: new_position},
-                text="Node-Position ändern",
+                text=tr("Change node position"),
             )
         )
 
-        self.status_changed.emit(f"Position von Node {node.node_id} geändert")
+        self.status_changed.emit(tr("Position of node {node} changed", node=node.node_id))
 
         return True

@@ -11,9 +11,10 @@ from PySide6.QtWidgets import (
 )
 
 from autodrive_editor.file_io.map_mod import MapEntry, MapMod
+from autodrive_editor.i18n import tr
 from autodrive_editor.terrain.map_cache import MapCache
 
-MAP_SCALE_LABELS = {1: "Originalgröße", 2: "4x", 4: "16x", 8: "64x"}
+MAP_SCALE_LABELS = {1: tr("Original size"), 2: "4x", 4: "16x", 8: "64x"}
 
 
 class MapImportDialog(QDialog):
@@ -24,25 +25,26 @@ class MapImportDialog(QDialog):
     def __init__(self, map_mods: list[MapMod], map_cache: MapCache, skipped=(), parent=None):
         super().__init__(parent)
 
-        self.setWindowTitle("Karten scannen")
+        self.setWindowTitle(tr("Scan maps"))
         self.resize(820, 440)
 
-        hint_text = (
-            "Kartenmods im Mods-Ordner. Ausgewählte Karten werden importiert: Kartenbild "
-            "und Heightmap werden im Datenordner des Editors abgelegt und danach beim "
-            "Öffnen einer Route oder eines Savegames automatisch geladen."
+        hint_text = tr(
+            "Map mods in the mods folder. Selected maps are imported: the map image "
+            "and heightmap are stored in the editor's data folder and then loaded "
+            "automatically when a route or savegame is opened."
         )
 
         if skipped:
-            hint_text += (
-                f"\nNicht lesbar und übersprungen: {', '.join(name for name, _ in skipped)}"
+            hint_text += "\n" + tr(
+                "Not readable and skipped: {names}",
+                names=", ".join(name for name, _ in skipped),
             )
 
         hint = QLabel(hint_text, self)
         hint.setWordWrap(True)
 
         self.table = QTreeWidget(self)
-        self.table.setHeaderLabels(["Karte", "Mod", "Größe", "Status"])
+        self.table.setHeaderLabels([tr("Map"), tr("Mod"), tr("Size"), tr("Status")])
         self.table.setRootIsDecorated(False)
 
         for map_mod in map_mods:
@@ -52,12 +54,12 @@ class MapImportDialog(QDialog):
         for column in range(4):
             self.table.resizeColumnToContents(column)
 
-        select_all = QPushButton("Alle neuen auswählen", self)
+        select_all = QPushButton(tr("Select all new"), self)
         select_all.clicked.connect(self.select_new_maps)
 
         self.buttons = QDialogButtonBox(self)
         self.import_button = self.buttons.addButton(
-            "Importieren", QDialogButtonBox.ButtonRole.AcceptRole
+            tr("Import"), QDialogButtonBox.ButtonRole.AcceptRole
         )
         self.buttons.addButton(QDialogButtonBox.StandardButton.Cancel)
         self.buttons.accepted.connect(self.accept)
@@ -83,12 +85,16 @@ class MapImportDialog(QDialog):
         if entry.problems:
             status = ", ".join(entry.problems)
         elif imported:
-            status = "bereits importiert"
+            status = tr("already imported")
         else:
-            status = "neu"
+            status = tr("new")
+
+        # The base game's mod name is stored in the map cache, so it is only
+        # translated for display.
+        mod_name = tr("FS25 base game") if map_mod.is_base_game else map_mod.name
 
         item = QTreeWidgetItem(
-            [entry.title, map_mod.name, MAP_SCALE_LABELS.get(entry.map_scale, "?"), status]
+            [entry.title, mod_name, MAP_SCALE_LABELS.get(entry.map_scale, "?"), status]
         )
         item.setData(0, Qt.ItemDataRole.UserRole, (map_mod, entry, imported))
 

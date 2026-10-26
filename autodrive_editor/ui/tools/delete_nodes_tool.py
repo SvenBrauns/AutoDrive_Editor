@@ -2,6 +2,7 @@ from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QMouseEvent
 
 from autodrive_editor.editing.operations.delete_nodes import DeleteNodesOperation
+from autodrive_editor.i18n import tr
 from autodrive_editor.ui.tools.map_tool import MapTool
 
 
@@ -25,7 +26,7 @@ class DeleteNodesTool(MapTool):
         return True
 
     def status_hint(self) -> str | None:
-        return "Node anklicken zum Löschen; eine ausgewählte Node löscht die ganze Auswahl"
+        return tr("Click a node to delete it; a selected node deletes the whole selection")
 
     def cursor_at(self, view_position: QPoint) -> Qt.CursorShape:
         if self._pan.is_dragging:

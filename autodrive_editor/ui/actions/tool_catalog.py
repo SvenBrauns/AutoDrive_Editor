@@ -7,6 +7,7 @@ from PySide6.QtCore import QByteArray, Qt
 from PySide6.QtGui import QIcon, QPainter, QPixmap
 from PySide6.QtSvg import QSvgRenderer
 
+from autodrive_editor.i18n import tr
 from autodrive_editor.paths import TOOL_ICON_DIRECTORY
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
@@ -65,98 +66,104 @@ def tool_tooltip(text: str, shortcut: str, description: str) -> str:
 
 
 NAVIGATION_TOOL = ToolDefinition(
-    InteractionMode.NAVIGATE, "Navigation", "Kartenansicht verschieben und drehen", "navigate", "N"
+    InteractionMode.NAVIGATE, tr("Navigation"), tr("Move and rotate the map view"), "navigate", "N"
 )
 
 SELECTION_TOOL = ToolDefinition(
-    InteractionMode.SELECT, "Auswahl", "Nodes per Klick oder Rechtsziehen auswählen", "select", "A"
+    InteractionMode.SELECT,
+    tr("Selection"),
+    tr("Select nodes by clicking or right-dragging"),
+    "select",
+    "A",
 )
 
 MOVE_TOOL = ToolDefinition(
     InteractionMode.MOVE_NODES,
-    "Verschieben",
-    "Node oder Auswahl per Linkes Ziehen verschieben",
+    tr("Move"),
+    tr("Move a node or the selection by left-dragging"),
     "move",
     "V",
 )
 
 CREATE_REGULAR_TOOL = ToolDefinition(
     InteractionMode.CREATE_NODES,
-    "Erstellen (Regular)",
-    "Per Linksklick auf freie Fläche eine Regular-Node erstellen",
+    tr("Create (Regular)"),
+    tr("Left-click on free ground to create a regular node"),
     "create_regular",
     "E",
 )
 
 CREATE_SUBPRIO_TOOL = ToolDefinition(
     InteractionMode.CREATE_SUBPRIO_NODES,
-    "Erstellen (Subprio)",
-    "Per Linksklick auf freie Fläche eine Subprio-Node erstellen",
+    tr("Create (Subprio)"),
+    tr("Left-click on free ground to create a subprio node"),
     "create_subprio",
     "Shift+E",
 )
 
 TOGGLE_TYPE_TOOL = ToolDefinition(
     InteractionMode.TOGGLE_NODE_TYPE,
-    "Typ wechseln",
-    "Node oder Auswahl per Linksklick zwischen Regular und Subprio umschalten",
+    tr("Toggle type"),
+    tr("Left-click a node or the selection to switch between regular and subprio"),
     "toggle_type",
     "T",
 )
 
 REVERSE_DIRECTION_TOOL = ToolDefinition(
     InteractionMode.REVERSE_DIRECTION,
-    "Richtung umkehren",
-    "Connection anklicken, um ihre Richtung umzukehren; liegt sie in der Auswahl, "
-    "werden alle Connections der Auswahl umgekehrt",
+    tr("Reverse direction"),
+    tr(
+        "Click a connection to reverse its direction; inside the selection, "
+        "all connections of the selection are reversed"
+    ),
     "reverse_direction",
     "U",
 )
 
 NODE_POSITION_TOOL = ToolDefinition(
     InteractionMode.EDIT_NODE_POSITION,
-    "Position eingeben",
-    "Node anklicken und ihre Position als Zahlen eingeben",
+    tr("Enter position"),
+    tr("Click a node and enter its position as numbers"),
     "node_position",
     "P",
 )
 
 ROTATE_TOOL = ToolDefinition(
     InteractionMode.ROTATE_SELECTION,
-    "Rotieren",
-    "Auswahl am Ring um ihren Mittelpunkt drehen (Umschalt: 15°-Schritte)",
+    tr("Rotate"),
+    tr("Rotate the selection around its center using the ring (Shift: 15° steps)"),
     "rotate",
     "R",
 )
 
 DELETE_TOOL = ToolDefinition(
     InteractionMode.DELETE_NODES,
-    "Löschen",
-    "Node oder Auswahl per Linksklick löschen",
+    tr("Delete"),
+    tr("Left-click a node or the selection to delete it"),
     "delete",
     "L",
 )
 
 CONNECT_REGULAR_TOOL = ToolDefinition(
     InteractionMode.CONNECT_REGULAR,
-    "Verbinden (Regular)",
-    "Nodes nacheinander anklicken, um sie mit Regular-Connections zu verbinden",
+    tr("Connect (Regular)"),
+    tr("Click nodes one after another to connect them with regular connections"),
     "connect_regular",
     "1",
 )
 
 CONNECT_DUAL_TOOL = ToolDefinition(
     InteractionMode.CONNECT_DUAL,
-    "Verbinden (Dual)",
-    "Nodes nacheinander anklicken, um sie mit Dual-Connections zu verbinden",
+    tr("Connect (Dual)"),
+    tr("Click nodes one after another to connect them with dual connections"),
     "connect_dual",
     "2",
 )
 
 CONNECT_REVERSE_TOOL = ToolDefinition(
     InteractionMode.CONNECT_REVERSE,
-    "Verbinden (Reverse)",
-    "Nodes nacheinander anklicken, um sie mit Reverse-Connections zu verbinden",
+    tr("Connect (Reverse)"),
+    tr("Click nodes one after another to connect them with reverse connections"),
     "connect_reverse",
     "3",
 )
@@ -164,99 +171,102 @@ CONNECT_REVERSE_TOOL = ToolDefinition(
 
 ALIGN_HORIZONTAL_TOOL = ToolDefinition(
     InteractionMode.ALIGN_HORIZONTAL,
-    "Horizontal ausrichten",
-    "Auswahl auf die waagerechte Bildschirmlinie durch die angeklickte Node legen",
+    tr("Align horizontally"),
+    tr("Put the selection on the horizontal screen line through the clicked node"),
     "align_horizontal",
     "H",
 )
 
 ALIGN_VERTICAL_TOOL = ToolDefinition(
     InteractionMode.ALIGN_VERTICAL,
-    "Vertikal ausrichten",
-    "Auswahl auf die senkrechte Bildschirmlinie durch die angeklickte Node legen",
+    tr("Align vertically"),
+    tr("Put the selection on the vertical screen line through the clicked node"),
     "align_vertical",
     "J",
 )
 
 ALIGN_HEIGHT_TOOL = ToolDefinition(
     InteractionMode.ALIGN_HEIGHT,
-    "Höhe wie Referenz",
-    "Auswahl auf die Höhe der angeklickten Node setzen",
+    tr("Height like reference"),
+    tr("Set the selection to the height of the clicked node"),
     "align_height",
     "Y",
 )
 
 HEIGHT_FROM_TERRAIN_TOOL = ToolDefinition(
     InteractionMode.HEIGHT_FROM_TERRAIN,
-    "Höhe aus Heightmap",
-    "Node der Auswahl anklicken: jede Node der Auswahl bekommt die Geländehöhe an ihrer Position",
+    tr("Height from heightmap"),
+    tr("Click a node of the selection: each selected node gets the terrain height at its position"),
     "terrain_height",
     "Shift+Y",
 )
 
 LINE_TOOL = ToolDefinition(
     InteractionMode.DRAW_LINE,
-    "Linie",
-    "Start und Ende anklicken: gerade Strecke mit gleichmäßigem Node-Abstand",
+    tr("Line"),
+    tr("Click start and end: straight path with even node spacing"),
     "draw_line",
     "I",
 )
 
 BEZIER_TOOL = ToolDefinition(
     InteractionMode.DRAW_BEZIER,
-    "Bézierkurve",
-    "Start und Ende anklicken, Griffe ziehen, mit Enter erstellen",
+    tr("Bézier curve"),
+    tr("Click start and end, drag the handles, press Enter to create"),
     "draw_bezier",
     "B",
 )
 
 ARC_TOOL = ToolDefinition(
     InteractionMode.DRAW_ARC,
-    "Kreisbogen",
-    "Start und Ende anklicken, Griff auf dem Bogen ziehen, mit Enter erstellen",
+    tr("Arc"),
+    tr("Click start and end, drag the handle on the arc, press Enter to create"),
     "draw_arc",
     "K",
 )
 
 ADD_MARKER_TOOL = ToolDefinition(
     InteractionMode.ADD_MARKER,
-    "Marker hinzufügen",
-    "Node anklicken und Name und Gruppe des neuen Markers eingeben",
+    tr("Add marker"),
+    tr("Click a node and enter the name and group of the new marker"),
     "marker_add",
     "M",
 )
 
 EDIT_MARKER_TOOL = ToolDefinition(
     InteractionMode.EDIT_MARKER,
-    "Marker bearbeiten",
-    "Node mit Marker anklicken, um Name und Gruppe zu ändern",
+    tr("Edit marker"),
+    tr("Click a node with a marker to change its name and group"),
     "marker_edit",
     "Shift+M",
 )
 
 MOVE_MARKER_TOOL = ToolDefinition(
     InteractionMode.MOVE_MARKER,
-    "Marker verschieben",
-    "Node mit Marker, dann die Ziel-Node anklicken; Name, Gruppe und Nummer bleiben",
+    tr("Move marker"),
+    tr("Click a node with a marker, then the target node; name, group and number stay"),
     "marker_move",
     "Ctrl+M",
 )
 
 DELETE_MARKER_TOOL = ToolDefinition(
     InteractionMode.DELETE_MARKER,
-    "Marker löschen",
-    "Node mit Marker anklicken, um den Marker zu löschen; die Node bleibt",
+    tr("Delete marker"),
+    tr("Click a node with a marker to delete the marker; the node stays"),
     "marker_delete",
     "Ctrl+Shift+M",
 )
 
+
+# Title of the tool group that also holds the path options.
+LINES_GROUP = tr("Lines")
 
 # Tool groups in the left tool panel. Each row holds two tools:
 # node actions on the left, connection actions on the right.
 # None leaves a cell empty.
 TOOL_GROUPS = (
     (
-        "Nodes",
+        tr("Nodes"),
         (
             (MOVE_TOOL, CONNECT_REGULAR_TOOL),
             (CREATE_REGULAR_TOOL, CONNECT_DUAL_TOOL),
@@ -267,21 +277,21 @@ TOOL_GROUPS = (
         ),
     ),
     (
-        "Ausrichten",
+        tr("Align"),
         (
             (ALIGN_HORIZONTAL_TOOL, ALIGN_VERTICAL_TOOL),
             (ALIGN_HEIGHT_TOOL, HEIGHT_FROM_TERRAIN_TOOL),
         ),
     ),
     (
-        "Linien",
+        LINES_GROUP,
         (
             (LINE_TOOL, BEZIER_TOOL),
             (ARC_TOOL, None),
         ),
     ),
     (
-        "Marker",
+        tr("Markers"),
         (
             (ADD_MARKER_TOOL, EDIT_MARKER_TOOL),
             (MOVE_MARKER_TOOL, DELETE_MARKER_TOOL),

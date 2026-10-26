@@ -4,6 +4,8 @@ from PySide6.QtCore import QLineF, QRectF, Qt
 from PySide6.QtGui import QColor, QPainter, QPen, QTransform
 from PySide6.QtWidgets import QGraphicsItem, QStyleOptionGraphicsItem, QWidget
 
+from autodrive_editor.i18n import tr
+
 
 class MapGridItem(QGraphicsItem):
     """The configurable grid drawn over the map."""
@@ -162,7 +164,7 @@ class MapGridItem(QGraphicsItem):
         spacing = float(spacing)
 
         if spacing <= 0.0:
-            raise ValueError("Der Rasterabstand muss größer als 0 sein.")
+            raise ValueError(tr("The grid spacing must be greater than 0."))
 
         return spacing
 

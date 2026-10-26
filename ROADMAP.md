@@ -31,8 +31,8 @@ Menu `Prüfen` (Check) with a result list that jumps to each location. The same 
 
 AutoDrive is used internationally. For the release, the editor should also be usable in English.
 
-- [ ] interface can be switched to English (language setting)
-- [x] English README and developer documentation
+- [x] interface in English and German, language setting (default: Windows language)
+- [x] README in English and German, English developer documentation
 
 ## 5. Display — low priority
 

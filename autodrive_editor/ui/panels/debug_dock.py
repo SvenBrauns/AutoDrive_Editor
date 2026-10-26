@@ -1,6 +1,7 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QDockWidget, QFormLayout, QGroupBox, QLabel, QVBoxLayout, QWidget
 
+from autodrive_editor.i18n import tr
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
 
@@ -10,7 +11,7 @@ class DebugDock(QDockWidget):
     EMPTY_VALUE = "-"
 
     def __init__(self, parent=None):
-        super().__init__("Debuganzeige", parent)
+        super().__init__(tr("Debug info"), parent)
 
         self.setObjectName("debug_dock")
 
@@ -53,7 +54,7 @@ class DebugDock(QDockWidget):
 
         self.marker_layer_value = QLabel(self.EMPTY_VALUE)
 
-        self.node_info_value = QLabel("Keine Node ausgewählt")
+        self.node_info_value = QLabel(tr("No node selected"))
 
         self.node_info_value.setWordWrap(True)
 
@@ -63,33 +64,33 @@ class DebugDock(QDockWidget):
 
         form_layout = QFormLayout()
 
-        form_layout.addRow("Interaktionsmodus:", self.interaction_mode_value)
+        form_layout.addRow(tr("Interaction mode:"), self.interaction_mode_value)
 
         form_layout.addRow("Zoom:", self.zoom_value)
 
-        form_layout.addRow("Rotation:", self.rotation_value)
+        form_layout.addRow(tr("Rotation:"), self.rotation_value)
 
-        form_layout.addRow("Sichtbarer Bereich:", self.visible_rect_value)
+        form_layout.addRow(tr("Visible area:"), self.visible_rect_value)
 
-        form_layout.addRow("Nodes insgesamt:", self.total_nodes_value)
+        form_layout.addRow(tr("Total nodes:"), self.total_nodes_value)
 
-        form_layout.addRow("Sichtbare Nodes:", self.visible_nodes_value)
+        form_layout.addRow(tr("Visible nodes:"), self.visible_nodes_value)
 
-        form_layout.addRow("Sichtbare Marker:", self.visible_markers_value)
+        form_layout.addRow(tr("Visible markers:"), self.visible_markers_value)
 
-        form_layout.addRow("Ausgewählte Nodes:", self.selected_nodes_value)
+        form_layout.addRow(tr("Selected nodes:"), self.selected_nodes_value)
 
-        form_layout.addRow("Sichtbare Auswahlringe:", self.visible_selection_items_value)
+        form_layout.addRow(tr("Visible selection rings:"), self.visible_selection_items_value)
 
-        form_layout.addRow("Connection-Modus:", self.connection_mode_value)
+        form_layout.addRow(tr("Connection mode:"), self.connection_mode_value)
 
-        form_layout.addRow("Connections insgesamt:", self.total_connections_value)
+        form_layout.addRow(tr("Total connections:"), self.total_connections_value)
 
-        form_layout.addRow("Node-Layer:", self.node_layer_value)
+        form_layout.addRow(tr("Node layer:"), self.node_layer_value)
 
-        form_layout.addRow("Marker-Layer:", self.marker_layer_value)
+        form_layout.addRow(tr("Marker layer:"), self.marker_layer_value)
 
-        runtime_group = QGroupBox("Laufzeit")
+        runtime_group = QGroupBox(tr("Runtime"))
 
         runtime_group.setLayout(form_layout)
 
@@ -97,7 +98,7 @@ class DebugDock(QDockWidget):
 
         selection_layout.addWidget(self.node_info_value)
 
-        selection_group = QGroupBox("Auswahl")
+        selection_group = QGroupBox(tr("Selection"))
 
         selection_group.setLayout(selection_layout)
 
@@ -128,10 +129,13 @@ class DebugDock(QDockWidget):
             return
 
         self.visible_rect_value.setText(
-            f"X {visible_rect.left():.1f} bis "
-            f"{visible_rect.right():.1f}\n"
-            f"Z {visible_rect.top():.1f} bis "
-            f"{visible_rect.bottom():.1f}"
+            tr(
+                "X {left:.1f} to {right:.1f}\nZ {top:.1f} to {bottom:.1f}",
+                left=visible_rect.left(),
+                right=visible_rect.right(),
+                top=visible_rect.top(),
+                bottom=visible_rect.bottom(),
+            )
         )
 
     def set_renderer_state(self, debug_state: dict):
@@ -155,16 +159,16 @@ class DebugDock(QDockWidget):
 
     def set_node_info(self, node_info_text: str | None):
         if not node_info_text:
-            node_info_text = "Keine Node ausgewählt"
+            node_info_text = tr("No node selected")
 
         self.node_info_value.setText(node_info_text)
 
     @classmethod
     def _format_visibility(cls, visible) -> str:
         if visible is True:
-            return "sichtbar"
+            return tr("visible")
 
         if visible is False:
-            return "ausgeblendet"
+            return tr("hidden")
 
         return cls.EMPTY_VALUE

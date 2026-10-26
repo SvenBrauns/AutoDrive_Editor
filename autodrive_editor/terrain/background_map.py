@@ -3,6 +3,7 @@ from PySide6.QtGui import QTransform
 from PySide6.QtWidgets import QGraphicsPixmapItem, QGraphicsScene
 
 from autodrive_editor.file_io.background_image import load_background_pixmap
+from autodrive_editor.i18n import tr
 from autodrive_editor.rendering.items.map_grid_item import MapGridItem
 from autodrive_editor.terrain.background_transform import BackgroundTransform
 
@@ -29,7 +30,7 @@ class BackgroundMap:
         pixmap = load_background_pixmap(file_path)
 
         if pixmap.isNull():
-            raise ValueError("Die Bilddatei enthält kein lesbares Bild.")
+            raise ValueError(tr("The image file contains no readable image."))
 
         self.file_path = file_path
 
@@ -47,7 +48,7 @@ class BackgroundMap:
         pixmap = load_background_pixmap(self.file_path)
 
         if pixmap.isNull():
-            raise ValueError("Die Bilddatei konnte nicht erneut geladen werden.")
+            raise ValueError(tr("The image file could not be loaded again."))
 
         self._replace_background(pixmap)
 
@@ -57,7 +58,7 @@ class BackgroundMap:
         map_scale = int(map_scale)
 
         if map_scale <= 0:
-            raise ValueError("Der Kartenmaßstab muss größer als 0 sein.")
+            raise ValueError(tr("The map scale must be greater than 0."))
 
         self.map_scale = map_scale
 
@@ -129,7 +130,7 @@ class BackgroundMap:
         spacing = float(spacing)
 
         if spacing <= 0.0:
-            raise ValueError("Der Rasterabstand muss größer als 0 sein.")
+            raise ValueError(tr("The grid spacing must be greater than 0."))
 
         self.grid_spacing = spacing
 
