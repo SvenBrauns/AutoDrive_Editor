@@ -17,6 +17,8 @@ ICON_DIRECTORY = PACKAGE_ROOT / "resources" / "icons"
 
 MARKER_ICON_PATH = ICON_DIRECTORY / "marker.svg"
 
+APP_ICON_PATH = ICON_DIRECTORY / "app.svg"
+
 TOOL_ICON_DIRECTORY = ICON_DIRECTORY / "tools"
 
 # Environment variable to use another user data folder, e.g. in tests.

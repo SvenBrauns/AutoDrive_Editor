@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QProgressDialog,
+    QVBoxLayout,
 )
 
 from autodrive_editor.editing.commands.edit_command import DataChange
@@ -69,6 +70,7 @@ from autodrive_editor.ui.panels.debug_dock_coordinator import DebugDockCoordinat
 from autodrive_editor.ui.panels.display_options_dialog import DisplayOptionsDialog
 from autodrive_editor.ui.panels.marker_dock import MarkerDock
 from autodrive_editor.ui.panels.node_info_formatter import NodeInfoFormatter
+from autodrive_editor.ui.panels.welcome_panel import WelcomePanel
 from autodrive_editor.ui.tools.connect_nodes_tool import ConnectNodesTool
 from autodrive_editor.ui.tools.create_node_tool import CreateNodeTool
 from autodrive_editor.ui.tools.delete_nodes_tool import DeleteNodesTool
@@ -143,6 +145,7 @@ class MainWindow(QMainWindow):
         self.actions = MainWindowActions(self)
         self.actions.set_current_map_scale(self.background_map.map_scale)
 
+        self._create_welcome_panel()
         self._create_grid_coordinator()
         self._connect_signals()
 
@@ -1226,6 +1229,20 @@ class MainWindow(QMainWindow):
     def _create_central_widget(self):
         self.setCentralWidget(self.view)
 
+    def _create_welcome_panel(self):
+        self.welcome_panel = WelcomePanel(
+            [
+                self.actions.open_route_action,
+                self.actions.open_savegame_action,
+                self.actions.load_xml_action,
+            ],
+            self.view.viewport(),
+        )
+
+        layout = QVBoxLayout(self.view.viewport())
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.welcome_panel)
+
     def _create_marker_dock(self):
         self.marker_dock = MarkerDock(self)
 
@@ -1343,6 +1360,8 @@ class MainWindow(QMainWindow):
         self.marker_operation.reset_move()
 
         self.marker_dock.set_data(autodrive_data)
+
+        self.welcome_panel.hide()
 
         self.setWindowModified(False)
         self.actions.save_xml_action.setEnabled(True)

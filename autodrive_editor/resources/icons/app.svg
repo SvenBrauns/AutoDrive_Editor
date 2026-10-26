@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b3a52"/>
+      <stop offset="1" stop-color="#121a27"/>
+    </linearGradient>
+  </defs>
+  <rect x="12" y="12" width="232" height="232" rx="52" fill="url(#bg)"/>
+  <!-- map grid -->
+  <g stroke="#ffffff" stroke-opacity="0.07" stroke-width="3">
+    <path d="M12 84H244M12 128H244M12 172H244M84 12V244M128 12V244M172 12V244"/>
+  </g>
+  <!-- route -->
+  <path d="M62 190L108 128L152 158L190 84" fill="none" stroke="#f0b04a" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M62 190L108 128L152 158L190 84" fill="none" stroke="#121a27" stroke-width="3" stroke-dasharray="2 22" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- nodes -->
+  <g fill="#e53935" stroke="#121a27" stroke-width="5">
+    <circle cx="62" cy="190" r="17"/>
+    <circle cx="108" cy="128" r="14"/>
+    <circle cx="152" cy="158" r="14"/>
+  </g>
+  <!-- marker -->
+  <path d="M190 40C170 40 156 54 156 72C156 90 175 104 190 126C205 104 224 90 224 72C224 54 210 40 190 40Z" fill="#1b4e8a" stroke="#ffffff" stroke-width="5" stroke-linejoin="round"/>
+  <circle cx="190" cy="72" r="13" fill="#7ec8ff"/>
+</svg>
