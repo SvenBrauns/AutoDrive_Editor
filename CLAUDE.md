@@ -64,10 +64,18 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 **The user has limited usage. Help keep sessions short.**
 
-- After a feature branch is merged, suggest `/clear` before the next feature. ROADMAP.md, PROJECT_STATUS.md and memory carry the context over.
+- After a feature branch is merged, suggest `/clear` before the next feature. ROADMAP.md, README.md and `git log` carry the context over.
 - When the next steps are routine (merging, small fixes, doc updates), suggest switching to a smaller model with `/model`. Suggest the larger model again for planning and complex features.
 - Only take screenshots when the look of something is the point of the change. Otherwise rely on tests.
 - Keep the reminders to one short line, not every turn.
+
+## 6. Project Conventions
+
+- Write all code (app and tests) in compact, normal Python style: `ruff format .`, not one argument per line. `pyproject.toml` is the source of truth.
+- Before finishing: `python -m pytest` and `ruff check .`.
+- New functions get tests; test files mirror the package structure under `tests/`.
+- Every edit of the data model is an `EditCommand` pushed via `EditHistory.push()`, never a direct change to `AutoDriveData`. See README.md for architecture.
+- Keep the virtualization (never permanent NodeItems for all nodes).
 
 ---
 
