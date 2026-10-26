@@ -1,6 +1,8 @@
+from collections.abc import Callable
+
 from PySide6.QtCore import QPoint, QRectF, Qt, Signal
 from PySide6.QtGui import QCursor, QKeyEvent, QMouseEvent, QResizeEvent, QWheelEvent
-from PySide6.QtWidgets import QGraphicsItem, QGraphicsView
+from PySide6.QtWidgets import QGraphicsView
 
 from autodrive_editor.ui.map_view.rotation_controller import ViewRotationController
 from autodrive_editor.ui.map_view.zoom_controller import ViewZoomController
@@ -37,6 +39,8 @@ class MapView(QGraphicsView):
         self._measurement_active = False
 
         self._rotation_drag = DragGesture()
+
+        self._node_finder: Callable[[QPoint], object | None] = lambda view_position: None
 
         self._configure_view()
 
@@ -152,12 +156,13 @@ class MapView(QGraphicsView):
 
         self.verticalScrollBar().setValue(self.verticalScrollBar().value() - movement.y())
 
-    def has_selectable_item_at(self, view_position: QPoint) -> bool:
-        for item in self.items(view_position):
-            if item.flags() & QGraphicsItem.ItemIsSelectable:
-                return True
+    def set_node_finder(self, node_finder: Callable[[QPoint], object | None]):
+        """Nodes are not graphics items; this finds the node drawn at a view position."""
 
-        return False
+        self._node_finder = node_finder
+
+    def has_node_at(self, view_position: QPoint) -> bool:
+        return self._node_finder(view_position) is not None
 
     def refresh_cursor(self, view_position: QPoint | None = None):
         if view_position is None:

@@ -38,21 +38,15 @@ class DebugDock(QDockWidget):
 
         self.total_nodes_value = QLabel("0")
 
-        self.visible_nodes_value = QLabel("0")
-
-        self.visible_markers_value = QLabel("0")
+        self.total_connections_value = QLabel("0")
 
         self.selected_nodes_value = QLabel("0")
 
-        self.visible_selection_items_value = QLabel("0")
+        self.drawn_markers_value = QLabel("0")
 
-        self.connection_mode_value = QLabel(self.EMPTY_VALUE)
+        self.drawn_arrows_value = QLabel("0")
 
-        self.total_connections_value = QLabel("0")
-
-        self.node_layer_value = QLabel(self.EMPTY_VALUE)
-
-        self.marker_layer_value = QLabel(self.EMPTY_VALUE)
+        self.cached_tiles_value = QLabel("0")
 
         self.node_info_value = QLabel(tr("No node selected"))
 
@@ -74,21 +68,15 @@ class DebugDock(QDockWidget):
 
         form_layout.addRow(tr("Total nodes:"), self.total_nodes_value)
 
-        form_layout.addRow(tr("Visible nodes:"), self.visible_nodes_value)
-
-        form_layout.addRow(tr("Visible markers:"), self.visible_markers_value)
+        form_layout.addRow(tr("Total connections:"), self.total_connections_value)
 
         form_layout.addRow(tr("Selected nodes:"), self.selected_nodes_value)
 
-        form_layout.addRow(tr("Visible selection rings:"), self.visible_selection_items_value)
+        form_layout.addRow(tr("Visible markers:"), self.drawn_markers_value)
 
-        form_layout.addRow(tr("Connection mode:"), self.connection_mode_value)
+        form_layout.addRow(tr("Drawn arrows:"), self.drawn_arrows_value)
 
-        form_layout.addRow(tr("Total connections:"), self.total_connections_value)
-
-        form_layout.addRow(tr("Node layer:"), self.node_layer_value)
-
-        form_layout.addRow(tr("Marker layer:"), self.marker_layer_value)
+        form_layout.addRow(tr("Cached map tiles:"), self.cached_tiles_value)
 
         runtime_group = QGroupBox(tr("Runtime"))
 
@@ -141,34 +129,18 @@ class DebugDock(QDockWidget):
     def set_renderer_state(self, debug_state: dict):
         self.total_nodes_value.setText(str(debug_state["total_nodes"]))
 
-        self.visible_nodes_value.setText(str(debug_state["visible_nodes"]))
-
-        self.visible_markers_value.setText(str(debug_state["visible_markers"]))
+        self.total_connections_value.setText(str(debug_state["total_connections"]))
 
         self.selected_nodes_value.setText(str(debug_state["selected_nodes"]))
 
-        self.visible_selection_items_value.setText(str(debug_state["visible_selection_items"]))
+        self.drawn_markers_value.setText(str(debug_state["drawn_markers"]))
 
-        self.connection_mode_value.setText(debug_state["connection_mode"])
+        self.drawn_arrows_value.setText(str(debug_state["drawn_arrows"]))
 
-        self.total_connections_value.setText(str(debug_state["total_connections"]))
-
-        self.node_layer_value.setText(self._format_visibility(debug_state["nodes_visible"]))
-
-        self.marker_layer_value.setText(self._format_visibility(debug_state["markers_visible"]))
+        self.cached_tiles_value.setText(str(debug_state["cached_tiles"]))
 
     def set_node_info(self, node_info_text: str | None):
         if not node_info_text:
             node_info_text = tr("No node selected")
 
         self.node_info_value.setText(node_info_text)
-
-    @classmethod
-    def _format_visibility(cls, visible) -> str:
-        if visible is True:
-            return tr("visible")
-
-        if visible is False:
-            return tr("hidden")
-
-        return cls.EMPTY_VALUE

@@ -113,6 +113,9 @@ class MainWindow(QMainWindow):
     # How far from a connection line a click still hits it, in pixels.
     CONNECTION_CLICK_TOLERANCE = 6.0
 
+    # Zoom used when jumping to a marker from the marker list.
+    FOCUS_MARKER_ZOOM = 2.0
+
     MISSING_MAP_SCAN = "scan"
     MISSING_MAP_IMPORT = "import"
 
@@ -844,11 +847,9 @@ class MainWindow(QMainWindow):
         if node is None:
             return
 
-        # Zoom in far enough for the marker to be drawn.
-        marker_zoom = self.scene_renderer.display_style.marker_min_zoom
-
-        if self.view.zoom_level < marker_zoom:
-            self.view.set_zoom_level(marker_zoom)
+        # Zoom in far enough to see the node.
+        if self.view.zoom_level < self.FOCUS_MARKER_ZOOM:
+            self.view.set_zoom_level(self.FOCUS_MARKER_ZOOM)
 
         self.view.centerOn(node.x, node.z)
         self.node_selection.replace({node_id}, node_id)
@@ -938,12 +939,14 @@ class MainWindow(QMainWindow):
             parent=self,
         )
 
+        self.view.set_node_finder(self.selection_coordinator.get_node_at)
+
         self.measurement_controller = MeasurementController(scene=self.scene, parent=self)
 
         self.measurement_coordinator = MeasurementCoordinator(
             view=self.view,
             controller=self.measurement_controller,
-            node_item_provider=self.selection_coordinator.get_node_item_at,
+            node_provider=self.selection_coordinator.get_node_at,
             parent=self,
         )
 
@@ -1370,10 +1373,6 @@ class MainWindow(QMainWindow):
         self.debug_dock.hide()
 
     def _connect_signals(self):
-        self.view.zoom_changed.connect(self.scene_renderer.update_visibility_for_zoom)
-
-        self.view.visible_scene_rect_changed.connect(self.scene_renderer.update_visible_scene_rect)
-
         self.view.rotation_changed.connect(self._handle_rotation_changed)
 
         self.measurement_coordinator.status_changed.connect(self._set_status)
