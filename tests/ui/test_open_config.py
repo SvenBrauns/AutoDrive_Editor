@@ -61,7 +61,7 @@ def test_routes_with_missing_files_are_not_offered(game_window):
 def test_open_route_without_routes_manager_explains_it(game_window):
     game_window.open_route()
 
-    assert "Routenliste" in game_window.messages[0]
+    assert "route list" in game_window.messages[0]
 
 
 def test_cancelling_the_choice_loads_nothing(game_window):
@@ -89,7 +89,7 @@ def test_open_savegame_loads_its_autodrive_config(game_window):
 def test_open_savegame_without_autodrive_data_explains_it(game_window):
     game_window.open_savegame()
 
-    assert "AutoDrive-Daten" in game_window.messages[0]
+    assert "AutoDrive data" in game_window.messages[0]
 
 
 def test_without_valid_game_folder_the_user_is_sent_to_settings(window, monkeypatch, tmp_path):
@@ -101,7 +101,7 @@ def test_without_valid_game_folder_the_user_is_sent_to_settings(window, monkeypa
     window.open_savegame()
 
     assert len(messages) == 2
-    assert all("Einstellungen" in message for message in messages)
+    assert all("Settings" in message for message in messages)
 
 
 def test_route_file_opened_by_hand_finds_its_map_name(game_window):
@@ -120,13 +120,13 @@ def test_broken_file_is_reported_instead_of_crashing(game_window, tmp_path):
 
     game_window._load_config(broken)
 
-    assert "LS25" in game_window.messages[0]
+    assert "FS25" in game_window.messages[0]
 
 
 def test_file_menu_offers_route_savegame_and_file(window):
     texts = [action.text() for action in window.menuBar().actions()[0].menu().actions()]
 
-    assert texts[:3] == ["Route öffnen…", "Savegame öffnen…", "XML-Datei öffnen…"]
+    assert texts[:3] == ["Open route…", "Open savegame…", "Open XML file…"]
 
 
 # --- the choice dialog ---------------------------------------------------
@@ -152,8 +152,8 @@ def test_choice_dialog_can_show_newest_first(qapp):
     dialog = ListChoiceDialog(
         "Titel",
         "Hinweis",
-        ["Name", "Datum"],
-        [(["alt", "2025/01/01"], "old"), (["neu", "2026/10/23"], "new")],
+        ["Name", "Date"],
+        [(["alt", "2025/01/01"], "old"), (["new", "2026/10/23"], "new")],
         sort_column=1,
         newest_first=True,
     )

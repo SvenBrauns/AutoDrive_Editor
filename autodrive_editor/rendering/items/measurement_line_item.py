@@ -67,10 +67,10 @@ class MeasurementLineItem(QGraphicsItem):
 
     def set_points(self, start_position: QPointF, end_position: QPointF):
         if not isinstance(start_position, QPointF):
-            raise TypeError("Die Startposition der Messlinie ist ungültig.")
+            raise TypeError("Invalid start position of the measuring line.")
 
         if not isinstance(end_position, QPointF):
-            raise TypeError("Die Endposition der Messlinie ist ungültig.")
+            raise TypeError("Invalid end position of the measuring line.")
 
         self.prepareGeometryChange()
 

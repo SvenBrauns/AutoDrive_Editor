@@ -1,5 +1,7 @@
 from enum import Enum, auto
 
+from autodrive_editor.i18n import tr
+
 
 class InteractionMode(Enum):
     """The active map tool. Exactly one is active at a time."""
@@ -32,30 +34,30 @@ class InteractionMode(Enum):
     @property
     def display_name(self) -> str:
         display_names = {
-            InteractionMode.NAVIGATE: "Navigation",
-            InteractionMode.SELECT: "Auswahl",
-            InteractionMode.CREATE_NODES: "Nodes erstellen (Regular)",
-            InteractionMode.CREATE_SUBPRIO_NODES: "Nodes erstellen (Subprio)",
-            InteractionMode.TOGGLE_NODE_TYPE: "Node-Typ wechseln",
-            InteractionMode.REVERSE_DIRECTION: "Richtung umkehren",
-            InteractionMode.MOVE_NODES: "Nodes verschieben",
-            InteractionMode.EDIT_NODE_POSITION: "Position eingeben",
-            InteractionMode.ROTATE_SELECTION: "Auswahl rotieren",
-            InteractionMode.DELETE_NODES: "Nodes löschen",
-            InteractionMode.CONNECT_REGULAR: "Verbinden (Regular)",
-            InteractionMode.CONNECT_DUAL: "Verbinden (Dual)",
-            InteractionMode.CONNECT_REVERSE: "Verbinden (Reverse)",
-            InteractionMode.ALIGN_HORIZONTAL: "Horizontal ausrichten",
-            InteractionMode.ALIGN_VERTICAL: "Vertikal ausrichten",
-            InteractionMode.ALIGN_HEIGHT: "Höhe wie Referenz",
-            InteractionMode.HEIGHT_FROM_TERRAIN: "Höhe aus Heightmap",
-            InteractionMode.DRAW_LINE: "Linie",
-            InteractionMode.DRAW_BEZIER: "Bézierkurve",
-            InteractionMode.DRAW_ARC: "Kreisbogen",
-            InteractionMode.ADD_MARKER: "Marker hinzufügen",
-            InteractionMode.EDIT_MARKER: "Marker bearbeiten",
-            InteractionMode.MOVE_MARKER: "Marker verschieben",
-            InteractionMode.DELETE_MARKER: "Marker löschen",
+            InteractionMode.NAVIGATE: tr("Navigation"),
+            InteractionMode.SELECT: tr("Selection"),
+            InteractionMode.CREATE_NODES: tr("Create nodes (Regular)"),
+            InteractionMode.CREATE_SUBPRIO_NODES: tr("Create nodes (Subprio)"),
+            InteractionMode.TOGGLE_NODE_TYPE: tr("Toggle node type"),
+            InteractionMode.REVERSE_DIRECTION: tr("Reverse direction"),
+            InteractionMode.MOVE_NODES: tr("Move nodes"),
+            InteractionMode.EDIT_NODE_POSITION: tr("Enter position"),
+            InteractionMode.ROTATE_SELECTION: tr("Rotate selection"),
+            InteractionMode.DELETE_NODES: tr("Delete nodes"),
+            InteractionMode.CONNECT_REGULAR: tr("Connect (Regular)"),
+            InteractionMode.CONNECT_DUAL: tr("Connect (Dual)"),
+            InteractionMode.CONNECT_REVERSE: tr("Connect (Reverse)"),
+            InteractionMode.ALIGN_HORIZONTAL: tr("Align horizontally"),
+            InteractionMode.ALIGN_VERTICAL: tr("Align vertically"),
+            InteractionMode.ALIGN_HEIGHT: tr("Height like reference"),
+            InteractionMode.HEIGHT_FROM_TERRAIN: tr("Height from heightmap"),
+            InteractionMode.DRAW_LINE: tr("Line"),
+            InteractionMode.DRAW_BEZIER: tr("Bézier curve"),
+            InteractionMode.DRAW_ARC: tr("Arc"),
+            InteractionMode.ADD_MARKER: tr("Add marker"),
+            InteractionMode.EDIT_MARKER: tr("Edit marker"),
+            InteractionMode.MOVE_MARKER: tr("Move marker"),
+            InteractionMode.DELETE_MARKER: tr("Delete marker"),
         }
 
         return display_names[self]

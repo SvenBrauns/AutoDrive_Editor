@@ -24,12 +24,20 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from autodrive_editor.file_io.mod_archive import ModArchive
+from autodrive_editor.i18n import ENGLISH, GERMAN, current_language, tr
 
 BASE_MAP_SIZE = 2048
 SUPPORTED_MAP_SCALES = (1, 2, 4, 8)
 
-# Languages tried first when a title is shown to the user.
-PREFERRED_TITLE_LANGUAGES = ("de", "en")
+
+def pick_title(titles: dict[str, str], fallback: str) -> str:
+    """The title in the editor's language, else English, German or any."""
+
+    for language in (current_language(), ENGLISH, GERMAN):
+        if titles.get(language):
+            return titles[language]
+
+    return next(iter(titles.values()), fallback)
 
 
 def autodrive_map_name(title: str) -> str:
@@ -52,11 +60,7 @@ class MapEntry:
 
     @property
     def title(self) -> str:
-        for language in PREFERRED_TITLE_LANGUAGES:
-            if self.titles.get(language):
-                return self.titles[language]
-
-        return next(iter(self.titles.values()), self.map_id)
+        return pick_title(self.titles, self.map_id)
 
     @property
     def autodrive_names(self) -> list[str]:
@@ -88,10 +92,10 @@ class MapEntry:
         problems = []
 
         if self.image_file is None:
-            problems.append("Kartenbild (overview.dds) nicht gefunden")
+            problems.append(tr("Map image (overview.dds) not found"))
 
         if self.map_scale is None:
-            problems.append(f"Kartengröße {self.width} m wird nicht unterstützt")
+            problems.append(tr("Map size {width} m is not supported", width=self.width))
 
         return problems
 

@@ -11,6 +11,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+from autodrive_editor.i18n import tr
+
 
 class ListChoiceDialog(QDialog):
     """Lets the user pick one row of a table, e.g. a route or a savegame.
@@ -22,7 +24,7 @@ class ListChoiceDialog(QDialog):
         hint: str,
         columns: list[str],
         rows: list[tuple[list[str], Any]],
-        ok_text: str = "Öffnen",
+        ok_text: str | None = None,
         sort_column: int = 0,
         newest_first: bool = False,
         parent=None,
@@ -59,7 +61,7 @@ class ListChoiceDialog(QDialog):
         self.buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel, self
         )
-        self.buttons.button(QDialogButtonBox.StandardButton.Ok).setText(ok_text)
+        self.buttons.button(QDialogButtonBox.StandardButton.Ok).setText(ok_text or tr("Open"))
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
 

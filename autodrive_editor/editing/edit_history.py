@@ -49,7 +49,7 @@ class EditHistory(QObject):
 
     def push(self, command: EditCommand):
         if not isinstance(command, EditCommand):
-            raise TypeError("Der Bearbeitungsbefehl ist ungültig.")
+            raise TypeError("Invalid edit command.")
 
         command.set_change_listener(self._handle_data_change)
 

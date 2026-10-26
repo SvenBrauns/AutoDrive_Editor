@@ -33,7 +33,7 @@ def test_click_on_node_sets_the_entered_position(position_window):
 
     assert position_window.asked == [2]
     assert position(position_window, 2) == (12.5, 3.25, -7.0)
-    assert position_window.status.text() == "Position von Node 2 geändert"
+    assert position_window.status.text() == "Position of node 2 changed"
 
 
 def test_change_is_one_undo_step(position_window):
@@ -73,7 +73,7 @@ def test_dialog_shows_and_returns_values(qapp):
     dialog = NodePositionDialog(7, 1.5, 2.25, -3.125)
 
     assert dialog.values == (1.5, 2.25, -3.125)
-    assert dialog.windowTitle() == "Position von Node 7"
+    assert dialog.windowTitle() == "Position of node 7"
 
     dialog.z_input.setValue(99.5)
     assert dialog.values == (1.5, 2.25, 99.5)

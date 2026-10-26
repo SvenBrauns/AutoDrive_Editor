@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData
 
 
@@ -26,10 +27,10 @@ class MarkerDock(QDockWidget):
     NODE_ROLE = Qt.ItemDataRole.UserRole
     GROUP_ROLE = Qt.ItemDataRole.UserRole + 1
 
-    EMPTY_TEXT = "Keine Marker"
+    EMPTY_TEXT = tr("No markers")
 
     def __init__(self, parent=None):
-        super().__init__("Marker", parent)
+        super().__init__(tr("Markers"), parent)
 
         self.setObjectName("marker_dock")
         self.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
@@ -42,15 +43,15 @@ class MarkerDock(QDockWidget):
         self.tree.currentItemChanged.connect(lambda *_: self._update_buttons())
         self.tree.customContextMenuRequested.connect(self._show_context_menu)
 
-        self.edit_button = QPushButton("Bearbeiten", self)
+        self.edit_button = QPushButton(tr("Edit"), self)
         self.edit_button.clicked.connect(self._request_edit)
 
-        self.rename_button = QPushButton("Umbenennen", self)
-        self.rename_button.setToolTip("Gruppe umbenennen")
+        self.rename_button = QPushButton(tr("Rename"), self)
+        self.rename_button.setToolTip(tr("Rename group"))
         self.rename_button.clicked.connect(self._request_rename)
 
-        self.delete_button = QPushButton("Löschen", self)
-        self.delete_button.setToolTip("Leere Gruppe löschen")
+        self.delete_button = QPushButton(tr("Delete"), self)
+        self.delete_button.setToolTip(tr("Delete empty group"))
         self.delete_button.clicked.connect(self._request_delete)
 
         buttons = QHBoxLayout()
@@ -101,7 +102,12 @@ class MarkerDock(QDockWidget):
                 marker_item = QTreeWidgetItem([marker.name])
                 marker_item.setData(0, self.NODE_ROLE, marker.node_id)
                 marker_item.setToolTip(
-                    0, f"Marker Nr. {positions[marker.node_id] + 1}, Node {marker.node_id}"
+                    0,
+                    tr(
+                        "Marker no. {number}, node {node}",
+                        number=positions[marker.node_id] + 1,
+                        node=marker.node_id,
+                    ),
                 )
                 group_item.addChild(marker_item)
 

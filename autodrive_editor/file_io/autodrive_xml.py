@@ -28,6 +28,7 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
+from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import (
     REGULAR_FLAG,
     AutoDriveData,
@@ -98,19 +99,22 @@ class AutoDriveXmlReader:
         xml_path = Path(file_path).resolve()
 
         if not xml_path.is_file():
-            raise FileNotFoundError(f"Die AutoDrive-XML wurde nicht gefunden: {xml_path}")
+            raise FileNotFoundError(tr("The AutoDrive XML was not found: {path}", path=xml_path))
 
         try:
             root = ET.parse(xml_path).getroot()
         except ET.ParseError as ex:
-            raise ValueError(f"Die XML-Datei ist ungültig: {ex}") from ex
+            raise ValueError(tr("The XML file is invalid: {error}", error=ex)) from ex
 
         config_format = _ROOT_FORMATS.get(root.tag)
 
         if config_format is None:
             raise ValueError(
-                f"Unbekanntes Format: Wurzelelement <{root.tag}>. Erwartet wird eine "
-                "RoutesManager-Route (<routeExport>) oder eine Savegame-Config (<AutoDrive>)."
+                tr(
+                    "Unknown format: root element <{tag}>. Expected a RoutesManager route "
+                    "(<routeExport>) or a savegame config (<AutoDrive>).",
+                    tag=root.tag,
+                )
             )
 
         version = None
@@ -121,7 +125,7 @@ class AutoDriveXmlReader:
         waypoints = root.find("waypoints")
 
         if waypoints is None:
-            raise ValueError("Die XML enthält keinen Waypoint-Bereich.")
+            raise ValueError(tr("The XML contains no waypoints section."))
 
         data = cls._read_nodes(waypoints, _LAYOUTS[config_format])
 
@@ -145,12 +149,15 @@ class AutoDriveXmlReader:
         major = version.split(".")[0]
 
         if not major.isdigit():
-            raise ValueError("Die Savegame-Config enthält keine gültige AutoDrive-Version.")
+            raise ValueError(tr("The savegame config contains no valid AutoDrive version."))
 
         if int(major) != FS25_CONFIG_MAJOR_VERSION:
             raise ValueError(
-                f"Nur Configs aus dem LS25 werden unterstützt (AutoDrive-Version 3.x). "
-                f"Diese Config hat Version {version}."
+                tr(
+                    "Only configs from FS25 are supported (AutoDrive version 3.x). "
+                    "This config has version {version}.",
+                    version=version,
+                )
             )
 
         return version
@@ -167,7 +174,10 @@ class AutoDriveXmlReader:
 
         if len(set(lengths.values())) != 1:
             raise ValueError(
-                f"Die Anzahl der X-, Y- und Z-Koordinaten stimmt nicht überein: {lengths}"
+                tr(
+                    "The number of X, Y and Z coordinates does not match: {lengths}",
+                    lengths=lengths,
+                )
             )
 
         node_count = len(x_values)
@@ -207,7 +217,7 @@ class AutoDriveXmlReader:
         parts = cls._split(waypoints, element_name, separator)
 
         if parts is None:
-            raise ValueError(f"Die XML enthält keine {element_name}-Koordinaten.")
+            raise ValueError(tr("The XML contains no {element} coordinates.", element=element_name))
 
         values = []
 
@@ -215,7 +225,13 @@ class AutoDriveXmlReader:
             try:
                 values.append(float(part))
             except ValueError as ex:
-                raise ValueError(f"Ungültiger Wert im Element '{element_name}': {part}") from ex
+                raise ValueError(
+                    tr(
+                        "Invalid value in element '{element}': {value}",
+                        element=element_name,
+                        value=part,
+                    )
+                ) from ex
 
         return values
 
@@ -235,7 +251,7 @@ class AutoDriveXmlReader:
             try:
                 flags.append(int(float(part)))
             except ValueError as ex:
-                raise ValueError(f"Ungültiger Node-Flag: {part}") from ex
+                raise ValueError(tr("Invalid node flag: {value}", value=part)) from ex
 
         flags.extend([REGULAR_FLAG] * (node_count - len(flags)))
 
@@ -261,7 +277,7 @@ class AutoDriveXmlReader:
                 try:
                     node_id = int(raw_id)
                 except ValueError as ex:
-                    raise ValueError(f"Ungültige Verbindungs-ID: {raw_id}") from ex
+                    raise ValueError(tr("Invalid connection ID: {value}", value=raw_id)) from ex
 
                 if node_id > 0:
                     targets.add(node_id)

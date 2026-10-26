@@ -34,7 +34,7 @@ def test_moves_several_nodes_together(data):
 
     assert position(data, 1) == (1, 5, 1)
     assert position(data, 2) == (11, 5, 1)
-    assert command.text() == "2 Nodes verschieben"
+    assert command.text() == "Move 2 nodes"
 
 
 def test_reports_moved_node_ids(data):

@@ -4,6 +4,7 @@ from PySide6.QtCore import QRectF, Qt, QTimer
 from PySide6.QtGui import QColor, QPainterPath, QPen
 from PySide6.QtWidgets import QGraphicsPathItem, QGraphicsScene
 
+from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
 from autodrive_editor.model.connections import ConnectionType, get_connection_type
 from autodrive_editor.rendering.connections.connection_data import ConnectionData
@@ -499,10 +500,10 @@ class SceneRenderer:
             )
 
         if self.detailed_connections_visible is True:
-            connection_mode = "Detail mit Pfeilen"
+            connection_mode = tr("Detail with arrows")
 
         elif self.detailed_connections_visible is False:
-            connection_mode = "Globale Übersicht"
+            connection_mode = tr("Global overview")
 
         else:
             connection_mode = "-"
@@ -527,7 +528,7 @@ class SceneRenderer:
 
     def set_display_style(self, display_style: DisplayStyle):
         if not isinstance(display_style, DisplayStyle):
-            raise TypeError("Der Darstellungsstil ist ungültig.")
+            raise TypeError("Invalid display style.")
 
         self.display_style = display_style
 

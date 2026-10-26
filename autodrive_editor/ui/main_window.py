@@ -36,6 +36,7 @@ from autodrive_editor.file_io.project_file import ProjectFileStore
 from autodrive_editor.file_io.routes_index import find_route_entry, read_routes_index
 from autodrive_editor.game.map_scanner import ScanResult, scan_for_map_mods
 from autodrive_editor.game.savegame_info import savegames_with_autodrive
+from autodrive_editor.i18n import tr
 from autodrive_editor.measurement.controller import MeasurementController
 from autodrive_editor.measurement.coordinator import MeasurementCoordinator
 from autodrive_editor.measurement.mode import MeasurementMode
@@ -58,6 +59,7 @@ from autodrive_editor.terrain.background_map import BackgroundMap
 from autodrive_editor.terrain.heightmap import Heightmap
 from autodrive_editor.terrain.map_cache import MapCache
 from autodrive_editor.ui.actions.main_window_actions import MainWindowActions
+from autodrive_editor.ui.actions.tool_catalog import LINES_GROUP
 from autodrive_editor.ui.controls.grid_coordinator import GridCoordinator
 from autodrive_editor.ui.dialogs.first_start_dialog import FirstStartDialog
 from autodrive_editor.ui.dialogs.list_choice_dialog import ListChoiceDialog
@@ -103,8 +105,8 @@ class MainWindow(QMainWindow):
     INITIAL_WIDTH = 1400
     INITIAL_HEIGHT = 900
 
-    NO_FILE_STATUS = "Keine Datei geladen"
-    NO_SELECTION_INFO = "Keine Node ausgewählt"
+    NO_FILE_STATUS = tr("No file loaded")
+    NO_SELECTION_INFO = tr("No node selected")
 
     DEFAULT_MAP_SCALE = 1
 
@@ -166,7 +168,7 @@ class MainWindow(QMainWindow):
 
     def select_background(self):
         filename, _ = QFileDialog.getOpenFileName(
-            self, "overview.dds auswählen", "", "DDS-Bilder (*.dds);;Alle Dateien (*)"
+            self, tr("Choose overview.dds"), "", tr("DDS images (*.dds);;All files (*)")
         )
 
         if not filename:
@@ -176,11 +178,11 @@ class MainWindow(QMainWindow):
             self.project_coordinator.load_background_file(filename)
 
         except Exception as ex:
-            self._set_status(f"DDS konnte nicht geladen werden: {ex}")
+            self._set_status(tr("The DDS could not be loaded: {error}", error=ex))
 
     def select_heightmap(self):
         filename, _ = QFileDialog.getOpenFileName(
-            self, "dem.png auswählen", "", "PNG-Heightmaps (*.png);;Alle Dateien (*)"
+            self, tr("Choose dem.png"), "", tr("PNG heightmaps (*.png);;All files (*)")
         )
 
         if not filename:
@@ -190,7 +192,7 @@ class MainWindow(QMainWindow):
             self.project_coordinator.load_heightmap_file(filename)
 
         except Exception as ex:
-            self._set_status(f"Heightmap konnte nicht geladen werden: {ex}")
+            self._set_status(tr("The heightmap could not be loaded: {error}", error=ex))
 
     def remove_heightmap(self):
         self.project_coordinator.remove_heightmap()
@@ -206,14 +208,14 @@ class MainWindow(QMainWindow):
             )
 
         except Exception as ex:
-            self._set_status(f"Kartengröße konnte nicht geändert werden: {ex}")
+            self._set_status(tr("The map size could not be changed: {error}", error=ex))
 
     def import_map_mod(self):
         game_folder = self.settings.game_folder
         start = str(game_folder.mods_directory) if game_folder is not None else ""
 
         filename, _ = QFileDialog.getOpenFileName(
-            self, "Kartenmod importieren", start, "Mod-Archiv (*.zip)"
+            self, tr("Import map mod"), start, tr("Mod archive (*.zip)")
         )
 
         if not filename:
@@ -222,11 +224,11 @@ class MainWindow(QMainWindow):
         try:
             map_mod = read_map_mod(filename)
         except Exception as ex:
-            self._inform(f"Der Mod konnte nicht gelesen werden:\n{ex}")
+            self._inform(tr("The mod could not be read:\n{error}", error=ex))
             return
 
         if map_mod is None:
-            self._inform("Dieser Mod enthält keine Karte.")
+            self._inform(tr("This mod contains no map."))
             return
 
         self._import_maps([(map_mod, entry) for entry in map_mod.maps])
@@ -260,8 +262,10 @@ class MainWindow(QMainWindow):
 
         if not has_game_folder and base_maps is None:
             self._inform(
-                "Es ist weder ein gültiger FS25-Spielordner noch eine LS25-Installation "
-                "eingestellt.\nBitte unter Datei → Einstellungen festlegen."
+                tr(
+                    "Neither a valid FS25 game folder nor an FS25 installation is set.\n"
+                    "Please set them under File → Settings."
+                )
             )
             return
 
@@ -272,7 +276,10 @@ class MainWindow(QMainWindow):
 
         if not result.map_mods:
             self._inform(
-                f"Im Mods-Ordner wurden keine Kartenmods gefunden:\n{game_folder.mods_directory}"
+                tr(
+                    "No map mods were found in the mods folder:\n{path}",
+                    path=game_folder.mods_directory,
+                )
             )
             return
 
@@ -299,20 +306,20 @@ class MainWindow(QMainWindow):
             return
 
         if not self.project_coordinator.load_map_for_current_config():
-            self._set_status(f"Karte „{map_name}“ ist weiterhin nicht importiert")
+            self._set_status(tr("Map “{name}” is still not imported", name=map_name))
 
     def _ask_missing_map(self, map_name: str) -> str | None:
         box = QMessageBox(self)
         box.setWindowTitle(self.WINDOW_TITLE)
         box.setIcon(QMessageBox.Icon.Question)
-        box.setText(f"Die Karte „{map_name}“ ist noch nicht importiert.")
+        box.setText(tr("The map “{name}” is not imported yet.", name=map_name))
         box.setInformativeText(
-            "Ohne Kartenbild und Heightmap werden nur die Nodes angezeigt. Karte jetzt importieren?"
+            tr("Without map image and heightmap only the nodes are shown. Import the map now?")
         )
 
-        scan_button = box.addButton("Karten scannen…", QMessageBox.ButtonRole.AcceptRole)
-        import_button = box.addButton("Aus Mod importieren…", QMessageBox.ButtonRole.ActionRole)
-        box.addButton("Ohne Karte weiter", QMessageBox.ButtonRole.RejectRole)
+        scan_button = box.addButton(tr("Scan maps…"), QMessageBox.ButtonRole.AcceptRole)
+        import_button = box.addButton(tr("Import from mod…"), QMessageBox.ButtonRole.ActionRole)
+        box.addButton(tr("Continue without map"), QMessageBox.ButtonRole.RejectRole)
         box.setDefaultButton(scan_button)
         box.exec()
 
@@ -350,8 +357,8 @@ class MainWindow(QMainWindow):
         """Imports the given (mod, map) pairs into the map cache and reports
         the result."""
 
-        progress = QProgressDialog("Karten werden importiert…", "Abbrechen", 0, len(chosen), self)
-        progress.setWindowTitle("Karten importieren")
+        progress = QProgressDialog(tr("Importing maps…"), tr("Cancel"), 0, len(chosen), self)
+        progress.setWindowTitle(tr("Import maps"))
         progress.setMinimumDuration(300)
 
         imported, failed = [], []
@@ -372,12 +379,12 @@ class MainWindow(QMainWindow):
 
         progress.setValue(len(chosen))
 
-        message = f"{len(imported)} Karte(n) importiert."
+        message = tr("{count} map(s) imported.", count=len(imported))
 
         if failed:
-            message += "\n\nNicht importiert:\n" + "\n".join(failed)
+            message += "\n\n" + tr("Not imported:") + "\n" + "\n".join(failed)
 
-        self._set_status(f"{len(imported)} Karte(n) importiert")
+        self._set_status(tr("{count} map(s) imported", count=len(imported)))
 
         if failed:
             self._inform(message)
@@ -395,9 +402,11 @@ class MainWindow(QMainWindow):
 
         if not game_folder.routes_xml_path.is_file():
             self._inform(
-                "Im Spielordner wurde keine AutoDrive-Routenliste gefunden:\n"
-                f"{game_folder.routes_xml_path}\n\n"
-                "Routen entstehen im Spiel über den RoutesManager von AutoDrive."
+                tr(
+                    "No AutoDrive route list was found in the game folder:\n{path}\n\n"
+                    "Routes are created in the game with AutoDrive's RoutesManager.",
+                    path=game_folder.routes_xml_path,
+                )
             )
             return
 
@@ -412,14 +421,16 @@ class MainWindow(QMainWindow):
             return
 
         if not entries:
-            self._inform("Die Routenliste enthält keine vorhandenen Routen.")
+            self._inform(tr("The route list contains no existing routes."))
             return
 
         entry = self._choose(
-            "Route öffnen",
-            "Routen aus dem RoutesManager von AutoDrive. AutoDrive kann sie im laufenden "
-            "Spiel neu laden.",
-            ["Name", "Karte", "Revision", "Datum"],
+            tr("Open route"),
+            tr(
+                "Routes from AutoDrive's RoutesManager. "
+                "AutoDrive can reload them in a running game."
+            ),
+            [tr("Name"), tr("Map"), tr("Revision"), tr("Date")],
             [
                 ([entry.name, entry.map_name, str(entry.revision), entry.date], entry)
                 for entry in entries
@@ -445,13 +456,13 @@ class MainWindow(QMainWindow):
         savegames = savegames_with_autodrive(game_folder)
 
         if not savegames:
-            self._inform("Kein Savegame im Spielordner enthält AutoDrive-Daten.")
+            self._inform(tr("No savegame in the game folder contains AutoDrive data."))
             return
 
         savegame = self._choose(
-            "Savegame öffnen",
-            "Savegames mit AutoDrive-Daten (AutoDrive_config.xml).",
-            ["Nr.", "Name", "Karte", "Gespeichert"],
+            tr("Open savegame"),
+            tr("Savegames with AutoDrive data (AutoDrive_config.xml)."),
+            [tr("No."), tr("Name"), tr("Map"), tr("Saved")],
             [
                 (
                     [f"{info.number:2d}", info.display_name, info.map_title, info.save_date],
@@ -477,7 +488,7 @@ class MainWindow(QMainWindow):
             start = str(game_folder.routes_directory)
 
         filename, _ = QFileDialog.getOpenFileName(
-            self, "AutoDrive-XML öffnen", start, "AutoDrive-XML (*.xml)"
+            self, tr("Open AutoDrive XML"), start, tr("AutoDrive XML (*.xml)")
         )
 
         if not filename:
@@ -487,7 +498,7 @@ class MainWindow(QMainWindow):
             self.project_coordinator.load_xml_file(filename)
 
         except Exception as ex:
-            self._set_status(f"XML konnte nicht geladen werden: {ex}")
+            self._set_status(tr("The XML could not be loaded: {error}", error=ex))
 
     def load_xml_file(self, filename):
         self.project_coordinator.load_xml_file(filename)
@@ -498,7 +509,7 @@ class MainWindow(QMainWindow):
                 path, display_name=display_name, map_name=map_name
             )
         except Exception as ex:
-            self._inform(f"Die AutoDrive-Daten konnten nicht geladen werden:\n{ex}")
+            self._inform(tr("The AutoDrive data could not be loaded:\n{error}", error=ex))
 
     def _valid_game_folder(self):
         """The configured FS25 folder, or None after telling the user how
@@ -508,8 +519,7 @@ class MainWindow(QMainWindow):
 
         if game_folder is None or not game_folder.is_valid:
             self._inform(
-                "Es ist kein gültiger FS25-Spielordner eingestellt.\n"
-                "Bitte unter Datei → Einstellungen festlegen."
+                tr("No valid FS25 game folder is set.\nPlease set it under File → Settings.")
             )
             return None
 
@@ -530,13 +540,13 @@ class MainWindow(QMainWindow):
 
     def save_xml(self) -> bool:
         if self.project_coordinator.config_source is None:
-            self._set_status("Bitte zuerst eine AutoDrive-XML laden")
+            self._set_status(tr("Load an AutoDrive XML first"))
             return False
 
         try:
             affected_vehicles = self.project_coordinator.save_xml_file()
         except Exception as ex:
-            self._inform(f"Die AutoDrive-Daten konnten nicht gespeichert werden:\n{ex}")
+            self._inform(tr("The AutoDrive data could not be saved:\n{error}", error=ex))
             return False
 
         self._after_save(affected_vehicles)
@@ -550,7 +560,7 @@ class MainWindow(QMainWindow):
         source = self.project_coordinator.config_source
 
         if source is None:
-            self._set_status("Bitte zuerst eine AutoDrive-XML laden")
+            self._set_status(tr("Load an AutoDrive XML first"))
             return False
 
         affected_vehicles = []
@@ -571,7 +581,7 @@ class MainWindow(QMainWindow):
 
                 affected_vehicles = self.project_coordinator.save_as_file(target)
         except Exception as ex:
-            self._inform(f"Die AutoDrive-Daten konnten nicht gespeichert werden:\n{ex}")
+            self._inform(tr("The AutoDrive data could not be saved:\n{error}", error=ex))
             return False
 
         self._after_save(affected_vehicles)
@@ -585,20 +595,24 @@ class MainWindow(QMainWindow):
 
         if affected_vehicles:
             self._inform(
-                "Diese Fahrzeuge hatten einen gelöschten Marker als Ziel. Das Ziel ist jetzt "
-                "Marker 1, ein Parkziel wurde entfernt:\n\n" + "\n".join(affected_vehicles)
+                tr(
+                    "These vehicles had a deleted marker as their target. The target is now "
+                    "marker 1, a parking target was removed:"
+                )
+                + "\n\n"
+                + "\n".join(affected_vehicles)
             )
 
     def _ask_route_name(self, default_name: str | None) -> str | None:
         name, accepted = QInputDialog.getText(
-            self, "Als neue Route speichern", "Name der Route:", text=default_name or ""
+            self, tr("Save as new route"), tr("Name of the route:"), text=default_name or ""
         )
 
         return name.strip() if accepted else None
 
     def _ask_save_path(self, current_path: Path) -> Path | None:
         filename, _ = QFileDialog.getSaveFileName(
-            self, "Speichern unter", str(current_path), "AutoDrive-XML (*.xml)"
+            self, tr("Save as"), str(current_path), tr("AutoDrive XML (*.xml)")
         )
 
         if not filename:
@@ -615,10 +629,10 @@ class MainWindow(QMainWindow):
         try:
             self.project_coordinator.write_autosave(self.autosave_store)
         except Exception as ex:
-            self._set_status(f"Automatische Sicherung fehlgeschlagen: {ex}")
+            self._set_status(tr("Autosave failed: {error}", error=ex))
             return
 
-        self._set_status(f"Automatisch gesichert um {datetime.now():%H:%M}")
+        self._set_status(tr("Autosaved at {time:%H:%M}", time=datetime.now()))
 
     def offer_autosave_restore(self):
         """After the editor ended with unsaved changes, offers to restore
@@ -631,10 +645,13 @@ class MainWindow(QMainWindow):
 
         if not Path(info.source_path).is_file():
             self._inform(
-                f"Es gibt eine automatische Sicherung von „{info.display_name}“, aber die "
-                f"Originaldatei fehlt:\n{info.source_path}\n\n"
-                f"Die Sicherung kann über „XML-Datei öffnen…“ geladen werden:\n"
-                f"{self.autosave_store.xml_path}"
+                tr(
+                    "There is an autosave of “{name}”, but the original file is missing:\n"
+                    "{source}\n\nThe autosave can be loaded with “Open XML file…”:\n{autosave}",
+                    name=info.display_name,
+                    source=info.source_path,
+                    autosave=self.autosave_store.xml_path,
+                )
             )
             return
 
@@ -645,7 +662,7 @@ class MainWindow(QMainWindow):
         try:
             self.project_coordinator.restore_autosave(self.autosave_store, info)
         except Exception as ex:
-            self._inform(f"Die automatische Sicherung konnte nicht geladen werden:\n{ex}")
+            self._inform(tr("The autosave could not be loaded:\n{error}", error=ex))
             return
 
         self.edit_history.mark_unsaved()
@@ -654,8 +671,12 @@ class MainWindow(QMainWindow):
         answer = QMessageBox.question(
             self,
             self.WINDOW_TITLE,
-            f"Der Editor wurde mit ungespeicherten Änderungen an „{info.display_name}“ beendet. "
-            f"Die automatische Sicherung vom {info.saved_at} wiederherstellen?",
+            tr(
+                "The editor was closed with unsaved changes to “{name}”. "
+                "Restore the autosave from {time}?",
+                name=info.display_name,
+                time=info.saved_at,
+            ),
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.Yes,
         )
@@ -693,7 +714,7 @@ class MainWindow(QMainWindow):
         return QMessageBox.question(
             self,
             self.WINDOW_TITLE,
-            "Die Änderungen sind noch nicht gespeichert. Jetzt speichern?",
+            tr("The changes are not saved yet. Save now?"),
             QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
             QMessageBox.Save,
         )
@@ -709,7 +730,7 @@ class MainWindow(QMainWindow):
 
     def save_project(self):
         if not self.project_coordinator.current_xml_path:
-            self._set_status("Bitte zuerst eine AutoDrive-XML laden")
+            self._set_status(tr("Load an AutoDrive XML first"))
             return
 
         default_path = (
@@ -719,7 +740,7 @@ class MainWindow(QMainWindow):
         )
 
         config_path, _ = QFileDialog.getSaveFileName(
-            self, "Projektkonfiguration speichern", default_path, "JSON-Konfiguration (*.json)"
+            self, tr("Save project"), default_path, tr("JSON project (*.json)")
         )
 
         if not config_path:
@@ -732,7 +753,7 @@ class MainWindow(QMainWindow):
             self.project_coordinator.save_project_file(config_path)
 
         except Exception as ex:
-            self._set_status(f"Projekt konnte nicht gespeichert werden: {ex}")
+            self._set_status(tr("The project could not be saved: {error}", error=ex))
 
     def load_project(self):
         if not self._confirm_discard_changes():
@@ -740,9 +761,9 @@ class MainWindow(QMainWindow):
 
         config_path, _ = QFileDialog.getOpenFileName(
             self,
-            "Projektkonfiguration öffnen",
+            tr("Open project"),
             str(self.local_projects_directory),
-            "JSON-Konfiguration (*.json)",
+            tr("JSON project (*.json)"),
         )
 
         if not config_path:
@@ -752,7 +773,7 @@ class MainWindow(QMainWindow):
             self.project_coordinator.load_project_file(config_path)
 
         except Exception as ex:
-            self._set_status(f"Projekt konnte nicht geladen werden: {ex}")
+            self._set_status(tr("The project could not be loaded: {error}", error=ex))
 
     def show_node_info(self, node_data: NodeData):
         self.selection_coordinator.show_node_info(node_data)
@@ -760,7 +781,7 @@ class MainWindow(QMainWindow):
     def set_interaction_mode(self, interaction_mode: InteractionMode):
         self.view.set_interaction_mode(interaction_mode)
 
-        status_text = f"Modus: {interaction_mode.display_name}"
+        status_text = tr("Mode: {mode}", mode=interaction_mode.display_name)
 
         status_hint = self.view.active_tool.status_hint()
 
@@ -772,17 +793,17 @@ class MainWindow(QMainWindow):
     def set_view_rotation(self, rotation_angle: float):
         self.view.set_rotation_angle(rotation_angle)
 
-        self._set_status(f"Rotation: {self.view.rotation_angle:.2f}°")
+        self._set_status(tr("Rotation: {angle:.2f}°", angle=self.view.rotation_angle))
 
     def set_view_rotation_step(self, rotation_step: float):
         self.view.set_rotation_step(rotation_step)
 
-        self._set_status(f"Rotationsraster: {self.view.rotation_step:.2f}°")
+        self._set_status(tr("Rotation step: {angle:.2f}°", angle=self.view.rotation_step))
 
     def reset_view_rotation(self):
         self.view.reset_view_rotation()
 
-        self._set_status("Rotation zurückgesetzt")
+        self._set_status(tr("Rotation reset"))
 
     def set_measurement_mode(self, measurement_mode: MeasurementMode):
         self.measurement_coordinator.set_mode(measurement_mode)
@@ -802,11 +823,13 @@ class MainWindow(QMainWindow):
             folder = self.settings.game_folder
 
             if folder is None:
-                self._set_status("Kein Spielordner gesetzt")
+                self._set_status(tr("No game folder set"))
             elif folder.is_valid:
-                self._set_status(f"Spielordner: {folder.path}")
+                self._set_status(tr("Game folder: {path}", path=folder.path))
             else:
-                self._set_status(f"Spielordner ist kein FS25-Benutzerordner: {folder.path}")
+                self._set_status(
+                    tr("The game folder is not an FS25 user folder: {path}", path=folder.path)
+                )
 
     def set_marker_names_visible(self, visible: bool):
         self.scene_renderer.set_marker_names_visible(visible)
@@ -838,7 +861,7 @@ class MainWindow(QMainWindow):
 
     def _ask_group_name(self, name: str) -> str | None:
         new_name, accepted = QInputDialog.getText(
-            self, "Markergruppe umbenennen", "Neuer Name:", text=name
+            self, tr("Rename marker group"), tr("New name:"), text=name
         )
 
         return new_name if accepted else None
@@ -869,7 +892,7 @@ class MainWindow(QMainWindow):
 
     def apply_display_style(self, display_style: DisplayStyle):
         if not isinstance(display_style, DisplayStyle):
-            raise TypeError("Der Darstellungsstil ist ungültig.")
+            raise TypeError("Invalid display style.")
 
         self.scene_renderer.set_display_style(display_style)
 
@@ -1079,7 +1102,7 @@ class MainWindow(QMainWindow):
             NodeClickTool(
                 self.view,
                 self.reverse_direction_operation.reverse_at,
-                "Connection anklicken, um ihre Richtung umzukehren",
+                tr("Click a connection to reverse its direction"),
                 is_target=lambda view_position: self._get_connection_at(view_position) is not None,
             ),
         )
@@ -1093,7 +1116,7 @@ class MainWindow(QMainWindow):
             NodeClickTool(
                 self.view,
                 self.node_position_operation.edit_at,
-                "Node anklicken, um ihre Position einzugeben",
+                tr("Click a node to enter its position"),
             ),
         )
 
@@ -1140,7 +1163,7 @@ class MainWindow(QMainWindow):
 
     def _register_align_tools(self):
         operation = self.align_nodes_operation
-        reference_hint = "Nodes auswählen, dann die Referenz-Node anklicken"
+        reference_hint = tr("Select nodes, then click the reference node")
 
         tools = (
             (InteractionMode.ALIGN_HORIZONTAL, operation.align_horizontal_at, reference_hint),
@@ -1149,7 +1172,7 @@ class MainWindow(QMainWindow):
             (
                 InteractionMode.HEIGHT_FROM_TERRAIN,
                 operation.height_from_terrain_at,
-                "Nodes auswählen, dann eine Node anklicken",
+                tr("Select nodes, then click one of them"),
             ),
         )
 
@@ -1186,7 +1209,7 @@ class MainWindow(QMainWindow):
 
         self.path_options_widget = PathOptionsWidget(self.create_path_operation.options)
 
-        self.actions.tool_panel.groups["Linien"].add_widget(self.path_options_widget)
+        self.actions.tool_panel.groups[LINES_GROUP].add_widget(self.path_options_widget)
 
         def apply_options(options):
             self.create_path_operation.set_options(options)
@@ -1210,15 +1233,30 @@ class MainWindow(QMainWindow):
 
         def move_hint():
             if operation.move_source_id is None:
-                return "Node mit Marker anklicken, um den Marker aufzunehmen"
+                return tr("Click a node with a marker to pick up the marker")
 
-            return "Ziel-Node anklicken (Rechtsklick oder Esc bricht ab)"
+            return tr("Click the target node (right-click or Esc cancels)")
 
         tools = (
-            (InteractionMode.ADD_MARKER, operation.add_at, "Node ohne Marker anklicken", None),
-            (InteractionMode.EDIT_MARKER, operation.edit_at, "Node mit Marker anklicken", None),
+            (
+                InteractionMode.ADD_MARKER,
+                operation.add_at,
+                tr("Click a node without a marker"),
+                None,
+            ),
+            (
+                InteractionMode.EDIT_MARKER,
+                operation.edit_at,
+                tr("Click a node with a marker"),
+                None,
+            ),
             (InteractionMode.MOVE_MARKER, operation.move_click, move_hint, operation.cancel_move),
-            (InteractionMode.DELETE_MARKER, operation.delete_at, "Node mit Marker anklicken", None),
+            (
+                InteractionMode.DELETE_MARKER,
+                operation.delete_at,
+                tr("Click a node with a marker"),
+                None,
+            ),
         )
 
         for interaction_mode, click, hint, cancel in tools:

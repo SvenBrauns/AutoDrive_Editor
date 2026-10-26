@@ -2,6 +2,7 @@ from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QMouseEvent
 
 from autodrive_editor.editing.operations.create_nodes import CreateNodesOperation
+from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import REGULAR_FLAG
 from autodrive_editor.ui.tools.map_tool import MapTool
 
@@ -30,7 +31,7 @@ class CreateNodeTool(MapTool):
     def status_hint(self) -> str | None:
         node_type = "Regular" if self.flag == REGULAR_FLAG else "Subprio"
 
-        return f"Auf freie Fläche klicken, um eine {node_type}-Node zu erstellen"
+        return tr("Click on free ground to create a {type} node", type=node_type)
 
     def cursor_at(self, view_position: QPoint) -> Qt.CursorShape:
         if self._pan.is_dragging:

@@ -22,19 +22,19 @@ def test_panel_shows_node_group_with_move_tool(window):
     panel = window.actions.tool_panel
 
     assert window.dockWidgetArea(panel) == Qt.LeftDockWidgetArea
-    assert tool_button(window, "Verschieben").isVisible()
+    assert tool_button(window, "Move").isVisible()
 
 
 def test_clicking_move_tool_activates_it(window):
-    tool_button(window, "Verschieben").click()
+    tool_button(window, "Move").click()
 
     assert window.view.interaction_mode == InteractionMode.MOVE_NODES
     assert checked_tools(window) == {InteractionMode.MOVE_NODES}
-    assert window.status.text().startswith("Modus: Nodes verschieben – ")
+    assert window.status.text().startswith("Mode: Move nodes – ")
 
 
 def test_exactly_one_tool_is_checked(window):
-    tool_button(window, "Verschieben").click()
+    tool_button(window, "Move").click()
     window.actions.selection_action.trigger()
 
     assert window.view.interaction_mode == InteractionMode.SELECT
@@ -42,13 +42,13 @@ def test_exactly_one_tool_is_checked(window):
 
 
 def test_measuring_unchecks_tools_and_tool_ends_measuring(window):
-    tool_button(window, "Verschieben").click()
+    tool_button(window, "Move").click()
 
     window.actions.distance_measurement_action.trigger()
     assert window.view.measurement_active
     assert checked_tools(window) == set()
 
-    tool_button(window, "Verschieben").click()
+    tool_button(window, "Move").click()
     assert not window.view.measurement_active
     assert window.measurement_controller.mode == MeasurementMode.INACTIVE
     assert checked_tools(window) == {InteractionMode.MOVE_NODES}
@@ -68,10 +68,10 @@ def test_panel_can_be_toggled_from_view_menu(window, qapp):
 
 def test_debug_dock_shows_move_tool_name(window, qapp):
     window.debug_dock.show()
-    tool_button(window, "Verschieben").click()
+    tool_button(window, "Move").click()
     qapp.processEvents()
 
-    assert window.debug_dock.interaction_mode_value.text() == "Nodes verschieben"
+    assert window.debug_dock.interaction_mode_value.text() == "Move nodes"
 
 
 def test_tool_buttons_follow_mode_changes_from_code(window):
@@ -96,12 +96,12 @@ def test_node_tools_are_paired_in_two_columns(window):
     layout = [[grid_text(window, row, column) for column in (0, 1)] for row in range(6)]
 
     assert layout == [
-        ["Verschieben", "Verbinden (Regular)"],
-        ["Erstellen (Regular)", "Verbinden (Dual)"],
-        ["Erstellen (Subprio)", "Verbinden (Reverse)"],
-        ["Typ wechseln", "Richtung umkehren"],
-        ["Rotieren", "Löschen"],
-        ["Position eingeben", None],
+        ["Move", "Connect (Regular)"],
+        ["Create (Regular)", "Connect (Dual)"],
+        ["Create (Subprio)", "Connect (Reverse)"],
+        ["Toggle type", "Reverse direction"],
+        ["Rotate", "Delete"],
+        ["Enter position", None],
     ]
 
 
@@ -114,8 +114,8 @@ def test_tool_buttons_show_icons_only_by_default(window):
 def test_tooltips_name_tool_and_shortcut(window):
     tooltip = window.actions.tool_actions[InteractionMode.MOVE_NODES].toolTip()
 
-    assert "<b>Verschieben</b> (V)" in tooltip
-    assert "verschieben" in tooltip
+    assert "<b>Move</b> (V)" in tooltip
+    assert "left-dragging" in tooltip
 
 
 def test_labels_can_be_shown(window):
@@ -211,8 +211,8 @@ def test_every_tool_explains_itself_in_the_status_bar(window, mode):
     window.set_interaction_mode(mode)
 
     text = window.status.text()
-    assert text.startswith(f"Modus: {mode.display_name} – ")
-    assert len(text) > len(f"Modus: {mode.display_name} – ") + 10
+    assert text.startswith(f"Mode: {mode.display_name} – ")
+    assert len(text) > len(f"Mode: {mode.display_name} – ") + 10
 
 
 def test_panel_widens_for_labels_and_shrinks_again(window, qapp):

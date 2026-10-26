@@ -22,7 +22,7 @@ class ViewZoomController(QObject):
         super().__init__(parent)
 
         if not isinstance(view, QGraphicsView):
-            raise TypeError("Die Kartenansicht ist ungültig.")
+            raise TypeError("Invalid map view.")
 
         self.view = view
 
@@ -41,7 +41,7 @@ class ViewZoomController(QObject):
         current_zoom = self.zoom_level
 
         if current_zoom <= 0.0:
-            raise ValueError("Der aktuelle Zoomfaktor ist ungültig.")
+            raise ValueError("Invalid current zoom factor.")
 
         scale_factor = target_zoom / current_zoom
 
@@ -61,7 +61,7 @@ class ViewZoomController(QObject):
             return False
 
         if not isinstance(view_position, QPoint):
-            raise TypeError("Die View-Position ist ungültig.")
+            raise TypeError("Invalid view position.")
 
         current_zoom = self.zoom_level
 

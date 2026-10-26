@@ -89,7 +89,7 @@ class MapView(QGraphicsView):
 
     def register_tool(self, interaction_mode: InteractionMode, tool: MapTool):
         if not isinstance(tool, MapTool):
-            raise TypeError("Das Werkzeug ist ungültig.")
+            raise TypeError("Invalid tool.")
 
         if interaction_mode == self._interaction_mode:
             self.active_tool.deactivate()
@@ -101,7 +101,7 @@ class MapView(QGraphicsView):
 
     def register_measure_tool(self, tool: MapTool):
         if not isinstance(tool, MapTool):
-            raise TypeError("Das Messwerkzeug ist ungültig.")
+            raise TypeError("Invalid measuring tool.")
 
         self._measure_tool = tool
 
@@ -122,15 +122,13 @@ class MapView(QGraphicsView):
 
     def set_interaction_mode(self, interaction_mode: InteractionMode):
         if not isinstance(interaction_mode, InteractionMode):
-            raise TypeError("Der Interaktionsmodus ist ungültig.")
+            raise TypeError("Invalid interaction mode.")
 
         if interaction_mode == self._interaction_mode:
             return
 
         if interaction_mode not in self._tools:
-            raise ValueError(
-                f"Für den Modus {interaction_mode.display_name} ist kein Werkzeug registriert."
-            )
+            raise ValueError(f"No tool is registered for the mode {interaction_mode.name}.")
 
         self._switch_tool(lambda: setattr(self, "_interaction_mode", interaction_mode))
 

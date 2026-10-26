@@ -5,6 +5,7 @@ from PySide6.QtCore import QObject, QPoint, Signal
 
 from autodrive_editor.editing.commands.create_node import CreateNodeCommand
 from autodrive_editor.editing.edit_history import EditHistory
+from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import REGULAR_FLAG, AutoDriveData
 from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
 from autodrive_editor.terrain.terrain_follower import TerrainHeightProvider
@@ -43,7 +44,7 @@ class CreateNodesOperation(QObject):
         autodrive_data = self.autodrive_data_provider()
 
         if autodrive_data is None:
-            self.status_changed.emit("Zuerst eine AutoDrive-XML laden")
+            self.status_changed.emit(tr("Load an AutoDrive XML first"))
             return None
 
         if self.edit_history.history_locked:
@@ -75,9 +76,9 @@ class CreateNodesOperation(QObject):
         )
 
         self.status_changed.emit(
-            f"Node {node_id} erstellt"
+            tr("Node {node} created", node=node_id)
             if flag == REGULAR_FLAG
-            else f"Subprio-Node {node_id} erstellt"
+            else tr("Subprio node {node} created", node=node_id)
         )
 
         return node_id

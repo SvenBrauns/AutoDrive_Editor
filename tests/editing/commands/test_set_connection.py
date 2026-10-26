@@ -61,7 +61,7 @@ def test_changing_type_replaces_connection(data):
     command = connect(data, ConnectionType.REGULAR)
 
     assert read_connection_state(data, 1, 2) == CONNECTION_STATES[ConnectionType.REGULAR]
-    assert command.text() == "Connection ändern"
+    assert command.text() == "Change connection"
 
 
 def test_undo_restores_previous_state(data):
@@ -80,7 +80,7 @@ def test_remove_connection(data):
     command.redo()
 
     assert read_connection_state(data, 1, 2) == NO_CONNECTION
-    assert command.text() == "Connection entfernen"
+    assert command.text() == "Remove connection"
 
 
 def test_other_connections_are_untouched(data):

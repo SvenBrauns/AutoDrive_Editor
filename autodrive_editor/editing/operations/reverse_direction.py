@@ -4,6 +4,7 @@ from PySide6.QtCore import QObject, QPoint, Signal
 
 from autodrive_editor.editing.commands.reverse_connections import ReverseConnectionsCommand
 from autodrive_editor.editing.edit_history import EditHistory
+from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData
 from autodrive_editor.model.connections import ConnectionType, is_dual_connection
 from autodrive_editor.rendering.connections.connection_data import ConnectionData
@@ -55,13 +56,15 @@ class ReverseDirectionOperation(QObject):
             pairs = {(connection.source_id, connection.target_id)}
 
         if not pairs:
-            self.status_changed.emit("Dual-Connections haben keine Richtung")
+            self.status_changed.emit(tr("Dual connections have no direction"))
             return False
 
         self.edit_history.push(ReverseConnectionsCommand(autodrive_data, pairs))
 
         self.status_changed.emit(
-            "Richtung umgekehrt" if len(pairs) == 1 else f"{len(pairs)} Richtungen umgekehrt"
+            tr("Direction reversed")
+            if len(pairs) == 1
+            else tr("{count} directions reversed", count=len(pairs))
         )
 
         return True

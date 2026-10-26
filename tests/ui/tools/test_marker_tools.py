@@ -50,7 +50,7 @@ def test_add_marker_asks_and_adds_at_the_end(marker_window):
 
     assert names(marker_window) == ["Hof", "Silo"]
     title, _, group, taken = marker_window.questions[0]
-    assert (title, group, taken) == ("Marker hinzufügen", "All", {("Hof", "All")})
+    assert (title, group, taken) == ("Add marker", "All", {("Hof", "All")})
     assert "Silo" in marker_window.status.text()
 
 
@@ -70,7 +70,7 @@ def test_add_on_marked_node_does_not_ask(marker_window):
     click(marker_window, at(marker_window, 0))
 
     assert marker_window.questions == []
-    assert "bereits" in marker_window.status.text()
+    assert "already" in marker_window.status.text()
 
 
 def test_cancelled_dialog_changes_nothing(marker_window):
@@ -100,7 +100,7 @@ def test_edit_marker_and_undo(marker_window):
 
     click(marker_window, at(marker_window, 0))
 
-    assert marker_window.questions[0][:2] == ("Marker bearbeiten", "Hof")
+    assert marker_window.questions[0][:2] == ("Edit marker", "Hof")
     assert marker_window.data.markers[1].group == "Hof"
 
     marker_window.edit_history.undo()
@@ -116,7 +116,7 @@ def test_edit_without_marker_says_so(marker_window):
     click(marker_window, at(marker_window, 10))
 
     assert marker_window.questions == []
-    assert "keinen Marker" in marker_window.status.text()
+    assert "has no marker" in marker_window.status.text()
 
 
 def test_delete_marker_keeps_the_node(marker_window):
@@ -135,7 +135,7 @@ def test_move_marker_with_two_clicks(marker_window):
     use(marker_window, InteractionMode.MOVE_MARKER)
 
     click(marker_window, at(marker_window, 0))
-    assert "Ziel-Node" in marker_window.status.text()
+    assert "target node" in marker_window.status.text()
 
     click(marker_window, at(marker_window, 20))
 
@@ -195,7 +195,7 @@ def test_move_onto_marked_node_is_refused(marker_window):
     click(marker_window, at(marker_window, 10))
 
     assert list(marker_window.data.markers) == [1, 2]
-    assert "bereits" in marker_window.status.text()
+    assert "already" in marker_window.status.text()
 
 
 def test_dragging_pans_instead_of_acting(marker_window):

@@ -5,6 +5,7 @@ from PySide6.QtGui import QColor, QMouseEvent, QPen
 from PySide6.QtWidgets import QGraphicsLineItem
 
 from autodrive_editor.editing.operations.connect_nodes import ConnectNodesOperation
+from autodrive_editor.i18n import tr
 from autodrive_editor.model.connections import ConnectionType
 from autodrive_editor.ui.tools.map_tool import MapTool, is_alive_in_scene
 
@@ -76,9 +77,9 @@ class ConnectNodesTool(MapTool):
         return cancelled
 
     def status_hint(self) -> str | None:
-        return (
-            "Start-Node, dann weitere Nodes anklicken. Gleicher Typ "
-            "entfernt eine Connection. Esc oder Rechtsklick beendet"
+        return tr(
+            "Click the start node, then more nodes. The same type removes a connection. "
+            "Esc or right-click finishes"
         )
 
     def cursor_at(self, view_position: QPoint) -> Qt.CursorShape:

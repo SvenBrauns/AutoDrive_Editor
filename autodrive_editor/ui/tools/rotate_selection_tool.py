@@ -5,6 +5,7 @@ from PySide6.QtGui import QColor, QMouseEvent, QPen
 from PySide6.QtWidgets import QGraphicsEllipseItem, QGraphicsItemGroup, QGraphicsLineItem
 
 from autodrive_editor.editing.operations.rotate_selection import RotateSelectionOperation
+from autodrive_editor.i18n import tr
 from autodrive_editor.ui.tools.map_tool import DragGesture, MapTool, is_alive_in_scene
 
 
@@ -50,12 +51,9 @@ class RotateSelectionTool(MapTool):
 
     def status_hint(self) -> str | None:
         if self._ring is None:
-            return "Zum Rotieren mindestens zwei Nodes auswählen"
+            return tr("Select at least two nodes to rotate")
 
-        return (
-            "Ring ziehen zum Drehen, Umschalt rastet in 15°-Schritten ein. "
-            "Esc oder Rechtsklick bricht ab"
-        )
+        return tr("Drag the ring to rotate, Shift snaps in 15° steps. Esc or right-click cancels")
 
     def deactivate(self):
         super().deactivate()

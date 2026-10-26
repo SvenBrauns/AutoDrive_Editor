@@ -1,7 +1,7 @@
 import pytest
 from map_mod_helpers import make_single_map_mod, map_files, mod_desc, write_map_mod
 
-from autodrive_editor.file_io.map_mod import autodrive_map_name, read_map_mod
+from autodrive_editor.file_io.map_mod import MapEntry, autodrive_map_name, read_map_mod
 
 
 @pytest.mark.parametrize(
@@ -47,8 +47,16 @@ def test_two_maps_in_one_mod_get_their_own_heightmaps(tmp_path):
     mod = read_map_mod(write_map_mod(tmp_path / "FS25_Island.zip", files))
 
     assert [m.heightmap_file for m in mod.maps] == ["a/data/dem.png", "b/dataFE/dem.png"]
-    assert mod.maps[0].title == "Insel"  # German preferred
+    assert mod.maps[0].title == "Island"
     assert mod.maps[0].autodrive_names == ["Island", "Insel"]  # every language
+
+
+def test_title_follows_the_editor_language(german):
+    entry = MapEntry("m", {"en": "Island", "de": "Insel"}, "map.xml", 4096, None, None)
+    english_only = MapEntry("m", {"en": "Island"}, "map.xml", 4096, None, None)
+
+    assert entry.title == "Insel"
+    assert english_only.title == "Island"
 
 
 def test_mod_without_map_is_ignored(tmp_path):

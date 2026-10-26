@@ -1,4 +1,4 @@
-"""The "Löschen" tool and the Del shortcut, driven by real input."""
+"""The "Delete" tool and the Del shortcut, driven by real input."""
 
 import pytest
 from mouse_helpers import click, cursor_shape, drag, hover, view_pos
@@ -37,8 +37,8 @@ def test_click_on_node_deletes_it(deleting):
     assert sorted(data(deleting).nodes) == [1, 3]
     assert data(deleting).get_node(1).outgoing == set()
     assert visible_items(deleting) == {1, 3}
-    assert deleting.status.text() == "Node gelöscht"
-    assert deleting.actions.undo_action.text() == "Rückgängig: Node löschen"
+    assert deleting.status.text() == "Node deleted"
+    assert deleting.actions.undo_action.text() == "Undo: Delete node"
 
 
 def test_click_on_selected_node_deletes_whole_selection(deleting):
@@ -48,7 +48,7 @@ def test_click_on_selected_node_deletes_whole_selection(deleting):
 
     assert sorted(data(deleting).nodes) == [3]
     assert deleting.node_selection.selected_node_ids == set()
-    assert deleting.status.text() == "2 Nodes gelöscht"
+    assert deleting.status.text() == "2 nodes deleted"
 
 
 def test_click_on_unselected_node_keeps_selection(deleting):
@@ -100,7 +100,7 @@ def test_cursor_points_at_nodes(deleting):
 def test_panel_has_delete_tool(window):
     texts = [action.text() for action in window.actions.tool_panel.tool_buttons]
 
-    assert "Löschen" in texts
+    assert "Delete" in texts
 
 
 # --- Bearbeiten > Auswahl löschen (Entf) --------------------------------

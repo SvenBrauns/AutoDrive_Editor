@@ -2,6 +2,7 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QComboBox, QDoubleSpinBox, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from autodrive_editor.editing.path_shapes import PathOptions
+from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import REGULAR_FLAG, SUBPRIO_FLAG
 from autodrive_editor.model.connections import ConnectionType
 
@@ -27,27 +28,27 @@ class PathOptionsWidget(QWidget):
         self.spacing_box.setSingleStep(0.5)
         self.spacing_box.setDecimals(1)
         self.spacing_box.setSuffix(" m")
-        self.spacing_box.setToolTip("Abstand der neuen Nodes")
+        self.spacing_box.setToolTip(tr("Spacing of the new nodes"))
 
         self.connection_box = QComboBox(self)
-        self.connection_box.setToolTip("Connection-Typ der neuen Strecke")
+        self.connection_box.setToolTip(tr("Connection type of the new path"))
 
         for connection_type in ConnectionType:
             self.connection_box.addItem(connection_type.name.capitalize(), connection_type.value)
 
         self.flag_box = QComboBox(self)
-        self.flag_box.setToolTip("Typ der neuen Nodes")
+        self.flag_box.setToolTip(tr("Type of the new nodes"))
         self.flag_box.addItem("Regular", REGULAR_FLAG)
         self.flag_box.addItem("Subprio", SUBPRIO_FLAG)
 
-        self.apply_button = QPushButton("Anwenden", self)
-        self.apply_button.setToolTip("Kurve erstellen (Enter)")
+        self.apply_button = QPushButton(tr("Apply"), self)
+        self.apply_button.setToolTip(tr("Create curve (Enter)"))
         self.apply_button.clicked.connect(self.apply_requested.emit)
 
         for title, widget in (
-            ("Abstand", self.spacing_box),
+            (tr("Spacing"), self.spacing_box),
             ("Connection", self.connection_box),
-            ("Node-Typ", self.flag_box),
+            (tr("Node type"), self.flag_box),
         ):
             layout.addWidget(QLabel(title, self))
             layout.addWidget(widget)

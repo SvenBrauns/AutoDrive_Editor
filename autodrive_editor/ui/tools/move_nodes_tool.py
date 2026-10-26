@@ -2,6 +2,7 @@ from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QMouseEvent
 
 from autodrive_editor.editing.operations.move_nodes import MoveNodesOperation
+from autodrive_editor.i18n import tr
 from autodrive_editor.ui.tools.map_tool import DragGesture, MapTool
 
 
@@ -63,9 +64,8 @@ class MoveNodesTool(MapTool):
         return True
 
     def status_hint(self) -> str | None:
-        return (
-            "Node ziehen; eine ausgewählte Node bewegt die ganze Auswahl. "
-            "Esc oder Rechtsklick bricht ab"
+        return tr(
+            "Drag a node; a selected node moves the whole selection. Esc or right-click cancels"
         )
 
     def cursor_at(self, view_position: QPoint) -> Qt.CursorShape:

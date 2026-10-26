@@ -3,6 +3,8 @@ from collections.abc import Callable
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtWidgets import QGraphicsView
 
+from autodrive_editor.i18n import tr
+
 
 class ViewRotationController(QObject):
     """Rotates the view around its center, optionally in fixed steps."""
@@ -21,10 +23,10 @@ class ViewRotationController(QObject):
         super().__init__(parent)
 
         if not isinstance(view, QGraphicsView):
-            raise TypeError("Die Kartenansicht ist ungültig.")
+            raise TypeError("Invalid map view.")
 
         if not callable(viewport_update_callback):
-            raise TypeError("Der Viewport-Update-Callback ist ungültig.")
+            raise TypeError("Invalid viewport update callback.")
 
         self.view = view
 
@@ -61,10 +63,10 @@ class ViewRotationController(QObject):
         rotation_step = float(rotation_step)
 
         if rotation_step < 0.0:
-            raise ValueError("Das Rotationsraster darf nicht negativ sein.")
+            raise ValueError(tr("The rotation step must not be negative."))
 
         if rotation_step > self.MAXIMUM_ROTATION_STEP:
-            raise ValueError("Das Rotationsraster darf höchstens 90 Grad betragen.")
+            raise ValueError(tr("The rotation step must be at most 90 degrees."))
 
         if abs(rotation_step - self._rotation_step) < self.ROTATION_COMPARISON_TOLERANCE:
             return

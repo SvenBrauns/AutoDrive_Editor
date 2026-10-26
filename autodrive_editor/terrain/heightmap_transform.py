@@ -1,3 +1,6 @@
+from autodrive_editor.i18n import tr
+
+
 class HeightmapTransform:
     """Converts between map positions and heightmap pixels."""
 
@@ -8,7 +11,7 @@ class HeightmapTransform:
         map_scale = float(map_scale)
 
         if map_scale <= 0:
-            raise ValueError("Der Kartenmaßstab muss größer als 0 sein.")
+            raise ValueError(tr("The map scale must be greater than 0."))
 
         return cls.BASE_MAP_SIZE * map_scale
 
@@ -17,7 +20,7 @@ class HeightmapTransform:
         image_size = int(image_size)
 
         if image_size < 2:
-            raise ValueError("Die Heightmap muss mindestens zwei Pixel pro Achse besitzen.")
+            raise ValueError(tr("The heightmap needs at least two pixels per axis."))
 
         world_size = cls.calculate_world_size(map_scale)
 
@@ -32,7 +35,7 @@ class HeightmapTransform:
         image_height = int(image_height)
 
         if image_width < 2 or image_height < 2:
-            raise ValueError("Die Heightmap muss mindestens 2 × 2 Pixel groß sein.")
+            raise ValueError(tr("The heightmap must be at least 2 × 2 pixels."))
 
         world_size = cls.calculate_world_size(map_scale)
 
@@ -44,10 +47,10 @@ class HeightmapTransform:
 
         if not clamp:
             if normalized_x < 0 or normalized_x > 1:
-                raise ValueError(f"Die X-Koordinate {world_x} liegt außerhalb der Karte.")
+                raise ValueError(tr("The X coordinate {value} is outside the map.", value=world_x))
 
             if normalized_z < 0 or normalized_z > 1:
-                raise ValueError(f"Die Z-Koordinate {world_z} liegt außerhalb der Karte.")
+                raise ValueError(tr("The Z coordinate {value} is outside the map.", value=world_z))
 
         normalized_x = max(0.0, min(normalized_x, 1.0))
 
@@ -70,17 +73,21 @@ class HeightmapTransform:
         image_height = int(image_height)
 
         if image_width < 2 or image_height < 2:
-            raise ValueError("Die Heightmap muss mindestens 2 × 2 Pixel groß sein.")
+            raise ValueError(tr("The heightmap must be at least 2 × 2 pixels."))
 
         pixel_x = int(pixel_x)
 
         pixel_y = int(pixel_y)
 
         if pixel_x < 0 or pixel_x >= image_width:
-            raise ValueError(f"Die Pixel-X-Koordinate {pixel_x} liegt außerhalb der Heightmap.")
+            raise ValueError(
+                tr("The pixel X coordinate {value} is outside the heightmap.", value=pixel_x)
+            )
 
         if pixel_y < 0 or pixel_y >= image_height:
-            raise ValueError(f"Die Pixel-Y-Koordinate {pixel_y} liegt außerhalb der Heightmap.")
+            raise ValueError(
+                tr("The pixel Y coordinate {value} is outside the heightmap.", value=pixel_y)
+            )
 
         normalized_x = pixel_x / (image_width - 1)
 

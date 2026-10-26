@@ -2,7 +2,7 @@ from autodrive_editor.ui.dialogs.marker_dialog import MarkerDialog
 
 
 def dialog(name="", group="All", groups=("All", "Felder"), taken=(("Hof", "All"),)):
-    return MarkerDialog("Marker hinzufügen", name, group, list(groups), set(taken))
+    return MarkerDialog("Add marker", name, group, list(groups), set(taken))
 
 
 def test_name_is_required(qapp):

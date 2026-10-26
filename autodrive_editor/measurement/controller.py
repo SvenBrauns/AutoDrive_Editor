@@ -56,7 +56,7 @@ class MeasurementController(QObject):
 
     def activate(self, measurement_mode: MeasurementMode):
         if not isinstance(measurement_mode, MeasurementMode):
-            raise TypeError("Der Messmodus ist ungültig.")
+            raise TypeError("Invalid measurement mode.")
 
         if measurement_mode == MeasurementMode.INACTIVE:
             self.deactivate()
@@ -347,7 +347,7 @@ class MeasurementController(QObject):
 
     def _validate_active_mode(self):
         if not self.is_active:
-            raise ValueError("Der Messmodus ist nicht aktiv.")
+            raise ValueError("Measuring is not active.")
 
     @staticmethod
     def _calculate_label_position(start_position: QPointF, end_position: QPointF) -> QPointF:

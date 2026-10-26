@@ -4,6 +4,7 @@ from PySide6.QtCore import QObject, QPoint, QPointF, Signal
 
 from autodrive_editor.editing.commands.move_nodes import MoveNodesCommand, NodePosition
 from autodrive_editor.editing.edit_history import EditHistory
+from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
 from autodrive_editor.selection.node_selection import NodeSelection
 from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
@@ -20,7 +21,7 @@ class AlignNodesOperation(QObject):
 
     status_changed = Signal(str)
 
-    NO_SELECTION_TEXT = "Zuerst die Nodes auswählen, die ausgerichtet werden sollen"
+    NO_SELECTION_TEXT = tr("First select the nodes to align")
 
     def __init__(
         self,
@@ -59,7 +60,7 @@ class AlignNodesOperation(QObject):
 
         positions = {node.node_id: (node.x, reference.y, node.z) for node in nodes}
 
-        return self._push(autodrive_data, nodes, positions, "Höhe angleichen")
+        return self._push(autodrive_data, nodes, positions, tr("Match height"))
 
     def height_from_terrain_at(self, view_position: QPoint) -> bool:
         """Each selected node gets the terrain height at its position."""
@@ -77,7 +78,7 @@ class AlignNodesOperation(QObject):
         }
 
         if all(height is None for height in heights.values()):
-            self.status_changed.emit("Keine Heightmap geladen")
+            self.status_changed.emit(tr("No heightmap loaded"))
             return False
 
         positions = {
@@ -89,7 +90,7 @@ class AlignNodesOperation(QObject):
             for node in nodes
         }
 
-        return self._push(autodrive_data, nodes, positions, "Höhe aus Heightmap")
+        return self._push(autodrive_data, nodes, positions, tr("Height from heightmap"))
 
     def _align_on_screen_axis(self, view_position: QPoint, keep_screen_x: bool) -> bool:
         target = self._reference_and_selection(view_position)
@@ -128,7 +129,7 @@ class AlignNodesOperation(QObject):
                 new_z,
             )
 
-        text = "Horizontal ausrichten" if keep_screen_x else "Vertikal ausrichten"
+        text = tr("Align horizontally") if keep_screen_x else tr("Align vertically")
 
         return self._push(autodrive_data, nodes, positions, text)
 
@@ -170,12 +171,16 @@ class AlignNodesOperation(QObject):
         command = MoveNodesCommand(autodrive_data, old_positions, new_positions, text=text)
 
         if command.isObsolete():
-            self.status_changed.emit("Die Nodes sind bereits ausgerichtet")
+            self.status_changed.emit(tr("The nodes are already aligned"))
             return False
 
         self.edit_history.push(command)
 
         count = len(nodes)
-        self.status_changed.emit(f"{text}: {'1 Node' if count == 1 else f'{count} Nodes'}")
+        self.status_changed.emit(
+            tr("{text}: 1 node", text=text)
+            if count == 1
+            else tr("{text}: {count} nodes", text=text, count=count)
+        )
 
         return True

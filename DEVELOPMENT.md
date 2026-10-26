@@ -1,6 +1,6 @@
 # Development
 
-Notes for working on the code of the AutoDrive FS25 Editor. The user guide is the [README](README.md); planned features are in the [roadmap](ROADMAP.md).
+Notes for working on the code of the AutoDrive FS25 Editor. The user guide is the [README](README.md) (German: [README.de.md](README.de.md)); planned features are in the [roadmap](ROADMAP.md).
 
 ## Running from source
 
@@ -53,6 +53,7 @@ autodrive_editor/
     tools/      mouse handling per tool
     panels/     tool panel, debug dock, display options
     controls/   grid and rotation settings
+  i18n/         translation of the interface texts (tr(), German catalog)
   resources/    icons
 tests/          same folder structure as autodrive_editor/
 packaging/      app icon and license texts for the Windows version
@@ -65,6 +66,20 @@ packaging/      app icon and license texts for the Windows version
 - After each change, the command reports a `DataChange`; the `SceneRenderer` then updates only the affected nodes.
 - Only nodes, markers and selection rings in the visible area exist as graphics items, so networks with over 100,000 nodes stay responsive.
 - Each tool is a `MapTool` subclass under `ui/tools/` and is described in `ui/actions/tool_catalog.py` with its icon and shortcut.
+
+## Translations
+
+The interface is English and German. Texts in the code are English and wrapped in `tr()` from `autodrive_editor.i18n`; values are passed as keywords and filled into `{placeholders}` after translating:
+
+```python
+tr("Marker “{name}” added", name=name)
+```
+
+- Every new `tr()` text needs a German entry in `i18n/german.py`. `tests/i18n/test_german.py` fails for missing or unused entries and for placeholders that differ.
+- Pass the text itself to `tr()`, never a variable or f-string, so the test can find it.
+- Internal errors that only signal a programming mistake (e.g. `TypeError` checks) stay English and are not translated.
+- The language is set at startup, before the UI modules are imported (see `app.py`), because some of them translate texts at import time. Changing the language in the settings takes effect after a restart.
+- Qt's own texts (e.g. message box buttons) come from Qt's `qtbase_de.qm`.
 
 ## Principles
 

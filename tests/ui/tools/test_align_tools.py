@@ -97,14 +97,14 @@ def test_without_selection_the_status_explains(align_window):
 
     use(align_window, InteractionMode.ALIGN_HORIZONTAL)
 
-    assert "auswählen" in align_window.status.text()
+    assert "select" in align_window.status.text()
     assert not align_window.edit_history.can_undo
 
 
 def test_height_from_terrain_needs_a_heightmap(align_window):
     use(align_window, InteractionMode.HEIGHT_FROM_TERRAIN)
 
-    assert align_window.status.text() == "Keine Heightmap geladen"
+    assert align_window.status.text() == "No heightmap loaded"
 
 
 def test_height_from_terrain_sets_each_node_to_the_ground(align_window, sloped_heightmap):

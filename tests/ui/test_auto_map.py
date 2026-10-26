@@ -44,7 +44,7 @@ def test_route_loads_its_imported_map(map_window):
     assert map_window.background_map.map_scale == 2
     assert map_window.heightmap.has_heightmap()
     assert map_window.project_coordinator.current_heightmap_path == str(cached.heightmap_path)
-    assert "Karte „LS25 Testkarte 2.0“" in map_window.status.text()
+    assert "map “LS25 Testkarte 2.0”" in map_window.status.text()
 
 
 def test_map_size_menu_follows_the_detected_map(map_window):
@@ -71,8 +71,8 @@ def test_map_that_is_not_imported_is_named_in_the_status(map_window):
     open_route(map_window, "Unbekannte_Karte")
 
     assert not map_window.background_map.has_background()
-    assert "„Unbekannte_Karte“ ist nicht importiert" in map_window.status.text()
-    assert "Karten scannen" in map_window.status.text()
+    assert "“Unbekannte_Karte” is not imported" in map_window.status.text()
+    assert "Scan maps" in map_window.status.text()
 
 
 def test_without_map_name_nothing_is_detected(map_window, write_xml):
@@ -81,7 +81,7 @@ def test_without_map_name_nothing_is_detected(map_window, write_xml):
     map_window.project_coordinator.load_xml_file(write_xml())
 
     assert not map_window.background_map.has_background()
-    assert "nicht importiert" not in map_window.status.text()
+    assert "not imported" not in map_window.status.text()
 
 
 def test_project_files_keep_their_own_map(map_window):

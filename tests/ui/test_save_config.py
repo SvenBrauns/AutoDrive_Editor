@@ -248,7 +248,7 @@ def test_autosave_of_a_missing_file_is_kept_and_explained(route_window, monkeypa
 
     route_window.offer_autosave_restore()
 
-    assert "Originaldatei fehlt" in messages[0]
+    assert "original file is missing" in messages[0]
     assert route_window.autosave_store.read() is not None
 
 

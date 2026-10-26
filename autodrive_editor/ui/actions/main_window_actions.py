@@ -2,6 +2,7 @@ from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QAction, QActionGroup, QKeySequence
 from PySide6.QtWidgets import QMainWindow, QSizePolicy, QToolBar, QToolButton, QWidget
 
+from autodrive_editor.i18n import tr
 from autodrive_editor.measurement.mode import MeasurementMode
 from autodrive_editor.ui.actions.tool_catalog import (
     NAVIGATION_TOOL,
@@ -23,7 +24,12 @@ class MainWindowActions:
     sync with the active tool.
     """
 
-    MAP_SCALES = (("Originalgröße", 1), ("4x-Karte", 2), ("16x-Karte", 4), ("64x-Karte", 8))
+    MAP_SCALES = (
+        (tr("Original size"), 1),
+        (tr("4x map"), 2),
+        (tr("16x map"), 4),
+        (tr("64x map"), 8),
+    )
 
     def __init__(self, window: QMainWindow):
         self.window = window
@@ -67,10 +73,10 @@ class MainWindowActions:
 
         self.distance_measurement_action.setCheckable(True)
 
-        self.distance_measurement_action.setToolTip("Abstand zwischen zwei Punkten messen")
+        self.distance_measurement_action.setToolTip(tr("Measure the distance between two points"))
 
         self.distance_measurement_action.setStatusTip(
-            "Abstand zwischen Nodes oder freien Kartenpunkten messen"
+            tr("Measure the distance between nodes or free map points")
         )
 
         self.distance_measurement_action.triggered.connect(self._toggle_distance_measurement)
@@ -79,103 +85,105 @@ class MainWindowActions:
 
         self.angle_measurement_action.setCheckable(True)
 
-        self.angle_measurement_action.setToolTip("Kartenwinkel zwischen zwei Punkten messen")
+        self.angle_measurement_action.setToolTip(tr("Measure the map angle between two points"))
 
         self.angle_measurement_action.setStatusTip(
-            "Richtungswinkel zwischen Nodes oder freien Kartenpunkten messen"
+            tr("Measure the direction angle between nodes or free map points")
         )
 
         self.angle_measurement_action.triggered.connect(self._toggle_angle_measurement)
 
         self.align_measurement_action = QAction("━", self.window)
 
-        self.align_measurement_action.setToolTip("Messlinie horizontal ausrichten")
+        self.align_measurement_action.setToolTip(tr("Align the measuring line horizontally"))
 
         self.align_measurement_action.setStatusTip(
-            "Ansicht so drehen, dass Messpunkt A links und Messpunkt B rechts liegt"
+            tr("Rotate the view so that point A is on the left and point B on the right")
         )
 
         self.align_measurement_action.setEnabled(False)
 
         self.align_measurement_action.triggered.connect(self.window.align_view_to_measurement)
 
-        self.load_project_action = QAction("Projekt laden", self.window)
+        self.load_project_action = QAction(tr("Load project"), self.window)
 
         self.load_project_action.triggered.connect(self.window.load_project)
 
-        self.save_project_action = QAction("Projekt speichern", self.window)
+        self.save_project_action = QAction(tr("Save project"), self.window)
 
         self.save_project_action.triggered.connect(self.window.save_project)
 
-        self.open_route_action = QAction("Route öffnen…", self.window)
-        self.open_route_action.setStatusTip("Route aus dem RoutesManager des Spielordners öffnen")
+        self.open_route_action = QAction(tr("Open route…"), self.window)
+        self.open_route_action.setStatusTip(
+            tr("Open a route from the RoutesManager of the game folder")
+        )
         self.open_route_action.triggered.connect(self.window.open_route)
 
-        self.open_savegame_action = QAction("Savegame öffnen…", self.window)
-        self.open_savegame_action.setStatusTip("AutoDrive-Daten eines Savegames öffnen")
+        self.open_savegame_action = QAction(tr("Open savegame…"), self.window)
+        self.open_savegame_action.setStatusTip(tr("Open the AutoDrive data of a savegame"))
         self.open_savegame_action.triggered.connect(self.window.open_savegame)
 
-        self.load_xml_action = QAction("XML-Datei öffnen…", self.window)
+        self.load_xml_action = QAction(tr("Open XML file…"), self.window)
 
         self.load_xml_action.triggered.connect(self.window.load_xml)
 
-        self.save_xml_action = QAction("Speichern", self.window)
+        self.save_xml_action = QAction(tr("Save"), self.window)
         self.save_xml_action.setShortcut(QKeySequence.Save)
-        self.save_xml_action.setStatusTip("AutoDrive-Daten in die geladene Datei speichern")
+        self.save_xml_action.setStatusTip(tr("Save the AutoDrive data into the loaded file"))
         self.save_xml_action.setEnabled(False)
         self.save_xml_action.triggered.connect(self.window.save_xml)
 
-        self.save_xml_as_action = QAction("Speichern unter…", self.window)
+        self.save_xml_as_action = QAction(tr("Save as…"), self.window)
         self.save_xml_as_action.setShortcut(QKeySequence.SaveAs)
         self.save_xml_as_action.setStatusTip(
-            "Routen als neue Route im RoutesManager speichern, sonst in eine andere Datei"
+            tr("Save routes as a new route in the RoutesManager, anything else into another file")
         )
         self.save_xml_as_action.setEnabled(False)
         self.save_xml_as_action.triggered.connect(self.window.save_xml_as)
 
-        self.settings_action = QAction("Einstellungen…", self.window)
+        self.settings_action = QAction(tr("Settings…"), self.window)
 
         self.settings_action.triggered.connect(self.window.open_settings)
 
-        self.exit_action = QAction("Beenden", self.window)
+        self.exit_action = QAction(tr("Exit"), self.window)
 
         self.exit_action.triggered.connect(self.window.close)
 
-        self.display_options_action = QAction("Darstellungsoptionen...", self.window)
+        self.display_options_action = QAction(tr("Display options…"), self.window)
 
         self.display_options_action.triggered.connect(self.window.open_display_options)
 
-        self.reset_view_action = QAction("Ansicht zurücksetzen", self.window)
+        self.reset_view_action = QAction(tr("Reset view"), self.window)
 
         self.reset_view_action.setEnabled(False)
 
-        self.reset_rotation_action = QAction("Rotation zurücksetzen", self.window)
+        self.reset_rotation_action = QAction(tr("Reset rotation"), self.window)
 
         self.reset_rotation_action.setEnabled(False)
 
         self.reset_rotation_action.triggered.connect(self.window.reset_view_rotation)
 
-        self.import_map_mod_action = QAction("Karte aus Mod importieren…", self.window)
+        self.import_map_mod_action = QAction(tr("Import map from mod…"), self.window)
         self.import_map_mod_action.setStatusTip(
-            "Kartenbild und Heightmap aus einem Kartenmod (Zip) importieren"
+            tr("Import the map image and heightmap from a map mod (zip)")
         )
         self.import_map_mod_action.triggered.connect(self.window.import_map_mod)
 
-        self.scan_map_mods_action = QAction("Karten scannen…", self.window)
+        self.scan_map_mods_action = QAction(tr("Scan maps…"), self.window)
         self.scan_map_mods_action.setStatusTip(
-            "Mods-Ordner nach Kartenmods durchsuchen und Karten importieren"
+            tr("Search the mods folder for map mods and import maps")
         )
         self.scan_map_mods_action.triggered.connect(self.window.scan_map_mods)
 
-        self.select_background_action = QAction("DDS auswählen", self.window)
+        self.select_background_action = QAction(tr("Choose DDS"), self.window)
 
         self.select_background_action.triggered.connect(self.window.select_background)
 
-        self.select_heightmap_action = QAction("Heightmap auswählen", self.window)
+        self.select_heightmap_action = QAction(tr("Choose heightmap"), self.window)
 
         self.select_heightmap_action.triggered.connect(self.window.select_heightmap)
 
-        self.remove_heightmap_action = QAction("Heightmap entfernen", self.window)
+        self.remove_heightmap_action = QAction(tr("Remove heightmap"), self.window)
 
         self.remove_heightmap_action.triggered.connect(self.window.remove_heightmap)
 
@@ -186,7 +194,7 @@ class MainWindowActions:
 
         self._create_clipboard_actions()
 
-        self.grid_snap_action = QAction("Am Raster einrasten", self.window)
+        self.grid_snap_action = QAction(tr("Snap to grid"), self.window)
         self.grid_snap_action.setCheckable(True)
         self.grid_snap_action.setShortcut(QKeySequence("G"))
         self.grid_snap_action.toggled.connect(
@@ -217,8 +225,8 @@ class MainWindowActions:
 
             self.map_scale_actions[map_scale] = action
 
-    UNDO_TEXT = "Rückgängig"
-    REDO_TEXT = "Wiederholen"
+    UNDO_TEXT = tr("Undo")
+    REDO_TEXT = tr("Redo")
 
     def _create_tool_action(self, definition: ToolDefinition) -> QAction:
         action = QAction(tool_icon(definition.icon), definition.text, self.window)
@@ -264,7 +272,7 @@ class MainWindowActions:
         )
 
     def _create_delete_selection_action(self):
-        self.delete_selection_action = QAction("Auswahl löschen", self.window)
+        self.delete_selection_action = QAction(tr("Delete selection"), self.window)
 
         self.delete_selection_action.setShortcut(QKeySequence.Delete)
 
@@ -276,12 +284,12 @@ class MainWindowActions:
         clipboard = self.window.clipboard_operation
 
         definitions = (
-            ("copy_action", "Kopieren", QKeySequence.Copy, clipboard.copy),
-            ("cut_action", "Ausschneiden", QKeySequence.Cut, clipboard.cut),
-            ("paste_action", "Einfügen", QKeySequence.Paste, clipboard.paste),
+            ("copy_action", tr("Copy"), QKeySequence.Copy, clipboard.copy),
+            ("cut_action", tr("Cut"), QKeySequence.Cut, clipboard.cut),
+            ("paste_action", tr("Paste"), QKeySequence.Paste, clipboard.paste),
             (
                 "paste_at_original_action",
-                "An Originalposition einfügen",
+                tr("Paste at original position"),
                 QKeySequence("Ctrl+Shift+V"),
                 lambda: clipboard.paste(at_original_position=True),
             ),
@@ -306,7 +314,7 @@ class MainWindowActions:
 
         can_run_changed.connect(action.setEnabled)
 
-        # Shows e.g. "Rückgängig: Node verschieben".
+        # Shows e.g. "Undo: Move node".
         text_changed.connect(
             lambda command_text: action.setText(
                 f"{base_text}: {command_text}" if command_text else base_text
@@ -318,7 +326,7 @@ class MainWindowActions:
     def _create_menu_bar(self):
         menu_bar = self.window.menuBar()
 
-        file_menu = menu_bar.addMenu("Datei")
+        file_menu = menu_bar.addMenu(tr("File"))
 
         file_menu.addAction(self.open_route_action)
 
@@ -344,7 +352,7 @@ class MainWindowActions:
 
         file_menu.addAction(self.exit_action)
 
-        edit_menu = menu_bar.addMenu("Bearbeiten")
+        edit_menu = menu_bar.addMenu(tr("Edit"))
 
         edit_menu.addAction(self.undo_action)
 
@@ -368,7 +376,7 @@ class MainWindowActions:
 
         edit_menu.addAction(self.grid_snap_action)
 
-        view_menu = menu_bar.addMenu("Ansicht")
+        view_menu = menu_bar.addMenu(tr("View"))
 
         view_menu.addAction(self.display_options_action)
 
@@ -392,7 +400,7 @@ class MainWindowActions:
 
         view_menu.addAction(self.reset_rotation_action)
 
-        map_menu = menu_bar.addMenu("Karte")
+        map_menu = menu_bar.addMenu(tr("Map"))
 
         map_menu.addAction(self.scan_map_mods_action)
 
@@ -410,13 +418,13 @@ class MainWindowActions:
 
         map_menu.addSeparator()
 
-        map_size_menu = map_menu.addMenu("Kartengröße")
+        map_size_menu = map_menu.addMenu(tr("Map size"))
 
         for _, map_scale in self.MAP_SCALES:
             map_size_menu.addAction(self.map_scale_actions[map_scale])
 
     def _create_quick_access_toolbar(self):
-        self.quick_access_toolbar = QToolBar("Schnellauswahl", self.window)
+        self.quick_access_toolbar = QToolBar(tr("Quick access"), self.window)
 
         self.quick_access_toolbar.setObjectName("quick_access_toolbar")
 
@@ -505,13 +513,13 @@ class MainWindowActions:
                 ],
             )
 
-        self.tool_labels_action = QAction("Werkzeugbeschriftungen anzeigen", self.window)
+        self.tool_labels_action = QAction(tr("Show tool labels"), self.window)
 
         self.tool_labels_action.setCheckable(True)
 
         self.tool_labels_action.toggled.connect(self.tool_panel.set_labels_visible)
 
-        self.marker_names_action = QAction("Markernamen anzeigen", self.window)
+        self.marker_names_action = QAction(tr("Show marker names"), self.window)
         self.marker_names_action.setCheckable(True)
         self.marker_names_action.setChecked(self.window.settings.marker_names_visible)
         self.marker_names_action.toggled.connect(self.window.set_marker_names_visible)
@@ -526,7 +534,7 @@ class MainWindowActions:
 
     def set_measurement_mode(self, measurement_mode: MeasurementMode):
         if not isinstance(measurement_mode, MeasurementMode):
-            raise TypeError("Der Messmodus ist ungültig.")
+            raise TypeError("Invalid measurement mode.")
 
         distance_active = measurement_mode == MeasurementMode.DISTANCE
 

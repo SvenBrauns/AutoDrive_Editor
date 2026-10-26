@@ -1,5 +1,7 @@
 from PySide6.QtWidgets import QDialog, QDialogButtonBox, QDoubleSpinBox, QFormLayout, QVBoxLayout
 
+from autodrive_editor.i18n import tr
+
 
 class NodePositionDialog(QDialog):
     """Asks for a node's exact X, Y (height) and Z."""
@@ -10,7 +12,7 @@ class NodePositionDialog(QDialog):
     def __init__(self, node_id: int, x: float, y: float, z: float, parent=None):
         super().__init__(parent)
 
-        self.setWindowTitle(f"Position von Node {node_id}")
+        self.setWindowTitle(tr("Position of node {node}", node=node_id))
 
         self.x_input = self._spin_box(x)
         self.y_input = self._spin_box(y)
@@ -24,7 +26,7 @@ class NodePositionDialog(QDialog):
 
         form = QFormLayout()
         form.addRow("X:", self.x_input)
-        form.addRow("Y (Höhe):", self.y_input)
+        form.addRow(tr("Y (height):"), self.y_input)
         form.addRow("Z:", self.z_input)
 
         layout = QVBoxLayout(self)

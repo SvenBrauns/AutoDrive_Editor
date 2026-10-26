@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from autodrive_editor.i18n import tr
+
 # AutoDrive node flags. Other values may exist in files; they are kept
 # unchanged and shown like regular nodes.
 REGULAR_FLAG = 0
@@ -85,10 +87,10 @@ class AutoDriveData:
 
     def add_node(self, node: NodeData) -> None:
         if node.node_id <= 0:
-            raise ValueError("Eine Node-ID muss größer als 0 sein.")
+            raise ValueError("A node ID must be greater than 0.")
 
         if node.node_id in self.nodes:
-            raise ValueError(f"Die Node-ID {node.node_id} ist bereits vorhanden.")
+            raise ValueError(f"Node ID {node.node_id} already exists.")
 
         self.nodes[node.node_id] = node
 
@@ -97,7 +99,7 @@ class AutoDriveData:
         order."""
 
         if marker.node_id not in self.nodes:
-            raise ValueError(f"Der Marker verweist auf die unbekannte Node-ID {marker.node_id}.")
+            raise ValueError(f"The marker refers to the unknown node ID {marker.node_id}.")
 
         if position is None or position >= len(self.markers):
             self.markers[marker.node_id] = marker
@@ -114,7 +116,7 @@ class AutoDriveData:
         position = self.marker_position(node_id)
 
         if position is None:
-            raise ValueError(f"Node {node_id} hat keinen Marker.")
+            raise ValueError(f"Node {node_id} has no marker.")
 
         return position, self.markers.pop(node_id)
 
@@ -123,13 +125,13 @@ class AutoDriveData:
         order stays the same."""
 
         if from_node_id not in self.markers:
-            raise ValueError(f"Node {from_node_id} hat keinen Marker.")
+            raise ValueError(f"Node {from_node_id} has no marker.")
 
         if to_node_id not in self.nodes:
-            raise ValueError(f"Die Node-ID {to_node_id} ist nicht vorhanden.")
+            raise ValueError(f"Node ID {to_node_id} does not exist.")
 
         if to_node_id in self.markers:
-            raise ValueError(f"Node {to_node_id} hat bereits einen Marker.")
+            raise ValueError(f"Node {to_node_id} already has a marker.")
 
         marker = self.markers[from_node_id]
         marker.node_id = to_node_id
@@ -190,17 +192,21 @@ class AutoDriveData:
             for target_id in node.outgoing:
                 if target_id not in self.nodes:
                     errors.append(
-                        f"Node {node.node_id} besitzt eine "
-                        f"ausgehende Verbindung zur unbekannten "
-                        f"Node {target_id}."
+                        tr(
+                            "Node {node} has an outgoing connection to unknown node {target}.",
+                            node=node.node_id,
+                            target=target_id,
+                        )
                     )
 
             for source_id in node.incoming:
                 if source_id not in self.nodes:
                     errors.append(
-                        f"Node {node.node_id} besitzt eine "
-                        f"eingehende Verbindung von der unbekannten "
-                        f"Node {source_id}."
+                        tr(
+                            "Node {node} has an incoming connection from unknown node {source}.",
+                            node=node.node_id,
+                            source=source_id,
+                        )
                     )
 
         return errors

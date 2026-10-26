@@ -70,7 +70,7 @@ def test_debug_dock_refreshes_on_zoom(window, qapp):
 
 def test_load_xml_reports_waypoint_count(loaded_window):
     assert len(loaded_window.project_coordinator.autodrive_data) == 3
-    assert "3 Waypoints" in loaded_window.status.text()
+    assert "3 waypoints" in loaded_window.status.text()
 
 
 def test_area_selection_selects_nodes(loaded_window, qapp):
@@ -98,7 +98,7 @@ def push_move(window, end_x):
 def test_undo_actions_start_disabled(window):
     assert not window.actions.undo_action.isEnabled()
     assert not window.actions.redo_action.isEnabled()
-    assert window.actions.undo_action.text() == "Rückgängig"
+    assert window.actions.undo_action.text() == "Undo"
 
 
 def test_undo_action_follows_history(loaded_window):
@@ -107,12 +107,12 @@ def test_undo_action_follows_history(loaded_window):
 
     push_move(loaded_window, 50)
     assert actions.undo_action.isEnabled()
-    assert actions.undo_action.text() == "Rückgängig: Node verschieben"
+    assert actions.undo_action.text() == "Undo: Move node"
     assert loaded_window.isWindowModified()
 
     actions.undo_action.trigger()
     assert node.x == 0
-    assert actions.redo_action.text() == "Wiederholen: Node verschieben"
+    assert actions.redo_action.text() == "Redo: Move node"
     assert not loaded_window.isWindowModified()
 
     actions.redo_action.trigger()

@@ -1,4 +1,5 @@
 from autodrive_editor.editing.commands.edit_command import DataChange, EditCommand
+from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData
 from autodrive_editor.model.connections import ConnectionState, read_connection_state
 
@@ -20,10 +21,12 @@ class ReverseConnectionsCommand(EditCommand):
         pairs = sorted({tuple(sorted((int(a), int(b)))) for a, b in node_pairs})
 
         if not pairs:
-            raise ValueError("Es wurden keine Connections angegeben.")
+            raise ValueError("No connections were given.")
 
         super().__init__(
-            "Richtung umkehren" if len(pairs) == 1 else f"{len(pairs)} Richtungen umkehren",
+            tr("Reverse direction")
+            if len(pairs) == 1
+            else tr("Reverse {count} directions", count=len(pairs)),
             autodrive_data,
         )
 

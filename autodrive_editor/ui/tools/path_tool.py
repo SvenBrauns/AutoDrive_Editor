@@ -6,13 +6,14 @@ from PySide6.QtWidgets import QGraphicsEllipseItem, QGraphicsItem, QGraphicsPath
 
 from autodrive_editor.editing.operations.create_path import CreatePathOperation
 from autodrive_editor.editing.path_shapes import PathShape
+from autodrive_editor.i18n import tr
 from autodrive_editor.model.connections import ConnectionType
 from autodrive_editor.ui.tools.map_tool import MapTool, is_alive_in_scene
 
 HINTS = {
-    PathShape.LINE: "Start und Ende anklicken (Node oder freie Fläche). Esc beendet",
-    PathShape.BEZIER: "Start und Ende anklicken, dann die Griffe ziehen. Enter erstellt die Kurve",
-    PathShape.ARC: "Start und Ende anklicken, dann den Griff ziehen. Enter erstellt den Bogen",
+    PathShape.LINE: tr("Click start and end (node or free ground). Esc finishes"),
+    PathShape.BEZIER: tr("Click start and end, then drag the handles. Enter creates the curve"),
+    PathShape.ARC: tr("Click start and end, then drag the handle. Enter creates the arc"),
 }
 
 

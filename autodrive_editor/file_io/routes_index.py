@@ -21,6 +21,7 @@ from datetime import datetime
 from pathlib import Path
 
 from autodrive_editor.file_io.autodrive_xml_writer import write_xml
+from autodrive_editor.i18n import tr
 
 ROUTES_INDEX_ROOT = "autoDriveRoutesManager"
 
@@ -54,10 +55,10 @@ def read_routes_index(routes_xml_path: Path) -> list[RouteEntry]:
     try:
         root = ET.parse(routes_xml_path).getroot()
     except ET.ParseError as ex:
-        raise ValueError(f"routes.xml ist ungültig: {ex}") from ex
+        raise ValueError(tr("routes.xml is invalid: {error}", error=ex)) from ex
 
     if root.tag != ROUTES_INDEX_ROOT:
-        raise ValueError(f"routes.xml hat ein unbekanntes Format (<{root.tag}>).")
+        raise ValueError(tr("routes.xml has an unknown format (<{tag}>).", tag=root.tag))
 
     routes_directory = routes_xml_path.parent / "routes"
     entries = []

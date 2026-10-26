@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 from PySide6.QtCore import QPointF
 
+from autodrive_editor.i18n import tr
 from autodrive_editor.measurement.mode import MeasurementMode
 
 
@@ -46,7 +47,7 @@ def calculate_map_angle(start_position: QPointF, end_position: QPointF) -> float
     if math.isclose(delta_x, 0.0, abs_tol=0.000001) and math.isclose(
         delta_z, 0.0, abs_tol=0.000001
     ):
-        raise ValueError("Für identische Punkte kann kein Richtungswinkel berechnet werden.")
+        raise ValueError(tr("No direction angle can be calculated for identical points."))
 
     angle = math.degrees(math.atan2(delta_x, -delta_z))
 
@@ -80,13 +81,13 @@ def calculate_measurement(
     measurement_mode: MeasurementMode, start_position: QPointF, end_position: QPointF
 ) -> MeasurementResult:
     if not isinstance(measurement_mode, MeasurementMode):
-        raise TypeError("Der Messmodus ist ungültig.")
+        raise TypeError("Invalid measurement mode.")
 
     if not isinstance(start_position, QPointF):
-        raise TypeError("Der Startpunkt ist ungültig.")
+        raise TypeError("Invalid start point.")
 
     if not isinstance(end_position, QPointF):
-        raise TypeError("Der Endpunkt ist ungültig.")
+        raise TypeError("Invalid end point.")
 
     if measurement_mode == MeasurementMode.DISTANCE:
         measurement_value = calculate_distance(start_position, end_position)
@@ -95,6 +96,6 @@ def calculate_measurement(
         measurement_value = calculate_map_angle(start_position, end_position)
 
     else:
-        raise ValueError("Im inaktiven Messmodus kann keine Messung berechnet werden.")
+        raise ValueError("No measurement can be calculated while measuring is inactive.")
 
     return MeasurementResult(mode=measurement_mode, value=measurement_value)

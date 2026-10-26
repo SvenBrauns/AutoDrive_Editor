@@ -240,6 +240,6 @@ class ConnectionSpatialIndex:
         tile_size = float(tile_size)
 
         if tile_size <= 0:
-            raise ValueError("Die Connection-Kachelgröße muss größer als 0 sein.")
+            raise ValueError("The connection tile size must be greater than 0.")
 
         return tile_size

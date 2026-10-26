@@ -4,6 +4,7 @@ from PySide6.QtCore import QObject, QPoint, Signal
 
 from autodrive_editor.editing.commands.set_connection import SetConnectionCommand
 from autodrive_editor.editing.edit_history import EditHistory
+from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
 from autodrive_editor.model.connections import (
     CONNECTION_STATES,
@@ -71,7 +72,7 @@ class ConnectNodesOperation(QObject):
 
         if autodrive_data is None or node_item is None:
             if self.start_node is not None:
-                self.status_changed.emit("Verbinden beendet")
+                self.status_changed.emit(tr("Connecting finished"))
 
             self.end_chain()
             return
@@ -82,7 +83,9 @@ class ConnectNodesOperation(QObject):
         if start_node is None:
             self._set_start(clicked_id)
 
-            self.status_changed.emit(f"Start: Node {clicked_id}. Ziel-Node anklicken")
+            self.status_changed.emit(
+                tr("Start: node {node}. Click the target node", node=clicked_id)
+            )
             return
 
         if clicked_id == start_node.node_id:
@@ -127,10 +130,24 @@ class ConnectNodesOperation(QObject):
         type_name = CONNECTION_TYPE_NAMES[connection_type]
 
         if removing:
-            self.status_changed.emit(f"{type_name}-Connection {source_id} → {target_id} entfernt")
+            self.status_changed.emit(
+                tr(
+                    "{type} connection {source} → {target} removed",
+                    type=type_name,
+                    source=source_id,
+                    target=target_id,
+                )
+            )
 
         else:
-            self.status_changed.emit(f"{type_name}-Connection {source_id} → {target_id} gesetzt")
+            self.status_changed.emit(
+                tr(
+                    "{type} connection {source} → {target} set",
+                    type=type_name,
+                    source=source_id,
+                    target=target_id,
+                )
+            )
 
     def _set_start(self, node_id: int | None):
         if node_id == self._start_node_id:

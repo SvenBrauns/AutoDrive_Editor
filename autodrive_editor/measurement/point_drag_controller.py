@@ -26,13 +26,13 @@ class PointDragState:
         self, point_index: int, press_scene_position: QPointF, original_point_position: QPointF
     ):
         if point_index < 0:
-            raise ValueError("Der Punktindex darf nicht negativ sein.")
+            raise ValueError("The point index must not be negative.")
 
         if not isinstance(press_scene_position, QPointF):
-            raise TypeError("Die Scene-Position des Klicks ist ungültig.")
+            raise TypeError("Invalid scene position of the click.")
 
         if not isinstance(original_point_position, QPointF):
-            raise TypeError("Die Ausgangsposition des Punkts ist ungültig.")
+            raise TypeError("Invalid start position of the point.")
 
         self.point_index = int(point_index)
 
@@ -44,10 +44,10 @@ class PointDragState:
 
     def update(self, current_scene_position: QPointF) -> QPointF:
         if not self.is_active:
-            raise RuntimeError("Es ist kein Point-Drag aktiv.")
+            raise RuntimeError("No point drag is active.")
 
         if not isinstance(current_scene_position, QPointF):
-            raise TypeError("Die aktuelle Scene-Position ist ungültig.")
+            raise TypeError("Invalid current scene position.")
 
         movement = current_scene_position - self.press_scene_position
 

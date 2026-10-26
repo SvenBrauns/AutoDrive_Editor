@@ -1,4 +1,5 @@
 from autodrive_editor.editing.commands.edit_command import DataChange, EditCommand
+from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData
 from autodrive_editor.model.connections import (
     NO_CONNECTION,
@@ -24,21 +25,21 @@ class SetConnectionCommand(EditCommand):
 
         for node_id in (source_id, target_id):
             if node_id not in autodrive_data.nodes:
-                raise ValueError(f"Die Node-ID {node_id} ist nicht vorhanden.")
+                raise ValueError(f"Node ID {node_id} does not exist.")
 
         if source_id == target_id:
-            raise ValueError("Eine Node kann nicht mit sich selbst verbunden werden.")
+            raise ValueError("A node cannot be connected to itself.")
 
         old_state = read_connection_state(autodrive_data, source_id, target_id)
 
         if new_state == NO_CONNECTION:
-            text = "Connection entfernen"
+            text = tr("Remove connection")
 
         elif old_state == NO_CONNECTION:
-            text = "Connection erstellen"
+            text = tr("Create connection")
 
         else:
-            text = "Connection ändern"
+            text = tr("Change connection")
 
         super().__init__(text, autodrive_data)
 

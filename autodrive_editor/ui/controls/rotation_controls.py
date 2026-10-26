@@ -10,6 +10,8 @@ from PySide6.QtWidgets import (
     QWidgetAction,
 )
 
+from autodrive_editor.i18n import tr
+
 
 class RotationControls(QToolButton):
     """Toolbar menu for the view rotation angle and rotation step."""
@@ -23,9 +25,9 @@ class RotationControls(QToolButton):
     def __init__(self, rotation_angle: float = 0.0, rotation_step: float = 1.0, parent=None):
         super().__init__(parent)
 
-        self.setText("Rotation")
+        self.setText(tr("Rotation"))
 
-        self.setToolTip("Rotation und Rotationsraster einstellen")
+        self.setToolTip(tr("Set the rotation and the rotation step"))
 
         self.setPopupMode(QToolButton.InstantPopup)
 
@@ -48,17 +50,17 @@ class RotationControls(QToolButton):
             minimum=0.0, maximum=90.0, value=1.0, step=0.1
         )
 
-        self.rotation_step_input.setToolTip("0° bedeutet stufenlose Rotation")
+        self.rotation_step_input.setToolTip(tr("0° means free rotation"))
 
         self.rotation_step_input.editingFinished.connect(self._emit_rotation_step)
 
         form_layout = QFormLayout()
 
-        form_layout.addRow("Winkel:", self.rotation_angle_input)
+        form_layout.addRow(tr("Angle:"), self.rotation_angle_input)
 
-        form_layout.addRow("Rotationsraster:", self.rotation_step_input)
+        form_layout.addRow(tr("Rotation step:"), self.rotation_step_input)
 
-        reset_button = QPushButton("Rotation zurücksetzen")
+        reset_button = QPushButton(tr("Reset rotation"))
 
         reset_button.clicked.connect(self._request_reset)
 
@@ -91,7 +93,7 @@ class RotationControls(QToolButton):
 
         self.rotation_angle_input.blockSignals(False)
 
-        self.setText(f"Rotation {normalized_angle:.2f}°")
+        self.setText(tr("Rotation {angle:.2f}°", angle=normalized_angle))
 
     def set_rotation_step(self, rotation_step: float):
         rotation_step = max(0.0, float(rotation_step))

@@ -12,7 +12,7 @@ class MeasurementPoint:
 
     def __post_init__(self):
         if not isinstance(self.position, QPointF):
-            raise TypeError("Die Position des Messpunkts muss ein QPointF sein.")
+            raise TypeError("The position of the measuring point must be a QPointF.")
 
         self.position = QPointF(self.position)
 
@@ -20,7 +20,7 @@ class MeasurementPoint:
             self.node_id = int(self.node_id)
 
             if self.node_id <= 0:
-                raise ValueError("Eine Node-ID muss größer als 0 sein.")
+                raise ValueError("A node ID must be greater than 0.")
 
     @property
     def is_node_anchor(self) -> bool:
@@ -40,12 +40,10 @@ class MeasurementPoint:
 
     def set_position(self, position: QPointF):
         if not isinstance(position, QPointF):
-            raise TypeError("Die Position des Messpunkts muss ein QPointF sein.")
+            raise TypeError("The position of the measuring point must be a QPointF.")
 
         if self.is_node_anchor:
-            raise ValueError(
-                "Ein an eine Node gebundener Messpunkt kann nicht frei verschoben werden."
-            )
+            raise ValueError("A measuring point bound to a node cannot be moved freely.")
 
         self.position = QPointF(position)
 

@@ -1,6 +1,7 @@
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QMouseEvent
 
+from autodrive_editor.i18n import tr
 from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
 from autodrive_editor.ui.map_view.area_selection import AreaSelectionController
 from autodrive_editor.ui.tools.map_tool import MapTool
@@ -82,9 +83,9 @@ class SelectTool(MapTool):
         return True
 
     def status_hint(self) -> str | None:
-        return (
-            "Klick wählt eine Node, Strg+Klick schaltet um, Rechtsziehen wählt einen Bereich, "
-            "Umschalt+Rechtsziehen zeichnet ein Lasso"
+        return tr(
+            "Click selects a node, Ctrl+click toggles, right-drag selects an area, "
+            "Shift+right-drag draws a lasso"
         )
 
     def cursor_at(self, view_position: QPoint) -> Qt.CursorShape:

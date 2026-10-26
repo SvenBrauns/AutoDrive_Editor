@@ -60,8 +60,8 @@ def test_dragging_the_ring_rotates_the_selection(rotating):
     assert xz(rotating, 2) == pytest.approx((10, 0), abs=0.2)
     assert xz(rotating, 3) == pytest.approx((10, 10), abs=0.2)
     assert rotating.edit_history.undo_stack.count() == 1
-    assert rotating.actions.undo_action.text() == "Rückgängig: 3 Nodes rotieren"
-    assert rotating.status.text().startswith("3 Nodes um 90")
+    assert rotating.actions.undo_action.text() == "Undo: Rotate 3 nodes"
+    assert rotating.status.text().startswith("3 nodes rotated by 90")
 
 
 def test_shift_snaps_while_dragging(rotating):
@@ -73,7 +73,7 @@ def test_shift_snaps_while_dragging(rotating):
         modifiers=Qt.ShiftModifier,
     )  # ~50°
 
-    assert rotating.status.text() == "3 Nodes um 45.0° rotiert"
+    assert rotating.status.text() == "3 nodes rotated by 45.0°"
 
 
 def test_dragging_off_the_ring_pans(rotating):
@@ -125,7 +125,7 @@ def test_no_ring_with_fewer_than_two_nodes(zoomed_window):
 
     assert tool(zoomed_window).ring is None
     assert zoomed_window.status.text() == (
-        "Modus: Auswahl rotieren – Zum Rotieren mindestens zwei Nodes auswählen"
+        "Mode: Rotate selection – Select at least two nodes to rotate"
     )
 
 

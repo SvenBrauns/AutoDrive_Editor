@@ -55,7 +55,7 @@ class EditCommand(QUndoCommand):
         super().__init__(text)
 
         if not isinstance(autodrive_data, AutoDriveData):
-            raise TypeError("Die AutoDrive-Daten sind ungültig.")
+            raise TypeError("Invalid AutoDrive data.")
 
         self.autodrive_data = autodrive_data
 

@@ -21,7 +21,7 @@ class AreaSelectionController(QObject):
         super().__init__(parent)
 
         if not isinstance(view, QGraphicsView):
-            raise TypeError("Die Kartenansicht ist ungültig.")
+            raise TypeError("Invalid map view.")
 
         self.view = view
 
@@ -46,7 +46,7 @@ class AreaSelectionController(QObject):
         """Starts a box, or a freehand lasso that follows the mouse."""
 
         if not isinstance(press_position, QPoint):
-            raise TypeError("Die Startposition der Bereichsauswahl ist ungültig.")
+            raise TypeError("Invalid start position of the area selection.")
 
         self.cancel(emit_preview_cleared=False)
 
@@ -59,7 +59,7 @@ class AreaSelectionController(QObject):
 
     def handle_drag(self, current_position: QPoint, modifiers) -> bool:
         if not isinstance(current_position, QPoint):
-            raise TypeError("Die aktuelle Position der Bereichsauswahl ist ungültig.")
+            raise TypeError("Invalid current position of the area selection.")
 
         self._current_position = QPoint(current_position)
 

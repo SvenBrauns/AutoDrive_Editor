@@ -50,6 +50,26 @@ def test_imported_map_is_found_by_its_autodrive_name(cache, tmp_path):
     assert MapCache().find(None) is None
 
 
+def test_cached_title_follows_the_editor_language(cache, tmp_path, german):
+    cached, _, _ = import_test_map(cache, tmp_path)
+    info_path = cached.directory / "map.json"
+    info = json.loads(info_path.read_text(encoding="utf-8"))
+    info["titles"] = {"en": "Test map", "de": "Testkarte"}
+    info_path.write_text(json.dumps(info), encoding="utf-8")
+
+    assert MapCache().maps()[0].title == "Testkarte"
+
+
+def test_imports_from_older_versions_keep_their_title(cache, tmp_path):
+    cached, _, _ = import_test_map(cache, tmp_path)
+    info_path = cached.directory / "map.json"
+    info = json.loads(info_path.read_text(encoding="utf-8"))
+    del info["titles"]
+    info_path.write_text(json.dumps(info), encoding="utf-8")
+
+    assert MapCache().maps()[0].title == "LS25 Testkarte 2.0"
+
+
 def test_importing_again_replaces_the_earlier_import(cache, tmp_path):
     first, mod_path, entry = import_test_map(cache, tmp_path)
 
@@ -81,7 +101,7 @@ def test_maps_with_problems_are_not_imported(cache, tmp_path):
     mod_path = make_single_map_mod(tmp_path / "mods", width=3000)
     entry = read_map_mod(mod_path).maps[0]
 
-    with pytest.raises(ValueError, match="Kartengröße"):
+    with pytest.raises(ValueError, match="Map size"):
         cache.import_map(mod_path, entry)
 
     assert cache.maps() == []

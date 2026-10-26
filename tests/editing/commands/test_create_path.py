@@ -25,7 +25,7 @@ def new_nodes(*ids):
 
 
 def test_new_nodes_are_added_and_chained(data):
-    command = CreatePathCommand("Linie", data, [3, 4, 5], new_nodes(3, 4, 5), REGULAR)
+    command = CreatePathCommand("Line", data, [3, 4, 5], new_nodes(3, 4, 5), REGULAR)
 
     command.redo()
 
@@ -38,7 +38,7 @@ def test_new_nodes_are_added_and_chained(data):
 
 
 def test_undo_and_redo(data):
-    command = CreatePathCommand("Linie", data, [3, 4], new_nodes(3, 4), DUAL)
+    command = CreatePathCommand("Line", data, [3, 4], new_nodes(3, 4), DUAL)
     command.redo()
 
     command.undo()
@@ -49,7 +49,7 @@ def test_undo_and_redo(data):
 
 
 def test_chain_between_existing_nodes(data):
-    command = CreatePathCommand("Linie", data, [1, 3, 2], new_nodes(3), REGULAR)
+    command = CreatePathCommand("Line", data, [1, 3, 2], new_nodes(3), REGULAR)
 
     command.redo()
 
@@ -66,7 +66,7 @@ def test_chain_between_existing_nodes(data):
 def test_undo_restores_existing_connection_between_two_existing_nodes(data):
     reverse = CONNECTION_STATES[ConnectionType.REVERSE]
     data.nodes[1].outgoing.add(2)
-    command = CreatePathCommand("Linie", data, [1, 2], [], DUAL)
+    command = CreatePathCommand("Line", data, [1, 2], [], DUAL)
 
     command.redo()
     assert read_connection_state(data, 1, 2) == DUAL
@@ -78,7 +78,7 @@ def test_undo_restores_existing_connection_between_two_existing_nodes(data):
 
 def test_data_change_contents(data):
     changes = []
-    command = CreatePathCommand("Linie", data, [1, 3, 2], new_nodes(3), REGULAR)
+    command = CreatePathCommand("Line", data, [1, 3, 2], new_nodes(3), REGULAR)
     command.set_change_listener(changes.append)
 
     command.redo()
@@ -101,4 +101,4 @@ def test_data_change_contents(data):
 )
 def test_invalid_chains_are_rejected(data, chain, nodes):
     with pytest.raises(ValueError):
-        CreatePathCommand("Linie", data, chain, nodes, REGULAR)
+        CreatePathCommand("Line", data, chain, nodes, REGULAR)

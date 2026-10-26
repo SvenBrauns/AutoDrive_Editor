@@ -7,6 +7,7 @@ from PySide6.QtCore import QSettings
 from autodrive_editor.editing.path_shapes import PathOptions
 from autodrive_editor.game.game_folder import GameFolder
 from autodrive_editor.game.game_installation import GameInstallation
+from autodrive_editor.i18n import LANGUAGES, system_language
 from autodrive_editor.model.connections import ConnectionType
 from autodrive_editor.paths import user_data_directory
 
@@ -22,6 +23,7 @@ class AppSettings:
     PATH_SPACING_KEY = "path/spacing"
     PATH_CONNECTION_KEY = "path/connection_type"
     PATH_FLAG_KEY = "path/flag"
+    LANGUAGE_KEY = "app/language"
 
     DEFAULT_AUTOSAVE_MINUTES = 5
 
@@ -80,6 +82,18 @@ class AppSettings:
 
     def set_autosave_minutes(self, minutes: int):
         self._settings.setValue(self.AUTOSAVE_MINUTES_KEY, max(0, int(minutes)))
+        self._settings.sync()
+
+    @property
+    def language(self) -> str:
+        """The chosen language. Until one is chosen, it follows Windows."""
+
+        value = self._settings.value(self.LANGUAGE_KEY, "")
+
+        return value if value in LANGUAGES else system_language()
+
+    def set_language(self, language: str):
+        self._settings.setValue(self.LANGUAGE_KEY, language)
         self._settings.sync()
 
     @property

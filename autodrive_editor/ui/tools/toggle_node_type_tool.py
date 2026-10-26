@@ -2,6 +2,7 @@ from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QMouseEvent
 
 from autodrive_editor.editing.operations.node_types import NodeTypeOperation
+from autodrive_editor.i18n import tr
 from autodrive_editor.ui.tools.map_tool import MapTool
 
 
@@ -26,7 +27,7 @@ class ToggleNodeTypeTool(MapTool):
         return True
 
     def status_hint(self) -> str | None:
-        return "Node anklicken, um zwischen Regular und Subprio zu wechseln"
+        return tr("Click a node to switch between regular and subprio")
 
     def cursor_at(self, view_position: QPoint) -> Qt.CursorShape:
         if self._pan.is_dragging:

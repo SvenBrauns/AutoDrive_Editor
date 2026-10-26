@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from enum import Enum
 from itertools import pairwise
 
+from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import REGULAR_FLAG
 from autodrive_editor.model.connections import ConnectionType
 
@@ -127,7 +128,7 @@ def spaced_points(polyline: list[Point], spacing: float) -> list[Point]:
     evenly."""
 
     if spacing <= 0:
-        raise ValueError("Der Node-Abstand muss größer als 0 sein.")
+        raise ValueError(tr("The node spacing must be greater than 0."))
 
     segment_lengths = [math.dist(a, b) for a, b in pairwise(polyline)]
     total_length = sum(segment_lengths)

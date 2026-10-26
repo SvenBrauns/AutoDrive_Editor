@@ -3,6 +3,7 @@ from collections.abc import Callable
 from PySide6.QtCore import QObject, QPoint, Qt, Signal
 from PySide6.QtGui import QPainterPath
 
+from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
 from autodrive_editor.rendering.items.node_item import NodeItem
 from autodrive_editor.rendering.scene_renderer import SceneRenderer
@@ -16,7 +17,7 @@ class SelectionCoordinator(QObject):
     the node info up to date.
     """
 
-    NO_SELECTION_INFO = "Keine Node ausgewählt"
+    NO_SELECTION_INFO = tr("No node selected")
 
     selection_info_changed = Signal(str)
 
@@ -34,19 +35,19 @@ class SelectionCoordinator(QObject):
         super().__init__(parent)
 
         if not isinstance(view, MapView):
-            raise TypeError("Die Kartenansicht ist ungültig.")
+            raise TypeError("Invalid map view.")
 
         if not isinstance(renderer, SceneRenderer):
-            raise TypeError("Der SceneRenderer ist ungültig.")
+            raise TypeError("Invalid SceneRenderer.")
 
         if not isinstance(node_selection, NodeSelection):
-            raise TypeError("Der NodeSelection ist ungültig.")
+            raise TypeError("Invalid NodeSelection.")
 
         if not isinstance(node_info_formatter, NodeInfoFormatter):
-            raise TypeError("Der NodeInfoFormatter ist ungültig.")
+            raise TypeError("Invalid NodeInfoFormatter.")
 
         if not callable(autodrive_data_provider):
-            raise TypeError("Der AutoDrive-Datenprovider ist ungültig.")
+            raise TypeError("Invalid AutoDrive data provider.")
 
         self.view = view
         self.renderer = renderer
@@ -69,7 +70,7 @@ class SelectionCoordinator(QObject):
 
     def show_node_info(self, node_data: NodeData):
         if not isinstance(node_data, NodeData):
-            raise TypeError("Die Node-Daten sind ungültig.")
+            raise TypeError("Invalid node data.")
 
         self.node_selection.replace({node_data.node_id}, primary_node_id=node_data.node_id)
 
@@ -176,12 +177,12 @@ class SelectionCoordinator(QObject):
         autodrive_data = self._autodrive_data_provider()
 
         if autodrive_data is None or primary_node_id is None:
-            return f"{selection_count} Nodes ausgewählt"
+            return tr("{count} nodes selected", count=selection_count)
 
         primary_node = autodrive_data.get_node(primary_node_id)
 
         if primary_node is None:
-            return f"{selection_count} Nodes ausgewählt"
+            return tr("{count} nodes selected", count=selection_count)
 
         node_info_text = self.node_info_formatter.format_node_info(
             node_data=primary_node, autodrive_data=autodrive_data
@@ -191,8 +192,10 @@ class SelectionCoordinator(QObject):
             return node_info_text
 
         return (
-            f"{selection_count} Nodes ausgewählt\n"
-            f"Primäre Auswahl: "
-            f"{primary_node_id}\n\n"
-            f"{node_info_text}"
+            tr(
+                "{count} nodes selected\nPrimary selection: {node}",
+                count=selection_count,
+                node=primary_node_id,
+            )
+            + f"\n\n{node_info_text}"
         )

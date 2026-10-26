@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from autodrive_editor.i18n import tr
 from autodrive_editor.rendering.display_style import DisplayStyle
 
 
@@ -45,7 +46,7 @@ class ColorButton(QPushButton):
     def _select_color(self):
         initial_color = QColor(self._color[0], self._color[1], self._color[2])
 
-        selected_color = QColorDialog.getColor(initial_color, self, "Farbe auswählen")
+        selected_color = QColorDialog.getColor(initial_color, self, tr("Choose color"))
 
         if not selected_color.isValid():
             return
@@ -89,7 +90,7 @@ class DisplayOptionsDialog(QDialog):
 
         self._base_style = display_style
 
-        self.setWindowTitle("Darstellungsoptionen")
+        self.setWindowTitle(tr("Display options"))
 
         self.setMinimumWidth(500)
 
@@ -159,55 +160,57 @@ class DisplayOptionsDialog(QDialog):
     def _create_layout(self):
         node_layout = QFormLayout()
 
-        node_layout.addRow("Node-Durchmesser:", self.node_diameter_input)
+        node_layout.addRow(tr("Node diameter:"), self.node_diameter_input)
 
-        node_layout.addRow("Node-Randbreite:", self.node_border_width_input)
+        node_layout.addRow(tr("Node border width:"), self.node_border_width_input)
 
-        node_layout.addRow("Auswahlring-Breite:", self.selected_node_ring_width_input)
+        node_layout.addRow(tr("Selection ring width:"), self.selected_node_ring_width_input)
 
-        node_group = QGroupBox("Nodes")
+        node_group = QGroupBox(tr("Nodes"))
 
         node_group.setLayout(node_layout)
 
         marker_layout = QFormLayout()
 
-        marker_layout.addRow("Marker-Skalierung:", self.marker_scale_input)
+        marker_layout.addRow(tr("Marker scale:"), self.marker_scale_input)
 
-        marker_layout.addRow("Abstand zur Node:", self.marker_node_gap_input)
+        marker_layout.addRow(tr("Distance to node:"), self.marker_node_gap_input)
 
-        marker_group = QGroupBox("Marker")
+        marker_group = QGroupBox(tr("Markers"))
 
         marker_group.setLayout(marker_layout)
 
         connection_layout = QFormLayout()
 
-        connection_layout.addRow("Übersichtsbreite:", self.connection_width_input)
+        connection_layout.addRow(tr("Overview width:"), self.connection_width_input)
 
-        connection_layout.addRow("Detailbreite:", self.detailed_connection_width_input)
+        connection_layout.addRow(tr("Detail width:"), self.detailed_connection_width_input)
 
-        connection_layout.addRow("Pfeillänge:", self.arrow_length_input)
+        connection_layout.addRow(tr("Arrow length:"), self.arrow_length_input)
 
-        connection_layout.addRow("Pfeilbreite:", self.arrow_width_input)
+        connection_layout.addRow(tr("Arrow width:"), self.arrow_width_input)
 
-        connection_layout.addRow("Regular-Farbe:", self.regular_connection_color_button)
+        connection_layout.addRow(tr("Regular color:"), self.regular_connection_color_button)
 
-        connection_layout.addRow("Dual-Farbe:", self.dual_connection_color_button)
+        connection_layout.addRow(tr("Dual color:"), self.dual_connection_color_button)
 
-        connection_layout.addRow("Reverse-Farbe:", self.reverse_connection_color_button)
+        connection_layout.addRow(tr("Reverse color:"), self.reverse_connection_color_button)
 
-        connection_group = QGroupBox("Connections")
+        connection_group = QGroupBox(tr("Connections"))
 
         connection_group.setLayout(connection_layout)
 
         zoom_layout = QFormLayout()
 
-        zoom_layout.addRow("Nodes ab Zoom:", self.node_min_zoom_input)
+        zoom_layout.addRow(tr("Nodes from zoom:"), self.node_min_zoom_input)
 
-        zoom_layout.addRow("Marker ab Zoom:", self.marker_min_zoom_input)
+        zoom_layout.addRow(tr("Markers from zoom:"), self.marker_min_zoom_input)
 
-        zoom_layout.addRow("Detail-Connections ab Zoom:", self.connection_detail_min_zoom_input)
+        zoom_layout.addRow(
+            tr("Detailed connections from zoom:"), self.connection_detail_min_zoom_input
+        )
 
-        zoom_group = QGroupBox("Sichtbarkeitsgrenzen")
+        zoom_group = QGroupBox(tr("Visibility limits"))
 
         zoom_group.setLayout(zoom_layout)
 
@@ -233,7 +236,7 @@ class DisplayOptionsDialog(QDialog):
 
         scroll_area.setWidget(options_widget)
 
-        self.default_button = QPushButton("Standardwerte")
+        self.default_button = QPushButton(tr("Defaults"))
 
         self.default_button.clicked.connect(self._load_defaults)
 

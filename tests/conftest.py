@@ -169,3 +169,13 @@ def sloped_heightmap(tmp_path):
     path = tmp_path / "dem.png"
     image.save(path)
     return path
+
+
+@pytest.fixture
+def german():
+    """The editor's texts in German for one test."""
+    from autodrive_editor import i18n
+
+    i18n.set_language(i18n.GERMAN)
+    yield
+    i18n.set_language(i18n.ENGLISH)

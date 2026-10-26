@@ -3,12 +3,13 @@
 import ctypes
 import sys
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QLibraryInfo, QTimer, QTranslator
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
+from autodrive_editor import i18n
 from autodrive_editor.paths import APP_ICON_PATH
-from autodrive_editor.ui.main_window import MainWindow
+from autodrive_editor.settings.app_settings import AppSettings
 
 APP_NAME = "AutoDrive FS25 Editor"
 
@@ -25,6 +26,12 @@ def run() -> int:
     app.setApplicationName(APP_NAME)
     app.setWindowIcon(QIcon(str(APP_ICON_PATH)))
 
+    install_language(app, AppSettings().language)
+
+    # Imported only now, because some UI modules translate their texts
+    # when they are imported.
+    from autodrive_editor.ui.main_window import MainWindow
+
     window = MainWindow()
     window.show()
 
@@ -33,3 +40,16 @@ def run() -> int:
     QTimer.singleShot(0, window.offer_autosave_restore)
 
     return app.exec()
+
+
+def install_language(app: QApplication, language: str):
+    """Sets the language of the editor's texts and of Qt's own texts,
+    such as the Yes/No/Cancel buttons of message boxes."""
+
+    i18n.set_language(language)
+
+    translator = QTranslator(app)
+    translations = QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)
+
+    if translator.load(f"qtbase_{language}", translations):
+        app.installTranslator(translator)

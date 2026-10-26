@@ -4,6 +4,8 @@ import zipfile
 from pathlib import Path, PurePosixPath
 from typing import IO
 
+from autodrive_editor.i18n import tr
+
 
 class ModArchive:
     """Files of a mod by their path inside the mod, e.g. "maps/map.xml".
@@ -23,7 +25,7 @@ class ModArchive:
                 if file.is_file()
             ]
         else:
-            raise FileNotFoundError(f"Mod nicht gefunden: {self.path}")
+            raise FileNotFoundError(tr("Mod not found: {path}", path=self.path))
 
         self._names = {name.lower(): name for name in names}
 
@@ -62,7 +64,9 @@ class ModArchive:
         real_name = self.resolve(name)
 
         if real_name is None:
-            raise FileNotFoundError(f"{name} fehlt im Mod {self.name}")
+            raise FileNotFoundError(
+                tr("{file} is missing in the mod {mod}", file=name, mod=self.name)
+            )
 
         if self._zip is not None:
             return self._zip.open(real_name)

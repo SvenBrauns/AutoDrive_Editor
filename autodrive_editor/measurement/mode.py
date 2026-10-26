@@ -1,5 +1,7 @@
 from enum import Enum
 
+from autodrive_editor.i18n import tr
+
 
 class MeasurementMode(Enum):
     """Which measuring tool is active."""
@@ -11,9 +13,9 @@ class MeasurementMode(Enum):
     @property
     def display_name(self) -> str:
         display_names = {
-            MeasurementMode.INACTIVE: "Inaktiv",
-            MeasurementMode.DISTANCE: "Abstand",
-            MeasurementMode.ANGLE: "Winkel",
+            MeasurementMode.INACTIVE: tr("Inactive"),
+            MeasurementMode.DISTANCE: tr("Distance"),
+            MeasurementMode.ANGLE: tr("Angle"),
         }
 
         return display_names[self]
