@@ -27,7 +27,7 @@ class NodeClickTool(MapTool):
         self._click = click
         self._hint = hint
         self._cancel = cancel
-        self._is_target = is_target or view.has_selectable_item_at
+        self._is_target = is_target or view.has_node_at
 
     def mouse_release(self, event: QMouseEvent) -> bool:
         if event.button() != Qt.LeftButton:

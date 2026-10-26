@@ -119,7 +119,7 @@ class PathTool(MapTool):
         if self._handle_at(view_position) is not None:
             return Qt.OpenHandCursor
 
-        if self.view.has_selectable_item_at(view_position):
+        if self.view.has_node_at(view_position):
             return Qt.PointingHandCursor
 
         return Qt.CrossCursor

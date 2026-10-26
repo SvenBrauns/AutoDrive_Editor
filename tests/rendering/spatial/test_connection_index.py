@@ -176,3 +176,28 @@ def test_incremental_updates_match_a_fresh_build():
         index.rebuild_node_connections(data, {source, target})
 
         assert connection_pairs(index) == connection_pairs(build_index(data))
+
+
+def test_each_connection_is_drawn_from_its_source_tile():
+    index = build_index(build_data())
+
+    drawing = {
+        tile: sorted(c.source_id for c in connections.values())
+        for tile, connections in index.connections_by_drawing_tile.items()
+    }
+
+    # Connection 1 -> 2 spans tiles 0, the dual 2 <-> 3 starts at node 2 (x = 50).
+    assert drawing == {(0, 0): [1, 2]}
+
+
+def test_changed_drawing_tiles_are_reported_once():
+    data = build_data()
+    index = build_index(data)
+    assert index.take_changed_tiles() == {(0, 0)}
+
+    data.nodes[1].x = 250
+    index.update_node_positions(data, [1])
+
+    assert index.take_changed_tiles() == {(0, 0), (2, 0)}
+    assert index.take_changed_tiles() == set()
+    assert (2, 0) in index.connections_by_drawing_tile

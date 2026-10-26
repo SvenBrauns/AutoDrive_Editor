@@ -67,12 +67,12 @@ class MoveNodesOperation(QObject):
         if autodrive_data is None:
             return False
 
-        node_item = self.selection_coordinator.get_node_item_at(view_position)
+        clicked_node = self.selection_coordinator.get_node_at(view_position)
 
-        if node_item is None:
+        if clicked_node is None:
             return False
 
-        pressed_node_id = node_item.node_id
+        pressed_node_id = clicked_node.node_id
 
         selected_node_ids = self.node_selection.selected_node_ids
 

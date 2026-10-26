@@ -40,12 +40,10 @@ class NodeTypeOperation(QObject):
         if autodrive_data is None or self.edit_history.history_locked:
             return False
 
-        node_item = self.selection_coordinator.get_node_item_at(view_position)
+        clicked_node = self.selection_coordinator.get_node_at(view_position)
 
-        if node_item is None:
+        if clicked_node is None:
             return False
-
-        clicked_node = autodrive_data.get_node(node_item.node_id)
 
         # Nodes with flags other than regular/subprio keep their value.
         if not clicked_node.has_known_flag:

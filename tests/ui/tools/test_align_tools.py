@@ -15,7 +15,6 @@ def align_window(window, write_xml, qapp):
     window.view.set_zoom_level(4.0)
     window.view.centerOn(10, 0)
     qapp.processEvents()
-    window.scene_renderer.update_visible_scene_rect(window.view.get_visible_scene_rect())
     window.data = window.project_coordinator.autodrive_data
     window.node_selection.replace({2, 3})
     return window

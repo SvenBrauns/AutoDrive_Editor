@@ -80,6 +80,50 @@ class ColorButton(QPushButton):
         )
 
 
+# Sizes in metres grow with the zoom; sizes in pixels are limits on screen. Each group:
+# (title, (field, label, minimum, maximum, step) per size, (field, label) per color).
+OPTION_GROUPS = (
+    (
+        tr("Nodes"),
+        (
+            ("node_diameter", tr("Diameter (m):"), 0.1, 100.0, 0.1),
+            ("node_max_px", tr("Largest on screen (px):"), 1.0, 200.0, 1.0),
+            ("node_border_width", tr("Border width (m):"), 0.0, 20.0, 0.05),
+            ("node_fade_end_px", tr("Fully shown from (px):"), 0.0, 50.0, 0.5),
+            ("selected_node_min_px", tr("Selected, smallest on screen (px):"), 1.0, 50.0, 1.0),
+            ("selected_node_ring_width", tr("Selection ring width (m):"), 0.0, 20.0, 0.05),
+        ),
+        (),
+    ),
+    (
+        tr("Connections"),
+        (
+            ("connection_width", tr("Width (m):"), 0.01, 20.0, 0.05),
+            ("connection_min_px", tr("Thinnest on screen (px):"), 0.5, 20.0, 0.5),
+            ("connection_max_px", tr("Thickest on screen (px):"), 0.5, 50.0, 0.5),
+            ("arrow_length", tr("Arrow length (m):"), 0.1, 100.0, 0.1),
+            ("arrow_min_px", tr("Smallest arrow (px):"), 1.0, 100.0, 1.0),
+            ("arrow_max_px", tr("Largest arrow (px):"), 1.0, 100.0, 1.0),
+        ),
+        (
+            ("regular_connection_color", tr("Regular color:")),
+            ("dual_connection_color", tr("Dual color:")),
+            ("reverse_connection_color", tr("Reverse color:")),
+        ),
+    ),
+    (
+        tr("Markers"),
+        (
+            ("marker_size", tr("Icon height (m):"), 0.1, 100.0, 0.5),
+            ("marker_min_px", tr("Smallest on screen (px):"), 1.0, 200.0, 1.0),
+            ("marker_max_px", tr("Largest on screen (px):"), 1.0, 200.0, 1.0),
+            ("marker_name_min_zoom", tr("Names from zoom:"), 0.0, 50.0, 0.1),
+        ),
+        (),
+    ),
+)
+
+
 class DisplayOptionsDialog(QDialog):
     """Dialog for editing the DisplayStyle."""
 
@@ -96,133 +140,31 @@ class DisplayOptionsDialog(QDialog):
 
         self.resize(560, 720)
 
-        self._create_controls()
+        self.size_inputs: dict[str, QDoubleSpinBox] = {}
+        self.color_buttons: dict[str, ColorButton] = {}
+
         self._create_layout()
         self._load_style(display_style)
 
-    def _create_controls(self):
-        self.node_diameter_input = self._create_spin_box(
-            minimum=0.1, maximum=100.0, step=0.1, decimals=2
-        )
-
-        self.node_border_width_input = self._create_spin_box(
-            minimum=0.0, maximum=20.0, step=0.05, decimals=2
-        )
-
-        self.selected_node_ring_width_input = self._create_spin_box(
-            minimum=0.0, maximum=20.0, step=0.05, decimals=2
-        )
-
-        self.marker_scale_input = self._create_spin_box(
-            minimum=0.001, maximum=10.0, step=0.01, decimals=3
-        )
-
-        self.marker_node_gap_input = self._create_spin_box(
-            minimum=0.0, maximum=100.0, step=0.1, decimals=2
-        )
-
-        self.connection_width_input = self._create_spin_box(
-            minimum=0.01, maximum=20.0, step=0.05, decimals=2
-        )
-
-        self.detailed_connection_width_input = self._create_spin_box(
-            minimum=0.01, maximum=20.0, step=0.05, decimals=2
-        )
-
-        self.arrow_length_input = self._create_spin_box(
-            minimum=0.01, maximum=100.0, step=0.1, decimals=2
-        )
-
-        self.arrow_width_input = self._create_spin_box(
-            minimum=0.01, maximum=100.0, step=0.1, decimals=2
-        )
-
-        self.node_min_zoom_input = self._create_spin_box(
-            minimum=0.0, maximum=50.0, step=0.1, decimals=3
-        )
-
-        self.marker_min_zoom_input = self._create_spin_box(
-            minimum=0.0, maximum=50.0, step=0.1, decimals=3
-        )
-
-        self.connection_detail_min_zoom_input = self._create_spin_box(
-            minimum=0.0, maximum=50.0, step=0.1, decimals=3
-        )
-
-        default_style = DisplayStyle()
-
-        self.regular_connection_color_button = ColorButton(default_style.regular_connection_color)
-
-        self.dual_connection_color_button = ColorButton(default_style.dual_connection_color)
-
-        self.reverse_connection_color_button = ColorButton(default_style.reverse_connection_color)
-
     def _create_layout(self):
-        node_layout = QFormLayout()
-
-        node_layout.addRow(tr("Node diameter:"), self.node_diameter_input)
-
-        node_layout.addRow(tr("Node border width:"), self.node_border_width_input)
-
-        node_layout.addRow(tr("Selection ring width:"), self.selected_node_ring_width_input)
-
-        node_group = QGroupBox(tr("Nodes"))
-
-        node_group.setLayout(node_layout)
-
-        marker_layout = QFormLayout()
-
-        marker_layout.addRow(tr("Marker scale:"), self.marker_scale_input)
-
-        marker_layout.addRow(tr("Distance to node:"), self.marker_node_gap_input)
-
-        marker_group = QGroupBox(tr("Markers"))
-
-        marker_group.setLayout(marker_layout)
-
-        connection_layout = QFormLayout()
-
-        connection_layout.addRow(tr("Overview width:"), self.connection_width_input)
-
-        connection_layout.addRow(tr("Detail width:"), self.detailed_connection_width_input)
-
-        connection_layout.addRow(tr("Arrow length:"), self.arrow_length_input)
-
-        connection_layout.addRow(tr("Arrow width:"), self.arrow_width_input)
-
-        connection_layout.addRow(tr("Regular color:"), self.regular_connection_color_button)
-
-        connection_layout.addRow(tr("Dual color:"), self.dual_connection_color_button)
-
-        connection_layout.addRow(tr("Reverse color:"), self.reverse_connection_color_button)
-
-        connection_group = QGroupBox(tr("Connections"))
-
-        connection_group.setLayout(connection_layout)
-
-        zoom_layout = QFormLayout()
-
-        zoom_layout.addRow(tr("Nodes from zoom:"), self.node_min_zoom_input)
-
-        zoom_layout.addRow(tr("Markers from zoom:"), self.marker_min_zoom_input)
-
-        zoom_layout.addRow(
-            tr("Detailed connections from zoom:"), self.connection_detail_min_zoom_input
-        )
-
-        zoom_group = QGroupBox(tr("Visibility limits"))
-
-        zoom_group.setLayout(zoom_layout)
-
         options_layout = QVBoxLayout()
 
-        options_layout.addWidget(node_group)
+        for title, sizes, colors in OPTION_GROUPS:
+            group_layout = QFormLayout()
 
-        options_layout.addWidget(marker_group)
+            for name, label, minimum, maximum, step in sizes:
+                spin_box = self._create_spin_box(minimum, maximum, step, decimals=2)
+                self.size_inputs[name] = spin_box
+                group_layout.addRow(label, spin_box)
 
-        options_layout.addWidget(connection_group)
+            for name, label in colors:
+                button = ColorButton(getattr(DisplayStyle(), name))
+                self.color_buttons[name] = button
+                group_layout.addRow(label, button)
 
-        options_layout.addWidget(zoom_group)
+            group = QGroupBox(title)
+            group.setLayout(group_layout)
+            options_layout.addWidget(group)
 
         options_layout.addStretch(1)
 
@@ -269,55 +211,17 @@ class DisplayOptionsDialog(QDialog):
         self.setLayout(main_layout)
 
     def _load_style(self, display_style: DisplayStyle):
-        self.node_diameter_input.setValue(display_style.node_diameter)
+        for name, spin_box in self.size_inputs.items():
+            spin_box.setValue(getattr(display_style, name))
 
-        self.node_border_width_input.setValue(display_style.node_border_width)
-
-        self.selected_node_ring_width_input.setValue(display_style.selected_node_ring_width)
-
-        self.marker_scale_input.setValue(display_style.marker_scale)
-
-        self.marker_node_gap_input.setValue(display_style.marker_node_gap)
-
-        self.connection_width_input.setValue(display_style.connection_width)
-
-        self.detailed_connection_width_input.setValue(display_style.detailed_connection_width)
-
-        self.arrow_length_input.setValue(display_style.arrow_length)
-
-        self.arrow_width_input.setValue(display_style.arrow_width)
-
-        self.node_min_zoom_input.setValue(display_style.node_min_zoom)
-
-        self.marker_min_zoom_input.setValue(display_style.marker_min_zoom)
-
-        self.connection_detail_min_zoom_input.setValue(display_style.connection_detail_min_zoom)
-
-        self.regular_connection_color_button.set_color(display_style.regular_connection_color)
-
-        self.dual_connection_color_button.set_color(display_style.dual_connection_color)
-
-        self.reverse_connection_color_button.set_color(display_style.reverse_connection_color)
+        for name, button in self.color_buttons.items():
+            button.set_color(getattr(display_style, name))
 
     def _build_style(self) -> DisplayStyle:
-        return replace(
-            self._base_style,
-            node_diameter=(self.node_diameter_input.value()),
-            node_border_width=(self.node_border_width_input.value()),
-            selected_node_ring_width=(self.selected_node_ring_width_input.value()),
-            marker_scale=(self.marker_scale_input.value()),
-            marker_node_gap=(self.marker_node_gap_input.value()),
-            connection_width=(self.connection_width_input.value()),
-            detailed_connection_width=(self.detailed_connection_width_input.value()),
-            arrow_length=(self.arrow_length_input.value()),
-            arrow_width=(self.arrow_width_input.value()),
-            node_min_zoom=(self.node_min_zoom_input.value()),
-            marker_min_zoom=(self.marker_min_zoom_input.value()),
-            connection_detail_min_zoom=(self.connection_detail_min_zoom_input.value()),
-            regular_connection_color=self.regular_connection_color_button.color,
-            dual_connection_color=self.dual_connection_color_button.color,
-            reverse_connection_color=self.reverse_connection_color_button.color,
-        )
+        sizes = {name: spin_box.value() for name, spin_box in self.size_inputs.items()}
+        colors = {name: button.color for name, button in self.color_buttons.items()}
+
+        return replace(self._base_style, **sizes, **colors)
 
     def _apply_changes(self):
         display_style = self._build_style()

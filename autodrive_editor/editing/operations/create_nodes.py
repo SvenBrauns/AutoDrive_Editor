@@ -51,7 +51,7 @@ class CreateNodesOperation(QObject):
             return None
 
         # Clicking an existing node does not create a second one there.
-        if self.selection_coordinator.get_node_item_at(view_position) is not None:
+        if self.selection_coordinator.get_node_at(view_position) is not None:
             return None
 
         scene_position = self.view.mapToScene(view_position)

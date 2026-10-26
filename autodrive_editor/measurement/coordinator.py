@@ -7,7 +7,7 @@ from autodrive_editor.measurement.calculations import calculate_horizontal_align
 from autodrive_editor.measurement.controller import MeasurementController
 from autodrive_editor.measurement.mode import MeasurementMode
 from autodrive_editor.measurement.point import MeasurementPoint
-from autodrive_editor.rendering.items.node_item import NodeItem
+from autodrive_editor.model.autodrive_data import NodeData
 from autodrive_editor.ui.map_view.map_view import MapView
 from autodrive_editor.ui.map_view.zoom_controller import ViewZoomController
 
@@ -27,7 +27,7 @@ class MeasurementCoordinator(QObject):
         self,
         view: MapView,
         controller: MeasurementController,
-        node_item_provider: Callable[[QPoint], NodeItem | None],
+        node_provider: Callable[[QPoint], NodeData | None],
         parent=None,
     ):
         super().__init__(parent)
@@ -38,13 +38,13 @@ class MeasurementCoordinator(QObject):
         if not isinstance(controller, MeasurementController):
             raise TypeError("Invalid MeasurementController.")
 
-        if not callable(node_item_provider):
-            raise TypeError("Invalid NodeItem provider.")
+        if not callable(node_provider):
+            raise TypeError("Invalid node provider.")
 
         self.view = view
         self.controller = controller
 
-        self._node_item_provider = node_item_provider
+        self._node_provider = node_provider
 
         self._measurement_drag_active = False
 
@@ -256,33 +256,30 @@ class MeasurementCoordinator(QObject):
     def _create_measurement_point(
         self, view_position: QPoint, scene_position: QPointF
     ) -> MeasurementPoint:
-        node_item = self._get_node_item(view_position)
+        node = self._get_node(view_position)
 
-        if node_item is not None:
+        if node is not None:
             return MeasurementPoint.create_node_anchor(
-                node_id=node_item.node_data.node_id, position=node_item.scenePos()
+                node_id=node.node_id, position=QPointF(node.x, node.z)
             )
 
         return MeasurementPoint.create_free(scene_position)
 
     def _get_preview_position(self, view_position: QPoint, scene_position: QPointF) -> QPointF:
-        node_item = self._get_node_item(view_position)
+        node = self._get_node(view_position)
 
-        if node_item is not None:
-            return QPointF(node_item.scenePos())
+        if node is not None:
+            return QPointF(node.x, node.z)
 
         return QPointF(scene_position)
 
-    def _get_node_item(self, view_position: QPoint) -> NodeItem | None:
-        node_item = self._node_item_provider(view_position)
+    def _get_node(self, view_position: QPoint) -> NodeData | None:
+        node = self._node_provider(view_position)
 
-        if node_item is None:
-            return None
+        if node is not None and not isinstance(node, NodeData):
+            raise TypeError("The node provider returned an invalid object.")
 
-        if not isinstance(node_item, NodeItem):
-            raise TypeError("The NodeItem provider returned an invalid object.")
-
-        return node_item
+        return node
 
     def _set_drag_active(self, active: bool):
         self._measurement_drag_active = bool(active)

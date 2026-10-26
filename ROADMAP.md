@@ -40,7 +40,7 @@ New display options are saved permanently.
 
 - [ ] show and hide nodes and individual connection types
 - [ ] show node IDs
-- [ ] minimum and maximum node size on screen
+- [x] minimum and maximum node size on screen
 
 ## 6. Release — once feature parity with the old editor is reached
 
@@ -53,7 +53,7 @@ New display options are saved permanently.
 
 These are done when a phase touches the affected code anyway.
 
-- [ ] short stutter when zooming in past zoom 1.0 for the first time
+- [x] short stutter when zooming in past zoom 1.0 for the first time
 - [ ] interpolate heightmap values between pixels instead of taking the nearest pixel
 - [ ] measuring points bound to nodes follow moved nodes
-- [ ] split `scene_renderer.py`
+- [x] split `scene_renderer.py`

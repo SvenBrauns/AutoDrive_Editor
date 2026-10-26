@@ -24,14 +24,29 @@ class ConnectionSpatialIndex:
 
         self._connection_keys_by_node_id = defaultdict(set)
 
+        # For drawing, each connection belongs to exactly one tile: the
+        # one of its source point, so it is drawn once.
+        self.connections_by_drawing_tile = defaultdict(dict)
+
+        # Drawing tiles whose connections changed since the drawing last
+        # fetched them with take_changed_tiles().
+        self.changed_tiles: set[tuple[int, int]] = set()
+
         self.connection_count = 0
 
     def clear(self):
         self.connections_by_tile.clear()
         self._connections_by_key.clear()
         self._connection_keys_by_node_id.clear()
+        self.connections_by_drawing_tile.clear()
+        self.changed_tiles.clear()
 
         self.connection_count = 0
+
+    def take_changed_tiles(self) -> set[tuple[int, int]]:
+        changed_tiles, self.changed_tiles = self.changed_tiles, set()
+
+        return changed_tiles
 
     def build(self, autodrive_data: AutoDriveData):
         self.clear()
@@ -191,6 +206,10 @@ class ConnectionSpatialIndex:
 
         self._connections_by_key[connection_key] = connection_data
 
+        drawing_tile = self._get_drawing_tile_key(connection_data)
+        self.connections_by_drawing_tile[drawing_tile][connection_key] = connection_data
+        self.changed_tiles.add(drawing_tile)
+
         self._connection_keys_by_node_id[connection_data.source_id].add(connection_key)
 
         self._connection_keys_by_node_id[connection_data.target_id].add(connection_key)
@@ -211,6 +230,17 @@ class ConnectionSpatialIndex:
 
         self._connections_by_key.pop(connection_key, None)
 
+        drawing_tile = self._get_drawing_tile_key(connection_data)
+        drawing_connections = self.connections_by_drawing_tile.get(drawing_tile)
+
+        if drawing_connections is not None:
+            drawing_connections.pop(connection_key, None)
+
+            if not drawing_connections:
+                del self.connections_by_drawing_tile[drawing_tile]
+
+        self.changed_tiles.add(drawing_tile)
+
         for node_id in (connection_data.source_id, connection_data.target_id):
             node_keys = self._connection_keys_by_node_id.get(node_id)
 
@@ -221,6 +251,12 @@ class ConnectionSpatialIndex:
 
             if not node_keys:
                 del self._connection_keys_by_node_id[node_id]
+
+    def _get_drawing_tile_key(self, connection_data: ConnectionData):
+        return (
+            math.floor(connection_data.source_x / self.tile_size),
+            math.floor(connection_data.source_z / self.tile_size),
+        )
 
     def _get_tile_keys(self, connection_data: ConnectionData):
         minimum_tile_x = math.floor(connection_data.minimum_x / self.tile_size)

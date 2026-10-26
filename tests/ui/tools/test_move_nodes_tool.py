@@ -1,6 +1,7 @@
 """Node dragging driven by real mouse events on the map view."""
 
 import pytest
+from drawing_helpers import RED, drawn_color
 from mouse_helpers import drag, press_escape, send_mouse, view_pos
 from PySide6.QtCore import QEvent, QPoint, QRectF, Qt
 from PySide6.QtGui import QPainterPath
@@ -64,15 +65,15 @@ def test_undo_and_redo_restore_data_and_drawing(editor):
     start = view_pos(editor, 0, 0)
     drag(editor, start, start + QPoint(40, 0))
     moved = node_xz(editor, 1)
-    node_item = editor.scene_renderer.visible_node_manager.visible_node_items[1]
 
     editor.actions.undo_action.trigger()
     assert node_xz(editor, 1) == (0, 0)
-    assert node_item.pos().toTuple() == (0, 0)
+    assert drawn_color(editor, 0, 0) == RED
 
     editor.actions.redo_action.trigger()
     assert node_xz(editor, 1) == pytest.approx(moved)
-    assert node_item.pos().toTuple() == pytest.approx(moved)
+    assert drawn_color(editor, *moved) == RED
+    assert drawn_color(editor, 0, 0) != RED
 
 
 def test_drag_moves_connections(editor):

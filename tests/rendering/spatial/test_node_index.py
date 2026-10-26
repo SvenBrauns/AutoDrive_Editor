@@ -124,3 +124,34 @@ def test_remove_and_add_nodes():
     index.add_nodes([data.nodes[1]])
     assert ids(index.get_nodes_in_rect(QRectF(0, 0, 100, 100))) == [1, 2]
     assert index.node_count == 2
+
+
+def test_changed_tiles_are_reported_once():
+    index = build_index([(10, 10), (150, 10)])
+    assert index.take_changed_tiles() == {(0, 0), (1, 0)}
+
+    assert index.take_changed_tiles() == set()
+
+
+def test_moving_within_a_tile_still_reports_it():
+    data = AutoDriveData()
+    node = NodeData(node_id=1, x=10, y=0, z=10)
+    data.add_node(node)
+    index = NodeSpatialIndex(tile_size=100.0)
+    index.build(data)
+    index.take_changed_tiles()
+
+    node.x = 20
+    index.update_nodes([node])
+
+    assert index.take_changed_tiles() == {(0, 0)}
+
+
+def test_marked_and_removed_nodes_report_their_tiles():
+    index = build_index([(10, 10), (150, 10)])
+    index.take_changed_tiles()
+
+    index.mark_nodes_changed({1, 99})
+    index.remove_nodes({2})
+
+    assert index.take_changed_tiles() == {(0, 0), (1, 0)}

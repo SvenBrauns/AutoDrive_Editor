@@ -21,12 +21,31 @@ class NodeSpatialIndex:
 
         self._tile_key_by_node_id: dict[int, tuple[int, int]] = {}
 
+        # Tiles whose nodes were added, removed, moved or changed since the
+        # drawing last fetched them with take_changed_tiles().
+        self.changed_tiles: set[tuple[int, int]] = set()
+
         self.node_count = 0
 
     def clear(self):
         self.nodes_by_tile.clear()
         self._tile_key_by_node_id.clear()
+        self.changed_tiles.clear()
         self.node_count = 0
+
+    def take_changed_tiles(self) -> set[tuple[int, int]]:
+        changed_tiles, self.changed_tiles = self.changed_tiles, set()
+
+        return changed_tiles
+
+    def mark_nodes_changed(self, node_ids):
+        """Marks the tiles of nodes that changed in place, e.g. their flag."""
+
+        for node_id in node_ids:
+            tile_key = self._tile_key_by_node_id.get(node_id)
+
+            if tile_key is not None:
+                self.changed_tiles.add(tile_key)
 
     def build(self, autodrive_data: AutoDriveData):
         self.clear()
@@ -47,6 +66,8 @@ class NodeSpatialIndex:
                 continue
 
             new_tile_key = self._get_tile_key(node_data.x, node_data.z)
+
+            self.changed_tiles.add(old_tile_key)
 
             if new_tile_key == old_tile_key:
                 continue
@@ -73,6 +94,8 @@ class NodeSpatialIndex:
             if tile_key is None:
                 continue
 
+            self.changed_tiles.add(tile_key)
+
             tile = self.nodes_by_tile[tile_key]
 
             tile.pop(node_id, None)
@@ -88,6 +111,8 @@ class NodeSpatialIndex:
         self.nodes_by_tile[tile_key][node_data.node_id] = node_data
 
         self._tile_key_by_node_id[node_data.node_id] = tile_key
+
+        self.changed_tiles.add(tile_key)
 
     def get_nodes_in_rect(self, visible_rect: QRectF, padding=0.0) -> list[NodeData]:
         padding = max(0.0, float(padding))

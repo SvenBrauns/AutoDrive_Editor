@@ -144,15 +144,15 @@ def loaded_window(window, write_xml, qapp):
 @pytest.fixture
 def zoomed_window(loaded_window, qapp):
     """Loaded window zoomed in so nodes 1 (x=0), 2 (x=10) and 3 (x=20)
-    on the line z=0 are drawn as clickable items."""
+    on the line z=0 are drawn and can be clicked."""
 
     window = loaded_window
     window.view.set_zoom_level(4.0)
     window.view.centerOn(10, 0)
     qapp.processEvents()
 
-    window.scene_renderer.update_visible_scene_rect(window.view.get_visible_scene_rect())
-    assert set(window.scene_renderer.visible_node_manager.visible_node_items) == {1, 2, 3}
+    for node_id, x in ((1, 0), (2, 10), (3, 20)):
+        assert window.scene_renderer.get_node_at(x, 0, window.view.zoom_level).node_id == node_id
 
     return window
 

@@ -95,7 +95,7 @@ class SelectTool(MapTool):
         if self._pan.is_dragging:
             return Qt.ClosedHandCursor
 
-        if self.view.has_selectable_item_at(view_position):
+        if self.view.has_node_at(view_position):
             return Qt.ArrowCursor
 
         return Qt.OpenHandCursor

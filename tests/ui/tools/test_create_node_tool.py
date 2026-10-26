@@ -1,6 +1,7 @@
 """Creating nodes: the command and the "Erstellen" tool."""
 
 import pytest
+from drawing_helpers import ORANGE, RED, drawn_color
 from mouse_helpers import click, cursor_shape, drag, hover, view_pos
 from PySide6.QtCore import QPoint, Qt
 
@@ -73,10 +74,6 @@ def data(window):
     return window.project_coordinator.autodrive_data
 
 
-def visible_items(window):
-    return set(window.scene_renderer.visible_node_manager.visible_node_items)
-
-
 def test_click_on_empty_map_creates_a_node_there(creating):
     click(creating, view_pos(creating, *EMPTY))
 
@@ -84,7 +81,7 @@ def test_click_on_empty_map_creates_a_node_there(creating):
     assert (node.x, node.z) == pytest.approx(EMPTY, abs=0.3)
     assert node.flag == 0
     assert node.incoming == node.outgoing == set()
-    assert 4 in visible_items(creating)
+    assert drawn_color(creating, node.x, node.z) == RED
     assert creating.status.text() == "Node 4 created"
     assert creating.actions.undo_action.text() == "Undo: Create node"
 
@@ -112,13 +109,14 @@ def test_dragging_pans_without_creating(creating):
     assert len(data(creating)) == 3
 
 
-def test_undo_removes_node_and_its_item(creating):
+def test_undo_removes_node_and_its_drawing(creating):
     click(creating, view_pos(creating, *EMPTY))
+    node = data(creating).get_node(4)
 
     creating.actions.undo_action.trigger()
 
     assert 4 not in data(creating).nodes
-    assert 4 not in visible_items(creating)
+    assert drawn_color(creating, node.x, node.z) != RED
 
 
 def test_new_node_can_be_connected(creating):
@@ -186,13 +184,13 @@ def test_subprio_node_is_drawn_orange(zoomed_window):
 
     click(zoomed_window, view_pos(zoomed_window, *EMPTY))
 
-    item = zoomed_window.scene_renderer.visible_node_manager.visible_node_items[4]
-    assert item.brush().color().name() == "#ffa500"
+    node = data(zoomed_window).get_node(4)
+    assert drawn_color(zoomed_window, node.x, node.z) == ORANGE
 
 
 def test_regular_tool_still_creates_regular_nodes(creating):
     click(creating, view_pos(creating, *EMPTY))
 
-    assert data(creating).get_node(4).flag == 0
-    item = creating.scene_renderer.visible_node_manager.visible_node_items[4]
-    assert item.brush().color().name() == "#ff0000"
+    node = data(creating).get_node(4)
+    assert node.flag == 0
+    assert drawn_color(creating, node.x, node.z) == RED
