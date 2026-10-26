@@ -38,9 +38,14 @@ class GridControls(QToolButton):
 
         self.setText(tr("Grid"))
 
-        self.setToolTip(tr("Set up the background grid"))
+        self.setToolTip(tr("Show or hide the grid; the arrow opens the grid settings"))
 
-        self.setPopupMode(QToolButton.InstantPopup)
+        # Clicking toggles the grid, the arrow opens the settings menu.
+        self.setCheckable(True)
+
+        self.setPopupMode(QToolButton.MenuButtonPopup)
+
+        self.toggled.connect(self._toggle_visibility)
 
         self._create_menu()
 
@@ -125,6 +130,9 @@ class GridControls(QToolButton):
 
         self.setMenu(self.grid_menu)
 
+    def _toggle_visibility(self, visible: bool):
+        self.visibility_input.setChecked(visible)
+
     def set_grid_visible(self, visible: bool):
         visible = bool(visible)
 
@@ -134,7 +142,7 @@ class GridControls(QToolButton):
 
         self.visibility_input.blockSignals(False)
 
-        self._update_button_text()
+        self._update_button_state()
 
     def set_grid_snap(self, enabled: bool):
         self.snap_input.blockSignals(True)
@@ -143,11 +151,7 @@ class GridControls(QToolButton):
 
         self.snap_input.blockSignals(False)
 
-        self._update_button_text()
-
     def _emit_snap(self, enabled: bool):
-        self._update_button_text()
-
         self.snap_requested.emit(enabled)
 
     def set_grid_spacing(self, spacing: float):
@@ -167,7 +171,7 @@ class GridControls(QToolButton):
         self.rotation_input.blockSignals(False)
 
     def _emit_visibility(self, visible: bool):
-        self._update_button_text()
+        self._update_button_state()
 
         self.visibility_requested.emit(visible)
 
@@ -193,10 +197,9 @@ class GridControls(QToolButton):
 
         self.grid_menu.close()
 
-    def _update_button_text(self):
-        text = tr("Grid on") if self.visibility_input.isChecked() else tr("Grid off")
+    def _update_button_state(self):
+        self.blockSignals(True)
 
-        if self.snap_input.isChecked():
-            text += tr(" · Snap")
+        self.setChecked(self.visibility_input.isChecked())
 
-        self.setText(text)
+        self.blockSignals(False)
