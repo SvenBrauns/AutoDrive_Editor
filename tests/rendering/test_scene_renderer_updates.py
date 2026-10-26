@@ -1,12 +1,12 @@
 import pytest
-from PySide6.QtCore import QRectF
+from drawing_helpers import ORANGE, RED, paint_scene
 from PySide6.QtWidgets import QGraphicsScene
 
-from autodrive_editor.model.autodrive_data import AutoDriveData, MarkerData, NodeData
+from autodrive_editor.model.autodrive_data import SUBPRIO_FLAG, AutoDriveData, MarkerData, NodeData
 from autodrive_editor.paths import MARKER_ICON_PATH
 from autodrive_editor.rendering.scene_renderer import SceneRenderer
 
-VISIBLE_RECT = QRectF(-100, -100, 300, 200)
+WHITE = "#ffffff"
 
 
 @pytest.fixture
@@ -16,74 +16,32 @@ def renderer(qapp):
     data.add_node(NodeData(node_id=2, x=50, y=0, z=0, incoming={1}))
     data.add_marker(MarkerData(node_id=1, name="Hof"))
 
-    scene = QGraphicsScene()
-    scene_renderer = SceneRenderer(scene, MARKER_ICON_PATH)
+    scene_renderer = SceneRenderer(QGraphicsScene(), MARKER_ICON_PATH)
     scene_renderer.render(data)
-    scene_renderer.update_visibility_for_zoom(2.0)  # detail view, nodes visible
-    scene_renderer.update_visible_scene_rect(VISIBLE_RECT)
-    scene_renderer.set_selected_node_ids({1})
 
     yield scene_renderer
 
     scene_renderer.reset()
 
 
+def paint(renderer, center, scale=4.0):
+    return paint_scene(renderer.scene, center, scale)
+
+
+def drawn_connections(renderer):
+    renderer.tiles.refresh()
+
+    return sorted(
+        (source_x, source_z, target_x, target_z)
+        for tile in renderer.tiles.connection_tiles.values()
+        for _, source_x, source_z, target_x, target_z, _ in tile.one_way
+    )
+
+
 def move_node(renderer, node_id, x, z):
     node = renderer.autodrive_data.nodes[node_id]
     node.x, node.z = x, z
     renderer.update_node_positions({node_id})
-
-
-def test_node_marker_and_selection_items_follow_the_node(renderer):
-    marker_item = renderer.visible_marker_manager.visible_marker_items[1]
-    marker_offset = marker_item.pos()
-
-    move_node(renderer, 1, 10, 20)
-
-    assert renderer.visible_node_manager.visible_node_items[1].pos().toTuple() == (10, 20)
-    assert renderer.visible_node_selection_manager.visible_selection_items[1].pos().toTuple() == (
-        10,
-        20,
-    )
-    assert (marker_item.pos() - marker_offset).toTuple() == pytest.approx((10, 20))
-
-
-def test_node_moved_out_of_view_loses_its_item(renderer):
-    move_node(renderer, 2, 5000, 5000)
-
-    assert 2 not in renderer.visible_node_manager.visible_node_items
-
-
-def test_node_moved_into_view_gets_an_item(renderer):
-    move_node(renderer, 2, 5000, 5000)
-    move_node(renderer, 2, 60, 0)
-
-    assert renderer.visible_node_manager.visible_node_items[2].pos().toTuple() == (60, 0)
-
-
-def test_detail_connections_follow_the_node(renderer):
-    move_node(renderer, 2, 80, 40)
-
-    connections = renderer.connection_spatial_index.get_connections_in_rect(VISIBLE_RECT)
-    assert [(c.target_x, c.target_z) for c in connections] == [(80, 40)]
-
-
-def test_overview_is_rebuilt_when_shown(renderer):
-    move_node(renderer, 2, 80, 40)
-    assert renderer.overview_connections_outdated
-
-    renderer.update_visibility_for_zoom(0.1)  # switch to the overview
-
-    assert not renderer.overview_connections_outdated
-    assert all(item.isVisible() for item in renderer.connection_items.values())
-
-
-def test_reset_forgets_data(renderer):
-    renderer.reset()
-
-    renderer.update_node_positions({1})  # must not fail without data
-
-    assert renderer.autodrive_data is None
 
 
 def delete_node(renderer, node_id):
@@ -100,17 +58,58 @@ def delete_node(renderer, node_id):
     return node
 
 
-def test_removed_node_loses_items_and_connections(renderer):
+def test_nodes_are_drawn_where_they_are(renderer):
+    assert paint(renderer, (0, 0)).color_at(0, 0) == RED
+
+
+def test_moved_node_is_drawn_at_its_new_place(renderer):
+    move_node(renderer, 2, 80, 40)
+
+    assert paint(renderer, (80, 40)).color_at(80, 40) == RED
+    assert paint(renderer, (50, 0)).color_at(50, 0) != RED
+    assert drawn_connections(renderer) == [(0, 0, 80, 40)]
+
+
+def test_flag_change_redraws_the_node(renderer):
+    renderer.autodrive_data.nodes[1].flag = SUBPRIO_FLAG
+    renderer.apply_changes(changed_flag_node_ids={1})
+
+    assert paint(renderer, (0, 0)).color_at(0, 0) == ORANGE
+
+
+def test_nodes_fade_out_when_zoomed_out(renderer):
+    assert paint(renderer, (0, 0), scale=0.2).color_at(0, 0) != RED
+
+
+def test_selected_nodes_stay_visible_when_zoomed_out(renderer):
+    renderer.set_selected_node_ids({1})
+
+    painted = paint(renderer, (0, 0), scale=0.2)
+
+    assert painted.color_at(0, 0) == RED
+    assert paint(renderer, (50, 0), scale=0.2).color_at(50, 0) != RED
+
+
+def test_selection_follows_the_node(renderer):
+    renderer.set_selected_node_ids({1})
+
+    move_node(renderer, 1, 10, 20)
+
+    assert paint(renderer, (10, 20), scale=0.2).color_at(10, 20) == RED
+
+
+def test_removed_node_loses_drawing_selection_and_connections(renderer):
+    renderer.set_selected_node_ids({1})
+
     delete_node(renderer, 1)
 
-    assert 1 not in renderer.visible_node_manager.visible_node_items
-    assert 1 not in renderer.visible_marker_manager.visible_marker_items
-    assert renderer.connection_spatial_index.get_connections_in_rect(VISIBLE_RECT) == []
+    assert paint(renderer, (0, 0)).color_at(0, 0) == WHITE
+    assert drawn_connections(renderer) == []
+    assert renderer.selected_node_ids == set()
     assert renderer.node_spatial_index.node_count == 1
-    assert renderer.overview_connections_outdated
 
 
-def test_re_added_node_gets_items_and_connections_back(renderer):
+def test_re_added_node_gets_drawing_and_connections_back(renderer):
     node = delete_node(renderer, 2)
 
     data = renderer.autodrive_data
@@ -118,15 +117,44 @@ def test_re_added_node_gets_items_and_connections_back(renderer):
     data.nodes[1].outgoing.add(2)
     renderer.apply_changes(added_node_ids={2}, connection_node_ids={1})
 
-    assert 2 in renderer.visible_node_manager.visible_node_items
-    assert len(renderer.connection_spatial_index.get_connections_in_rect(VISIBLE_RECT)) == 1
+    assert paint(renderer, (50, 0)).color_at(50, 0) == RED
+    assert drawn_connections(renderer) == [(0, 0, 50, 0)]
 
 
-def test_rounded_zoom_just_below_threshold_still_shows_nodes(renderer):
-    renderer.update_visibility_for_zoom(0.5)
-    assert not renderer.nodes_visible
+def test_layers_grow_with_nodes_moved_outside(renderer):
+    move_node(renderer, 2, 5000, 0)
 
-    renderer.update_visibility_for_zoom(0.9999999999999999)  # set_zoom_level(1.0) result
+    assert renderer.connection_layer.boundingRect().contains(5000, 0)
+    assert paint(renderer, (5000, 0)).color_at(5000, 0) == RED
 
-    assert renderer.nodes_visible
-    assert renderer.detailed_connections_visible
+
+def test_reset_forgets_data(renderer):
+    renderer.reset()
+
+    renderer.update_node_positions({1})  # must not fail without data
+
+    assert renderer.autodrive_data is None
+    assert renderer.layers == []
+
+
+@pytest.mark.parametrize("zoom", [2.0, 4.0, 40.0])
+def test_node_is_found_on_its_dot(renderer, zoom):
+    assert renderer.get_node_at(0.5 / zoom, 0, zoom).node_id == 1
+
+
+def test_far_point_finds_no_node(renderer):
+    assert renderer.get_node_at(25, 0, 4.0) is None
+
+
+def test_hidden_nodes_cannot_be_clicked_but_selected_ones_can(renderer):
+    assert renderer.get_node_at(0, 0, 0.1) is None
+
+    renderer.set_selected_node_ids({1})
+
+    assert renderer.get_node_at(0, 0, 0.1).node_id == 1
+
+
+def test_closest_node_wins(renderer):
+    move_node(renderer, 2, 1, 0)
+
+    assert renderer.get_node_at(0.8, 0, 4.0).node_id == 2
