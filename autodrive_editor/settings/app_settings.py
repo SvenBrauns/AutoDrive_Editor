@@ -4,8 +4,10 @@ from pathlib import Path
 
 from PySide6.QtCore import QSettings
 
+from autodrive_editor.editing.path_shapes import PathOptions
 from autodrive_editor.game.game_folder import GameFolder
 from autodrive_editor.game.game_installation import GameInstallation
+from autodrive_editor.model.connections import ConnectionType
 from autodrive_editor.paths import user_data_directory
 
 
@@ -17,6 +19,9 @@ class AppSettings:
     SETUP_DONE_KEY = "app/setup_done"
     MARKER_NAMES_KEY = "view/marker_names"
     AUTOSAVE_MINUTES_KEY = "app/autosave_minutes"
+    PATH_SPACING_KEY = "path/spacing"
+    PATH_CONNECTION_KEY = "path/connection_type"
+    PATH_FLAG_KEY = "path/flag"
 
     DEFAULT_AUTOSAVE_MINUTES = 5
 
@@ -75,6 +80,31 @@ class AppSettings:
 
     def set_autosave_minutes(self, minutes: int):
         self._settings.setValue(self.AUTOSAVE_MINUTES_KEY, max(0, int(minutes)))
+        self._settings.sync()
+
+    @property
+    def path_options(self) -> PathOptions:
+        """Options of the line and curve tools. Unknown stored values fall
+        back to the defaults."""
+
+        default = PathOptions()
+
+        try:
+            return PathOptions(
+                spacing=self._settings.value(self.PATH_SPACING_KEY, default.spacing, type=float),
+                connection_type=ConnectionType(
+                    self._settings.value(self.PATH_CONNECTION_KEY, default.connection_type.value)
+                ),
+                flag=self._settings.value(self.PATH_FLAG_KEY, default.flag, type=int),
+            )
+
+        except ValueError:
+            return default
+
+    def set_path_options(self, options: PathOptions):
+        self._settings.setValue(self.PATH_SPACING_KEY, float(options.spacing))
+        self._settings.setValue(self.PATH_CONNECTION_KEY, options.connection_type.value)
+        self._settings.setValue(self.PATH_FLAG_KEY, int(options.flag))
         self._settings.sync()
 
     @property

@@ -194,6 +194,30 @@ HEIGHT_FROM_TERRAIN_TOOL = ToolDefinition(
     "Shift+Y",
 )
 
+LINE_TOOL = ToolDefinition(
+    InteractionMode.DRAW_LINE,
+    "Linie",
+    "Start und Ende anklicken: gerade Strecke mit gleichmäßigem Node-Abstand",
+    "draw_line",
+    "I",
+)
+
+BEZIER_TOOL = ToolDefinition(
+    InteractionMode.DRAW_BEZIER,
+    "Bézierkurve",
+    "Start und Ende anklicken, Griffe ziehen, mit Enter erstellen",
+    "draw_bezier",
+    "B",
+)
+
+ARC_TOOL = ToolDefinition(
+    InteractionMode.DRAW_ARC,
+    "Kreisbogen",
+    "Start und Ende anklicken, Griff auf dem Bogen ziehen, mit Enter erstellen",
+    "draw_arc",
+    "K",
+)
+
 ADD_MARKER_TOOL = ToolDefinition(
     InteractionMode.ADD_MARKER,
     "Marker hinzufügen",
@@ -247,6 +271,13 @@ TOOL_GROUPS = (
         (
             (ALIGN_HORIZONTAL_TOOL, ALIGN_VERTICAL_TOOL),
             (ALIGN_HEIGHT_TOOL, HEIGHT_FROM_TERRAIN_TOOL),
+        ),
+    ),
+    (
+        "Linien",
+        (
+            (LINE_TOOL, BEZIER_TOOL),
+            (ARC_TOOL, None),
         ),
     ),
     (

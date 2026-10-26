@@ -267,6 +267,12 @@ class MapView(QGraphicsView):
             event.accept()
             return
 
+        if event.key() in (Qt.Key_Return, Qt.Key_Enter) and self.active_tool.confirm():
+            self.refresh_cursor()
+
+            event.accept()
+            return
+
         super().keyPressEvent(event)
 
     def _switch_tool(self, change_state):

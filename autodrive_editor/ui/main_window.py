@@ -21,6 +21,7 @@ from autodrive_editor.editing.operations.align_nodes import AlignNodesOperation
 from autodrive_editor.editing.operations.clipboard import ClipboardOperation
 from autodrive_editor.editing.operations.connect_nodes import ConnectNodesOperation
 from autodrive_editor.editing.operations.create_nodes import CreateNodesOperation
+from autodrive_editor.editing.operations.create_path import CreatePathOperation
 from autodrive_editor.editing.operations.delete_nodes import DeleteNodesOperation
 from autodrive_editor.editing.operations.markers import MarkerOperation
 from autodrive_editor.editing.operations.move_nodes import MoveNodesOperation
@@ -28,6 +29,7 @@ from autodrive_editor.editing.operations.node_position import NodePositionOperat
 from autodrive_editor.editing.operations.node_types import NodeTypeOperation
 from autodrive_editor.editing.operations.reverse_direction import ReverseDirectionOperation
 from autodrive_editor.editing.operations.rotate_selection import RotateSelectionOperation
+from autodrive_editor.editing.path_shapes import PathShape
 from autodrive_editor.file_io.base_game_maps import read_base_game_maps
 from autodrive_editor.file_io.map_mod import read_map_mod
 from autodrive_editor.file_io.project_file import ProjectFileStore
@@ -70,6 +72,7 @@ from autodrive_editor.ui.panels.debug_dock_coordinator import DebugDockCoordinat
 from autodrive_editor.ui.panels.display_options_dialog import DisplayOptionsDialog
 from autodrive_editor.ui.panels.marker_dock import MarkerDock
 from autodrive_editor.ui.panels.node_info_formatter import NodeInfoFormatter
+from autodrive_editor.ui.panels.path_options import PathOptionsWidget
 from autodrive_editor.ui.panels.welcome_panel import WelcomePanel
 from autodrive_editor.ui.tools.connect_nodes_tool import ConnectNodesTool
 from autodrive_editor.ui.tools.create_node_tool import CreateNodeTool
@@ -78,6 +81,7 @@ from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 from autodrive_editor.ui.tools.measure_tool import MeasureTool
 from autodrive_editor.ui.tools.move_nodes_tool import MoveNodesTool
 from autodrive_editor.ui.tools.node_click_tool import NodeClickTool
+from autodrive_editor.ui.tools.path_tool import PathTool
 from autodrive_editor.ui.tools.rotate_selection_tool import RotateSelectionTool
 from autodrive_editor.ui.tools.select_tool import SelectTool
 from autodrive_editor.ui.tools.toggle_node_type_tool import ToggleNodeTypeTool
@@ -144,6 +148,7 @@ class MainWindow(QMainWindow):
 
         self.actions = MainWindowActions(self)
         self.actions.set_current_map_scale(self.background_map.map_scale)
+        self._create_path_options()
 
         self._create_welcome_panel()
         self._create_grid_coordinator()
@@ -968,6 +973,19 @@ class MainWindow(QMainWindow):
             parent=self,
         )
 
+        self.create_path_operation = CreatePathOperation(
+            view=self.view,
+            selection_coordinator=self.selection_coordinator,
+            edit_history=self.edit_history,
+            autodrive_data_provider=self._get_autodrive_data,
+            height_for_new_node=self.create_nodes_operation.height_for_new_node,
+            terrain_height_at=self._get_terrain_height,
+            snap_point=self.background_map.snap_point,
+            parent=self,
+        )
+
+        self.create_path_operation.set_options(self.settings.path_options)
+
         self.node_type_operation = NodeTypeOperation(
             selection_coordinator=self.selection_coordinator,
             node_selection=self.node_selection,
@@ -1114,6 +1132,8 @@ class MainWindow(QMainWindow):
 
         self._register_align_tools()
 
+        self._register_path_tools()
+
         self._register_marker_tools()
 
         self.view.register_measure_tool(MeasureTool(self.view, self.measurement_coordinator))
@@ -1135,6 +1155,55 @@ class MainWindow(QMainWindow):
 
         for interaction_mode, click, hint in tools:
             self.view.register_tool(interaction_mode, NodeClickTool(self.view, click, hint))
+
+    def _register_path_tools(self):
+        display_style = self.scene_renderer.display_style
+
+        for interaction_mode, shape in (
+            (InteractionMode.DRAW_LINE, PathShape.LINE),
+            (InteractionMode.DRAW_BEZIER, PathShape.BEZIER),
+            (InteractionMode.DRAW_ARC, PathShape.ARC),
+        ):
+            self.view.register_tool(
+                interaction_mode,
+                PathTool(
+                    self.view,
+                    self.create_path_operation,
+                    shape,
+                    color_provider=(
+                        lambda connection_type: getattr(
+                            self.scene_renderer.display_style,
+                            f"{connection_type.value}_connection_color",
+                        )
+                    ),
+                    node_diameter=display_style.node_diameter,
+                    z_value=display_style.selected_node_z + 1,
+                ),
+            )
+
+    def _create_path_options(self):
+        """The options box below the line and curve tools."""
+
+        self.path_options_widget = PathOptionsWidget(self.create_path_operation.options)
+
+        self.actions.tool_panel.groups["Linien"].add_widget(self.path_options_widget)
+
+        def apply_options(options):
+            self.create_path_operation.set_options(options)
+            self.settings.set_path_options(options)
+
+        self.path_options_widget.options_changed.connect(apply_options)
+
+        self.path_options_widget.apply_requested.connect(self.create_path_operation.apply)
+
+        def update_apply_button():
+            self.path_options_widget.apply_button.setEnabled(
+                self.create_path_operation.is_adjusting
+            )
+
+        self.create_path_operation.preview_changed.connect(update_apply_button)
+
+        update_apply_button()
 
     def _register_marker_tools(self):
         operation = self.marker_operation
@@ -1319,6 +1388,8 @@ class MainWindow(QMainWindow):
 
         self.rotate_selection_operation.status_changed.connect(self._set_status)
 
+        self.create_path_operation.status_changed.connect(self._set_status)
+
         # Keeps the tool buttons right even when the mode is changed
         # without clicking a button.
         self.view.interaction_mode_changed.connect(
@@ -1358,6 +1429,8 @@ class MainWindow(QMainWindow):
         self.connect_nodes_operation.end_chain()
 
         self.marker_operation.reset_move()
+
+        self.create_path_operation.reset()
 
         self.marker_dock.set_data(autodrive_data)
 

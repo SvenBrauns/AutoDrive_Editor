@@ -4,6 +4,7 @@ from autodrive_editor.model.connections import (
     NO_CONNECTION,
     ConnectionState,
     read_connection_state,
+    write_connection_state,
 )
 
 
@@ -55,22 +56,6 @@ class SetConnectionCommand(EditCommand):
         return self._set_state(self.old_state)
 
     def _set_state(self, state: ConnectionState) -> DataChange:
-        source = self.autodrive_data.nodes[self.source_id]
-
-        target = self.autodrive_data.nodes[self.target_id]
-
-        entries = (
-            (source.outgoing, self.target_id),
-            (source.incoming, self.target_id),
-            (target.outgoing, self.source_id),
-            (target.incoming, self.source_id),
-        )
-
-        for (connections, node_id), present in zip(entries, state, strict=True):
-            if present:
-                connections.add(node_id)
-
-            else:
-                connections.discard(node_id)
+        write_connection_state(self.autodrive_data, self.source_id, self.target_id, state)
 
         return DataChange(connection_node_ids=frozenset((self.source_id, self.target_id)))

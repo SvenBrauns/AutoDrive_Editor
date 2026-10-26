@@ -56,9 +56,19 @@ class ToolGroup(QWidget):
 
         layout.addWidget(self.content)
 
+        self.extra_widgets: list[QWidget] = []
+
     @property
     def is_expanded(self) -> bool:
         return self.header_button.isChecked()
+
+    def add_widget(self, widget: QWidget):
+        """Adds a widget below the tool buttons, e.g. tool options. It is
+        hidden together with the buttons."""
+
+        self.layout().addWidget(widget)
+
+        self.extra_widgets.append(widget)
 
     def set_expanded(self, expanded: bool):
         self.header_button.setChecked(expanded)
@@ -66,6 +76,9 @@ class ToolGroup(QWidget):
         self.header_button.setArrowType(Qt.DownArrow if expanded else Qt.RightArrow)
 
         self.content.setVisible(expanded)
+
+        for widget in self.extra_widgets:
+            widget.setVisible(expanded)
 
 
 class ToolPanel(QDockWidget):
@@ -133,6 +146,11 @@ class ToolPanel(QDockWidget):
         for button in self.tool_buttons.values():
             self._apply_button_style(button)
 
+        # Update the group layouts now, so the minimum width below fits
+        # the new button style.
+        for group in self.groups.values():
+            group.layout().activate()
+
         self._fit_width_to_content()
 
     def _fit_width_to_content(self):
@@ -172,11 +190,18 @@ class ToolPanel(QDockWidget):
             )
 
             content_width = max(
-                content_width, group_width, group.header_button.minimumSizeHint().width()
+                content_width,
+                group_width,
+                group.header_button.minimumSizeHint().width(),
+                *(widget.sizeHint().width() for widget in group.extra_widgets),
             )
 
         outer_margins = self._layout.contentsMargins()
         frame_width = max(self.width() - self.widget().width(), 0)
+
+        # The tool options make the window keep the panel's old minimum
+        # width until its layout is updated, which would stop shrinking.
+        main_window.layout().activate()
 
         main_window.resizeDocks(
             [self],
