@@ -68,11 +68,13 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - When the next steps are routine (merging, small fixes, doc updates), suggest switching to a smaller model with `/model`. Suggest the larger model again for planning and complex features.
 - Only take screenshots when the look of something is the point of the change. Otherwise rely on tests.
 - Keep the reminders to one short line, not every turn.
+- Don't commit, merge or push yourself, and don't spawn an agent for it. Write the git commands (with commit message) for the user to run.
+- Keep tool output small: `ruff check . --output-format concise`, `python -m pytest -q` piped through `tail` when only the summary matters.
 
 ## 6. Project Conventions
 
 - Write all code (app and tests) in compact, normal Python style: `ruff format .`, not one argument per line. `pyproject.toml` is the source of truth.
-- Before finishing: `python -m pytest` and `ruff check .`.
+- Before finishing: `python -m pytest -q` and `ruff check . --output-format concise`.
 - New functions get tests; test files mirror the package structure under `tests/`.
 - Every edit of the data model is an `EditCommand` pushed via `EditHistory.push()`, never a direct change to `AutoDriveData`. See README.md for architecture.
 - Keep the virtualization (never permanent NodeItems for all nodes).
