@@ -1,111 +1,66 @@
 # AutoDrive FS25 Editor
 
-Desktop-Editor für AutoDrive-Streckennetze aus dem Landwirtschafts-Simulator 25, entwickelt mit Python und PySide6.
+Editor for AutoDrive route networks in Farming Simulator 25. It shows the network on the map image with terrain heights and provides tools to edit nodes, connections, markers and whole route sections. All changes can be undone.
 
-Der Editor lädt eine AutoDrive-Konfiguration (XML), zeigt sie auf der Karte (`overview.dds`) mit Höhendaten (`dem.png`) und bietet Werkzeuge zum Bearbeiten des Netzes: Nodes erstellen, verschieben, rotieren, löschen, ihren Typ wechseln, Connections (Regular, Dual, Reverse) setzen sowie Linien, Bézierkurven und Kreisbögen mit gleichmäßigem Node-Abstand zeichnen. Alle Änderungen lassen sich rückgängig machen.
+The editor supports only FS25.
 
-Geplante Funktionen stehen in der [Roadmap](ROADMAP.md).
+The interface is currently German. Menu and tool names below are the German labels as they appear in the app; the English descriptions explain what they do.
 
-## Herunterladen
+## Download
 
-Die fertige Windows-Version liegt als Zip unter [Releases](https://github.com/SvenBrauns/AutoDrive_Editor/releases). Entpacken und `AutoDrive Editor.exe` starten; eine Python-Installation ist nicht nötig.
+The Windows version is available as a zip under [Releases](https://github.com/SvenBrauns/AutoDrive_Editor/releases). Unzip it and start `AutoDrive Editor.exe`. No Python installation is needed.
 
-## Aus dem Quellcode starten
+## First start
 
-```text
-pip install -r requirements.txt
-python main.py
-```
+The editor looks for the FS25 user folder (usually `Dokumente\My Games\FarmingSimulator2025`) and the game's installation folder and shows both for you to check. You can change either later under `Datei → Einstellungen` (File → Settings).
 
-oder `python -m autodrive_editor`.
+Map images are not shipped with the editor. Use `Karte → Karten scannen` (Map → Scan maps) to search the `mods` folder and the base game maps; the editor then imports the map image, heightmap and map size. This is needed only once per map. After that, the matching map loads automatically when you open a route. If the map is missing, the editor offers the scan directly.
 
-## Entwicklung
+## Opening a network
 
-```text
-pip install -r requirements-dev.txt
-python -m pytest
-ruff check .
-ruff format .
-```
+- **Route öffnen** (Open route), recommended: routes from AutoDrive's RoutesManager. AutoDrive can reload them in a running game, so the game does not need to be restarted.
+- **Savegame öffnen** (Open savegame): the `AutoDrive_config.xml` of a savegame. The savegame's heightmap is loaded with it.
+- **XML-Datei öffnen** (Open XML file): a single file in either format.
 
-GitHub Actions prüft jeden Push und Pull Request mit `ruff` und `pytest`. Ein Tag wie `v0.1.0` baut mit PyInstaller die Windows-Version und veröffentlicht sie als Release:
+## Controls
 
-```text
-git tag v0.1.0
-git push origin v0.1.0
-```
+- **Mouse wheel** zooms, **left drag** moves the map, **middle drag** rotates the view.
+- **Right click** or **Esc** cancels the current step of a tool; **Enter** confirms it (for example for curves).
+- The tools are in the tool panel; the status bar shows what the active tool expects next.
 
-## Aufbau
+| Tool (as shown in the app) | Key | What it does |
+| --- | --- | --- |
+| Navigation | `N` | Move and rotate the map |
+| Auswahl (Selection) | `A` | Click or right-drag to select; Shift + right-drag for freehand selection; Ctrl adds to the selection |
+| Verschieben (Move) | `V` | Drag a node or the selection |
+| Rotieren (Rotate) | `R` | Rotate the selection using the ring (Shift: 15° steps) |
+| Erstellen Regular / Subprio (Create) | `E` / `Shift+E` | Create a node on free ground |
+| Typ wechseln (Toggle type) | `T` | Switch between Regular and Subprio |
+| Löschen (Delete) | `L` | Delete a node or the selection |
+| Verbinden Regular / Dual / Reverse (Connect) | `1` / `2` / `3` | Click nodes one after another to connect them |
+| Richtung umkehren (Reverse direction) | `U` | Click a connection to reverse it; inside a selection, all connections of the selection are reversed |
+| Position eingeben (Enter position) | `P` | Enter a node's X/Y/Z as numbers |
+| Horizontal / vertikal ausrichten (Align) | `H` / `J` | Put the selection on the line through a reference node |
+| Höhe wie Referenz / aus Heightmap (Height) | `Y` / `Shift+Y` | Set the heights of the selection |
+| Linie (Line) | `I` | Straight route section with even node spacing |
+| Bézierkurve / Kreisbogen (Curve / Arc) | `B` / `K` | Click start and end, drag the handles, press Enter |
+| Marker hinzufügen / bearbeiten (Marker) | `M` / `Shift+M` | Add or edit a marker; enter its name and group |
+| Marker verschieben / löschen (Marker) | `Ctrl+M` / `Ctrl+Shift+M` | Move a marker to another node or delete it |
 
-```text
-autodrive_editor/
-  model/        Datenmodell: Nodes, Marker, Connection-Typen
-  file_io/      Dateiformate: AutoDrive-XML, Projektdateien, Heightmap, DDS
-  terrain/      Hintergrundkarte, Heightmap, Gelände-Höhe für bewegte Nodes
-  editing/
-    commands/   rückgängig machbare Änderungen am Datenmodell
-    operations/ Bearbeitungsabläufe der Werkzeuge (verschieben, verbinden, …)
-    edit_history.py  gemeinsame Undo-/Redo-Historie
-  selection/    Node-Auswahl
-  measurement/  Abstand- und Winkelmessung
-  project/      Laden von XML, Karte, Heightmap und Projekten
-  rendering/    Darstellung der Karte
-    spatial/    räumliche Indizes für Nodes und Connections
-    visible/    Grafikobjekte nur für den sichtbaren Bereich
-    connections/ Connection-Daten, -Geometrie und Detaildarstellung
-    items/      einzelne Grafikobjekte
-  ui/
-    main_window.py  Hauptfenster, setzt alle Teile zusammen
-    actions/    Werkzeugkatalog, Menüs, Werkzeugleisten
-    map_view/   Kartenansicht mit Zoom, Rotation und Bereichsauswahl
-    tools/      Mausbedienung je Werkzeug
-    panels/     Werkzeugpanel, Debug-Dock, Darstellungsoptionen
-    controls/   Raster- und Rotationseinstellungen
-  resources/    Symbole
-tests/          gleiche Ordnerstruktur wie autodrive_editor/
-packaging/      Programmsymbol und Lizenztexte für die Windows-Version
-.github/        CI und Release-Build
-```
+Also available: Undo and Redo (`Ctrl+Z` / `Ctrl+Y`), Copy, Cut and Paste (`Ctrl+C/X/V`; `Ctrl+Shift+V` pastes at the original position), the grid with snapping (`G`), distance and angle measurement, and the `Marker` dock with all marker groups.
 
-## Grundregeln im Code
+## Saving
 
-- Jede Änderung am Datenmodell ist ein `EditCommand` und läuft über `EditHistory.push()`, damit sie rückgängig gemacht werden kann.
-- Nach jeder Änderung meldet der Befehl ein `DataChange`; der `SceneRenderer` aktualisiert daraufhin nur die betroffenen Nodes.
-- Nur Nodes, Marker und Auswahlringe im sichtbaren Bereich existieren als Grafikobjekte, damit auch Netze mit über 100 000 Nodes flüssig bleiben.
-- Jedes Werkzeug ist eine `MapTool`-Unterklasse unter `ui/tools/` und wird in `ui/actions/tool_catalog.py` mit Symbol und Tastenkürzel beschrieben.
+`Datei → Speichern` (File → Save, `Ctrl+S`) writes to the same format and file you loaded from. Before the first overwrite, the editor creates a backup copy (`.bak`). For savegames, the marker targets of vehicles in `vehicles.xml` are updated as well.
 
-## Grundprinzipien
+`Speichern unter` (Save as) saves a route as a new route in the RoutesManager.
 
-- Direkte Kompatibilität: `overview.dds` und `dem.png` werden ohne manuelle Umwandlung verwendet.
-- Quelldaten werden nie automatisch überschrieben; geschrieben wird nur durch ausdrückliches Speichern (vorher `.bak`).
-- Die Bedeutung von Nodes, Flags, Markern, Koordinaten und Heightmap-Werten wird an echten AutoDrive-Daten nachvollzogen.
-- Eigene Symbole verwenden; vor einer Veröffentlichung Lizenzen, Kartenbilder und Fremdinhalte prüfen.
+Unsaved changes are backed up automatically every few minutes (interval under `Datei → Einstellungen`). If the editor closes unexpectedly, it offers to restore them on the next start.
 
-## Hintergrundwissen
+## License
 
-- **Connections** zwischen A und B werden an beiden Nodes gespeichert (siehe `model/connections.py`):
+GNU General Public License v3.0 or later, see [LICENSE](LICENSE). The Windows version contains PySide6/Qt (LGPLv3) and Pillow, see [THIRD_PARTY_NOTICES.md](packaging/THIRD_PARTY_NOTICES.md).
 
-  ```text
-              A.outgoing∋B  A.incoming∋B  B.outgoing∋A  B.incoming∋A
-  Regular          ja            -             -             ja
-  Dual             ja            ja            ja            ja
-  Reverse          ja            -             -             -
-  ```
+The editor contains no files from Farming Simulator or from map mods. Map images and heightmaps are read from your own installation. This project has no connection to GIANTS Software.
 
-- **Flags**: `0` = Regular, `1` = Subprio. Die XML-IDs sind 1-basiert.
-- **Karten**: `overview.dds` hat für FS22/FS25 ein zu beschneidendes mittleres Viertel (4096² → 2048²). Die Kartengröße (`map_scale` 1/2/4/8 für Original/4x/16x/64x) kommt aus der Kartenkonfiguration, nie aus den Netzgrenzen. Bei einer 16x-Karte: 8192 × 8192 m, Weltkoordinaten −4096 bis +4096.
-- **Heightmap** (`dem.png`, 16-Bit-Graustufen): `height = raw_value / 65535.0 * 255.0`. Gegen die Y-Werte eines Testnetzes mit 113 058 Nodes weicht sie im Median um 0,02 m ab; größere Abweichungen gibt es nur an Brücken, Rampen und Gebäudeebenen.
-- **Winkel**: Kartenwinkel 0° = oben, 90° = rechts; unabhängig von Ansichts- und Rasterrotation.
-- **Zoom**: Unter technischem Zoom 1.0 werden nur drei gebündelte Connection-Pfade gezeichnet, ab 1.0 Nodes, Marker, Auswahlringe und Connections mit Pfeilen. Sichtbereichsänderungen werden 50 ms verzögert gemeldet.
-
-## Leistung (Testnetz mit 113 058 Nodes und 116 260 Connections)
-
-Bewährt: native `QGraphicsEllipseItem`-Nodes, Grafikobjekte nur für den sichtbaren Bereich plus Puffer (Kacheln 256 m, Puffer 128 m), drei gebündelte globale Connection-Pfade, räumliche Indizes, Auswahl nur als Node-IDs, getrennte Vorschau- und Endauswahl.
-
-Nicht geeignet: eigenes `paint()` pro Node, dauerhaft alle NodeItems, ein Grafikobjekt pro Connection, große gespeicherte Pfeilpfade, dauerhafte Auswahlringe für alle ausgewählten Nodes.
-
-## Lizenz
-
-GNU General Public License v3.0 oder später, siehe [LICENSE](LICENSE). Die Windows-Version enthält PySide6/Qt (LGPLv3) und Pillow, siehe [THIRD_PARTY_NOTICES.md](packaging/THIRD_PARTY_NOTICES.md).
-
-Der Editor enthält keine Dateien aus dem Landwirtschafts-Simulator oder aus Karten-Mods; Kartenbilder und Heightmaps werden aus der eigenen Installation gelesen. Das Projekt steht in keiner Verbindung zu GIANTS Software.
+For development, see [DEVELOPMENT.md](DEVELOPMENT.md).
