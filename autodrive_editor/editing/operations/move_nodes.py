@@ -1,19 +1,15 @@
 import itertools
-from collections.abc import Callable
 
-from PySide6.QtCore import QObject, QPoint, QPointF, Signal
+from PySide6.QtCore import QPoint, QPointF
 
 from autodrive_editor.editing.commands.move_nodes import MoveNodesCommand, NodePosition
-from autodrive_editor.editing.edit_history import EditHistory
+from autodrive_editor.editing.edit_context import EditContext, EditOperation
 from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData
-from autodrive_editor.selection.node_selection import NodeSelection
-from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
-from autodrive_editor.terrain.terrain_follower import TerrainFollower, TerrainHeightProvider
-from autodrive_editor.ui.map_view.map_view import MapView
+from autodrive_editor.terrain.terrain_follower import TerrainFollower
 
 
-class MoveNodesOperation(QObject):
+class MoveNodesOperation(EditOperation):
     """Moves nodes by left dragging with the "Verschieben" tool.
 
     Dragging a selected node moves the whole selection. Dragging an
@@ -22,31 +18,10 @@ class MoveNodesOperation(QObject):
     same merge key, so the whole drag is a single undo step.
     """
 
-    status_changed = Signal(str)
+    def __init__(self, context: EditContext, parent=None):
+        super().__init__(context, parent)
 
-    def __init__(
-        self,
-        view: MapView,
-        selection_coordinator: SelectionCoordinator,
-        node_selection: NodeSelection,
-        edit_history: EditHistory,
-        autodrive_data_provider: Callable[[], AutoDriveData | None],
-        terrain_height_at: TerrainHeightProvider | None = None,
-        snap_point: Callable[[float, float], tuple[float, float]] | None = None,
-        parent=None,
-    ):
-        super().__init__(parent)
-
-        self.terrain_follower = TerrainFollower(terrain_height_at)
-
-        # Grid snapping; the grabbed node snaps, the others keep their offset.
-        self.snap_point = snap_point
-
-        self.view = view
-        self.selection_coordinator = selection_coordinator
-        self.node_selection = node_selection
-        self.edit_history = edit_history
-        self.autodrive_data_provider = autodrive_data_provider
+        self.terrain_follower = TerrainFollower(context.terrain_height_at)
 
         self._merge_keys = itertools.count(1)
 

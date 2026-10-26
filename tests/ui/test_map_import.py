@@ -16,9 +16,9 @@ from autodrive_editor.ui.dialogs.map_import_dialog import MapImportDialog
 def map_window(window, tmp_path, isolated_user_data, monkeypatch):
     folder = make_game_folder(tmp_path / "FarmingSimulator2025")
     window.settings.set_game_folder(folder)
-    window.map_cache = MapCache()
+    window.map_cache = window.map_import.map_cache = MapCache()
     window.messages = []
-    monkeypatch.setattr(window, "_inform", window.messages.append)
+    monkeypatch.setattr(window.map_import, "_inform", window.messages.append)
     window.mods = folder / "mods"
     return window
 
@@ -27,12 +27,12 @@ def test_scan_imports_the_chosen_maps(map_window, monkeypatch):
     make_single_map_mod(map_window.mods, name="FS25_A", title="Karte A")
     make_single_map_mod(map_window.mods, name="FS25_B", title="Karte B")
     monkeypatch.setattr(
-        map_window,
+        map_window.map_import,
         "_choose_maps_to_import",
         lambda result: [(m, e) for m in result.map_mods for e in m.maps if e.title == "Karte B"],
     )
 
-    map_window.scan_map_mods()
+    map_window.map_import.scan_map_mods()
 
     assert [m.title for m in map_window.map_cache.maps()] == ["Karte B"]
     assert map_window.status.text() == "1 map(s) imported"
@@ -41,7 +41,7 @@ def test_scan_imports_the_chosen_maps(map_window, monkeypatch):
 def test_scan_without_map_mods_explains_it(map_window):
     map_window.mods.mkdir()
 
-    map_window.scan_map_mods()
+    map_window.map_import.scan_map_mods()
 
     assert "No map mods" in map_window.messages[0]
 
@@ -51,7 +51,7 @@ def test_failed_imports_are_reported(map_window, tmp_path):
     map_mod = read_map_mod(mod_path)
     mod_path.unlink()  # the zip disappears before the import
 
-    map_window._import_maps([(map_mod, map_mod.maps[0])])
+    map_window.map_import._import_maps([(map_mod, map_mod.maps[0])])
 
     assert "Not imported" in map_window.messages[0]
 
@@ -95,7 +95,7 @@ def test_scan_lists_base_game_maps_first(map_window, tmp_path, monkeypatch):
     map_window.settings.set_install_folder(make_installation(tmp_path / "FS25", folders=("mapUS",)))
     seen = []
     monkeypatch.setattr(
-        map_window,
+        map_window.map_import,
         "_choose_maps_to_import",
         lambda result: (
             seen.extend(result.map_mods)
@@ -103,7 +103,7 @@ def test_scan_lists_base_game_maps_first(map_window, tmp_path, monkeypatch):
         ),
     )
 
-    map_window.scan_map_mods()
+    map_window.map_import.scan_map_mods()
 
     assert [m.name for m in seen] == ["FS25 Grundspiel", "FS25_A"]
     assert [m.title for m in map_window.map_cache.maps()] == ["Riverbend Springs"]

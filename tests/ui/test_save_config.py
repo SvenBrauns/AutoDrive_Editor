@@ -48,7 +48,7 @@ def test_save_writes_the_route_and_clears_the_modified_mark(route_window):
     delete_node(route_window, 2)
     assert route_window.isWindowModified()
 
-    assert route_window.save_xml()
+    assert route_window.files.save_xml()
 
     assert not route_window.isWindowModified()
     assert len(AutoDriveXmlReader.load(route_window.route_file)) == 2
@@ -59,9 +59,9 @@ def test_save_writes_the_route_and_clears_the_modified_mark(route_window):
 def test_original_is_backed_up_once_per_session(route_window):
     backup = route_window.route_file.with_name("abc.xml.bak")
     delete_node(route_window, 2)
-    route_window.save_xml()
+    route_window.files.save_xml()
     delete_node(route_window, 3)
-    route_window.save_xml()
+    route_window.files.save_xml()
 
     assert backup.read_text(encoding="utf-8") == ROUTE_XML
     assert (route_window.route_file.parent.parent / "routes.xml.bak").exists()
@@ -72,12 +72,12 @@ def test_savegame_save_renumbers_vehicle_markers(window, tmp_path, monkeypatch):
     vehicles = tmp_path / "vehicles.xml"
     vehicles.write_text(VEHICLES, encoding="utf-8")
     messages = []
-    monkeypatch.setattr(window, "_inform", messages.append)
+    monkeypatch.setattr(window.files, "_inform", messages.append)
     window.project_coordinator.load_xml_file(tmp_path / "AutoDrive_config.xml")
     data = window.project_coordinator.autodrive_data
 
     window.edit_history.push(DeleteMarkerCommand(data, 2))
-    window.save_xml()
+    window.files.save_xml()
 
     text = vehicles.read_text(encoding="utf-8-sig")
     assert 'firstMarker="1" secondMarker="2"' in text
@@ -86,7 +86,7 @@ def test_savegame_save_renumbers_vehicle_markers(window, tmp_path, monkeypatch):
     assert (tmp_path / "vehicles.xml.bak").read_text(encoding="utf-8") == VEHICLES
 
     # Saved again without changes, the numbers stay.
-    window.save_xml()
+    window.files.save_xml()
     assert 'secondMarker="2"' in vehicles.read_text(encoding="utf-8-sig")
 
 
@@ -100,7 +100,7 @@ def test_savegame_save_renumbers_vehicle_markers(window, tmp_path, monkeypatch):
 )
 def test_closing_with_unsaved_changes_asks_first(route_window, answer, saved, loaded):
     delete_node(route_window, 2)
-    route_window._ask_save_changes = lambda: answer
+    route_window.files._ask_save_changes = lambda: answer
 
     closed = route_window.close()
 
@@ -110,9 +110,9 @@ def test_closing_with_unsaved_changes_asks_first(route_window, answer, saved, lo
 
 def test_cancel_keeps_the_data_before_loading_other_data(route_window):
     delete_node(route_window, 2)
-    route_window._ask_save_changes = lambda: QMessageBox.Cancel
+    route_window.files._ask_save_changes = lambda: QMessageBox.Cancel
 
-    route_window.open_route()
+    route_window.files.open_route()
 
     assert route_window.isWindowModified()
     assert len(route_window.project_coordinator.autodrive_data) == 2
@@ -126,7 +126,7 @@ def savegame_window(window, tmp_path, monkeypatch):
     (savegame / "vehicles.xml").write_text(VEHICLES, encoding="utf-8")
     window.savegame = savegame
     window.messages = []
-    monkeypatch.setattr(window, "_inform", window.messages.append)
+    monkeypatch.setattr(window.files, "_inform", window.messages.append)
     window.project_coordinator.load_xml_file(savegame / "AutoDrive_config.xml")
     return window
 
@@ -138,10 +138,10 @@ def delete_marker(window, node_id):
 
 
 def test_save_as_turns_a_route_into_a_new_route(route_window):
-    route_window._ask_route_name = lambda default: "Hof neu"
+    route_window.files._ask_route_name = lambda default: "Hof neu"
     delete_node(route_window, 2)
 
-    assert route_window.save_xml_as()
+    assert route_window.files.save_xml_as()
 
     entries = read_routes_index(route_window.route_file.parent.parent / "routes.xml")
     assert [(e.name, e.map_name, e.revision) for e in entries] == [
@@ -156,22 +156,22 @@ def test_save_as_turns_a_route_into_a_new_route(route_window):
 
 
 def test_cancelled_route_name_saves_nothing(route_window):
-    route_window._ask_route_name = lambda default: None
+    route_window.files._ask_route_name = lambda default: None
     delete_node(route_window, 2)
 
-    assert not route_window.save_xml_as()
+    assert not route_window.files.save_xml_as()
     assert route_window.isWindowModified()
     assert len(read_routes_index(route_window.route_file.parent.parent / "routes.xml")) == 1
 
 
 def test_save_as_writes_a_savegame_copy_without_touching_vehicles(savegame_window, tmp_path):
     target = tmp_path / "copy.xml"
-    savegame_window._ask_save_path = lambda path: target
+    savegame_window.files._ask_save_path = lambda path: target
     delete_marker(savegame_window, 2)
 
-    savegame_window.save_xml_as()
+    savegame_window.files.save_xml_as()
     delete_marker(savegame_window, 3)
-    savegame_window.save_xml()
+    savegame_window.files.save_xml()
 
     assert "<MapName>LS25_X</MapName>" in target.read_text(encoding="utf-8-sig")
     assert len(AutoDriveXmlReader.load(target).markers) == 1
@@ -180,49 +180,49 @@ def test_save_as_writes_a_savegame_copy_without_touching_vehicles(savegame_windo
 
 
 def test_autosave_only_writes_unsaved_changes(route_window):
-    store = route_window.autosave_store
+    store = route_window.files.autosave_store
 
-    route_window.autosave()
+    route_window.files.autosave()
     assert store.read() is None
 
     delete_node(route_window, 2)
-    route_window.autosave()
+    route_window.files.autosave()
     info = store.read()
     assert info.source_path == str(route_window.route_file)
     assert len(AutoDriveXmlReader.load(store.xml_path)) == 2
     assert route_window.route_file.read_text(encoding="utf-8") == ROUTE_XML
 
-    route_window.save_xml()
+    route_window.files.save_xml()
     assert store.read() is None
 
 
 def test_discarding_changes_drops_the_autosave(route_window):
     delete_node(route_window, 2)
-    route_window.autosave()
+    route_window.files.autosave()
 
     route_window.close()
 
-    assert route_window.autosave_store.read() is None
+    assert route_window.files.autosave_store.read() is None
 
 
 def test_restored_autosave_saves_into_the_original_savegame(savegame_window):
     # Marker 2 of 3 deleted: vehicles' marker 3 becomes 2, park destination 2 goes.
     delete_marker(savegame_window, 2)
-    savegame_window.autosave()
+    savegame_window.files.autosave()
     savegame_window.edit_history.clear()
     savegame_window.project_coordinator.load_xml_file(
         savegame_window.savegame / "AutoDrive_config.xml"
     )
-    savegame_window._ask_restore_autosave = lambda info: True
+    savegame_window.files._ask_restore_autosave = lambda info: True
 
-    savegame_window.offer_autosave_restore()
+    savegame_window.files.offer_autosave_restore()
 
     source = savegame_window.project_coordinator.config_source
     assert source.path == savegame_window.savegame / "AutoDrive_config.xml"
     assert list(savegame_window.project_coordinator.autodrive_data.markers) == [1, 3]
     assert savegame_window.isWindowModified()
 
-    savegame_window.save_xml()
+    savegame_window.files.save_xml()
 
     text = (savegame_window.savegame / "vehicles.xml").read_text(encoding="utf-8-sig")
     assert 'firstMarker="1" secondMarker="2"' in text
@@ -231,32 +231,32 @@ def test_restored_autosave_saves_into_the_original_savegame(savegame_window):
 
 def test_declined_restore_drops_the_autosave(route_window):
     delete_node(route_window, 2)
-    route_window.autosave()
-    route_window._ask_restore_autosave = lambda info: False
+    route_window.files.autosave()
+    route_window.files._ask_restore_autosave = lambda info: False
 
-    route_window.offer_autosave_restore()
+    route_window.files.offer_autosave_restore()
 
-    assert route_window.autosave_store.read() is None
+    assert route_window.files.autosave_store.read() is None
 
 
 def test_autosave_of_a_missing_file_is_kept_and_explained(route_window, monkeypatch):
     messages = []
-    monkeypatch.setattr(route_window, "_inform", messages.append)
+    monkeypatch.setattr(route_window.files, "_inform", messages.append)
     delete_node(route_window, 2)
-    route_window.autosave()
+    route_window.files.autosave()
     route_window.route_file.unlink()
 
-    route_window.offer_autosave_restore()
+    route_window.files.offer_autosave_restore()
 
     assert "original file is missing" in messages[0]
-    assert route_window.autosave_store.read() is not None
+    assert route_window.files.autosave_store.read() is not None
 
 
 def test_autosave_interval_follows_the_setting(isolated_user_data, window):
     window.settings.set_autosave_minutes(0)
-    window._apply_autosave_interval()
-    assert not window.autosave_timer.isActive()
+    window.files.apply_autosave_interval()
+    assert not window.files.autosave_timer.isActive()
 
     window.settings.set_autosave_minutes(3)
-    window._apply_autosave_interval()
-    assert window.autosave_timer.interval() == 3 * 60_000
+    window.files.apply_autosave_interval()
+    assert window.files.autosave_timer.interval() == 3 * 60_000

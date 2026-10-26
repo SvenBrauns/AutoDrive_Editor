@@ -9,29 +9,13 @@ from autodrive_editor.measurement.point import MeasurementPoint
 
 @dataclass
 class MeasurementState:
-    """The points of the current measurement and the rules for setting them."""
+    """Points A and B of the current measurement and the rules for setting them. While only A
+    is set, the preview position stands in for B."""
 
     mode: MeasurementMode = MeasurementMode.INACTIVE
-
     start_point: MeasurementPoint | None = None
     end_point: MeasurementPoint | None = None
     preview_position: QPointF | None = None
-
-    def __post_init__(self):
-        if not isinstance(self.mode, MeasurementMode):
-            raise TypeError("Der Messmodus ist ungültig.")
-
-        if self.start_point is not None and not isinstance(self.start_point, MeasurementPoint):
-            raise TypeError("Der Startpunkt ist ungültig.")
-
-        if self.end_point is not None and not isinstance(self.end_point, MeasurementPoint):
-            raise TypeError("Der Endpunkt ist ungültig.")
-
-        if self.preview_position is not None and not isinstance(self.preview_position, QPointF):
-            raise TypeError("Die Vorschauposition ist ungültig.")
-
-        if self.preview_position is not None:
-            self.preview_position = QPointF(self.preview_position)
 
     @property
     def is_active(self) -> bool:
@@ -40,10 +24,6 @@ class MeasurementState:
     @property
     def has_start_point(self) -> bool:
         return self.start_point is not None
-
-    @property
-    def has_end_point(self) -> bool:
-        return self.end_point is not None
 
     @property
     def is_complete(self) -> bool:
@@ -59,20 +39,16 @@ class MeasurementState:
 
     @property
     def display_end_position(self) -> QPointF | None:
+        """Point B, or the preview position while B is not set."""
+
         if self.end_point is not None:
             return QPointF(self.end_point.position)
 
-        if self.preview_position is not None:
-            return QPointF(self.preview_position)
-
-        return None
+        return QPointF(self.preview_position) if self.preview_position is not None else None
 
     def activate(self, mode: MeasurementMode):
-        if not isinstance(mode, MeasurementMode):
-            raise TypeError("Der Messmodus ist ungültig.")
-
         if mode == MeasurementMode.INACTIVE:
-            raise ValueError("Zum Aktivieren muss ein aktiver Messmodus angegeben werden.")
+            raise ValueError("Activating needs an active measurement mode.")
 
         self.mode = mode
         self.clear_points()
@@ -89,11 +65,7 @@ class MeasurementState:
     def set_start_point(self, measurement_point: MeasurementPoint):
         self._validate_active_mode()
 
-        if not isinstance(measurement_point, MeasurementPoint):
-            raise TypeError("Der Startpunkt ist ungültig.")
-
         self.start_point = measurement_point.copy()
-
         self.end_point = None
         self.preview_position = None
 
@@ -101,39 +73,28 @@ class MeasurementState:
         self._validate_active_mode()
 
         if self.start_point is None:
-            raise ValueError("Vor dem Endpunkt muss zuerst ein Startpunkt gesetzt werden.")
-
-        if not isinstance(measurement_point, MeasurementPoint):
-            raise TypeError("Der Endpunkt ist ungültig.")
+            raise ValueError("Point A must be set before point B.")
 
         self.end_point = measurement_point.copy()
-
         self.preview_position = None
 
     def set_preview_position(self, position: QPointF | None):
+        """The preview is only kept while point B is missing."""
+
         self._validate_active_mode()
 
-        if self.start_point is None:
+        if self.is_awaiting_end_point and position is not None:
+            self.preview_position = QPointF(position)
+        else:
             self.preview_position = None
-            return
-
-        if self.end_point is not None:
-            self.preview_position = None
-            return
-
-        if position is None:
-            self.preview_position = None
-            return
-
-        if not isinstance(position, QPointF):
-            raise TypeError("Die Vorschauposition ist ungültig.")
-
-        self.preview_position = QPointF(position)
 
     def move_free_point(self, point_index: int, position: QPointF):
         self._validate_active_mode()
 
-        measurement_point = self._get_point(point_index)
+        measurement_point = self.get_point(point_index)
+
+        if measurement_point is None:
+            raise ValueError("The measuring point is not set yet.")
 
         measurement_point.set_position(position)
 
@@ -141,42 +102,25 @@ class MeasurementState:
         if self.start_point is None:
             return None
 
+        end_position = self.display_end_position if include_preview else None
+
         if self.end_point is not None:
             end_position = self.end_point.position
 
-        elif include_preview and self.preview_position is not None:
-            end_position = self.preview_position
-
-        else:
+        if end_position is None:
             return None
 
         try:
-            return calculate_measurement(
-                measurement_mode=self.mode,
-                start_position=self.start_point.position,
-                end_position=end_position,
-            )
-
+            return calculate_measurement(self.mode, self.start_point.position, end_position)
         except ValueError:
             return None
 
     def get_point(self, point_index: int) -> MeasurementPoint | None:
-        if point_index == 0:
-            return self.start_point
+        if point_index not in (0, 1):
+            raise IndexError("A measuring point index must be 0 or 1.")
 
-        if point_index == 1:
-            return self.end_point
-
-        raise IndexError("Ein Messpunktindex muss 0 oder 1 sein.")
-
-    def _get_point(self, point_index: int) -> MeasurementPoint:
-        measurement_point = self.get_point(point_index)
-
-        if measurement_point is None:
-            raise ValueError("Der angeforderte Messpunkt ist noch nicht gesetzt.")
-
-        return measurement_point
+        return self.start_point if point_index == 0 else self.end_point
 
     def _validate_active_mode(self):
         if not self.is_active:
-            raise ValueError("Der Messmodus ist nicht aktiv.")
+            raise ValueError("Measuring is not active.")

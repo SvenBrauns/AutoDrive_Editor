@@ -1,40 +1,18 @@
 import math
-from collections.abc import Callable
 
-from PySide6.QtCore import QObject, QPoint, Signal
+from PySide6.QtCore import QPoint
 
 from autodrive_editor.editing.commands.create_node import CreateNodeCommand
-from autodrive_editor.editing.edit_history import EditHistory
+from autodrive_editor.editing.edit_context import EditContext, EditOperation
 from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import REGULAR_FLAG, AutoDriveData
-from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
-from autodrive_editor.terrain.terrain_follower import TerrainHeightProvider
-from autodrive_editor.ui.map_view.map_view import MapView
 
 
-class CreateNodesOperation(QObject):
+class CreateNodesOperation(EditOperation):
     """Creates single unconnected nodes on the map."""
 
-    status_changed = Signal(str)
-
-    def __init__(
-        self,
-        view: MapView,
-        selection_coordinator: SelectionCoordinator,
-        edit_history: EditHistory,
-        autodrive_data_provider: Callable[[], AutoDriveData | None],
-        terrain_height_at: TerrainHeightProvider | None = None,
-        snap_point: Callable[[float, float], tuple[float, float]] | None = None,
-        parent=None,
-    ):
-        super().__init__(parent)
-
-        self.view = view
-        self.selection_coordinator = selection_coordinator
-        self.edit_history = edit_history
-        self.autodrive_data_provider = autodrive_data_provider
-        self.terrain_height_at = terrain_height_at
-        self.snap_point = snap_point
+    def __init__(self, context: EditContext, parent=None):
+        super().__init__(context, parent)
 
     def create_node_at(self, view_position: QPoint, flag: int = REGULAR_FLAG) -> int | None:
         """Creates a node with the given flag (regular or subprio) at

@@ -205,7 +205,7 @@ def test_two_clicks_complete_a_measurement(measuring):
     click(measuring, view_pos(measuring, *EMPTY))
     click(measuring, view_pos(measuring, 15, 25))
 
-    assert measuring.measurement_controller.is_complete
+    assert measuring.measurement_coordinator.is_complete
     assert cursor_shape(measuring) == Qt.CrossCursor
 
 
@@ -214,7 +214,7 @@ def test_hover_shows_preview_to_second_point(measuring):
 
     hover(measuring, view_pos(measuring, 15, 25))
 
-    assert measuring.measurement_controller.state.preview_position is not None
+    assert measuring.measurement_coordinator.state.preview_position is not None
 
 
 def test_dragging_empty_map_pans_without_setting_a_point(measuring):
@@ -222,7 +222,7 @@ def test_dragging_empty_map_pans_without_setting_a_point(measuring):
 
     drag(measuring, start, start + QPoint(60, 0))
 
-    assert not measuring.measurement_controller.state.has_start_point
+    assert not measuring.measurement_coordinator.state.has_start_point
 
 
 def test_dragging_a_free_point_moves_it(measuring):
@@ -236,7 +236,7 @@ def test_dragging_a_free_point_moves_it(measuring):
         measuring, QEvent.MouseButtonRelease, start + QPoint(40, 0), Qt.LeftButton, Qt.NoButton
     )
 
-    end_point = measuring.measurement_controller.state.end_point
+    end_point = measuring.measurement_coordinator.state.end_point
     assert end_point.x == pytest.approx(25, abs=0.5)
     assert measuring.status.text() == "Measuring point moved"
 
@@ -245,7 +245,7 @@ def test_escape_clears_measurement_then_ends_measuring(measuring):
     click(measuring, view_pos(measuring, *EMPTY))
 
     press_escape(measuring)
-    assert not measuring.measurement_controller.state.has_start_point
+    assert not measuring.measurement_coordinator.state.has_start_point
     assert measuring.view.measurement_active
 
     press_escape(measuring)

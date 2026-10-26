@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import pytest
 from PySide6.QtCore import QPoint, QPointF
 
+from autodrive_editor.editing.edit_context import EditContext
 from autodrive_editor.editing.edit_history import EditHistory
 from autodrive_editor.editing.operations.create_path import CreatePathOperation
 from autodrive_editor.editing.path_shapes import PathOptions, PathShape
@@ -20,15 +21,14 @@ class Fixture:
         self.data.add_node(NodeData(2, 30, 10, 0))
         self.history = EditHistory()
         self.terrain = None
-        self.operation = CreatePathOperation(
-            view=SimpleNamespace(mapToScene=lambda p: QPointF(p)),
-            selection_coordinator=SimpleNamespace(get_node_at=self.node_at),
+        context = EditContext(
             edit_history=self.history,
             autodrive_data_provider=lambda: self.data,
-            height_for_new_node=lambda data, x, z: 7.0,
+            view=SimpleNamespace(mapToScene=lambda p: QPointF(p)),
+            selection_coordinator=SimpleNamespace(get_node_at=self.node_at),
             terrain_height_at=lambda x, z: None if self.terrain is None else self.terrain(x, z),
-            snap_point=None,
         )
+        self.operation = CreatePathOperation(context, height_for_new_node=lambda data, x, z: 7.0)
 
     def node_at(self, position):
         for node in self.data.nodes.values():

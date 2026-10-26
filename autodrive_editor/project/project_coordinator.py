@@ -83,8 +83,6 @@ class ProjectCoordinator(QObject):
 
         self.autodrive_data: AutoDriveData | None = None
 
-        self.current_xml_path: str | None = None
-
         # Format, path and map name of the loaded data.
         self.config_source: ConfigSource | None = None
         self.current_config_path: str | None = None
@@ -188,8 +186,6 @@ class ProjectCoordinator(QObject):
         )
 
         self.clear_scene_content()
-
-        self.current_xml_path = str(xml_path)
 
         self.autodrive_data = loaded.data
         self.config_source = source
@@ -343,7 +339,6 @@ class ProjectCoordinator(QObject):
         save_config(self.autodrive_data, source)
 
         self.config_source = source
-        self.current_xml_path = str(target)
         self._file_markers = list(self.autodrive_data.markers.values())
         self._vehicles_path = None
 
@@ -391,12 +386,12 @@ class ProjectCoordinator(QObject):
         self._backed_up_paths.add(path)
 
     def save_project_file(self, config_path) -> Path:
-        if not self.current_xml_path:
+        if self.config_source is None:
             raise ValueError(tr("Load an AutoDrive XML first"))
 
         saved_path = self.project_files.save_project(
             config_path=config_path,
-            xml_path=self.current_xml_path,
+            xml_path=str(self.config_source.path),
             background_path=self.background_map.file_path,
             map_scale=self.background_map.map_scale,
             heightmap_path=self.current_heightmap_path,
@@ -459,34 +454,6 @@ class ProjectCoordinator(QObject):
             self._set_heightmap_path(None)
 
         self.load_xml_file(project_data["autodrive_xml"], detect_map=False)
-
-    def rebuild_scene_after_style_change(self):
-        if self.autodrive_data is None:
-            self.status_changed.emit(tr("Display options applied"))
-
-            self.debug_refresh_requested.emit()
-            return
-
-        viewport_center = self.view.viewport().rect().center()
-
-        scene_center = self.view.mapToScene(viewport_center)
-
-        self.clear_scene_content()
-
-        self.background_map.restore()
-
-        self.scene_renderer.render(self.autodrive_data)
-
-        self.selection_coordinator.synchronize()
-        self.measurement_coordinator.restore_scene_items()
-
-        self.update_scene_rect()
-
-        self.view.centerOn(scene_center)
-
-        self.status_changed.emit(tr("Display options applied"))
-
-        self.debug_refresh_requested.emit()
 
     def clear_scene_content(self):
         self.measurement_coordinator.remove_scene_items()

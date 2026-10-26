@@ -2,6 +2,8 @@
 signal paths, so wiring mistakes between parts fail here instead of
 only showing up as console errors in the running app."""
 
+from dataclasses import replace
+
 import pytest
 from mouse_helpers import click
 from PySide6.QtCore import QPoint, QRectF, Qt
@@ -35,7 +37,7 @@ def test_measurement_clicks_create_complete_measurement(window, qapp):
     click(window, QPoint(450, 380))
     qapp.processEvents()
 
-    assert window.measurement_controller.is_complete
+    assert window.measurement_coordinator.is_complete
 
 
 def test_grid_controls_update_grid_and_status(window):
@@ -126,3 +128,18 @@ def test_loading_xml_clears_undo_history(loaded_window, write_xml):
 
     assert not loaded_window.actions.undo_action.isEnabled()
     assert not loaded_window.isWindowModified()
+
+
+def test_display_style_is_applied_without_rebuilding_the_scene(zoomed_window):
+    window = zoomed_window
+    renderer = window.scene_renderer
+    node_layer = renderer.node_layer
+    window.node_selection.replace({2}, 2)
+
+    style = replace(renderer.display_style, node_diameter=renderer.display_style.node_diameter * 2)
+    window.apply_display_style(style)
+
+    assert renderer.node_layer is node_layer
+    assert all(layer.display_style is style for layer in renderer.layers)
+    assert window.node_selection.selected_node_ids == {2}
+    assert renderer.get_node_at(10, 0, window.view.zoom_level).node_id == 2

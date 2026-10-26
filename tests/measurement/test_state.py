@@ -7,7 +7,7 @@ from autodrive_editor.measurement.state import MeasurementState
 
 
 def free(x, z):
-    return MeasurementPoint.create_free(QPointF(x, z))
+    return MeasurementPoint(QPointF(x, z))
 
 
 @pytest.fixture
@@ -96,9 +96,7 @@ def test_move_free_point_updates_result(distance_state):
 
 
 def test_node_anchored_point_cannot_be_moved(distance_state):
-    distance_state.set_start_point(
-        MeasurementPoint.create_node_anchor(node_id=5, position=QPointF(0, 0))
-    )
+    distance_state.set_start_point(MeasurementPoint(QPointF(0, 0), node_id=5))
 
     with pytest.raises(ValueError):
         distance_state.move_free_point(0, QPointF(1, 1))

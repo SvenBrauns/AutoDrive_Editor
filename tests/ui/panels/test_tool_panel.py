@@ -50,7 +50,7 @@ def test_measuring_unchecks_tools_and_tool_ends_measuring(window):
 
     tool_button(window, "Move").click()
     assert not window.view.measurement_active
-    assert window.measurement_controller.mode == MeasurementMode.INACTIVE
+    assert window.measurement_coordinator.mode == MeasurementMode.INACTIVE
     assert checked_tools(window) == {InteractionMode.MOVE_NODES}
 
 

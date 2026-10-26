@@ -1,35 +1,22 @@
 from collections.abc import Callable
 
-from PySide6.QtCore import QObject, QPoint, Signal
+from PySide6.QtCore import QPoint
 
 from autodrive_editor.editing.commands.move_nodes import MoveNodesCommand
-from autodrive_editor.editing.edit_history import EditHistory
+from autodrive_editor.editing.edit_context import EditContext, EditOperation
 from autodrive_editor.i18n import tr
-from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
-from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
+from autodrive_editor.model.autodrive_data import NodeData
 
 # Asks for a node's new (x, y, z); None if cancelled.
 PositionRequest = Callable[[NodeData], tuple[float, float, float] | None]
 
 
-class NodePositionOperation(QObject):
+class NodePositionOperation(EditOperation):
     """Sets the exact position of a clicked node."""
 
-    status_changed = Signal(str)
+    def __init__(self, context: EditContext, ask_position: PositionRequest, parent=None):
+        super().__init__(context, parent)
 
-    def __init__(
-        self,
-        selection_coordinator: SelectionCoordinator,
-        edit_history: EditHistory,
-        autodrive_data_provider: Callable[[], AutoDriveData | None],
-        ask_position: PositionRequest,
-        parent=None,
-    ):
-        super().__init__(parent)
-
-        self.selection_coordinator = selection_coordinator
-        self.edit_history = edit_history
-        self.autodrive_data_provider = autodrive_data_provider
         self.ask_position = ask_position
 
     def edit_at(self, view_position: QPoint) -> bool:

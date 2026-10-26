@@ -1,18 +1,16 @@
 import itertools
 import math
-from collections.abc import Callable
 
-from PySide6.QtCore import QObject, QPointF, Signal
+from PySide6.QtCore import QPointF, Signal
 
 from autodrive_editor.editing.commands.move_nodes import MoveNodesCommand, NodePosition
-from autodrive_editor.editing.edit_history import EditHistory
+from autodrive_editor.editing.edit_context import EditContext, EditOperation
 from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData
-from autodrive_editor.selection.node_selection import NodeSelection
-from autodrive_editor.terrain.terrain_follower import TerrainFollower, TerrainHeightProvider
+from autodrive_editor.terrain.terrain_follower import TerrainFollower
 
 
-class RotateSelectionOperation(QObject):
+class RotateSelectionOperation(EditOperation):
     """Rotates the selected nodes around their average center.
 
     Every mouse move pushes a MoveNodesCommand with the same merge key,
@@ -22,37 +20,24 @@ class RotateSelectionOperation(QObject):
     MIN_NODE_COUNT = 2
     SNAP_ANGLE_DEGREES = 15.0
 
-    status_changed = Signal(str)
-
     # Emitted when the selection or node positions change, so the
     # rotation ring can follow.
     target_changed = Signal()
 
-    def __init__(
-        self,
-        node_selection: NodeSelection,
-        edit_history: EditHistory,
-        autodrive_data_provider: Callable[[], AutoDriveData | None],
-        terrain_height_at: TerrainHeightProvider | None = None,
-        parent=None,
-    ):
-        super().__init__(parent)
+    def __init__(self, context: EditContext, parent=None):
+        super().__init__(context, parent)
 
-        self.terrain_follower = TerrainFollower(terrain_height_at)
-
-        self.node_selection = node_selection
-        self.edit_history = edit_history
-        self.autodrive_data_provider = autodrive_data_provider
+        self.terrain_follower = TerrainFollower(context.terrain_height_at)
 
         self._merge_keys = itertools.count(1)
 
         self._reset_state()
 
-        node_selection.selection_changed.connect(
+        self.node_selection.selection_changed.connect(
             lambda node_ids, primary_node_id: self.target_changed.emit()
         )
 
-        edit_history.data_changed.connect(lambda data_change: self.target_changed.emit())
+        self.edit_history.data_changed.connect(lambda data_change: self.target_changed.emit())
 
     @property
     def is_rotating(self) -> bool:

@@ -118,11 +118,11 @@ def window(qapp, tmp_path):
     from autodrive_editor.ui.main_window import MainWindow
 
     main_window = MainWindow()
-    main_window.autosave_store = AutosaveStore(tmp_path / "autosave")
+    main_window.files.autosave_store = AutosaveStore(tmp_path / "autosave")
     # Tests that need the missing-map question replace this again.
-    main_window._ask_missing_map = lambda map_name: None
+    main_window.map_import._ask_missing_map = lambda map_name: None
     # Closing at the end of a test drops unsaved edits without asking.
-    main_window._ask_save_changes = lambda: QMessageBox.Discard
+    main_window.files._ask_save_changes = lambda: QMessageBox.Discard
     main_window.show()
     qapp.processEvents()
 

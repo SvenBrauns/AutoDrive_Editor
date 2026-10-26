@@ -16,7 +16,7 @@ def map_window(window, tmp_path, isolated_user_data):
     window.settings.set_game_folder(folder)
 
     cache = MapCache()
-    window.map_cache = cache
+    window.map_cache = window.map_import.map_cache = cache
     window.project_coordinator.map_cache = cache
 
     window.folder = folder

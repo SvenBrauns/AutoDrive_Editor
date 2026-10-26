@@ -1,6 +1,7 @@
 import pytest
 from PySide6.QtCore import QPointF
 
+from autodrive_editor.editing.edit_context import EditContext
 from autodrive_editor.editing.edit_history import EditHistory
 from autodrive_editor.editing.operations.rotate_selection import RotateSelectionOperation
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
@@ -15,7 +16,9 @@ def setup():
     data.add_node(NodeData(3, 100, 0, 100))
     selection = NodeSelection()
     edits = EditHistory()
-    coordinator = RotateSelectionOperation(selection, edits, lambda: data)
+    coordinator = RotateSelectionOperation(
+        EditContext(edits, lambda: data, node_selection=selection)
+    )
     return data, selection, edits, coordinator
 
 

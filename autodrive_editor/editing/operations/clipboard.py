@@ -1,40 +1,27 @@
 from collections.abc import Callable
 
-from PySide6.QtCore import QObject, Signal
-
 from autodrive_editor.editing.clipboard import ClipboardContent, copy_nodes, nodes_for_paste
 from autodrive_editor.editing.commands.paste_nodes import PasteNodesCommand
-from autodrive_editor.editing.edit_history import EditHistory
+from autodrive_editor.editing.edit_context import EditContext, EditOperation
 from autodrive_editor.i18n import tr
-from autodrive_editor.model.autodrive_data import AutoDriveData
-from autodrive_editor.selection.node_selection import NodeSelection
 
 
-class ClipboardOperation(QObject):
+class ClipboardOperation(EditOperation):
     """Copy, cut and paste of the selected nodes. The clipboard stays
     filled when other data is loaded, so nodes can be pasted into another
     route."""
 
-    status_changed = Signal(str)
-
     def __init__(
         self,
-        node_selection: NodeSelection,
-        edit_history: EditHistory,
-        autodrive_data_provider: Callable[[], AutoDriveData | None],
+        context: EditContext,
         delete_nodes: Callable[[set[int]], bool],
         paste_position: Callable[[], tuple[float, float]],
-        terrain_height_at: Callable[[float, float], float | None] | None = None,
         parent=None,
     ):
-        super().__init__(parent)
+        super().__init__(context, parent)
 
-        self.node_selection = node_selection
-        self.edit_history = edit_history
-        self.autodrive_data_provider = autodrive_data_provider
         self.delete_nodes = delete_nodes
         self.paste_position = paste_position
-        self.terrain_height_at = terrain_height_at
 
         self.content: ClipboardContent | None = None
 

@@ -1,10 +1,10 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from PySide6.QtCore import QObject, QPoint, Signal
+from PySide6.QtCore import QPoint, Signal
 
 from autodrive_editor.editing.commands.create_path import CreatePathCommand
-from autodrive_editor.editing.edit_history import EditHistory
+from autodrive_editor.editing.edit_context import EditContext, EditOperation
 from autodrive_editor.editing.path_shapes import (
     PathOptions,
     PathShape,
@@ -16,9 +16,6 @@ from autodrive_editor.editing.path_shapes import (
 from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
 from autodrive_editor.model.connections import CONNECTION_STATES
-from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
-from autodrive_editor.terrain.terrain_follower import TerrainHeightProvider
-from autodrive_editor.ui.map_view.map_view import MapView
 
 SHAPE_NAMES = {
     PathShape.LINE: tr("Line"),
@@ -46,7 +43,7 @@ class PathEnd:
     node_id: int | None = None
 
 
-class CreatePathOperation(QObject):
+class CreatePathOperation(EditOperation):
     """Creates straight lines, Bézier curves and circular arcs of evenly
     spaced, connected nodes.
 
@@ -56,31 +53,18 @@ class CreatePathOperation(QObject):
     The end of each path is the start of the next one.
     """
 
-    status_changed = Signal(str)
-
     # The start, end, handles or options changed; the preview needs redrawing.
     preview_changed = Signal()
 
     def __init__(
         self,
-        view: MapView,
-        selection_coordinator: SelectionCoordinator,
-        edit_history: EditHistory,
-        autodrive_data_provider: Callable[[], AutoDriveData | None],
+        context: EditContext,
         height_for_new_node: Callable[[AutoDriveData, float, float], float],
-        terrain_height_at: TerrainHeightProvider | None = None,
-        snap_point: Callable[[float, float], tuple[float, float]] | None = None,
         parent=None,
     ):
-        super().__init__(parent)
+        super().__init__(context, parent)
 
-        self.view = view
-        self.selection_coordinator = selection_coordinator
-        self.edit_history = edit_history
-        self.autodrive_data_provider = autodrive_data_provider
         self.height_for_new_node = height_for_new_node
-        self.terrain_height_at = terrain_height_at
-        self.snap_point = snap_point
 
         self.shape = PathShape.LINE
         self.options = PathOptions()

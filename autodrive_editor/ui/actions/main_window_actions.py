@@ -107,31 +107,31 @@ class MainWindowActions:
 
         self.load_project_action = QAction(tr("Load project"), self.window)
 
-        self.load_project_action.triggered.connect(self.window.load_project)
+        self.load_project_action.triggered.connect(self.window.files.load_project)
 
         self.save_project_action = QAction(tr("Save project"), self.window)
 
-        self.save_project_action.triggered.connect(self.window.save_project)
+        self.save_project_action.triggered.connect(self.window.files.save_project)
 
         self.open_route_action = QAction(tr("Open route…"), self.window)
         self.open_route_action.setStatusTip(
             tr("Open a route from the RoutesManager of the game folder")
         )
-        self.open_route_action.triggered.connect(self.window.open_route)
+        self.open_route_action.triggered.connect(self.window.files.open_route)
 
         self.open_savegame_action = QAction(tr("Open savegame…"), self.window)
         self.open_savegame_action.setStatusTip(tr("Open the AutoDrive data of a savegame"))
-        self.open_savegame_action.triggered.connect(self.window.open_savegame)
+        self.open_savegame_action.triggered.connect(self.window.files.open_savegame)
 
         self.load_xml_action = QAction(tr("Open XML file…"), self.window)
 
-        self.load_xml_action.triggered.connect(self.window.load_xml)
+        self.load_xml_action.triggered.connect(self.window.files.load_xml)
 
         self.save_xml_action = QAction(tr("Save"), self.window)
         self.save_xml_action.setShortcut(QKeySequence.Save)
         self.save_xml_action.setStatusTip(tr("Save the AutoDrive data into the loaded file"))
         self.save_xml_action.setEnabled(False)
-        self.save_xml_action.triggered.connect(self.window.save_xml)
+        self.save_xml_action.triggered.connect(self.window.files.save_xml)
 
         self.save_xml_as_action = QAction(tr("Save as…"), self.window)
         self.save_xml_as_action.setShortcut(QKeySequence.SaveAs)
@@ -139,7 +139,7 @@ class MainWindowActions:
             tr("Save routes as a new route in the RoutesManager, anything else into another file")
         )
         self.save_xml_as_action.setEnabled(False)
-        self.save_xml_as_action.triggered.connect(self.window.save_xml_as)
+        self.save_xml_as_action.triggered.connect(self.window.files.save_xml_as)
 
         self.settings_action = QAction(tr("Settings…"), self.window)
 
@@ -167,25 +167,27 @@ class MainWindowActions:
         self.import_map_mod_action.setStatusTip(
             tr("Import the map image and heightmap from a map mod (zip)")
         )
-        self.import_map_mod_action.triggered.connect(self.window.import_map_mod)
+        self.import_map_mod_action.triggered.connect(self.window.map_import.import_map_mod)
 
         self.scan_map_mods_action = QAction(tr("Scan maps…"), self.window)
         self.scan_map_mods_action.setStatusTip(
             tr("Search the mods folder for map mods and import maps")
         )
-        self.scan_map_mods_action.triggered.connect(self.window.scan_map_mods)
+        self.scan_map_mods_action.triggered.connect(self.window.map_import.scan_map_mods)
 
         self.select_background_action = QAction(tr("Choose DDS"), self.window)
 
-        self.select_background_action.triggered.connect(self.window.select_background)
+        self.select_background_action.triggered.connect(self.window.files.select_background)
 
         self.select_heightmap_action = QAction(tr("Choose heightmap"), self.window)
 
-        self.select_heightmap_action.triggered.connect(self.window.select_heightmap)
+        self.select_heightmap_action.triggered.connect(self.window.files.select_heightmap)
 
         self.remove_heightmap_action = QAction(tr("Remove heightmap"), self.window)
 
-        self.remove_heightmap_action.triggered.connect(self.window.remove_heightmap)
+        self.remove_heightmap_action.triggered.connect(
+            self.window.project_coordinator.remove_heightmap
+        )
 
         self.remove_heightmap_action.setEnabled(False)
 
@@ -612,7 +614,7 @@ class MainWindowActions:
 
             return
 
-        if self.window.measurement_controller.mode == MeasurementMode.DISTANCE:
+        if self.window.measurement_coordinator.mode == MeasurementMode.DISTANCE:
             self.window.set_measurement_mode(MeasurementMode.INACTIVE)
 
     def _toggle_angle_measurement(self, checked: bool):
@@ -623,5 +625,5 @@ class MainWindowActions:
 
             return
 
-        if self.window.measurement_controller.mode == MeasurementMode.ANGLE:
+        if self.window.measurement_coordinator.mode == MeasurementMode.ANGLE:
             self.window.set_measurement_mode(MeasurementMode.INACTIVE)

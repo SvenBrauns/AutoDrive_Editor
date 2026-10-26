@@ -1,6 +1,6 @@
 from collections.abc import Callable
 
-from PySide6.QtCore import QObject, QPoint, Signal
+from PySide6.QtCore import QPoint
 
 from autodrive_editor.editing.commands.markers import (
     AddMarkerCommand,
@@ -10,11 +10,9 @@ from autodrive_editor.editing.commands.markers import (
     MoveMarkerCommand,
     RenameMarkerGroupCommand,
 )
-from autodrive_editor.editing.edit_history import EditHistory
+from autodrive_editor.editing.edit_context import EditContext, EditOperation
 from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData, MarkerData
-from autodrive_editor.selection.node_selection import NodeSelection
-from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
 
 # Asks the user for a marker's name and group. Arguments: dialog title,
 # the marker being edited (None for a new one), the suggested group,
@@ -25,29 +23,15 @@ MarkerRequest = Callable[
 ]
 
 
-class MarkerOperation(QObject):
+class MarkerOperation(EditOperation):
     """Adds, edits, moves and deletes markers and renames or deletes
     marker groups, all through the undo history."""
 
-    status_changed = Signal(str)
-
     DEFAULT_GROUP = "All"
 
-    def __init__(
-        self,
-        selection_coordinator: SelectionCoordinator,
-        node_selection: NodeSelection,
-        edit_history: EditHistory,
-        autodrive_data_provider: Callable[[], AutoDriveData | None],
-        ask_marker: MarkerRequest,
-        parent=None,
-    ):
-        super().__init__(parent)
+    def __init__(self, context: EditContext, ask_marker: MarkerRequest, parent=None):
+        super().__init__(context, parent)
 
-        self.selection_coordinator = selection_coordinator
-        self.node_selection = node_selection
-        self.edit_history = edit_history
-        self.autodrive_data_provider = autodrive_data_provider
         self.ask_marker = ask_marker
 
         # New markers suggest the group used last.

@@ -1,36 +1,28 @@
 from collections.abc import Callable
 
-from PySide6.QtCore import QObject, QPoint, Signal
+from PySide6.QtCore import QPoint
 
 from autodrive_editor.editing.commands.reverse_connections import ReverseConnectionsCommand
-from autodrive_editor.editing.edit_history import EditHistory
+from autodrive_editor.editing.edit_context import EditContext, EditOperation
 from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData
 from autodrive_editor.model.connections import ConnectionType, is_dual_connection
 from autodrive_editor.rendering.connections.connection_data import ConnectionData
-from autodrive_editor.selection.node_selection import NodeSelection
 
 
-class ReverseDirectionOperation(QObject):
+class ReverseDirectionOperation(EditOperation):
     """Flips the direction of connections. Dual connections have no
     direction and stay unchanged."""
 
-    status_changed = Signal(str)
-
     def __init__(
         self,
+        context: EditContext,
         connection_at: Callable[[QPoint], ConnectionData | None],
-        node_selection: NodeSelection,
-        edit_history: EditHistory,
-        autodrive_data_provider: Callable[[], AutoDriveData | None],
         parent=None,
     ):
-        super().__init__(parent)
+        super().__init__(context, parent)
 
         self.connection_at = connection_at
-        self.node_selection = node_selection
-        self.edit_history = edit_history
-        self.autodrive_data_provider = autodrive_data_provider
 
     def reverse_at(self, view_position: QPoint) -> bool:
         """Flips the connection at the view position. If both its nodes

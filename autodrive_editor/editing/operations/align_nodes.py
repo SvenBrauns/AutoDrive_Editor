@@ -1,46 +1,23 @@
-from collections.abc import Callable
-
-from PySide6.QtCore import QObject, QPoint, QPointF, Signal
+from PySide6.QtCore import QPoint, QPointF
 
 from autodrive_editor.editing.commands.move_nodes import MoveNodesCommand, NodePosition
-from autodrive_editor.editing.edit_history import EditHistory
+from autodrive_editor.editing.edit_context import EditContext, EditOperation
 from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
-from autodrive_editor.selection.node_selection import NodeSelection
-from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
-from autodrive_editor.terrain.terrain_follower import TerrainFollower, TerrainHeightProvider
-from autodrive_editor.ui.map_view.map_view import MapView
+from autodrive_editor.terrain.terrain_follower import TerrainFollower
 
 
-class AlignNodesOperation(QObject):
+class AlignNodesOperation(EditOperation):
     """Aligns the selected nodes to a clicked reference node.
 
     "Horizontal" and "vertical" refer to the screen axes of the current
     view, so they also work when the map is rotated.
     """
 
-    status_changed = Signal(str)
-
     NO_SELECTION_TEXT = tr("First select the nodes to align")
 
-    def __init__(
-        self,
-        view: MapView,
-        selection_coordinator: SelectionCoordinator,
-        node_selection: NodeSelection,
-        edit_history: EditHistory,
-        autodrive_data_provider: Callable[[], AutoDriveData | None],
-        terrain_height_at: TerrainHeightProvider | None = None,
-        parent=None,
-    ):
-        super().__init__(parent)
-
-        self.view = view
-        self.selection_coordinator = selection_coordinator
-        self.node_selection = node_selection
-        self.edit_history = edit_history
-        self.autodrive_data_provider = autodrive_data_provider
-        self.terrain_height_at = terrain_height_at
+    def __init__(self, context: EditContext, parent=None):
+        super().__init__(context, parent)
 
     def align_horizontal_at(self, view_position: QPoint) -> bool:
         return self._align_on_screen_axis(view_position, keep_screen_x=True)

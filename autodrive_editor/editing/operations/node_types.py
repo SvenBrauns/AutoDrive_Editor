@@ -1,34 +1,16 @@
-from collections.abc import Callable
-
-from PySide6.QtCore import QObject, QPoint, Signal
+from PySide6.QtCore import QPoint
 
 from autodrive_editor.editing.commands.set_node_flags import SetNodeFlagsCommand
-from autodrive_editor.editing.edit_history import EditHistory
+from autodrive_editor.editing.edit_context import EditContext, EditOperation
 from autodrive_editor.i18n import tr
-from autodrive_editor.model.autodrive_data import REGULAR_FLAG, SUBPRIO_FLAG, AutoDriveData
-from autodrive_editor.selection.node_selection import NodeSelection
-from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
+from autodrive_editor.model.autodrive_data import REGULAR_FLAG, SUBPRIO_FLAG
 
 
-class NodeTypeOperation(QObject):
+class NodeTypeOperation(EditOperation):
     """Switches nodes between regular and subprio."""
 
-    status_changed = Signal(str)
-
-    def __init__(
-        self,
-        selection_coordinator: SelectionCoordinator,
-        node_selection: NodeSelection,
-        edit_history: EditHistory,
-        autodrive_data_provider: Callable[[], AutoDriveData | None],
-        parent=None,
-    ):
-        super().__init__(parent)
-
-        self.selection_coordinator = selection_coordinator
-        self.node_selection = node_selection
-        self.edit_history = edit_history
-        self.autodrive_data_provider = autodrive_data_provider
+    def __init__(self, context: EditContext, parent=None):
+        super().__init__(context, parent)
 
     def toggle_at(self, view_position: QPoint) -> bool:
         """Switches the node at the view position to the other type.

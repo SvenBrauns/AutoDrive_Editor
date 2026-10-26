@@ -19,14 +19,14 @@ def game_window(window, tmp_path, monkeypatch):
     window.settings.set_game_folder(folder)
 
     window.messages = []
-    monkeypatch.setattr(window, "_inform", window.messages.append)
+    monkeypatch.setattr(window.files, "_inform", window.messages.append)
 
     def choose_by_name(name):
         def choose(title, hint, columns, rows, **sorting):
             window.offered = [texts for texts, _ in rows]
             return next((value for texts, value in rows if name in texts), None)
 
-        monkeypatch.setattr(window, "_choose", choose)
+        monkeypatch.setattr(window.files, "_choose", choose)
 
     window.choose_by_name = choose_by_name
     window.folder = folder
@@ -37,7 +37,7 @@ def test_open_route_lists_routes_and_loads_the_chosen_one(game_window):
     add_routes(game_window.folder, ROUTES)
     game_window.choose_by_name("NF Marsch")
 
-    game_window.open_route()
+    game_window.files.open_route()
 
     source = game_window.project_coordinator.config_source
     assert [row[0] for row in game_window.offered] == ["Thueringen", "NF Marsch"]
@@ -53,13 +53,13 @@ def test_routes_with_missing_files_are_not_offered(game_window):
     (manager / "routes" / "I0pc.xml").unlink()
     game_window.choose_by_name("nothing")
 
-    game_window.open_route()
+    game_window.files.open_route()
 
     assert [row[0] for row in game_window.offered] == ["Thueringen"]
 
 
 def test_open_route_without_routes_manager_explains_it(game_window):
-    game_window.open_route()
+    game_window.files.open_route()
 
     assert "route list" in game_window.messages[0]
 
@@ -68,7 +68,7 @@ def test_cancelling_the_choice_loads_nothing(game_window):
     add_routes(game_window.folder, ROUTES)
     game_window.choose_by_name("nothing")
 
-    game_window.open_route()
+    game_window.files.open_route()
 
     assert game_window.project_coordinator.autodrive_data is None
 
@@ -77,7 +77,7 @@ def test_open_savegame_loads_its_autodrive_config(game_window):
     add_savegame(game_window.folder, 1, "Mein Spielstand", "LS25 Thüringen 2.0 16x", "LS25_X")
     game_window.choose_by_name("Mein Spielstand")
 
-    game_window.open_savegame()
+    game_window.files.open_savegame()
 
     source = game_window.project_coordinator.config_source
     assert source.format == ConfigFormat.SAVEGAME
@@ -87,18 +87,18 @@ def test_open_savegame_loads_its_autodrive_config(game_window):
 
 
 def test_open_savegame_without_autodrive_data_explains_it(game_window):
-    game_window.open_savegame()
+    game_window.files.open_savegame()
 
     assert "AutoDrive data" in game_window.messages[0]
 
 
 def test_without_valid_game_folder_the_user_is_sent_to_settings(window, monkeypatch, tmp_path):
     messages = []
-    monkeypatch.setattr(window, "_inform", messages.append)
+    monkeypatch.setattr(window.files, "_inform", messages.append)
     window.settings.set_game_folder(tmp_path / "not_a_game_folder")
 
-    window.open_route()
-    window.open_savegame()
+    window.files.open_route()
+    window.files.open_savegame()
 
     assert len(messages) == 2
     assert all("Settings" in message for message in messages)
@@ -118,7 +118,7 @@ def test_broken_file_is_reported_instead_of_crashing(game_window, tmp_path):
     broken = tmp_path / "broken.xml"
     broken.write_text("<AutoDrive><version>2.0</version></AutoDrive>", encoding="utf-8")
 
-    game_window._load_config(broken)
+    game_window.files._load_config(broken)
 
     assert "FS25" in game_window.messages[0]
 

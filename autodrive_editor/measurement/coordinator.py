@@ -1,21 +1,25 @@
 from collections.abc import Callable
 
 from PySide6.QtCore import QObject, QPoint, QPointF, Signal
+from PySide6.QtWidgets import QGraphicsScene
 
 from autodrive_editor.i18n import tr
 from autodrive_editor.measurement.calculations import calculate_horizontal_alignment_rotation
-from autodrive_editor.measurement.controller import MeasurementController
 from autodrive_editor.measurement.mode import MeasurementMode
 from autodrive_editor.measurement.point import MeasurementPoint
+from autodrive_editor.measurement.state import MeasurementState
 from autodrive_editor.model.autodrive_data import NodeData
+from autodrive_editor.rendering.items.measurement_handle_item import MeasurementHandleItem
+from autodrive_editor.rendering.items.measurement_line_item import MeasurementLineItem
+from autodrive_editor.rendering.items.measurement_result_item import MeasurementResultItem
 from autodrive_editor.ui.map_view.map_view import MapView
 from autodrive_editor.ui.map_view.zoom_controller import ViewZoomController
 
 
 class MeasurementCoordinator(QObject):
-    """Turns map clicks into measurement points, snaps them to nodes and reports results in the
-    status bar.
-    """
+    """Distance and angle measurement between points A and B. Clicks set the points and snap
+    them to nodes, free points can be dragged, and the result is drawn on the map and reported
+    in the status bar."""
 
     status_changed = Signal(str)
 
@@ -23,218 +27,154 @@ class MeasurementCoordinator(QObject):
 
     alignment_available_changed = Signal(bool)
 
+    # How close to a free point a press grabs it, in pixels.
+    GRAB_DISTANCE_PX = 12.0
+
     def __init__(
         self,
         view: MapView,
-        controller: MeasurementController,
+        scene: QGraphicsScene,
         node_provider: Callable[[QPoint], NodeData | None],
         parent=None,
     ):
         super().__init__(parent)
 
-        if not isinstance(view, MapView):
-            raise TypeError("Invalid map view.")
-
-        if not isinstance(controller, MeasurementController):
-            raise TypeError("Invalid MeasurementController.")
-
-        if not callable(node_provider):
-            raise TypeError("Invalid node provider.")
-
         self.view = view
-        self.controller = controller
-
+        self.scene = scene
         self._node_provider = node_provider
 
-        self._measurement_drag_active = False
+        self.state = MeasurementState()
 
-        self._connect_controller_signals()
+        # Index of the dragged point, where it was before the drag, and
+        # its offset from the mouse.
+        self._drag_index: int | None = None
+        self._drag_origin = QPointF()
+        self._drag_offset = QPointF()
+
+        self._items = None
+        self._update_scene_items()
 
     @property
     def mode(self) -> MeasurementMode:
-        return self.controller.mode
-
-    @property
-    def is_active(self) -> bool:
-        return self.controller.is_active
+        return self.state.mode
 
     @property
     def is_complete(self) -> bool:
-        return self.controller.is_complete
+        return self.state.is_complete
 
     @property
     def is_point_dragging(self) -> bool:
-        """True while a measurement point is being dragged."""
-
-        return self._measurement_drag_active
+        return self._drag_index is not None
 
     def set_mode(self, measurement_mode: MeasurementMode):
-        if not isinstance(measurement_mode, MeasurementMode):
-            raise TypeError("Invalid measurement mode.")
-
-        self._reset_drag_state()
+        self._drag_index = None
 
         if measurement_mode == MeasurementMode.INACTIVE:
-            self.controller.deactivate()
+            self.state.deactivate()
+            status = tr("Measuring tool turned off")
+        else:
+            self.state.activate(measurement_mode)
 
-            self.view.set_measurement_active(False)
+            if measurement_mode == MeasurementMode.DISTANCE:
+                status = tr("Distance measurement active: set point A")
+            else:
+                status = tr("Angle measurement active: set point A")
 
-            self.measurement_mode_changed.emit(MeasurementMode.INACTIVE)
-
-            self.alignment_available_changed.emit(False)
-
-            self.status_changed.emit(tr("Measuring tool turned off"))
-
-            return
-
-        self.controller.activate(measurement_mode)
-
-        self.view.set_measurement_active(True)
-
+        self.view.set_measurement_active(self.state.is_active)
+        self._update_scene_items()
         self.measurement_mode_changed.emit(measurement_mode)
-
-        self.alignment_available_changed.emit(False)
-
-        if measurement_mode == MeasurementMode.DISTANCE:
-            self.status_changed.emit(tr("Distance measurement active: set point A"))
-
-        elif measurement_mode == MeasurementMode.ANGLE:
-            self.status_changed.emit(tr("Angle measurement active: set point A"))
+        self.status_changed.emit(status)
 
     def handle_press(self, view_position: QPoint, modifiers):
-        if not self.controller.is_active:
+        if not self.state.is_active:
             return
 
         scene_position = self.view.mapToScene(view_position)
+        point_index = self._free_point_at(scene_position)
 
-        scene_tolerance = 12.0 / max(self.view.zoom_level, ViewZoomController.MIN_ZOOM)
-
-        handle_index = self.controller.get_handle_at_scene_position(
-            scene_position=scene_position, scene_tolerance=scene_tolerance
-        )
-
-        if handle_index is None:
-            self._set_drag_active(False)
-
+        if point_index is None:
             return
 
-        drag_started = self.controller.begin_point_drag(
-            point_index=handle_index, press_scene_position=scene_position
-        )
-
-        self._set_drag_active(drag_started)
+        point = self.state.get_point(point_index)
+        self._drag_index = point_index
+        self._drag_origin = QPointF(point.position)
+        self._drag_offset = point.position - scene_position
 
     def handle_move(self, view_position: QPoint, modifiers):
-        if not self.controller.is_active:
+        if not self.state.is_active:
             return
 
         scene_position = self.view.mapToScene(view_position)
 
-        if self._measurement_drag_active:
-            self.controller.update_point_drag(scene_position)
+        if self.is_point_dragging:
+            self.state.move_free_point(self._drag_index, scene_position + self._drag_offset)
+            self._update_scene_items()
 
-            return
-
-        if self.controller.state.is_awaiting_end_point:
-            preview_position = self._get_preview_position(
-                view_position=view_position, scene_position=scene_position
-            )
-
-            self.controller.set_preview_position(preview_position)
+        elif self.state.is_awaiting_end_point:
+            self.state.set_preview_position(self._snapped_point(view_position).position)
+            self._update_scene_items()
 
     def handle_release(self, view_position: QPoint, modifiers):
-        if not self.controller.is_active:
+        if not self.state.is_active:
             return
 
-        scene_position = self.view.mapToScene(view_position)
-
-        if self._measurement_drag_active:
-            self.controller.update_point_drag(scene_position)
-
-            self.controller.finish_point_drag()
-
-            self._set_drag_active(False)
-
+        if self.is_point_dragging:
+            self.handle_move(view_position, modifiers)
+            self._drag_index = None
             self.status_changed.emit(tr("Measuring point moved"))
-
             return
 
-        measurement_point = self._create_measurement_point(
-            view_position=view_position, scene_position=scene_position
-        )
+        measurement_point = self._snapped_point(view_position)
 
-        measurement_state = self.controller.state
+        if self.state.is_awaiting_end_point:
+            self.state.set_end_point(measurement_point)
+            self._update_scene_items()
 
-        if measurement_state.is_awaiting_start_point or measurement_state.is_complete:
-            self.controller.set_start_point(measurement_point)
+            result = self.state.calculate_result()
 
-            self.status_changed.emit(tr("Point A set"))
-
-            return
-
-        if measurement_state.is_awaiting_end_point:
-            self.controller.set_end_point(measurement_point)
-
-            measurement_result = self.controller.state.calculate_result()
-
-            if measurement_result is not None:
-                self.status_changed.emit(
-                    tr("Measurement: {result}", result=measurement_result.display_text)
-                )
-
+            if result is not None:
+                self.status_changed.emit(tr("Measurement: {result}", result=result.display_text))
             else:
                 self.status_changed.emit(tr("Point B set"))
+            return
+
+        self.state.set_start_point(measurement_point)
+        self._update_scene_items()
+        self.status_changed.emit(tr("Point A set"))
 
     def cancel(self):
-        if not self.controller.is_active:
+        """Esc: cancels a point drag, else clears the measurement, else ends measuring."""
+
+        if not self.state.is_active:
             return
 
-        if self.controller.is_dragging:
-            self.controller.cancel_drag()
-
-            self._set_drag_active(False)
-
+        if self.is_point_dragging:
+            self._cancel_drag()
             self.status_changed.emit(tr("Moving the measuring point cancelled"))
 
-            return
-
-        if self.controller.state.has_start_point:
-            self.controller.clear_measurement()
-
+        elif self.state.has_start_point:
+            self.state.clear_points()
+            self._update_scene_items()
             self.status_changed.emit(tr("Measurement cleared: set point A"))
 
-            return
-
-        self.set_mode(MeasurementMode.INACTIVE)
+        else:
+            self.set_mode(MeasurementMode.INACTIVE)
 
     def align_view_to_measurement(self):
-        measurement_state = self.controller.state
-
-        if not measurement_state.is_complete:
+        if not self.state.is_complete:
             self.alignment_available_changed.emit(False)
-
             self.status_changed.emit(tr("Points A and B must be set to align the view"))
-
-            return
-
-        start_point = measurement_state.start_point
-        end_point = measurement_state.end_point
-
-        if start_point is None or end_point is None:
-            self.alignment_available_changed.emit(False)
-
             return
 
         try:
             target_rotation = calculate_horizontal_alignment_rotation(
-                start_position=start_point.position, end_position=(end_point.position)
+                start_position=self.state.start_point.position,
+                end_position=self.state.end_point.position,
             )
-
         except ValueError as ex:
             self.status_changed.emit(
                 tr("The measuring line could not be aligned: {error}", error=ex)
             )
-
             return
 
         self.view.set_exact_rotation_angle(target_rotation)
@@ -244,60 +184,105 @@ class MeasurementCoordinator(QObject):
         )
 
     def remove_scene_items(self):
-        self._reset_drag_state()
+        """Takes the items out of the scene before the scene is cleared."""
 
-        self.controller.remove_scene_items()
+        if self.is_point_dragging:
+            self._cancel_drag()
+
+        if self._items is not None:
+            for item in self._items:
+                if item.scene() is self.scene:
+                    self.scene.removeItem(item)
+
+        self._items = None
 
     def restore_scene_items(self):
-        self.controller.restore_scene_items()
+        if self.state.is_active:
+            self._update_scene_items()
 
-        self._update_alignment_availability()
+    def _cancel_drag(self):
+        self.state.move_free_point(self._drag_index, self._drag_origin)
+        self._drag_index = None
+        self._update_scene_items()
 
-    def _create_measurement_point(
-        self, view_position: QPoint, scene_position: QPointF
-    ) -> MeasurementPoint:
-        node = self._get_node(view_position)
+    def _snapped_point(self, view_position: QPoint) -> MeasurementPoint:
+        """A point on the node under the mouse, or a free point."""
 
-        if node is not None:
-            return MeasurementPoint.create_node_anchor(
-                node_id=node.node_id, position=QPointF(node.x, node.z)
-            )
-
-        return MeasurementPoint.create_free(scene_position)
-
-    def _get_preview_position(self, view_position: QPoint, scene_position: QPointF) -> QPointF:
-        node = self._get_node(view_position)
-
-        if node is not None:
-            return QPointF(node.x, node.z)
-
-        return QPointF(scene_position)
-
-    def _get_node(self, view_position: QPoint) -> NodeData | None:
         node = self._node_provider(view_position)
 
-        if node is not None and not isinstance(node, NodeData):
-            raise TypeError("The node provider returned an invalid object.")
+        if node is not None:
+            return MeasurementPoint(QPointF(node.x, node.z), node.node_id)
 
-        return node
+        return MeasurementPoint(self.view.mapToScene(view_position))
 
-    def _set_drag_active(self, active: bool):
-        self._measurement_drag_active = bool(active)
+    def _free_point_at(self, scene_position: QPointF) -> int | None:
+        tolerance = self.GRAB_DISTANCE_PX / max(self.view.zoom_level, ViewZoomController.MIN_ZOOM)
 
-    def _reset_drag_state(self):
-        if self.controller.is_dragging:
-            self.controller.cancel_drag()
+        for point_index in (0, 1):
+            point = self.state.get_point(point_index)
 
-        self._set_drag_active(False)
+            if point is None or not point.is_free_point:
+                continue
 
-    def _connect_controller_signals(self):
-        self.controller.measurement_changed.connect(self._update_alignment_availability)
+            delta = scene_position - point.position
 
-        self.controller.measurement_cleared.connect(self._update_alignment_availability)
+            if delta.x() ** 2 + delta.y() ** 2 <= tolerance**2:
+                return point_index
 
-        self.controller.mode_changed.connect(self._update_alignment_availability)
+        return None
 
-    def _update_alignment_availability(self, *args):
-        alignment_available = self.controller.is_active and self.controller.is_complete
+    def _ensure_scene_items(self):
+        """Creates the items again after the scene was cleared."""
 
-        self.alignment_available_changed.emit(alignment_available)
+        if self._items is not None and all(item.scene() is self.scene for item in self._items):
+            return
+
+        self.remove_scene_items()
+
+        self._start_handle = MeasurementHandleItem(point_index=0, label="A", movable=True)
+        self._end_handle = MeasurementHandleItem(point_index=1, label="B", movable=True)
+        self._line_item = MeasurementLineItem()
+        self._result_item = MeasurementResultItem()
+        self._items = (self._line_item, self._start_handle, self._end_handle, self._result_item)
+
+        for item in self._items:
+            self.scene.addItem(item)
+
+    def _update_scene_items(self):
+        self._ensure_scene_items()
+
+        start_point = self.state.start_point
+        end_point = self.state.end_point
+        end_position = self.state.display_end_position
+
+        self._update_handle(
+            self._start_handle, start_point.position if start_point else None, start_point
+        )
+        self._update_handle(self._end_handle, end_position, end_point)
+
+        result = self.state.calculate_result(include_preview=True)
+
+        if start_point is None or end_position is None:
+            self._line_item.clear()
+        else:
+            self._line_item.set_points(
+                start_position=start_point.position, end_position=end_position
+            )
+
+        if result is None:
+            self._result_item.clear()
+        else:
+            self._result_item.set_text(result.display_text)
+            self._result_item.setPos((start_point.position + end_position) / 2.0)
+
+        self.alignment_available_changed.emit(self.state.is_complete)
+
+    @staticmethod
+    def _update_handle(handle, position: QPointF | None, point: MeasurementPoint | None):
+        """Shows the handle at the position; only set free points look movable."""
+
+        handle.setVisible(position is not None)
+
+        if position is not None:
+            handle.set_scene_position(position)
+            handle.set_movable(point is not None and point.is_free_point)

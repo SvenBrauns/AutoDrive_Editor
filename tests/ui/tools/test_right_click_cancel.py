@@ -90,7 +90,7 @@ def test_right_click_clears_then_ends_measurement(zoomed_window):
     click(zoomed_window, view_pos(zoomed_window, 5, 20))
 
     right_click(zoomed_window, view_pos(zoomed_window, 5, 20))
-    assert not zoomed_window.measurement_controller.state.has_start_point
+    assert not zoomed_window.measurement_coordinator.state.has_start_point
     assert zoomed_window.view.measurement_active
 
     right_click(zoomed_window, view_pos(zoomed_window, 5, 20))

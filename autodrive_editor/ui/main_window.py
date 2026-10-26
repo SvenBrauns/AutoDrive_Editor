@@ -1,21 +1,15 @@
-from datetime import datetime
-from pathlib import Path
-
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import (
-    QApplication,
-    QFileDialog,
     QGraphicsScene,
     QInputDialog,
     QLabel,
     QMainWindow,
-    QMessageBox,
-    QProgressDialog,
     QVBoxLayout,
 )
 
 from autodrive_editor.editing.commands.edit_command import DataChange
+from autodrive_editor.editing.edit_context import EditContext
 from autodrive_editor.editing.edit_history import EditHistory
 from autodrive_editor.editing.operations.align_nodes import AlignNodesOperation
 from autodrive_editor.editing.operations.clipboard import ClipboardOperation
@@ -30,14 +24,8 @@ from autodrive_editor.editing.operations.node_types import NodeTypeOperation
 from autodrive_editor.editing.operations.reverse_direction import ReverseDirectionOperation
 from autodrive_editor.editing.operations.rotate_selection import RotateSelectionOperation
 from autodrive_editor.editing.path_shapes import PathShape
-from autodrive_editor.file_io.base_game_maps import read_base_game_maps
-from autodrive_editor.file_io.map_mod import read_map_mod
 from autodrive_editor.file_io.project_file import ProjectFileStore
-from autodrive_editor.file_io.routes_index import find_route_entry, read_routes_index
-from autodrive_editor.game.map_scanner import ScanResult, scan_for_map_mods
-from autodrive_editor.game.savegame_info import savegames_with_autodrive
 from autodrive_editor.i18n import tr
-from autodrive_editor.measurement.controller import MeasurementController
 from autodrive_editor.measurement.coordinator import MeasurementCoordinator
 from autodrive_editor.measurement.mode import MeasurementMode
 from autodrive_editor.model.autodrive_data import (
@@ -61,12 +49,12 @@ from autodrive_editor.terrain.map_cache import MapCache
 from autodrive_editor.ui.actions.main_window_actions import MainWindowActions
 from autodrive_editor.ui.actions.tool_catalog import LINES_GROUP
 from autodrive_editor.ui.controls.grid_coordinator import GridCoordinator
-from autodrive_editor.ui.dialogs.first_start_dialog import FirstStartDialog
-from autodrive_editor.ui.dialogs.list_choice_dialog import ListChoiceDialog
-from autodrive_editor.ui.dialogs.map_import_dialog import MapImportDialog
 from autodrive_editor.ui.dialogs.marker_dialog import MarkerDialog
+from autodrive_editor.ui.dialogs.messages import APP_TITLE
 from autodrive_editor.ui.dialogs.node_position_dialog import NodePositionDialog
 from autodrive_editor.ui.dialogs.settings_dialog import SettingsDialog
+from autodrive_editor.ui.file_controller import FileController
+from autodrive_editor.ui.map_import_controller import MapImportController
 from autodrive_editor.ui.map_view.map_view import MapView
 from autodrive_editor.ui.map_view.rotation_controller import ViewRotationController
 from autodrive_editor.ui.panels.debug_dock import DebugDock
@@ -101,7 +89,7 @@ class MainWindow(QMainWindow):
     6. widgets, actions, menus and toolbars, then the signal wiring
     """
 
-    WINDOW_TITLE = "AutoDrive FS25 Editor"
+    WINDOW_TITLE = APP_TITLE
     INITIAL_WIDTH = 1400
     INITIAL_HEIGHT = 900
 
@@ -116,9 +104,6 @@ class MainWindow(QMainWindow):
     # Zoom used when jumping to a marker from the marker list.
     FOCUS_MARKER_ZOOM = 2.0
 
-    MISSING_MAP_SCAN = "scan"
-    MISSING_MAP_IMPORT = "import"
-
     def __init__(self):
         super().__init__()
 
@@ -132,9 +117,6 @@ class MainWindow(QMainWindow):
         # Map images and heightmaps imported from map mods.
         self.map_cache = MapCache()
 
-        # Missing maps the user chose to go on without in this session.
-        self.declined_missing_maps = set()
-
         self._configure_window()
         self._create_scene_and_view()
 
@@ -143,6 +125,7 @@ class MainWindow(QMainWindow):
         self._create_edit_operations()
         self._register_map_tools()
         self._create_project_coordinator()
+        self._create_file_controllers()
 
         self._create_status_widgets()
         self._create_central_widget()
@@ -163,43 +146,6 @@ class MainWindow(QMainWindow):
         # dock reads the renderer state after it has been updated.
         self._create_debug_dock_coordinator()
 
-        # Unsaved changes are backed up here regularly.
-        self.autosave_store = AutosaveStore(user_data_directory() / "autosave")
-        self.autosave_timer = QTimer(self)
-        self.autosave_timer.timeout.connect(self.autosave)
-        self._apply_autosave_interval()
-
-    def select_background(self):
-        filename, _ = QFileDialog.getOpenFileName(
-            self, tr("Choose overview.dds"), "", tr("DDS images (*.dds);;All files (*)")
-        )
-
-        if not filename:
-            return
-
-        try:
-            self.project_coordinator.load_background_file(filename)
-
-        except Exception as ex:
-            self._set_status(tr("The DDS could not be loaded: {error}", error=ex))
-
-    def select_heightmap(self):
-        filename, _ = QFileDialog.getOpenFileName(
-            self, tr("Choose dem.png"), "", tr("PNG heightmaps (*.png);;All files (*)")
-        )
-
-        if not filename:
-            return
-
-        try:
-            self.project_coordinator.load_heightmap_file(filename)
-
-        except Exception as ex:
-            self._set_status(tr("The heightmap could not be loaded: {error}", error=ex))
-
-    def remove_heightmap(self):
-        self.project_coordinator.remove_heightmap()
-
     def set_map_scale(self, map_scale: int):
         action = self.actions.map_scale_actions.get(map_scale)
 
@@ -213,570 +159,11 @@ class MainWindow(QMainWindow):
         except Exception as ex:
             self._set_status(tr("The map size could not be changed: {error}", error=ex))
 
-    def import_map_mod(self):
-        game_folder = self.settings.game_folder
-        start = str(game_folder.mods_directory) if game_folder is not None else ""
-
-        filename, _ = QFileDialog.getOpenFileName(
-            self, tr("Import map mod"), start, tr("Mod archive (*.zip)")
-        )
-
-        if not filename:
-            return
-
-        try:
-            map_mod = read_map_mod(filename)
-        except Exception as ex:
-            self._inform(tr("The mod could not be read:\n{error}", error=ex))
-            return
-
-        if map_mod is None:
-            self._inform(tr("This mod contains no map."))
-            return
-
-        self._import_maps([(map_mod, entry) for entry in map_mod.maps])
-
-    def run_first_start(self):
-        """Shows the setup dialog on the first start (or when a stored folder
-        is gone) and scans for maps if the user wants to."""
-
-        if not self.settings.needs_setup:
-            return
-
-        scan_requested = self._show_first_start_dialog()
-        self.settings.mark_setup_done()
-
-        if scan_requested:
-            self.scan_map_mods()
-
-    def _show_first_start_dialog(self) -> bool:
-        dialog = FirstStartDialog(self.settings, parent=self)
-        dialog.exec()
-
-        return dialog.scan_requested
-
-    def scan_map_mods(self):
-        """Offers the base game maps and the map mods for import. Works with
-        only one of the two folders set."""
-
-        game_folder = self.settings.game_folder
-        has_game_folder = game_folder is not None and game_folder.is_valid
-        base_maps = self._read_base_game_maps()
-
-        if not has_game_folder and base_maps is None:
-            self._inform(
-                tr(
-                    "Neither a valid FS25 game folder nor an FS25 installation is set.\n"
-                    "Please set them under File → Settings."
-                )
-            )
-            return
-
-        result = scan_for_map_mods(game_folder.mods_directory) if has_game_folder else ScanResult()
-
-        if base_maps is not None:
-            result.map_mods.insert(0, base_maps)
-
-        if not result.map_mods:
-            self._inform(
-                tr(
-                    "No map mods were found in the mods folder:\n{path}",
-                    path=game_folder.mods_directory,
-                )
-            )
-            return
-
-        chosen = self._choose_maps_to_import(result)
-
-        if chosen:
-            self._import_maps(chosen)
-
-    def offer_missing_map(self, map_name: str):
-        """Called when a loaded config names a map that is not imported.
-        Offers to import it and loads it right away."""
-
-        if map_name in self.declined_missing_maps:
-            return
-
-        choice = self._ask_missing_map(map_name)
-
-        if choice == self.MISSING_MAP_SCAN:
-            self.scan_map_mods()
-        elif choice == self.MISSING_MAP_IMPORT:
-            self.import_map_mod()
-        else:
-            self.declined_missing_maps.add(map_name)
-            return
-
-        if not self.project_coordinator.load_map_for_current_config():
-            self._set_status(tr("Map “{name}” is still not imported", name=map_name))
-
-    def _ask_missing_map(self, map_name: str) -> str | None:
-        box = QMessageBox(self)
-        box.setWindowTitle(self.WINDOW_TITLE)
-        box.setIcon(QMessageBox.Icon.Question)
-        box.setText(tr("The map “{name}” is not imported yet.", name=map_name))
-        box.setInformativeText(
-            tr("Without map image and heightmap only the nodes are shown. Import the map now?")
-        )
-
-        scan_button = box.addButton(tr("Scan maps…"), QMessageBox.ButtonRole.AcceptRole)
-        import_button = box.addButton(tr("Import from mod…"), QMessageBox.ButtonRole.ActionRole)
-        box.addButton(tr("Continue without map"), QMessageBox.ButtonRole.RejectRole)
-        box.setDefaultButton(scan_button)
-        box.exec()
-
-        clicked = box.clickedButton()
-
-        if clicked is scan_button:
-            return self.MISSING_MAP_SCAN
-
-        if clicked is import_button:
-            return self.MISSING_MAP_IMPORT
-
-        return None
-
-    def _read_base_game_maps(self):
-        """The base game maps, if the FS25 install folder is known."""
-
-        installation = self.settings.install_folder
-
-        if installation is None or not installation.is_valid:
-            return None
-
-        try:
-            return read_base_game_maps(installation.data_directory)
-        except Exception:
-            return None
-
-    def _choose_maps_to_import(self, scan_result):
-        dialog = MapImportDialog(
-            scan_result.map_mods, self.map_cache, scan_result.skipped, parent=self
-        )
-
-        return dialog.chosen_maps if dialog.exec() else []
-
-    def _import_maps(self, chosen):
-        """Imports the given (mod, map) pairs into the map cache and reports
-        the result."""
-
-        progress = QProgressDialog(tr("Importing maps…"), tr("Cancel"), 0, len(chosen), self)
-        progress.setWindowTitle(tr("Import maps"))
-        progress.setMinimumDuration(300)
-
-        imported, failed = [], []
-
-        for index, (map_mod, entry) in enumerate(chosen):
-            if progress.wasCanceled():
-                break
-
-            progress.setLabelText(f"{entry.title} ({index + 1}/{len(chosen)})")
-            progress.setValue(index)
-            QApplication.processEvents()
-
-            try:
-                self.map_cache.import_map(map_mod, entry)
-                imported.append(entry.title)
-            except Exception as ex:
-                failed.append(f"{entry.title}: {ex}")
-
-        progress.setValue(len(chosen))
-
-        message = tr("{count} map(s) imported.", count=len(imported))
-
-        if failed:
-            message += "\n\n" + tr("Not imported:") + "\n" + "\n".join(failed)
-
-        self._set_status(tr("{count} map(s) imported", count=len(imported)))
-
-        if failed:
-            self._inform(message)
-
-        return imported
-
-    def open_route(self):
-        if not self._confirm_discard_changes():
-            return
-
-        game_folder = self._valid_game_folder()
-
-        if game_folder is None:
-            return
-
-        if not game_folder.routes_xml_path.is_file():
-            self._inform(
-                tr(
-                    "No AutoDrive route list was found in the game folder:\n{path}\n\n"
-                    "Routes are created in the game with AutoDrive's RoutesManager.",
-                    path=game_folder.routes_xml_path,
-                )
-            )
-            return
-
-        try:
-            entries = [
-                entry
-                for entry in read_routes_index(game_folder.routes_xml_path)
-                if entry.path.is_file()
-            ]
-        except ValueError as ex:
-            self._inform(str(ex))
-            return
-
-        if not entries:
-            self._inform(tr("The route list contains no existing routes."))
-            return
-
-        entry = self._choose(
-            tr("Open route"),
-            tr(
-                "Routes from AutoDrive's RoutesManager. "
-                "AutoDrive can reload them in a running game."
-            ),
-            [tr("Name"), tr("Map"), tr("Revision"), tr("Date")],
-            [
-                ([entry.name, entry.map_name, str(entry.revision), entry.date], entry)
-                for entry in entries
-            ],
-            sort_column=3,
-            newest_first=True,
-        )
-
-        if entry is None:
-            return
-
-        self._load_config(entry.path, display_name=entry.name, map_name=entry.map_name)
-
-    def open_savegame(self):
-        if not self._confirm_discard_changes():
-            return
-
-        game_folder = self._valid_game_folder()
-
-        if game_folder is None:
-            return
-
-        savegames = savegames_with_autodrive(game_folder)
-
-        if not savegames:
-            self._inform(tr("No savegame in the game folder contains AutoDrive data."))
-            return
-
-        savegame = self._choose(
-            tr("Open savegame"),
-            tr("Savegames with AutoDrive data (AutoDrive_config.xml)."),
-            [tr("No."), tr("Name"), tr("Map"), tr("Saved")],
-            [
-                (
-                    [f"{info.number:2d}", info.display_name, info.map_title, info.save_date],
-                    info,
-                )
-                for info in savegames
-            ],
-        )
-
-        if savegame is None:
-            return
-
-        self._load_config(savegame.autodrive_config_path, display_name=savegame.display_name)
-
-    def load_xml(self):
-        if not self._confirm_discard_changes():
-            return
-
-        game_folder = self.settings.game_folder
-        start = ""
-
-        if game_folder is not None and game_folder.routes_directory.is_dir():
-            start = str(game_folder.routes_directory)
-
-        filename, _ = QFileDialog.getOpenFileName(
-            self, tr("Open AutoDrive XML"), start, tr("AutoDrive XML (*.xml)")
-        )
-
-        if not filename:
-            return
-
-        try:
-            self.project_coordinator.load_xml_file(filename)
-
-        except Exception as ex:
-            self._set_status(tr("The XML could not be loaded: {error}", error=ex))
-
-    def load_xml_file(self, filename):
-        self.project_coordinator.load_xml_file(filename)
-
-    def _load_config(self, path, display_name=None, map_name=None):
-        try:
-            self.project_coordinator.load_xml_file(
-                path, display_name=display_name, map_name=map_name
-            )
-        except Exception as ex:
-            self._inform(tr("The AutoDrive data could not be loaded:\n{error}", error=ex))
-
-    def _valid_game_folder(self):
-        """The configured FS25 folder, or None after telling the user how
-        to set one."""
-
-        game_folder = self.settings.game_folder
-
-        if game_folder is None or not game_folder.is_valid:
-            self._inform(
-                tr("No valid FS25 game folder is set.\nPlease set it under File → Settings.")
-            )
-            return None
-
-        return game_folder
-
-    def _choose(self, title, hint, columns, rows, sort_column=0, newest_first=False):
-        dialog = ListChoiceDialog(
-            title,
-            hint,
-            columns,
-            rows,
-            sort_column=sort_column,
-            newest_first=newest_first,
-            parent=self,
-        )
-
-        return dialog.chosen_value if dialog.exec() else None
-
-    def save_xml(self) -> bool:
-        if self.project_coordinator.config_source is None:
-            self._set_status(tr("Load an AutoDrive XML first"))
-            return False
-
-        try:
-            affected_vehicles = self.project_coordinator.save_xml_file()
-        except Exception as ex:
-            self._inform(tr("The AutoDrive data could not be saved:\n{error}", error=ex))
-            return False
-
-        self._after_save(affected_vehicles)
-
-        return True
-
-    def save_xml_as(self) -> bool:
-        """Routes from the RoutesManager are saved as a new route there,
-        everything else into a file chosen in a dialog."""
-
-        source = self.project_coordinator.config_source
-
-        if source is None:
-            self._set_status(tr("Load an AutoDrive XML first"))
-            return False
-
-        affected_vehicles = []
-
-        try:
-            if find_route_entry(source.path) is not None:
-                name = self._ask_route_name(source.display_name)
-
-                if not name:
-                    return False
-
-                self.project_coordinator.save_as_route(name, source.map_name or "")
-            else:
-                target = self._ask_save_path(source.path)
-
-                if target is None:
-                    return False
-
-                affected_vehicles = self.project_coordinator.save_as_file(target)
-        except Exception as ex:
-            self._inform(tr("The AutoDrive data could not be saved:\n{error}", error=ex))
-            return False
-
-        self._after_save(affected_vehicles)
-
-        return True
-
-    def _after_save(self, affected_vehicles: list[str]):
-        self.edit_history.mark_clean()
-        self.autosave_store.clear()
-        self._update_window_title()
-
-        if affected_vehicles:
-            self._inform(
-                tr(
-                    "These vehicles had a deleted marker as their target. The target is now "
-                    "marker 1, a parking target was removed:"
-                )
-                + "\n\n"
-                + "\n".join(affected_vehicles)
-            )
-
-    def _ask_route_name(self, default_name: str | None) -> str | None:
-        name, accepted = QInputDialog.getText(
-            self, tr("Save as new route"), tr("Name of the route:"), text=default_name or ""
-        )
-
-        return name.strip() if accepted else None
-
-    def _ask_save_path(self, current_path: Path) -> Path | None:
-        filename, _ = QFileDialog.getSaveFileName(
-            self, tr("Save as"), str(current_path), tr("AutoDrive XML (*.xml)")
-        )
-
-        if not filename:
-            return None
-
-        return Path(filename if filename.lower().endswith(".xml") else filename + ".xml")
-
-    def autosave(self):
-        """Backs up unsaved changes into the editor's data folder."""
-
-        if self.project_coordinator.config_source is None or self.edit_history.is_clean:
-            return
-
-        try:
-            self.project_coordinator.write_autosave(self.autosave_store)
-        except Exception as ex:
-            self._set_status(tr("Autosave failed: {error}", error=ex))
-            return
-
-        self._set_status(tr("Autosaved at {time:%H:%M}", time=datetime.now()))
-
-    def offer_autosave_restore(self):
-        """After the editor ended with unsaved changes, offers to restore
-        them from the autosave."""
-
-        info = self.autosave_store.read()
-
-        if info is None:
-            return
-
-        if not Path(info.source_path).is_file():
-            self._inform(
-                tr(
-                    "There is an autosave of “{name}”, but the original file is missing:\n"
-                    "{source}\n\nThe autosave can be loaded with “Open XML file…”:\n{autosave}",
-                    name=info.display_name,
-                    source=info.source_path,
-                    autosave=self.autosave_store.xml_path,
-                )
-            )
-            return
-
-        if not self._ask_restore_autosave(info):
-            self.autosave_store.clear()
-            return
-
-        try:
-            self.project_coordinator.restore_autosave(self.autosave_store, info)
-        except Exception as ex:
-            self._inform(tr("The autosave could not be loaded:\n{error}", error=ex))
-            return
-
-        self.edit_history.mark_unsaved()
-
-    def _ask_restore_autosave(self, info) -> bool:
-        answer = QMessageBox.question(
-            self,
-            self.WINDOW_TITLE,
-            tr(
-                "The editor was closed with unsaved changes to “{name}”. "
-                "Restore the autosave from {time}?",
-                name=info.display_name,
-                time=info.saved_at,
-            ),
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.Yes,
-        )
-
-        return answer == QMessageBox.Yes
-
-    def _apply_autosave_interval(self):
-        minutes = self.settings.autosave_minutes
-
-        if minutes > 0:
-            self.autosave_timer.start(minutes * 60_000)
-        else:
-            self.autosave_timer.stop()
-
-    def _confirm_discard_changes(self) -> bool:
-        """Offers to save unsaved changes before they would be lost. Returns
-        whether to go on. Going on drops the autosave as well."""
-
-        if self.edit_history.is_clean:
-            self.autosave_store.clear()
-            return True
-
-        answer = self._ask_save_changes()
-
-        if answer == QMessageBox.Save:
-            return self.save_xml()
-
-        if answer == QMessageBox.Discard:
-            self.autosave_store.clear()
-            return True
-
-        return False
-
-    def _ask_save_changes(self):
-        return QMessageBox.question(
-            self,
-            self.WINDOW_TITLE,
-            tr("The changes are not saved yet. Save now?"),
-            QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
-            QMessageBox.Save,
-        )
-
     def closeEvent(self, event):
-        if self._confirm_discard_changes():
+        if self.files.confirm_discard_changes():
             event.accept()
         else:
             event.ignore()
-
-    def _inform(self, message: str):
-        QMessageBox.information(self, self.WINDOW_TITLE, message)
-
-    def save_project(self):
-        if not self.project_coordinator.current_xml_path:
-            self._set_status(tr("Load an AutoDrive XML first"))
-            return
-
-        default_path = (
-            self.project_coordinator.current_config_path
-            if self.project_coordinator.current_config_path
-            else str(self.local_projects_directory)
-        )
-
-        config_path, _ = QFileDialog.getSaveFileName(
-            self, tr("Save project"), default_path, tr("JSON project (*.json)")
-        )
-
-        if not config_path:
-            return
-
-        if not config_path.lower().endswith(".json"):
-            config_path += ".json"
-
-        try:
-            self.project_coordinator.save_project_file(config_path)
-
-        except Exception as ex:
-            self._set_status(tr("The project could not be saved: {error}", error=ex))
-
-    def load_project(self):
-        if not self._confirm_discard_changes():
-            return
-
-        config_path, _ = QFileDialog.getOpenFileName(
-            self,
-            tr("Open project"),
-            str(self.local_projects_directory),
-            tr("JSON project (*.json)"),
-        )
-
-        if not config_path:
-            return
-
-        try:
-            self.project_coordinator.load_project_file(config_path)
-
-        except Exception as ex:
-            self._set_status(tr("The project could not be loaded: {error}", error=ex))
 
     def show_node_info(self, node_data: NodeData):
         self.selection_coordinator.show_node_info(node_data)
@@ -821,7 +208,7 @@ class MainWindow(QMainWindow):
         dialog = SettingsDialog(self.settings, parent=self)
 
         if dialog.exec():
-            self._apply_autosave_interval()
+            self.files.apply_autosave_interval()
 
             folder = self.settings.game_folder
 
@@ -897,7 +284,7 @@ class MainWindow(QMainWindow):
 
         self.scene_renderer.set_display_style(display_style)
 
-        self.project_coordinator.rebuild_scene_after_style_change()
+        self._set_status(tr("Display options applied"))
 
     def _configure_window(self):
         # Qt shows "*" in place of "[*]" while the window is modified.
@@ -941,11 +328,9 @@ class MainWindow(QMainWindow):
 
         self.view.set_node_finder(self.selection_coordinator.get_node_at)
 
-        self.measurement_controller = MeasurementController(scene=self.scene, parent=self)
-
         self.measurement_coordinator = MeasurementCoordinator(
             view=self.view,
-            controller=self.measurement_controller,
+            scene=self.scene,
             node_provider=self.selection_coordinator.get_node_at,
             parent=self,
         )
@@ -955,118 +340,71 @@ class MainWindow(QMainWindow):
 
         self.edit_history = EditHistory(parent=self)
 
-        self.move_nodes_operation = MoveNodesOperation(
+        context = EditContext(
+            edit_history=self.edit_history,
+            autodrive_data_provider=self._get_autodrive_data,
             view=self.view,
             selection_coordinator=self.selection_coordinator,
             node_selection=self.node_selection,
-            edit_history=self.edit_history,
-            autodrive_data_provider=self._get_autodrive_data,
             terrain_height_at=self._get_terrain_height,
             snap_point=self.background_map.snap_point,
-            parent=self,
         )
 
-        self.delete_nodes_operation = DeleteNodesOperation(
-            selection_coordinator=self.selection_coordinator,
-            node_selection=self.node_selection,
-            edit_history=self.edit_history,
-            autodrive_data_provider=self._get_autodrive_data,
-            parent=self,
-        )
-
-        self.connect_nodes_operation = ConnectNodesOperation(
-            selection_coordinator=self.selection_coordinator,
-            edit_history=self.edit_history,
-            autodrive_data_provider=self._get_autodrive_data,
-            parent=self,
-        )
-
-        self.rotate_selection_operation = RotateSelectionOperation(
-            node_selection=self.node_selection,
-            edit_history=self.edit_history,
-            autodrive_data_provider=self._get_autodrive_data,
-            terrain_height_at=self._get_terrain_height,
-            parent=self,
-        )
-
-        self.create_nodes_operation = CreateNodesOperation(
-            view=self.view,
-            selection_coordinator=self.selection_coordinator,
-            edit_history=self.edit_history,
-            autodrive_data_provider=self._get_autodrive_data,
-            terrain_height_at=self._get_terrain_height,
-            snap_point=self.background_map.snap_point,
-            parent=self,
-        )
+        self.move_nodes_operation = MoveNodesOperation(context, parent=self)
+        self.delete_nodes_operation = DeleteNodesOperation(context, parent=self)
+        self.connect_nodes_operation = ConnectNodesOperation(context, parent=self)
+        self.rotate_selection_operation = RotateSelectionOperation(context, parent=self)
+        self.create_nodes_operation = CreateNodesOperation(context, parent=self)
+        self.node_type_operation = NodeTypeOperation(context, parent=self)
+        self.align_nodes_operation = AlignNodesOperation(context, parent=self)
 
         self.create_path_operation = CreatePathOperation(
-            view=self.view,
-            selection_coordinator=self.selection_coordinator,
-            edit_history=self.edit_history,
-            autodrive_data_provider=self._get_autodrive_data,
+            context,
             height_for_new_node=self.create_nodes_operation.height_for_new_node,
-            terrain_height_at=self._get_terrain_height,
-            snap_point=self.background_map.snap_point,
             parent=self,
         )
-
         self.create_path_operation.set_options(self.settings.path_options)
 
-        self.node_type_operation = NodeTypeOperation(
-            selection_coordinator=self.selection_coordinator,
-            node_selection=self.node_selection,
-            edit_history=self.edit_history,
-            autodrive_data_provider=self._get_autodrive_data,
-            parent=self,
-        )
-
         self.clipboard_operation = ClipboardOperation(
-            node_selection=self.node_selection,
-            edit_history=self.edit_history,
-            autodrive_data_provider=self._get_autodrive_data,
+            context,
             delete_nodes=self.delete_nodes_operation.delete_nodes,
             # Looked up on each call, so tests can replace it.
             paste_position=lambda: self._get_paste_position(),
-            terrain_height_at=self._get_terrain_height,
-            parent=self,
-        )
-
-        self.align_nodes_operation = AlignNodesOperation(
-            view=self.view,
-            selection_coordinator=self.selection_coordinator,
-            node_selection=self.node_selection,
-            edit_history=self.edit_history,
-            autodrive_data_provider=self._get_autodrive_data,
-            terrain_height_at=self._get_terrain_height,
             parent=self,
         )
 
         self.node_position_operation = NodePositionOperation(
-            selection_coordinator=self.selection_coordinator,
-            edit_history=self.edit_history,
-            autodrive_data_provider=self._get_autodrive_data,
+            context,
             # Looked up on each call, so tests can replace _ask_node_position.
             ask_position=lambda node: self._ask_node_position(node),
             parent=self,
         )
 
         self.reverse_direction_operation = ReverseDirectionOperation(
-            connection_at=self._get_connection_at,
-            node_selection=self.node_selection,
-            edit_history=self.edit_history,
-            autodrive_data_provider=self._get_autodrive_data,
-            parent=self,
+            context, connection_at=self._get_connection_at, parent=self
         )
 
         self.marker_operation = MarkerOperation(
-            selection_coordinator=self.selection_coordinator,
-            node_selection=self.node_selection,
-            edit_history=self.edit_history,
-            autodrive_data_provider=self._get_autodrive_data,
+            context,
             # Looked up on each call, so tests can replace _ask_marker.
             ask_marker=lambda *args: self._ask_marker(*args),
             parent=self,
         )
+
+        self.edit_operations = [
+            self.move_nodes_operation,
+            self.delete_nodes_operation,
+            self.connect_nodes_operation,
+            self.rotate_selection_operation,
+            self.create_nodes_operation,
+            self.node_type_operation,
+            self.align_nodes_operation,
+            self.create_path_operation,
+            self.clipboard_operation,
+            self.node_position_operation,
+            self.reverse_direction_operation,
+            self.marker_operation,
+        ]
 
     def _create_project_coordinator(self):
         self.project_coordinator = ProjectCoordinator(
@@ -1080,6 +418,20 @@ class MainWindow(QMainWindow):
             measurement_coordinator=self.measurement_coordinator,
             map_cache=self.map_cache,
             parent=self,
+        )
+
+    def _create_file_controllers(self):
+        self.files = FileController(
+            self,
+            self.settings,
+            self.project_coordinator,
+            self.edit_history,
+            AutosaveStore(user_data_directory() / "autosave"),
+            self.local_projects_directory,
+        )
+
+        self.map_import = MapImportController(
+            self, self.settings, self.map_cache, self.project_coordinator
         )
 
     def _register_map_tools(self):
@@ -1397,35 +749,20 @@ class MainWindow(QMainWindow):
 
         self.project_coordinator.autodrive_data_loaded.connect(self._handle_autodrive_data_loaded)
 
-        self.project_coordinator.map_missing.connect(self.offer_missing_map)
+        self.project_coordinator.map_missing.connect(self.map_import.offer_missing_map)
 
         self.edit_history.clean_changed.connect(self._handle_edit_clean_changed)
 
         self.edit_history.data_changed.connect(self._handle_data_changed)
 
-        self.move_nodes_operation.status_changed.connect(self._set_status)
+        self.files.status_changed.connect(self._set_status)
 
-        self.delete_nodes_operation.status_changed.connect(self._set_status)
+        self.files.saved.connect(self._update_window_title)
 
-        self.connect_nodes_operation.status_changed.connect(self._set_status)
+        self.map_import.status_changed.connect(self._set_status)
 
-        self.create_nodes_operation.status_changed.connect(self._set_status)
-
-        self.node_type_operation.status_changed.connect(self._set_status)
-
-        self.marker_operation.status_changed.connect(self._set_status)
-
-        self.reverse_direction_operation.status_changed.connect(self._set_status)
-
-        self.clipboard_operation.status_changed.connect(self._set_status)
-
-        self.node_position_operation.status_changed.connect(self._set_status)
-
-        self.align_nodes_operation.status_changed.connect(self._set_status)
-
-        self.rotate_selection_operation.status_changed.connect(self._set_status)
-
-        self.create_path_operation.status_changed.connect(self._set_status)
+        for operation in self.edit_operations:
+            operation.status_changed.connect(self._set_status)
 
         # Keeps the tool buttons right even when the mode is changed
         # without clicking a button.

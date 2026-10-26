@@ -36,8 +36,8 @@ def run() -> int:
     window.show()
 
     # After the window is visible, so the setup dialog appears on top of it.
-    QTimer.singleShot(0, window.run_first_start)
-    QTimer.singleShot(0, window.offer_autosave_restore)
+    QTimer.singleShot(0, window.map_import.run_first_start)
+    QTimer.singleShot(0, window.files.offer_autosave_restore)
 
     return app.exec()
 

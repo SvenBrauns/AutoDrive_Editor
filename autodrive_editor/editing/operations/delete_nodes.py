@@ -1,34 +1,15 @@
-from collections.abc import Callable
-
-from PySide6.QtCore import QObject, QPoint, Signal
+from PySide6.QtCore import QPoint
 
 from autodrive_editor.editing.commands.delete_nodes import DeleteNodesCommand
-from autodrive_editor.editing.edit_history import EditHistory
+from autodrive_editor.editing.edit_context import EditContext, EditOperation
 from autodrive_editor.i18n import tr
-from autodrive_editor.model.autodrive_data import AutoDriveData
-from autodrive_editor.selection.node_selection import NodeSelection
-from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
 
 
-class DeleteNodesOperation(QObject):
+class DeleteNodesOperation(EditOperation):
     """Deletes nodes as one undoable step."""
 
-    status_changed = Signal(str)
-
-    def __init__(
-        self,
-        selection_coordinator: SelectionCoordinator,
-        node_selection: NodeSelection,
-        edit_history: EditHistory,
-        autodrive_data_provider: Callable[[], AutoDriveData | None],
-        parent=None,
-    ):
-        super().__init__(parent)
-
-        self.selection_coordinator = selection_coordinator
-        self.node_selection = node_selection
-        self.edit_history = edit_history
-        self.autodrive_data_provider = autodrive_data_provider
+    def __init__(self, context: EditContext, parent=None):
+        super().__init__(context, parent)
 
     def delete_node_at(self, view_position: QPoint) -> bool:
         """Deletes the node at the view position, or the whole
