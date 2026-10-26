@@ -1,17 +1,17 @@
-# Entwicklung
+# Development
 
-Hinweise für die Arbeit am Code des AutoDrive FS25 Editors. Die Anleitung für Nutzer steht in der [README](README.md), geplante Funktionen in der [Roadmap](ROADMAP.md).
+Notes for working on the code of the AutoDrive FS25 Editor. The user guide is the [README](README.md); planned features are in the [roadmap](ROADMAP.md).
 
-## Aus dem Quellcode starten
+## Running from source
 
 ```text
 pip install -r requirements.txt
 python main.py
 ```
 
-oder `python -m autodrive_editor`.
+or `python -m autodrive_editor`.
 
-## Tests und Prüfungen
+## Tests and checks
 
 ```text
 pip install -r requirements-dev.txt
@@ -20,88 +20,88 @@ ruff check .
 ruff format .
 ```
 
-GitHub Actions prüft jeden Push und Pull Request mit `ruff` und `pytest`. Ein Tag wie `v0.1.0` baut mit PyInstaller die Windows-Version und veröffentlicht sie als Release:
+GitHub Actions checks every push and pull request with `ruff` and `pytest`. A tag such as `v0.1.0` builds the Windows version with PyInstaller and publishes it as a release:
 
 ```text
 git tag v0.1.0
 git push origin v0.1.0
 ```
 
-## Aufbau
+## Structure
 
 ```text
 autodrive_editor/
-  model/        Datenmodell: Nodes, Marker, Connection-Typen
-  file_io/      Dateiformate: AutoDrive-XML, Projektdateien, Heightmap, DDS
-  terrain/      Hintergrundkarte, Heightmap, Gelände-Höhe für bewegte Nodes
+  model/        data model: nodes, markers, connection types
+  file_io/      file formats: AutoDrive XML, project files, heightmap, DDS
+  terrain/      background map, heightmap, terrain height for moved nodes
   editing/
-    commands/   rückgängig machbare Änderungen am Datenmodell
-    operations/ Bearbeitungsabläufe der Werkzeuge (verschieben, verbinden, …)
-    edit_history.py  gemeinsame Undo-/Redo-Historie
-  selection/    Node-Auswahl
-  measurement/  Abstand- und Winkelmessung
-  project/      Laden von XML, Karte, Heightmap und Projekten
-  rendering/    Darstellung der Karte
-    spatial/    räumliche Indizes für Nodes und Connections
-    visible/    Grafikobjekte nur für den sichtbaren Bereich
-    connections/ Connection-Daten, -Geometrie und Detaildarstellung
-    items/      einzelne Grafikobjekte
+    commands/   undoable changes to the data model
+    operations/ editing workflows of the tools (move, connect, …)
+    edit_history.py  shared undo/redo history
+  selection/    node selection
+  measurement/  distance and angle measurement
+  project/      loading XML, map, heightmap and projects
+  rendering/    map drawing
+    spatial/    spatial indexes for nodes and connections
+    visible/    graphics items only for the visible area
+    connections/ connection data, geometry and detail drawing
+    items/      individual graphics items
   ui/
-    main_window.py  Hauptfenster, setzt alle Teile zusammen
-    actions/    Werkzeugkatalog, Menüs, Werkzeugleisten
-    map_view/   Kartenansicht mit Zoom, Rotation und Bereichsauswahl
-    tools/      Mausbedienung je Werkzeug
-    panels/     Werkzeugpanel, Debug-Dock, Darstellungsoptionen
-    controls/   Raster- und Rotationseinstellungen
-  resources/    Symbole
-tests/          gleiche Ordnerstruktur wie autodrive_editor/
-packaging/      Programmsymbol und Lizenztexte für die Windows-Version
-.github/        CI und Release-Build
+    main_window.py  main window, assembles all parts
+    actions/    tool catalog, menus, toolbars
+    map_view/   map view with zoom, rotation and area selection
+    tools/      mouse handling per tool
+    panels/     tool panel, debug dock, display options
+    controls/   grid and rotation settings
+  resources/    icons
+tests/          same folder structure as autodrive_editor/
+packaging/      app icon and license texts for the Windows version
+.github/        CI and release build
 ```
 
-## Grundregeln im Code
+## Core rules in the code
 
-- Jede Änderung am Datenmodell ist ein `EditCommand` und läuft über `EditHistory.push()`, damit sie rückgängig gemacht werden kann.
-- Nach jeder Änderung meldet der Befehl ein `DataChange`; der `SceneRenderer` aktualisiert daraufhin nur die betroffenen Nodes.
-- Nur Nodes, Marker und Auswahlringe im sichtbaren Bereich existieren als Grafikobjekte, damit auch Netze mit über 100 000 Nodes flüssig bleiben.
-- Jedes Werkzeug ist eine `MapTool`-Unterklasse unter `ui/tools/` und wird in `ui/actions/tool_catalog.py` mit Symbol und Tastenkürzel beschrieben.
+- Every change to the data model is an `EditCommand` and goes through `EditHistory.push()`, so it can be undone.
+- After each change, the command reports a `DataChange`; the `SceneRenderer` then updates only the affected nodes.
+- Only nodes, markers and selection rings in the visible area exist as graphics items, so networks with over 100,000 nodes stay responsive.
+- Each tool is a `MapTool` subclass under `ui/tools/` and is described in `ui/actions/tool_catalog.py` with its icon and shortcut.
 
-## Grundprinzipien
+## Principles
 
-- Direkte Kompatibilität: `overview.dds` und `dem.png` werden ohne manuelle Umwandlung verwendet.
-- Quelldaten werden nie automatisch überschrieben; geschrieben wird nur durch ausdrückliches Speichern (vorher `.bak`).
-- Die Bedeutung von Nodes, Flags, Markern, Koordinaten und Heightmap-Werten wird an echten AutoDrive-Daten nachvollzogen.
-- Eigene Symbole verwenden; vor einer Veröffentlichung Lizenzen, Kartenbilder und Fremdinhalte prüfen.
+- Direct compatibility: `overview.dds` and `dem.png` are used without manual conversion.
+- Source data is never overwritten automatically; writing happens only through an explicit save (with a `.bak` backup first).
+- The meaning of nodes, flags, markers, coordinates and heightmap values is verified against real AutoDrive data.
+- Use our own icons; before a release, check licenses, map images and third-party content.
 
-## Hintergrundwissen
+## Background knowledge
 
-- **Connections** zwischen A und B werden an beiden Nodes gespeichert (siehe `model/connections.py`):
+- **Connections** between A and B are stored on both nodes (see `model/connections.py`):
 
   ```text
               A.outgoing∋B  A.incoming∋B  B.outgoing∋A  B.incoming∋A
-  Regular          ja            -             -             ja
-  Dual             ja            ja            ja            ja
-  Reverse          ja            -             -             -
+  Regular          yes           -             -             yes
+  Dual             yes           yes           yes           yes
+  Reverse          yes           -             -             -
   ```
 
-- **Flags**: `0` = Regular, `1` = Subprio. Die XML-IDs sind 1-basiert.
-- **Karten**: `overview.dds` hat für FS22/FS25 ein zu beschneidendes mittleres Viertel (4096² → 2048²). Die Kartengröße (`map_scale` 1/2/4/8 für Original/4x/16x/64x) kommt aus der Kartenkonfiguration, nie aus den Netzgrenzen. Bei einer 16x-Karte: 8192 × 8192 m, Weltkoordinaten −4096 bis +4096.
-- **Heightmap** (`dem.png`, 16-Bit-Graustufen): `height = raw_value / 65535.0 * 255.0`. Gegen die Y-Werte eines Testnetzes mit 113 058 Nodes weicht sie im Median um 0,02 m ab; größere Abweichungen gibt es nur an Brücken, Rampen und Gebäudeebenen.
-- **Winkel**: Kartenwinkel 0° = oben, 90° = rechts; unabhängig von Ansichts- und Rasterrotation.
-- **Zoom**: Unter technischem Zoom 1.0 werden nur drei gebündelte Connection-Pfade gezeichnet, ab 1.0 Nodes, Marker, Auswahlringe und Connections mit Pfeilen. Sichtbereichsänderungen werden 50 ms verzögert gemeldet.
+- **Flags**: `0` = Regular, `1` = Subprio. The XML IDs are 1-based.
+- **Maps**: for FS22/FS25, `overview.dds` has a middle quarter that must be cropped (4096² → 2048²). The map size (`map_scale` 1/2/4/8 for original/4x/16x/64x) comes from the map configuration, never from the network bounds. For a 16x map: 8192 × 8192 m, world coordinates −4096 to +4096.
+- **Heightmap** (`dem.png`, 16-bit grayscale): `height = raw_value / 65535.0 * 255.0`. Compared with the Y values of a test network with 113,058 nodes, the median difference is 0.02 m; larger differences occur only on bridges, ramps and building platforms.
+- **Angles**: map angle 0° = up, 90° = right; independent of view and grid rotation.
+- **Zoom**: below technical zoom 1.0, only three bundled connection paths are drawn; from 1.0 on, nodes, markers, selection rings and connections with arrows are drawn. Visible-area changes are reported with a 50 ms delay.
 
-## Dateiformate beim Speichern
+## File formats when saving
 
-Gespeichert wird in das Format, aus dem geladen wurde.
+Saving always uses the format the data was loaded from.
 
-**RoutesManager**: `routes.xml` (Wurzel `autoDriveRoutesManager`) listet die Routen mit `name`, `fileName`, `map`, `revision`, `date` und `serverId`; die Routendateien liegen in `routes/` (Wurzel `routeExport`). `<waypoints c="Anzahl">` mit `x`, `y`, `z`, `out`, `in`, `flags`: Werte durch `;`, mehrere Verbindungen einer Node durch `,`, `-1` für keine Verbindung. Marker als `<markers><m i n g/>`, Gruppen als `<groups><g i n/>`. Beim Speichern bekommt der Eintrag in `routes.xml` `revision` + 1 und das aktuelle Datum.
+**RoutesManager**: `routes.xml` (root `autoDriveRoutesManager`) lists the routes with `name`, `fileName`, `map`, `revision`, `date` and `serverId`. The route files are in `routes/` (root `routeExport`). `<waypoints c="count">` with `x`, `y`, `z`, `out`, `in`, `flags`: values separated by `;`, several connections of one node separated by `,`, `-1` for no connection. Markers as `<markers><m i n g/>`, groups as `<groups><g i n/>`. When saving, the entry in `routes.xml` gets `revision` + 1 and the current date.
 
-**Savegame-Config** (`AutoDrive_config.xml`, Wurzel `AutoDrive`, `version` 3 = FS25): `<waypoints>` mit `id`, `x`, `y`, `z`, `out`, `incoming`, `flags`: Werte durch `,`, Verbindungen je Node durch `;`. Marker als `<mapmarker><mm1><id/><name/><group/></mm1>…`; die Reihenfolge ist zugleich die Markernummer. Gespeichert wird in die vorhandene Datei, damit alle übrigen Einstellungen erhalten bleiben. Fahrzeuge in `vehicles.xml` verweisen per Markernummer auf Ziele (`firstMarker`, `secondMarker`, `parkDestination`); ändert sich die Reihenfolge, werden diese Verweise angepasst.
+**Savegame config** (`AutoDrive_config.xml`, root `AutoDrive`, `version` 3 = FS25): `<waypoints>` with `id`, `x`, `y`, `z`, `out`, `incoming`, `flags`: values separated by `,`, connections of each node separated by `;`. Markers as `<mapmarker><mm1><id/><name/><group/></mm1>…`; their order is also their marker number. The existing file is edited, so all other settings are kept. Vehicles in `vehicles.xml` refer to targets by marker number (`firstMarker`, `secondMarker`, `parkDestination`); if the order changes, these references are updated.
 
-**Für alle Formate**: Koordinaten mit drei (Savegame) bzw. zwei (Route) Nachkommastellen. Node-IDs sind die Positionen in den Listen; Lücken durch gelöschte Nodes werden beim Speichern geschlossen und alle Verweise und Marker umgeschrieben. Flags werden unverändert zurückgeschrieben (auch `2` und `4`), außer der Typ einer Node wurde geändert.
+**For all formats**: coordinates with three decimals (savegame) or two (route). Node IDs are the positions in the lists; gaps left by deleted nodes are closed on save, and all references and markers are rewritten. Flags are written back unchanged (including `2` and `4`), unless the type of a node was changed.
 
-## Leistung (Testnetz mit 113 058 Nodes und 116 260 Connections)
+## Performance (test network with 113,058 nodes and 116,260 connections)
 
-Bewährt: native `QGraphicsEllipseItem`-Nodes, Grafikobjekte nur für den sichtbaren Bereich plus Puffer (Kacheln 256 m, Puffer 128 m), drei gebündelte globale Connection-Pfade, räumliche Indizes, Auswahl nur als Node-IDs, getrennte Vorschau- und Endauswahl.
+Proven: native `QGraphicsEllipseItem` nodes, graphics items only for the visible area plus a buffer (256 m tiles, 128 m buffer), three bundled global connection paths, spatial indexes, selection stored only as node IDs, separate preview and final selection.
 
-Nicht geeignet: eigenes `paint()` pro Node, dauerhaft alle NodeItems, ein Grafikobjekt pro Connection, große gespeicherte Pfeilpfade, dauerhafte Auswahlringe für alle ausgewählten Nodes.
+Not suitable: custom `paint()` per node, permanent NodeItems for all nodes, one graphics item per connection, large stored arrow paths, permanent selection rings for all selected nodes.

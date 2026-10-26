@@ -1,59 +1,59 @@
 # Roadmap
 
-Geplante Funktionen des AutoDrive FS25 Editors in der Reihenfolge, in der sie umgesetzt werden sollen. Erledigte Punkte werden abgehakt.
+Planned features of the AutoDrive FS25 Editor, in the order they should be implemented. Finished items are checked off.
 
-Der Editor unterstützt ausschließlich den Landwirtschafts-Simulator 25.
+The editor supports only Farming Simulator 25.
 
-## 1. Abgleich mit dem alten Editor — hohe Priorität
+## 1. Comparison with the old editor — high priority
 
-Ziel ist, dass der Editor alles kann, was der bisherige AutoDrive Course Editor für FS25 kann. Das Ergebnis des Abgleichs bestimmt, welche Funktionen noch in diese Roadmap kommen.
+The goal is that the editor can do everything the previous AutoDrive Course Editor for FS25 can do. The result of this comparison decides which features still need to be added to this roadmap.
 
-- [ ] Liste der Funktionen des alten Editors abgleichen und fehlende Funktionen hier eintragen
+- [ ] compare the feature list of the old editor and add the missing features here
 
-## 2. Netz prüfen — hohe Priorität
+## 2. Network check — high priority
 
-Menü `Prüfen` mit einer Ergebnisliste, die zur jeweiligen Stelle springt. Dieselbe Prüfung läuft vor dem Speichern: Gefundene Probleme werden angezeigt, gespeichert werden kann trotzdem.
+Menu `Prüfen` (Check) with a result list that jumps to each location. The same check runs before saving: problems found are shown, but saving is still possible.
 
-- [ ] ungültige Verbindungsverweise
-- [ ] Nodes ohne Verbindung
-- [ ] übereinanderliegende Nodes zusammenführen
-- [ ] Nodes außerhalb der Karte
-- [ ] alle Höhen aus der Heightmap neu berechnen
-- [ ] Prüfung vor dem Speichern
+- [ ] invalid connection references
+- [ ] nodes without connections
+- [ ] merge nodes lying on top of each other
+- [ ] nodes outside the map
+- [ ] recalculate all heights from the heightmap
+- [ ] check before saving
 
-## 3. Projekt und Anwendung — mittlere Priorität
+## 3. Project and application — medium priority
 
-- [ ] zuletzt geöffnete Routen, Savegames und Dateien (Menü `Datei` und Startseite)
-- [ ] zuletzt Geöffnetes beim Start wieder öffnen
-- [ ] verständliche Fehlerdialoge
+- [ ] recently opened routes, savegames and files (File menu and welcome screen)
+- [ ] reopen the last opened item at startup
+- [ ] clear error dialogs
 
-## 4. Englische Oberfläche — mittlere Priorität
+## 4. English interface — medium priority
 
-AutoDrive wird international genutzt; für die Veröffentlichung sollte der Editor auch auf Englisch bedienbar sein.
+AutoDrive is used internationally. For the release, the editor should also be usable in English.
 
-- [ ] Oberfläche auf Englisch umschaltbar (Sprache in den Einstellungen)
-- [ ] englische README
+- [ ] interface can be switched to English (language setting)
+- [x] English README and developer documentation
 
-## 5. Anzeige — niedrige Priorität
+## 5. Display — low priority
 
-Neue Darstellungsoptionen werden dauerhaft gespeichert.
+New display options are saved permanently.
 
-- [ ] Nodes und einzelne Connection-Typen ein- und ausblenden
-- [ ] Node-IDs anzeigen
-- [ ] Mindest- und Höchstgröße von Nodes am Bildschirm
+- [ ] show and hide nodes and individual connection types
+- [ ] show node IDs
+- [ ] minimum and maximum node size on screen
 
-## 6. Veröffentlichung — sobald Funktionsgleichheit mit dem alten Editor erreicht ist
+## 6. Release — once feature parity with the old editor is reached
 
-- [x] Lizenz festlegen
-- [x] Lizenzen der verwendeten Bibliotheken prüfen (PySide6/LGPL, Pillow)
-- [x] als Windows-Programm (.exe) bereitstellen
-- [ ] alle Punkte aus Phase 1 umgesetzt
+- [x] license chosen
+- [x] licenses of the used libraries checked (PySide6/LGPL, Pillow)
+- [x] provided as a Windows program (.exe)
+- [ ] all items from phase 1 implemented
 
-## Technische Punkte nebenher
+## Technical items on the side
 
-Werden erledigt, wenn eine Phase den betroffenen Code ohnehin berührt.
+These are done when a phase touches the affected code anyway.
 
-- [ ] kurzer Hänger beim ersten Hineinzoomen über Zoom 1.0
-- [ ] Heightmap-Werte zwischen Pixeln interpolieren statt den nächsten Pixel zu nehmen
-- [ ] an Nodes gebundene Messpunkte folgen verschobenen Nodes
-- [ ] `scene_renderer.py` aufteilen
+- [ ] short stutter when zooming in past zoom 1.0 for the first time
+- [ ] interpolate heightmap values between pixels instead of taking the nearest pixel
+- [ ] measuring points bound to nodes follow moved nodes
+- [ ] split `scene_renderer.py`

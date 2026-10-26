@@ -1,64 +1,66 @@
 # AutoDrive FS25 Editor
 
-Editor für AutoDrive-Streckennetze im Landwirtschafts-Simulator 25. Er zeigt das Netz auf dem Kartenbild mit Geländehöhen und bietet Werkzeuge, um Nodes, Connections, Marker und ganze Streckenabschnitte zu bearbeiten. Alle Änderungen lassen sich rückgängig machen.
+Editor for AutoDrive route networks in Farming Simulator 25. It shows the network on the map image with terrain heights and provides tools to edit nodes, connections, markers and whole route sections. All changes can be undone.
 
-Der Editor unterstützt ausschließlich den LS25.
+The editor supports only FS25.
 
-## Herunterladen
+The interface is currently German. Menu and tool names below are the German labels as they appear in the app; the English descriptions explain what they do.
 
-Die Windows-Version liegt als Zip unter [Releases](https://github.com/SvenBrauns/AutoDrive_Editor/releases). Entpacken und `AutoDrive Editor.exe` starten; eine Python-Installation ist nicht nötig.
+## Download
 
-## Erster Start
+The Windows version is available as a zip under [Releases](https://github.com/SvenBrauns/AutoDrive_Editor/releases). Unzip it and start `AutoDrive Editor.exe`. No Python installation is needed.
 
-Der Editor sucht den LS25-Benutzerordner (üblicherweise `Dokumente\My Games\FarmingSimulator2025`) und den Installationsordner des Spiels und zeigt beide zur Prüfung an. Beide lassen sich später unter `Datei → Einstellungen` ändern.
+## First start
 
-Kartenbilder werden nicht mit dem Editor ausgeliefert. Mit `Karte → Karten scannen` durchsucht der Editor den `mods`-Ordner und die Grundspiel-Karten und importiert Kartenbild, Heightmap und Kartengröße. Das ist je Karte nur einmal nötig; danach wird die passende Karte beim Öffnen einer Route automatisch geladen. Fehlt sie, bietet der Editor den Scan direkt an.
+The editor looks for the FS25 user folder (usually `Dokumente\My Games\FarmingSimulator2025`) and the game's installation folder and shows both for you to check. You can change either later under `Datei → Einstellungen` (File → Settings).
 
-## Netz öffnen
+Map images are not shipped with the editor. Use `Karte → Karten scannen` (Map → Scan maps) to search the `mods` folder and the base game maps; the editor then imports the map image, heightmap and map size. This is needed only once per map. After that, the matching map loads automatically when you open a route. If the map is missing, the editor offers the scan directly.
 
-- **Route öffnen** (empfohlen): Routen aus dem RoutesManager von AutoDrive. AutoDrive kann sie im laufenden Spiel neu laden, das Spiel muss also nicht neu gestartet werden.
-- **Savegame öffnen**: `AutoDrive_config.xml` eines Savegames. Die Heightmap des Savegames wird dabei mitgeladen.
-- **XML-Datei öffnen**: eine einzelne Datei in einem der beiden Formate.
+## Opening a network
 
-## Bedienung
+- **Route öffnen** (Open route), recommended: routes from AutoDrive's RoutesManager. AutoDrive can reload them in a running game, so the game does not need to be restarted.
+- **Savegame öffnen** (Open savegame): the `AutoDrive_config.xml` of a savegame. The savegame's heightmap is loaded with it.
+- **XML-Datei öffnen** (Open XML file): a single file in either format.
 
-- **Mausrad** zoomt, **linkes Ziehen** verschiebt die Karte, **mittleres Ziehen** dreht die Ansicht.
-- **Rechte Maustaste** oder **Esc** bricht den laufenden Schritt eines Werkzeugs ab, **Enter** bestätigt ihn (z. B. bei Kurven).
-- Die Werkzeuge stehen im Werkzeugpanel; die Statusleiste zeigt, was das aktive Werkzeug erwartet.
+## Controls
 
-| Werkzeug | Taste | |
+- **Mouse wheel** zooms, **left drag** moves the map, **middle drag** rotates the view.
+- **Right click** or **Esc** cancels the current step of a tool; **Enter** confirms it (for example for curves).
+- The tools are in the tool panel; the status bar shows what the active tool expects next.
+
+| Tool (as shown in the app) | Key | What it does |
 | --- | --- | --- |
-| Navigation | `N` | Karte verschieben und drehen |
-| Auswahl | `A` | Klick oder Rechtsziehen; Umschalt+Rechtsziehen für Freihand-Auswahl, Strg ergänzt |
-| Verschieben | `V` | Node oder Auswahl ziehen |
-| Rotieren | `R` | Auswahl am Ring drehen (Umschalt: 15°-Schritte) |
-| Erstellen Regular / Subprio | `E` / `Umschalt+E` | Node auf freier Fläche erstellen |
-| Typ wechseln | `T` | zwischen Regular und Subprio umschalten |
-| Löschen | `L` | Node oder Auswahl löschen |
-| Verbinden Regular / Dual / Reverse | `1` / `2` / `3` | Nodes nacheinander anklicken |
-| Richtung umkehren | `U` | Connection anklicken; in der Auswahl alle Connections der Auswahl |
-| Position eingeben | `P` | X/Y/Z einer Node als Zahlen eingeben |
-| Horizontal / vertikal ausrichten | `H` / `J` | Auswahl auf die Linie durch eine Referenz-Node legen |
-| Höhe wie Referenz / aus Heightmap | `Y` / `Umschalt+Y` | Höhen der Auswahl setzen |
-| Linie | `I` | gerade Strecke mit gleichmäßigem Node-Abstand |
-| Bézierkurve / Kreisbogen | `B` / `K` | Start und Ende anklicken, Griffe ziehen, Enter |
-| Marker hinzufügen / bearbeiten | `M` / `Umschalt+M` | Name und Gruppe eingeben |
-| Marker verschieben / löschen | `Strg+M` / `Strg+Umschalt+M` | Marker auf andere Node legen oder entfernen |
+| Navigation | `N` | Move and rotate the map |
+| Auswahl (Selection) | `A` | Click or right-drag to select; Shift + right-drag for freehand selection; Ctrl adds to the selection |
+| Verschieben (Move) | `V` | Drag a node or the selection |
+| Rotieren (Rotate) | `R` | Rotate the selection using the ring (Shift: 15° steps) |
+| Erstellen Regular / Subprio (Create) | `E` / `Shift+E` | Create a node on free ground |
+| Typ wechseln (Toggle type) | `T` | Switch between Regular and Subprio |
+| Löschen (Delete) | `L` | Delete a node or the selection |
+| Verbinden Regular / Dual / Reverse (Connect) | `1` / `2` / `3` | Click nodes one after another to connect them |
+| Richtung umkehren (Reverse direction) | `U` | Click a connection to reverse it; inside a selection, all connections of the selection are reversed |
+| Position eingeben (Enter position) | `P` | Enter a node's X/Y/Z as numbers |
+| Horizontal / vertikal ausrichten (Align) | `H` / `J` | Put the selection on the line through a reference node |
+| Höhe wie Referenz / aus Heightmap (Height) | `Y` / `Shift+Y` | Set the heights of the selection |
+| Linie (Line) | `I` | Straight route section with even node spacing |
+| Bézierkurve / Kreisbogen (Curve / Arc) | `B` / `K` | Click start and end, drag the handles, press Enter |
+| Marker hinzufügen / bearbeiten (Marker) | `M` / `Shift+M` | Add or edit a marker; enter its name and group |
+| Marker verschieben / löschen (Marker) | `Ctrl+M` / `Ctrl+Shift+M` | Move a marker to another node or delete it |
 
-Außerdem: Rückgängig und Wiederholen (`Strg+Z` / `Strg+Y`), Kopieren, Ausschneiden und Einfügen (`Strg+C/X/V`, `Strg+Umschalt+V` fügt an der ursprünglichen Stelle ein), Raster mit Einrasten (`G`), Abstand- und Winkelmessung sowie der Dock `Marker` mit allen Markergruppen.
+Also available: Undo and Redo (`Ctrl+Z` / `Ctrl+Y`), Copy, Cut and Paste (`Ctrl+C/X/V`; `Ctrl+Shift+V` pastes at the original position), the grid with snapping (`G`), distance and angle measurement, and the `Marker` dock with all marker groups.
 
-## Speichern
+## Saving
 
-`Datei → Speichern` (`Strg+S`) schreibt in das Format und die Datei, aus der geladen wurde. Vor dem ersten Überschreiben legt der Editor eine Sicherungskopie (`.bak`) an. Bei Savegames werden die Markerziele der Fahrzeuge in `vehicles.xml` mit angepasst.
+`Datei → Speichern` (File → Save, `Ctrl+S`) writes to the same format and file you loaded from. Before the first overwrite, the editor creates a backup copy (`.bak`). For savegames, the marker targets of vehicles in `vehicles.xml` are updated as well.
 
-`Speichern unter` legt Routen als neue Route im RoutesManager an.
+`Speichern unter` (Save as) saves a route as a new route in the RoutesManager.
 
-Ungespeicherte Änderungen werden alle paar Minuten automatisch gesichert (Abstand unter `Datei → Einstellungen`). Endet der Editor unerwartet, bietet er sie beim nächsten Start zur Wiederherstellung an.
+Unsaved changes are backed up automatically every few minutes (interval under `Datei → Einstellungen`). If the editor closes unexpectedly, it offers to restore them on the next start.
 
-## Lizenz
+## License
 
-GNU General Public License v3.0 oder später, siehe [LICENSE](LICENSE). Die Windows-Version enthält PySide6/Qt (LGPLv3) und Pillow, siehe [THIRD_PARTY_NOTICES.md](packaging/THIRD_PARTY_NOTICES.md).
+GNU General Public License v3.0 or later, see [LICENSE](LICENSE). The Windows version contains PySide6/Qt (LGPLv3) and Pillow, see [THIRD_PARTY_NOTICES.md](packaging/THIRD_PARTY_NOTICES.md).
 
-Der Editor enthält keine Dateien aus dem Landwirtschafts-Simulator oder aus Karten-Mods; Kartenbilder und Heightmaps werden aus der eigenen Installation gelesen. Das Projekt steht in keiner Verbindung zu GIANTS Software.
+The editor contains no files from Farming Simulator or from map mods. Map images and heightmaps are read from your own installation. This project has no connection to GIANTS Software.
 
-Zum Mitentwickeln siehe [DEVELOPMENT.md](DEVELOPMENT.md).
+For development, see [DEVELOPMENT.md](DEVELOPMENT.md).
