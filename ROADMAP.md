@@ -167,9 +167,9 @@ Gespeichert wird in das Format, aus dem geladen wurde. Es gibt drei Wege:
 Ziel ist, dass der Editor alles kann, was der bisherige AutoDrive Course Editor für FS25 kann. Erst dann wird veröffentlicht.
 
 - [ ] Liste der Funktionen des alten Editors abgleichen
-- [ ] Lizenz festlegen
-- [ ] Lizenzen der verwendeten Bibliotheken prüfen (PySide6/LGPL, Pillow)
-- [ ] als Windows-Programm (.exe) bereitstellen
+- [x] Lizenz festlegen
+- [x] Lizenzen der verwendeten Bibliotheken prüfen (PySide6/LGPL, Pillow)
+- [x] als Windows-Programm (.exe) bereitstellen
 - [ ] englische README, optional englische Oberfläche
 
 ## Technische Punkte nebenher

@@ -6,7 +6,11 @@ Der Editor lädt eine AutoDrive-Konfiguration (XML), zeigt sie auf der Karte (`o
 
 Geplante Funktionen stehen in der [Roadmap](ROADMAP.md).
 
-## Starten
+## Herunterladen
+
+Die fertige Windows-Version liegt als Zip unter [Releases](https://github.com/SvenBrauns/AutoDrive_Editor/releases). Entpacken und `AutoDrive Editor.exe` starten; eine Python-Installation ist nicht nötig.
+
+## Aus dem Quellcode starten
 
 ```text
 pip install -r requirements.txt
@@ -22,6 +26,13 @@ pip install -r requirements-dev.txt
 python -m pytest
 ruff check .
 ruff format .
+```
+
+GitHub Actions prüft jeden Push und Pull Request mit `ruff` und `pytest`. Ein Tag wie `v0.1.0` baut mit PyInstaller die Windows-Version und veröffentlicht sie als Release:
+
+```text
+git tag v0.1.0
+git push origin v0.1.0
 ```
 
 ## Aufbau
@@ -52,6 +63,8 @@ autodrive_editor/
     controls/   Raster- und Rotationseinstellungen
   resources/    Symbole
 tests/          gleiche Ordnerstruktur wie autodrive_editor/
+packaging/      Programmsymbol und Lizenztexte für die Windows-Version
+.github/        CI und Release-Build
 ```
 
 ## Grundregeln im Code
@@ -90,3 +103,9 @@ tests/          gleiche Ordnerstruktur wie autodrive_editor/
 Bewährt: native `QGraphicsEllipseItem`-Nodes, Grafikobjekte nur für den sichtbaren Bereich plus Puffer (Kacheln 256 m, Puffer 128 m), drei gebündelte globale Connection-Pfade, räumliche Indizes, Auswahl nur als Node-IDs, getrennte Vorschau- und Endauswahl.
 
 Nicht geeignet: eigenes `paint()` pro Node, dauerhaft alle NodeItems, ein Grafikobjekt pro Connection, große gespeicherte Pfeilpfade, dauerhafte Auswahlringe für alle ausgewählten Nodes.
+
+## Lizenz
+
+GNU General Public License v3.0 oder später, siehe [LICENSE](LICENSE). Die Windows-Version enthält PySide6/Qt (LGPLv3) und Pillow, siehe [THIRD_PARTY_NOTICES.md](packaging/THIRD_PARTY_NOTICES.md).
+
+Der Editor enthält keine Dateien aus dem Landwirtschafts-Simulator oder aus Karten-Mods; Kartenbilder und Heightmaps werden aus der eigenen Installation gelesen. Das Projekt steht in keiner Verbindung zu GIANTS Software.

@@ -44,7 +44,7 @@ from autodrive_editor.model.autodrive_data import (
     NodeData,
 )
 from autodrive_editor.model.connections import ConnectionType
-from autodrive_editor.paths import LOCAL_PROJECTS_DIRECTORY, MARKER_ICON_PATH, user_data_directory
+from autodrive_editor.paths import MARKER_ICON_PATH, local_projects_directory, user_data_directory
 from autodrive_editor.project.autosave import AutosaveStore
 from autodrive_editor.project.project_coordinator import ProjectCoordinator
 from autodrive_editor.rendering.display_style import DisplayStyle
@@ -113,7 +113,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.local_projects_directory = LOCAL_PROJECTS_DIRECTORY
+        self.local_projects_directory = local_projects_directory()
 
         # Detects the FS25 folder on first start and keeps it afterwards.
         self.settings = AppSettings()

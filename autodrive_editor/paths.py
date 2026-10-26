@@ -1,6 +1,7 @@
 """File system locations used by the editor."""
 
 import os
+import sys
 from pathlib import Path
 
 # The autodrive_editor package folder.
@@ -8,9 +9,6 @@ PACKAGE_ROOT = Path(__file__).resolve().parent
 
 # The repository folder that contains the package.
 PROJECT_ROOT = PACKAGE_ROOT.parent
-
-# User data stays outside the package.
-LOCAL_PROJECTS_DIRECTORY = PROJECT_ROOT / "local_projects"
 
 # Icons ship with the package.
 ICON_DIRECTORY = PACKAGE_ROOT / "resources" / "icons"
@@ -40,3 +38,14 @@ def user_data_directory() -> Path:
         return Path(app_data) / "AutoDrive Editor"
 
     return Path.home() / ".autodrive_editor"
+
+
+def local_projects_directory() -> Path:
+    """Default folder for project files: local_projects/ in the repository,
+    the user data folder in the bundled .exe (its own folder is replaced on
+    updates and may not be writable)."""
+
+    if getattr(sys, "frozen", False):
+        return user_data_directory() / "projects"
+
+    return PROJECT_ROOT / "local_projects"
