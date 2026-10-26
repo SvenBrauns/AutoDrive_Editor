@@ -4,56 +4,76 @@ Planned features of the AutoDrive FS25 Editor, in the order they should be imple
 
 The editor supports only Farming Simulator 25.
 
-## 1. Comparison with the old editor — high priority
+## Goal: feature parity with the old editor
 
-The goal is that the editor can do everything the previous AutoDrive Course Editor for FS25 can do. The result of this comparison decides which features still need to be added to this roadmap.
+The phases 1–5 contain everything the previous AutoDrive Course Editor (v1.1.1) can do and this editor cannot yet. When they are done, the editor is released (phase 6). Everything else waits until after the release.
 
-- [ ] compare the feature list of the old editor and add the missing features here
+Not taken over on purpose:
 
-## 2. Network check — high priority
+- FS19/FS22 support and the DDS import for those games (the editor supports only FS25)
+- importing map images from a .zip and downloading them from the map image repository (replaced by `Map → Scan maps`)
+- "save as default map image/heightmap" (replaced by the map cache)
+- the experimental tools (road connection, scale, templates); they are unfinished in the old editor
+- the debug and logging menus (replaced by the debug dock and the log file)
 
-Menu `Prüfen` (Check) with a result list that jumps to each location. The same check runs before saving: problems found are shown, but saving is still possible.
+## 1. Network check — high priority
 
-- [ ] invalid connection references
-- [ ] nodes without connections
+Menu `Check` with a result list that jumps to each location.
+
+- [ ] find nodes lying on top of each other
 - [ ] merge nodes lying on top of each other
-- [ ] nodes outside the map
-- [ ] recalculate all heights from the heightmap
-- [ ] check before saving
+- [ ] move nodes outside the map back onto the map
+- [ ] recalculate invalid heights from the heightmap
 
-## 3. Project and application — medium priority
-
-- [ ] recently opened routes, savegames and files (File menu and welcome screen)
-- [ ] reopen the last opened item at startup
-- [ ] clear error dialogs
-
-## 4. English interface — medium priority
-
-AutoDrive is used internationally. For the release, the editor should also be usable in English.
-
-- [x] interface in English and German, language setting (default: Windows language)
-- [x] README in English and German, English developer documentation
-
-## 5. Display — low priority
+## 2. Display — high priority
 
 New display options are saved permanently.
 
-- [ ] show and hide nodes and individual connection types
-- [ ] show node IDs
 - [x] minimum and maximum node size on screen
+- [ ] show and hide nodes and each connection type (regular, dual, reverse, subprio)
+- [ ] option whether hidden nodes and connections can be selected
+- [ ] show node IDs
+- [ ] show and hide marker icons
+- [ ] show parking positions of vehicles (savegames)
 
-## 6. Release — once feature parity with the old editor is reached
+## 3. Editing — medium priority
+
+- [ ] move along one axis only (X or Z)
+- [ ] adjustable step for rotation snapping (today fixed 15°)
+- [ ] quadratic Bézier curve (one control point)
+
+## 4. Project and application — medium priority
+
+- [ ] recently opened routes, savegames and files (File menu and welcome screen)
+- [ ] log file and clear error dialogs for unexpected errors
+- [ ] `Help` menu: about the editor, version history
+
+## 5. Settings — low priority
+
+- [ ] change keyboard shortcuts
+- [ ] dark theme
+
+## 6. Release — once phases 1–5 are done
 
 - [x] license chosen
 - [x] licenses of the used libraries checked (PySide6/LGPL, Pillow)
 - [x] provided as a Windows program (.exe)
-- [ ] all items from phase 1 implemented
+- [ ] all items from phases 1–5 implemented
 
-## Technical items on the side
+## 7. After the release
 
-These are done when a phase touches the affected code anyway.
+Features the old editor does not have.
 
-- [x] short stutter when zooming in past zoom 1.0 for the first time
+- [ ] check for invalid connection references
+- [ ] check for nodes without connections
+- [ ] run the network check before saving (problems are shown, saving is still possible)
+- [ ] reopen the last opened item at startup
 - [ ] interpolate heightmap values between pixels instead of taking the nearest pixel
 - [ ] measuring points bound to nodes follow moved nodes
+
+## Done
+
+- [x] interface in English and German, language setting (default: Windows language)
+- [x] README in English and German, English developer documentation
+- [x] short stutter when zooming in past zoom 1.0 for the first time
 - [x] split `scene_renderer.py`
