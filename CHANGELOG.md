@@ -1,5 +1,9 @@
 # Version history
 
+## 1.1.0 – 2026-10-27
+
+- `Help → Check for updates`: asks GitHub whether a newer version exists and links to its release page; optional check at startup (off by default, set in the first-start dialog or under `File → Settings`)
+
 ## 1.0.0 – 2026-10-27
 
 The editor can now do everything the AutoDrive Course Editor 1.1.1 can do for Farming Simulator 25, except its experimental tools.
