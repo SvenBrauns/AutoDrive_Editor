@@ -27,7 +27,7 @@ Edit [AutoDrive](https://github.com/Stephan-S/FS25_AutoDrive) route networks for
 
 ## Getting started
 
-1. Download the zip from [Releases](https://github.com/SvenBrauns/AutoDrive_Editor/releases/latest), unzip it and start `AutoDrive Editor.exe`. No Python or Java is needed.
+1. Download the zip from [Releases](https://github.com/SvenBrauns/AutoDrive_Editor/releases/latest), unzip it and start `AutoDrive Editor.exe`. No Python or Java is needed. The program is not signed, so Windows may show "Windows protected your PC": click `More info → Run anyway`.
 2. On first start, check the game folders the editor found.
 3. Run `Map → Scan maps` once to import your maps.
 4. Open a route, savegame or XML file from the `File` menu.

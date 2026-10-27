@@ -1,6 +1,8 @@
 # Version history
 
-## Unreleased
+## 1.0.0 – 2026-10-27
+
+The editor can now do everything the AutoDrive Course Editor 1.1.1 can do for Farming Simulator 25, except its experimental tools.
 
 - Network check (`Check → Check network`): find and fix overlapping nodes, nodes outside the map and heights that differ from the heightmap; entries can be ignored
 - `View → Show`: show and hide nodes, node IDs, each connection type, markers, marker names and the parking positions of vehicles
@@ -17,6 +19,7 @@
 - Keyboard shortcuts can be changed under `File → Settings → Shortcuts`
 - Light and dark theme, or following Windows (`File → Settings`)
 - New README with screenshots and a comparison with the AutoDrive Course Editor; the detailed guide moved to `MANUAL.md`
+- The exe shows its version under `Properties → Details`
 
 ## 0.2.0 – 2026-10-26
 

@@ -29,7 +29,7 @@ Die Screenshots zeigen die englische Oberfläche.
 
 ## Loslegen
 
-1. Das Zip unter [Releases](https://github.com/SvenBrauns/AutoDrive_Editor/releases/latest) herunterladen, entpacken und `AutoDrive Editor.exe` starten. Python oder Java sind nicht nötig.
+1. Das Zip unter [Releases](https://github.com/SvenBrauns/AutoDrive_Editor/releases/latest) herunterladen, entpacken und `AutoDrive Editor.exe` starten. Python oder Java sind nicht nötig. Das Programm ist nicht signiert, daher zeigt Windows eventuell „Der Computer wurde durch Windows geschützt“: auf `Weitere Informationen → Trotzdem ausführen` klicken.
 2. Beim ersten Start die gefundenen Spielordner prüfen.
 3. Einmal `Karte → Karten scannen` ausführen, um die Karten zu importieren.
 4. Eine Route, ein Savegame oder eine XML-Datei über das Menü `Datei` öffnen.

@@ -1,14 +1,8 @@
-import importlib.util
+from packaging_helpers import load_packaging_script
 
 from autodrive_editor import __version__
-from autodrive_editor.paths import PROJECT_ROOT
 
-# Loaded from its path: "packaging" is also the name of an installed library.
-_spec = importlib.util.spec_from_file_location(
-    "version_info", PROJECT_ROOT / "packaging" / "version_info.py"
-)
-version_info = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(version_info)
+version_info = load_packaging_script("version_info")
 
 
 def test_text_has_version_numbers_and_strings():

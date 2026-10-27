@@ -20,6 +20,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.14"
+      - run: python packaging/release_notes.py "${{ github.ref_name }}" build/release_notes.md
       - run: pip install -r requirements-dev.txt pyinstaller
       - run: python -m pytest
 
@@ -41,4 +42,4 @@ jobs:
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${{ github.ref_name }}" "$env:ZIP_NAME" --title "${{ github.ref_name }}" --generate-notes
+        run: gh release create "${{ github.ref_name }}" "$env:ZIP_NAME" --title "${{ github.ref_name }}" --notes-file build/release_notes.md
