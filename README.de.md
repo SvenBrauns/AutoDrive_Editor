@@ -9,6 +9,8 @@
 
 [AutoDrive](https://github.com/Stephan-S/FS25_AutoDrive)-Routennetze für den Landwirtschafts-Simulator 25 direkt auf der Karte bearbeiten, mit Geländehöhen und vollständigem Rückgängig.
 
+> **Hinweis:** Dieses Projekt ist komplett „vibe coded“. Code, Tests und Dokumentation wurden vollständig von einem KI-Programmierassistenten geschrieben, angeleitet und getestet von einem Menschen.
+
 ![Der Editor mit einem ganzen Routennetz auf der Karte](docs/images/overview.png)
 
 ## Das Wichtigste

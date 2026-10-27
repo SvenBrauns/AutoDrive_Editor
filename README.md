@@ -9,6 +9,8 @@
 
 Edit [AutoDrive](https://github.com/Stephan-S/FS25_AutoDrive) route networks for Farming Simulator 25 on the real map, with terrain heights and full undo.
 
+> **Disclaimer:** This project is fully vibe coded. All code, tests and documentation were written by an AI coding assistant, guided and tested by a human.
+
 ![The editor with a whole route network on the map](docs/images/overview.png)
 
 ## Highlights
