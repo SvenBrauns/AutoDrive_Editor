@@ -23,10 +23,12 @@ jobs:
       - run: pip install -r requirements-dev.txt pyinstaller
       - run: python -m pytest
 
+      - run: python packaging/version_info.py build/version_info.txt
+
       - name: Build
         run: >
           pyinstaller --noconfirm --windowed --name "AutoDrive Editor"
-          --icon packaging/app.ico
+          --icon packaging/app.ico --version-file build/version_info.txt
           --add-data "autodrive_editor/resources;autodrive_editor/resources"
           --add-data "CHANGELOG.md;."
           main.py

@@ -62,7 +62,7 @@ autodrive_editor/
   resources/    icons
   error_log.py  log file (%APPDATA%\AutoDrive Editor\logs) and the handler for unexpected errors
 tests/          same folder structure as autodrive_editor/
-packaging/      app icon and license texts for the Windows version
+packaging/      app icon, license texts and exe version info (version_info.py) for the Windows version
 .github/        CI and release build
 ```
 
