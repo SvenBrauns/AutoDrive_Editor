@@ -16,6 +16,7 @@
 - `Help` menu with this version history
 - Keyboard shortcuts can be changed under `File → Settings → Shortcuts`
 - Light and dark theme, or following Windows (`File → Settings`)
+- New README with screenshots and a comparison with the AutoDrive Course Editor; the detailed guide moved to `MANUAL.md`
 
 ## 0.2.0 – 2026-10-26
 

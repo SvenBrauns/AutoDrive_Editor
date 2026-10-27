@@ -1,6 +1,6 @@
 # Development
 
-Notes for working on the code of the AutoDrive FS25 Editor. The user guide is the [README](README.md) (German: [README.de.md](README.de.md)); planned features are in the [roadmap](ROADMAP.md).
+Notes for working on the code of the AutoDrive FS25 Editor. The user guide is the [manual](MANUAL.md) (German: [MANUAL.de.md](MANUAL.de.md)), the overview the [README](README.md); screenshots for it are in `docs/images`; planned features are in the [roadmap](ROADMAP.md).
 
 ## Running from source
 

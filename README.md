@@ -2,87 +2,72 @@
 
 **English** | [Deutsch](README.de.md)
 
-Editor for AutoDrive route networks in Farming Simulator 25. It shows the network on the map image with terrain heights and provides tools to edit nodes, connections, markers and whole route sections. All changes can be undone.
+[![Latest release](https://img.shields.io/github/v/release/SvenBrauns/AutoDrive_Editor)](https://github.com/SvenBrauns/AutoDrive_Editor/releases/latest)
+[![License: GPL v3](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
+![Windows](https://img.shields.io/badge/platform-Windows-0078D6)
+![Farming Simulator 25](https://img.shields.io/badge/game-FS25-6a9f2a)
 
-The editor supports only FS25.
+Edit [AutoDrive](https://github.com/Stephan-S/FS25_AutoDrive) route networks for Farming Simulator 25 on the real map, with terrain heights and full undo.
 
-## Download
+![The editor with a whole route network on the map](docs/images/overview.png)
 
-The Windows version is available as a zip under [Releases](https://github.com/SvenBrauns/AutoDrive_Editor/releases). Unzip it and start `AutoDrive Editor.exe`. No Python installation is needed.
+## Highlights
 
-## Language
+- **Your maps, found automatically.** One scan imports map image, heightmap and size from your `mods` folder and the base game. The right map opens with every route.
+- **Routes, savegames and XML files.** Open routes from AutoDrive's RoutesManager and reload them in the running game, no restart needed.
+- **Drawing tools.** Lines, Bézier curves and arcs with even node spacing. Rotate, align, set heights from the terrain, and copy and paste whole sections.
+- **Network check.** Finds overlapping nodes, nodes outside the map and wrong heights. Click an entry to jump to it, fix it with one click, or ignore it.
+- **Built for large networks.** Handles networks with more than 100,000 waypoints, like the one in the screenshots.
+- **Safe to use.** Undo for every change, a backup before the first save, and autosave with restore after a crash.
+- **Your way.** English or German, light or dark theme, your own keyboard shortcuts.
 
-The editor is available in English and German. On first start it uses German on a German Windows and English everywhere else. You can change the language under `File → Settings`; it takes effect after a restart.
+| Zoomed in, dark theme | Network check |
+| --- | --- |
+| ![Nodes, connections and markers up close in the dark theme](docs/images/detail-dark.png) | ![The network check dock next to a problem on the map](docs/images/network-check.png) |
 
-The editor follows the light or dark mode of Windows. Under `File → Settings` you can choose a light or dark theme instead, and change the keyboard shortcuts of all menu entries and tools on the `Shortcuts` tab.
+## Getting started
 
-## First start
+1. Download the zip from [Releases](https://github.com/SvenBrauns/AutoDrive_Editor/releases/latest), unzip it and start `AutoDrive Editor.exe`. No Python or Java is needed.
+2. On first start, check the game folders the editor found.
+3. Run `Map → Scan maps` once to import your maps.
+4. Open a route, savegame or XML file from the `File` menu.
 
-The editor looks for the FS25 user folder (usually `Documents\My Games\FarmingSimulator2025`) and the game's installation folder and shows both for you to check. You can change either later under `File → Settings`.
+The [manual](MANUAL.md) explains all tools, shortcuts, the network check and saving.
 
-Map images are not shipped with the editor. Use `Map → Scan maps` to search the `mods` folder and the base game maps; the editor then imports the map image, heightmap and map size. This is needed only once per map. After that, the matching map loads automatically when you open a route. If the map is missing, the editor offers the scan directly.
+## Compared to the AutoDrive Course Editor
 
-## Opening a network
+This editor is a new FS25-only editor. Its first goal was everything the [AutoDrive Course Editor](https://github.com/KillBait/AutoDrive_Course_Editor) 1.1.1 can do.
 
-- **Open route** (recommended): routes from AutoDrive's RoutesManager. AutoDrive can reload them in a running game, so the game does not need to be restarted.
-- **Open savegame**: the `AutoDrive_config.xml` of a savegame. The savegame's heightmap is loaded with it.
-- **Open XML file**: a single file in either format.
+| | Course Editor 1.1.1 | AutoDrive FS25 Editor |
+| --- | :---: | :---: |
+| Games | FS19, FS22, FS25 | FS25 |
+| Runs as | Java program (Java 11+) | Windows program, nothing to install |
+| Interface language | English | English, German |
+| Map images | Import from .zip or download | Scanned from your mods and the game |
+| Routes, savegames and XML files | ✅ | ✅ |
+| Nodes, connections, markers, copy and paste, undo | ✅ | ✅ |
+| Lines, Bézier curves (1 or 2 control points), arcs | ✅ | ✅ |
+| Rotate, align, enter positions, grid snapping | ✅ | ✅ |
+| Show and hide connection types, markers, parking positions | ✅ | ✅ |
+| Find and fix overlapping nodes, nodes outside the map | ✅ | ✅ |
+| Height check against the heightmap | Only nodes below world bounds | ✅ |
+| Check results as a list: jump to each problem, ignore entries | | ✅ |
+| Freehand selection | | ✅ |
+| Distance and angle measurement | | ✅ |
+| Rotate the map view | | ✅ |
+| Autosave, keyboard shortcuts, dark theme | ✅ | ✅ |
+| Experimental tools (road connection, scale, templates) | ✅ | |
 
-## Controls
+## Thanks
 
-- **Mouse wheel** zooms, **left drag** moves the map, **middle drag** rotates the view.
-- **Right click** or **Esc** cancels the current step of a tool; **Enter** confirms it (for example for curves).
-- The tools are in the tool panel; the status bar shows what the active tool expects next. Tools with options have a small arrow on their button that opens them.
-
-| Tool | Key | What it does |
-| --- | --- | --- |
-| Navigation | `N` | Move and rotate the map |
-| Selection | `A` | Click or right-drag to select; Shift + right-drag for freehand selection; Ctrl adds to the selection |
-| Move | `V` | Drag a node or the selection; Shift moves along one grid axis only |
-| Rotate | `R` | Rotate the selection using the ring; Shift snaps in steps (default 15°, set with the arrow) |
-| Create (Regular / Subprio) | `E` / `Shift+E` | Create a node on free ground |
-| Toggle type | `T` | Switch between Regular and Subprio |
-| Delete | `L` | Delete a node or the selection |
-| Connect (Regular / Dual / Reverse) | `1` / `2` / `3` | Click nodes one after another to connect them |
-| Reverse direction | `U` | Click a connection to reverse it; inside a selection, all connections of the selection are reversed |
-| Enter position | `P` | Enter a node's X/Y/Z as numbers |
-| Align horizontally / vertically | `H` / `J` | Put the selection on the line through a reference node |
-| Height like reference / Height from heightmap | `Y` / `Shift+Y` | Set the heights of the selection |
-| Line | `I` | Straight route section with even node spacing (spacing, connection type and node type under the arrow) |
-| Bézier curve / Arc | `B` / `K` | Click start and end, drag the handles, press Enter; the Bézier curve has one or two control points |
-| Add marker / Edit marker | `M` / `Shift+M` | Add or edit a marker; enter its name and group |
-| Move marker / Delete marker | `Ctrl+M` / `Ctrl+Shift+M` | Move a marker to another node or delete it |
-
-Also available: Undo and Redo (`Ctrl+Z` / `Ctrl+Y`), Copy, Cut and Paste (`Ctrl+C/X/V`; `Ctrl+Shift+V` pastes at the original position), the grid with snapping (`G`), distance and angle measurement, and the `Markers` dock with all marker groups.
-
-## Display
-
-`View → Show` switches nodes, node IDs, each connection type (Regular, Dual, Reverse, Subprio), markers, marker names and the parking positions of vehicles on and off. Subprio connections are the ones leading into a Subprio node. Node IDs appear only when zoomed in; parking positions (a "P" next to the marker) are read from a savegame's `vehicles.xml`. Hidden nodes and connections cannot be clicked or selected unless `Hidden items can be selected` is on. Sizes and colors are set under `View → Display options`. All switches are remembered.
-
-## Checking the network
-
-`Check → Check network` lists overlapping nodes, nodes outside the map and, with a heightmap loaded, nodes whose height differs too much from the terrain. The distance for overlapping nodes and the allowed height difference are set at the top of the dock. Click an entry to show it on the map. `Fix selected` or `Fix all` merges overlapping nodes into one (the node with a marker, otherwise the lowest ID), moves nodes back onto the map and sets heights from the heightmap. Each kind of fix is one undo step.
-
-Entries that are fine as they are, such as nodes on a bridge, can be hidden with `Ignore`. They move to the `Ignored` group and are not fixed by `Fix all`; `Don't ignore` brings them back. An ignored entry also shows up again when one of its nodes is moved. The checkboxes switch off a whole check. Ignored entries and switched-off checks are remembered for each route or savegame.
-
-## Saving
-
-`File → Save` (`Ctrl+S`) writes to the same format and file you loaded from. Before the first overwrite, the editor creates a backup copy (`.bak`). For savegames, the marker targets of vehicles in `vehicles.xml` are updated as well.
-
-`Save as` saves a route as a new route in the RoutesManager.
-
-Unsaved changes are backed up automatically every few minutes (interval under `File → Settings`). If the editor closes unexpectedly, it offers to restore them on the next start.
-
-`File → Open recent` and the welcome screen list the last five opened routes, savegames, XML files and projects.
-
-## Help and errors
-
-`Help → Version history` shows what changed in each version, `Help → About` shows the version and license. If an unexpected error occurs, the editor shows a message and keeps running. The details are written to a log file (`Help → Open log folder`, in `%APPDATA%\AutoDrive Editor\logs`); please attach it when reporting a bug.
+- **Stephan** and the AutoDrive team (Iwan1803, Axel, Tommo, Willi) for [AutoDrive](https://github.com/Stephan-S/FS25_AutoDrive). Without the mod, this editor would have nothing to edit.
+- **Stephan** for creating the original course editor, and **KillBait** for maintaining and extending it as the [AutoDrive Course Editor](https://github.com/KillBait/AutoDrive_Course_Editor). It showed what a route editor needs, and its feature set was the target for this editor's first release.
+- **Ollimodding** for the map Thüringen 2.0 16x, shown in the screenshots.
 
 ## License
 
 GNU General Public License v3.0 or later, see [LICENSE](LICENSE). The Windows version contains PySide6/Qt (LGPLv3) and Pillow, see [THIRD_PARTY_NOTICES.md](packaging/THIRD_PARTY_NOTICES.md).
 
-The editor contains no files from Farming Simulator or from map mods. Map images and heightmaps are read from your own installation. This project has no connection to GIANTS Software.
+The editor contains no files from Farming Simulator or from map mods. Map images and heightmaps are read from your own installation. Only the screenshots in `docs/images` show part of a map mod. This project has no connection to GIANTS Software.
 
-For development, see [DEVELOPMENT.md](DEVELOPMENT.md).
+For development, see [DEVELOPMENT.md](DEVELOPMENT.md). Changes in each version are listed in the [CHANGELOG](CHANGELOG.md).
