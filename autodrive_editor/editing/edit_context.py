@@ -29,6 +29,8 @@ class EditContext:
     terrain_height_at: TerrainHeightProvider | None = None
     # Grid snapping of a map position.
     snap_point: Callable[[float, float], tuple[float, float]] | None = None
+    # Rotation of the grid in degrees; its axes are the ones for axis locking.
+    grid_rotation: Callable[[], float] | None = None
 
 
 class EditOperation(QObject):
@@ -48,3 +50,4 @@ class EditOperation(QObject):
         self.node_selection = context.node_selection
         self.terrain_height_at = context.terrain_height_at
         self.snap_point = context.snap_point
+        self.grid_rotation = context.grid_rotation

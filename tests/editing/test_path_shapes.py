@@ -80,6 +80,17 @@ def test_bezier_with_default_handles_is_straight():
     assert all(abs(6 * x - 9 * z) < 1e-6 for x, z in points)
 
 
+def test_quadratic_bezier_peaks_halfway_to_its_control_point():
+    points = bezier_polyline((0, 0), (5, 10), (10, 0))
+
+    assert points[0] == (0, 0) and points[-1] == pytest.approx((10, 0))
+    assert max(z for _, z in points) == pytest.approx(5)
+
+
+def test_quadratic_bezier_default_handle_is_in_the_middle():
+    assert default_handles(PathShape.BEZIER, (0, 0), (10, 4), control_points=1) == [(5, 2)]
+
+
 def test_default_arc_handle_is_beside_the_middle():
     (handle,) = default_handles(PathShape.ARC, (0, 0), (10, 0))
 

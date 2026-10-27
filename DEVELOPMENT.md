@@ -20,7 +20,7 @@ ruff check .
 ruff format .
 ```
 
-GitHub Actions checks every push and pull request with `ruff` and `pytest`. A tag such as `v0.1.0` builds the Windows version with PyInstaller and publishes it as a release:
+GitHub Actions checks every push and pull request with `ruff` and `pytest`. A tag such as `v0.1.0` builds the Windows version with PyInstaller and publishes it as a release. Before tagging, raise the version in `autodrive_editor/__init__.py` and `pyproject.toml` (a test checks that they match) and turn the `Unreleased` section of `CHANGELOG.md` into the new version; the app shows that file under `Help → Version history`.
 
 ```text
 git tag v0.1.0
@@ -57,8 +57,10 @@ autodrive_editor/
     tools/      mouse handling per tool
     panels/     tool panel, debug dock, display options
     controls/   grid and rotation settings
+  settings/     settings kept between sessions, recently opened files
   i18n/         translation of the interface texts (tr(), German catalog)
   resources/    icons
+  error_log.py  log file (%APPDATA%\AutoDrive Editor\logs) and the handler for unexpected errors
 tests/          same folder structure as autodrive_editor/
 packaging/      app icon and license texts for the Windows version
 .github/        CI and release build

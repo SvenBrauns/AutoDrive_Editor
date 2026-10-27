@@ -50,7 +50,6 @@ from autodrive_editor.terrain.background_map import BackgroundMap
 from autodrive_editor.terrain.heightmap import Heightmap
 from autodrive_editor.terrain.map_cache import MapCache
 from autodrive_editor.ui.actions.main_window_actions import MainWindowActions
-from autodrive_editor.ui.actions.tool_catalog import LINES_GROUP
 from autodrive_editor.ui.controls.grid_coordinator import GridCoordinator
 from autodrive_editor.ui.dialogs.marker_dialog import MarkerDialog
 from autodrive_editor.ui.dialogs.messages import APP_TITLE
@@ -68,6 +67,7 @@ from autodrive_editor.ui.panels.display_options_dialog import DisplayOptionsDial
 from autodrive_editor.ui.panels.marker_dock import MarkerDock
 from autodrive_editor.ui.panels.node_info_formatter import NodeInfoFormatter
 from autodrive_editor.ui.panels.path_options import PathOptionsWidget
+from autodrive_editor.ui.panels.rotate_options import RotateOptionsWidget
 from autodrive_editor.ui.panels.welcome_panel import WelcomePanel
 from autodrive_editor.ui.tools.connect_nodes_tool import ConnectNodesTool
 from autodrive_editor.ui.tools.create_node_tool import CreateNodeTool
@@ -143,7 +143,7 @@ class MainWindow(QMainWindow):
 
         self.actions = MainWindowActions(self)
         self.actions.set_current_map_scale(self.background_map.map_scale)
-        self._create_path_options()
+        self._create_tool_options()
 
         self._create_welcome_panel()
         self._create_grid_coordinator()
@@ -371,12 +371,14 @@ class MainWindow(QMainWindow):
             node_selection=self.node_selection,
             terrain_height_at=self._get_terrain_height,
             snap_point=self.background_map.snap_point,
+            grid_rotation=lambda: self.background_map.grid_rotation,
         )
 
         self.move_nodes_operation = MoveNodesOperation(context, parent=self)
         self.delete_nodes_operation = DeleteNodesOperation(context, parent=self)
         self.connect_nodes_operation = ConnectNodesOperation(context, parent=self)
         self.rotate_selection_operation = RotateSelectionOperation(context, parent=self)
+        self.rotate_selection_operation.snap_angle = self.settings.rotate_snap_angle
         self.create_nodes_operation = CreateNodesOperation(context, parent=self)
         self.node_type_operation = NodeTypeOperation(context, parent=self)
         self.align_nodes_operation = AlignNodesOperation(context, parent=self)
@@ -587,29 +589,57 @@ class MainWindow(QMainWindow):
                 ),
             )
 
-    def _create_path_options(self):
-        """The options box below the line and curve tools."""
+    def _create_tool_options(self):
+        """The options behind the arrows of the Rotate and path tool buttons."""
 
-        self.path_options_widget = PathOptionsWidget(self.create_path_operation.options)
+        tool_panel = self.actions.tool_panel
+        tool_actions = self.actions.tool_actions
 
-        self.actions.tool_panel.groups[LINES_GROUP].add_widget(self.path_options_widget)
+        rotate_options = RotateOptionsWidget(self.rotate_selection_operation.snap_angle)
 
-        def apply_options(options):
-            self.create_path_operation.set_options(options)
-            self.settings.set_path_options(options)
+        def apply_snap_angle(angle):
+            self.rotate_selection_operation.snap_angle = angle
+            self.settings.set_rotate_snap_angle(angle)
 
-        self.path_options_widget.options_changed.connect(apply_options)
+        rotate_options.snap_angle_changed.connect(apply_snap_angle)
+        tool_panel.set_tool_options(tool_actions[InteractionMode.ROTATE_SELECTION], rotate_options)
 
-        self.path_options_widget.apply_requested.connect(self.create_path_operation.apply)
+        # One options widget per path tool; changing one updates the others.
+        self.path_options_widgets = {}
 
-        def update_apply_button():
-            self.path_options_widget.apply_button.setEnabled(
-                self.create_path_operation.is_adjusting
+        for interaction_mode, shape in (
+            (InteractionMode.DRAW_LINE, PathShape.LINE),
+            (InteractionMode.DRAW_BEZIER, PathShape.BEZIER),
+            (InteractionMode.DRAW_ARC, PathShape.ARC),
+        ):
+            widget = PathOptionsWidget(
+                self.create_path_operation.options,
+                show_control_points=shape == PathShape.BEZIER,
             )
+            menu = tool_panel.set_tool_options(tool_actions[interaction_mode], widget)
 
-        self.create_path_operation.preview_changed.connect(update_apply_button)
+            widget.options_changed.connect(self._apply_path_options)
+            widget.apply_requested.connect(self.create_path_operation.apply)
+            widget.apply_requested.connect(menu.close)
 
-        update_apply_button()
+            self.path_options_widgets[shape] = widget
+
+        def update_apply_buttons():
+            for widget in self.path_options_widgets.values():
+                widget.apply_button.setEnabled(self.create_path_operation.is_adjusting)
+
+        self.create_path_operation.preview_changed.connect(update_apply_buttons)
+
+        update_apply_buttons()
+
+    def _apply_path_options(self, options):
+        self.create_path_operation.set_options(options)
+        self.settings.set_path_options(options)
+
+        for widget in self.path_options_widgets.values():
+            widget.blockSignals(True)
+            widget.set_options(options)
+            widget.blockSignals(False)
 
     def _register_marker_tools(self):
         operation = self.marker_operation
@@ -732,6 +762,10 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(self.view.viewport())
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.welcome_panel)
+
+        self.welcome_panel.set_recent_items(self.settings.recent_items)
+        self.welcome_panel.recent_item_requested.connect(self.files.open_recent)
+        self.files.recent_items_changed.connect(self.welcome_panel.set_recent_items)
 
     def _create_marker_dock(self):
         self.marker_dock = MarkerDock(self)

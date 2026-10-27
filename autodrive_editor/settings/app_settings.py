@@ -1,5 +1,6 @@
 """Settings that are kept between editor sessions."""
 
+import json
 from dataclasses import fields
 from pathlib import Path
 
@@ -12,6 +13,7 @@ from autodrive_editor.i18n import LANGUAGES, system_language
 from autodrive_editor.model.connections import ConnectionType
 from autodrive_editor.paths import user_data_directory
 from autodrive_editor.rendering.visibility import Visibility
+from autodrive_editor.settings.recent_items import RecentItem
 
 
 class AppSettings:
@@ -26,6 +28,9 @@ class AppSettings:
     PATH_SPACING_KEY = "path/spacing"
     PATH_CONNECTION_KEY = "path/connection_type"
     PATH_FLAG_KEY = "path/flag"
+    PATH_CONTROL_POINTS_KEY = "path/control_points"
+    ROTATE_SNAP_KEY = "rotate/snap_angle"
+    RECENT_ITEMS_KEY = "app/recent_items"
     LANGUAGE_KEY = "app/language"
     CHECK_OVERLAP_KEY = "check/overlap_tolerance"
     CHECK_HEIGHT_KEY = "check/max_height_difference"
@@ -142,6 +147,9 @@ class AppSettings:
                     self._settings.value(self.PATH_CONNECTION_KEY, default.connection_type.value)
                 ),
                 flag=self._settings.value(self.PATH_FLAG_KEY, default.flag, type=int),
+                control_points=self._settings.value(
+                    self.PATH_CONTROL_POINTS_KEY, default.control_points, type=int
+                ),
             )
 
         except ValueError:
@@ -151,6 +159,42 @@ class AppSettings:
         self._settings.setValue(self.PATH_SPACING_KEY, float(options.spacing))
         self._settings.setValue(self.PATH_CONNECTION_KEY, options.connection_type.value)
         self._settings.setValue(self.PATH_FLAG_KEY, int(options.flag))
+        self._settings.setValue(self.PATH_CONTROL_POINTS_KEY, int(options.control_points))
+        self._settings.sync()
+
+    @property
+    def recent_items(self) -> list[RecentItem]:
+        """Recently opened files, newest first. Unreadable entries are left out."""
+
+        try:
+            values = json.loads(self._settings.value(self.RECENT_ITEMS_KEY, "[]"))
+        except (TypeError, ValueError):
+            return []
+
+        items = []
+
+        for item_values in values if isinstance(values, list) else []:
+            try:
+                items.append(RecentItem.from_dict(item_values))
+            except (KeyError, TypeError, ValueError):
+                continue
+
+        return items
+
+    def set_recent_items(self, items: list[RecentItem]):
+        self._settings.setValue(
+            self.RECENT_ITEMS_KEY, json.dumps([item.to_dict() for item in items])
+        )
+        self._settings.sync()
+
+    @property
+    def rotate_snap_angle(self) -> float:
+        """Step in degrees while Shift snaps the Rotate tool."""
+
+        return self._settings.value(self.ROTATE_SNAP_KEY, 15.0, type=float)
+
+    def set_rotate_snap_angle(self, angle: float):
+        self._settings.setValue(self.ROTATE_SNAP_KEY, float(angle))
         self._settings.sync()
 
     @property

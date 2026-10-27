@@ -107,7 +107,7 @@ def test_empty_folders_do_not_ask_again(isolated_user_data):
 
 
 def test_path_options_are_kept_between_sessions():
-    options = PathOptions(7.5, ConnectionType.DUAL, SUBPRIO_FLAG)
+    options = PathOptions(7.5, ConnectionType.DUAL, SUBPRIO_FLAG, control_points=1)
 
     AppSettings().set_path_options(options)
 
@@ -124,6 +124,20 @@ def test_invalid_stored_path_options_fall_back_to_defaults():
     settings._settings.setValue(AppSettings.PATH_CONNECTION_KEY, "nonsense")
 
     assert AppSettings().path_options == PathOptions()
+
+
+def test_invalid_stored_control_points_fall_back_to_defaults():
+    AppSettings()._settings.setValue(AppSettings.PATH_CONTROL_POINTS_KEY, 3)
+
+    assert AppSettings().path_options == PathOptions()
+
+
+def test_rotate_snap_angle_defaults_to_15_and_is_kept():
+    assert AppSettings().rotate_snap_angle == 15.0
+
+    AppSettings().set_rotate_snap_angle(7.5)
+
+    assert AppSettings().rotate_snap_angle == 7.5
 
 
 def test_check_tolerances_default_and_are_kept_between_sessions():

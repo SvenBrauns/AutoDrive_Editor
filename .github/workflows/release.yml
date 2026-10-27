@@ -28,11 +28,12 @@ jobs:
           pyinstaller --noconfirm --windowed --name "AutoDrive Editor"
           --icon packaging/app.ico
           --add-data "autodrive_editor/resources;autodrive_editor/resources"
+          --add-data "CHANGELOG.md;."
           main.py
 
       - name: Add license files and zip
         run: |
-          Copy-Item LICENSE, README.md, README.de.md, packaging/LGPL-3.0.txt, packaging/THIRD_PARTY_NOTICES.md "$env:APP_FOLDER"
+          Copy-Item LICENSE, README.md, README.de.md, CHANGELOG.md, packaging/LGPL-3.0.txt, packaging/THIRD_PARTY_NOTICES.md "$env:APP_FOLDER"
           Compress-Archive -Path "$env:APP_FOLDER" -DestinationPath "$env:ZIP_NAME"
 
       - name: Publish release

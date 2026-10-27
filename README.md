@@ -30,14 +30,14 @@ Map images are not shipped with the editor. Use `Map → Scan maps` to search th
 
 - **Mouse wheel** zooms, **left drag** moves the map, **middle drag** rotates the view.
 - **Right click** or **Esc** cancels the current step of a tool; **Enter** confirms it (for example for curves).
-- The tools are in the tool panel; the status bar shows what the active tool expects next.
+- The tools are in the tool panel; the status bar shows what the active tool expects next. Tools with options have a small arrow on their button that opens them.
 
 | Tool | Key | What it does |
 | --- | --- | --- |
 | Navigation | `N` | Move and rotate the map |
 | Selection | `A` | Click or right-drag to select; Shift + right-drag for freehand selection; Ctrl adds to the selection |
-| Move | `V` | Drag a node or the selection |
-| Rotate | `R` | Rotate the selection using the ring (Shift: 15° steps) |
+| Move | `V` | Drag a node or the selection; Shift moves along one grid axis only |
+| Rotate | `R` | Rotate the selection using the ring; Shift snaps in steps (default 15°, set with the arrow) |
 | Create (Regular / Subprio) | `E` / `Shift+E` | Create a node on free ground |
 | Toggle type | `T` | Switch between Regular and Subprio |
 | Delete | `L` | Delete a node or the selection |
@@ -46,8 +46,8 @@ Map images are not shipped with the editor. Use `Map → Scan maps` to search th
 | Enter position | `P` | Enter a node's X/Y/Z as numbers |
 | Align horizontally / vertically | `H` / `J` | Put the selection on the line through a reference node |
 | Height like reference / Height from heightmap | `Y` / `Shift+Y` | Set the heights of the selection |
-| Line | `I` | Straight route section with even node spacing |
-| Bézier curve / Arc | `B` / `K` | Click start and end, drag the handles, press Enter |
+| Line | `I` | Straight route section with even node spacing (spacing, connection type and node type under the arrow) |
+| Bézier curve / Arc | `B` / `K` | Click start and end, drag the handles, press Enter; the Bézier curve has one or two control points |
 | Add marker / Edit marker | `M` / `Shift+M` | Add or edit a marker; enter its name and group |
 | Move marker / Delete marker | `Ctrl+M` / `Ctrl+Shift+M` | Move a marker to another node or delete it |
 
@@ -70,6 +70,12 @@ Entries that are fine as they are, such as nodes on a bridge, can be hidden with
 `Save as` saves a route as a new route in the RoutesManager.
 
 Unsaved changes are backed up automatically every few minutes (interval under `File → Settings`). If the editor closes unexpectedly, it offers to restore them on the next start.
+
+`File → Open recent` and the welcome screen list the last five opened routes, savegames, XML files and projects.
+
+## Help and errors
+
+`Help → Version history` shows what changed in each version, `Help → About` shows the version and license. If an unexpected error occurs, the editor shows a message and keeps running. The details are written to a log file (`Help → Open log folder`, in `%APPDATA%\AutoDrive Editor\logs`); please attach it when reporting a bug.
 
 ## License
 

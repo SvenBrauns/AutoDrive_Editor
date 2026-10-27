@@ -1,6 +1,6 @@
 [project]
 name = "autodrive-editor"
-version = "0.1.0"
+version = "0.2.0"
 description = "Desktop editor for AutoDrive route networks in Farming Simulator 25"
 requires-python = ">=3.12"
 license = "GPL-3.0-or-later"

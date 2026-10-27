@@ -9,15 +9,17 @@ from autodrive_editor.model.connections import ConnectionType
 
 class PathOptionsWidget(QWidget):
     """Node spacing, connection type and node type of the line and curve
-    tools, and a button that creates the pending curve. Stacked vertically,
-    so it fits the narrow tool panel."""
+    tools, and a button that creates the pending curve. The Bézier tool's
+    copy also offers the number of control points."""
 
     options_changed = Signal(object)
 
     apply_requested = Signal()
 
-    def __init__(self, options: PathOptions, parent=None):
+    def __init__(self, options: PathOptions, show_control_points: bool = False, parent=None):
         super().__init__(parent)
+
+        self._control_points = options.control_points
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(4, 4, 4, 0)
@@ -41,15 +43,28 @@ class PathOptionsWidget(QWidget):
         self.flag_box.addItem("Regular", REGULAR_FLAG)
         self.flag_box.addItem("Subprio", SUBPRIO_FLAG)
 
+        self.control_points_box = QComboBox(self)
+        self.control_points_box.setToolTip(tr("1: quadratic curve, 2: cubic curve"))
+        self.control_points_box.addItem("1", 1)
+        self.control_points_box.addItem("2", 2)
+
         self.apply_button = QPushButton(tr("Apply"), self)
         self.apply_button.setToolTip(tr("Create curve (Enter)"))
         self.apply_button.clicked.connect(self.apply_requested.emit)
 
-        for title, widget in (
+        rows = [
             (tr("Spacing"), self.spacing_box),
             ("Connection", self.connection_box),
             (tr("Node type"), self.flag_box),
-        ):
+        ]
+
+        if show_control_points:
+            rows.append((tr("Control points"), self.control_points_box))
+
+        else:
+            self.control_points_box.hide()
+
+        for title, widget in rows:
             layout.addWidget(QLabel(title, self))
             layout.addWidget(widget)
 
@@ -60,6 +75,7 @@ class PathOptionsWidget(QWidget):
         self.spacing_box.valueChanged.connect(self._emit_options)
         self.connection_box.currentIndexChanged.connect(self._emit_options)
         self.flag_box.currentIndexChanged.connect(self._emit_options)
+        self.control_points_box.currentIndexChanged.connect(self._emit_control_points)
 
     @property
     def options(self) -> PathOptions:
@@ -67,6 +83,7 @@ class PathOptionsWidget(QWidget):
             spacing=self.spacing_box.value(),
             connection_type=ConnectionType(self.connection_box.currentData()),
             flag=self.flag_box.currentData(),
+            control_points=self._control_points,
         )
 
     def set_options(self, options: PathOptions):
@@ -75,6 +92,14 @@ class PathOptionsWidget(QWidget):
             self.connection_box.findData(options.connection_type.value)
         )
         self.flag_box.setCurrentIndex(self.flag_box.findData(options.flag))
+        self._control_points = options.control_points
+        self.control_points_box.setCurrentIndex(
+            self.control_points_box.findData(options.control_points)
+        )
+
+    def _emit_control_points(self):
+        self._control_points = self.control_points_box.currentData()
+        self._emit_options()
 
     def _emit_options(self):
         self.options_changed.emit(self.options)

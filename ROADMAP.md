@@ -38,15 +38,15 @@ New display options are saved permanently.
 
 ## 3. Editing — medium priority
 
-- [ ] move along one axis only (X or Z)
-- [ ] adjustable step for rotation snapping (today fixed 15°)
-- [ ] quadratic Bézier curve (one control point)
+- [x] move along one axis only (X or Z)
+- [x] adjustable step for rotation snapping (today fixed 15°)
+- [x] quadratic Bézier curve (one control point)
 
 ## 4. Project and application — medium priority
 
-- [ ] recently opened routes, savegames and files (File menu and welcome screen)
-- [ ] log file and clear error dialogs for unexpected errors
-- [ ] `Help` menu: about the editor, version history
+- [x] recently opened routes, savegames and files (File menu and welcome screen)
+- [x] log file and clear error dialogs for unexpected errors
+- [x] `Help` menu: about the editor, version history
 
 ## 5. Settings — low priority
 

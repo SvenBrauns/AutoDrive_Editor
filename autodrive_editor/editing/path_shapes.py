@@ -33,16 +33,27 @@ class PathOptions:
     spacing: float = 5.0
     connection_type: ConnectionType = ConnectionType.REGULAR
     flag: int = REGULAR_FLAG
+    # Control points of the Bézier curve: 1 (quadratic) or 2 (cubic).
+    control_points: int = 2
+
+    def __post_init__(self):
+        if self.control_points not in (1, 2):
+            raise ValueError(f"control_points must be 1 or 2, not {self.control_points}")
 
 
-def default_handles(shape: PathShape, start: Point, end: Point) -> list[Point]:
+def default_handles(
+    shape: PathShape, start: Point, end: Point, control_points: int = 2
+) -> list[Point]:
     """Starting positions of the draggable handles: Bézier control points
-    at a third and two thirds of the way, the arc point beside the middle
-    so the arc is visible at once."""
+    at a third and two thirds of the way (one control point: in the middle),
+    the arc point beside the middle so the arc is visible at once."""
 
     (x0, z0), (x1, z1) = start, end
 
     if shape == PathShape.BEZIER:
+        if control_points == 1:
+            return [_lerp(start, end, 0.5)]
+
         return [_lerp(start, end, 1 / 3), _lerp(start, end, 2 / 3)]
 
     if shape == PathShape.ARC:
@@ -54,7 +65,7 @@ def default_handles(shape: PathShape, start: Point, end: Point) -> list[Point]:
 
 def shape_polyline(shape: PathShape, start: Point, end: Point, handles: list[Point]) -> list[Point]:
     if shape == PathShape.BEZIER:
-        return bezier_polyline(start, handles[0], handles[1], end)
+        return bezier_polyline(start, *handles, end)
 
     if shape == PathShape.ARC:
         return arc_polyline(start, handles[0], end)
@@ -62,16 +73,16 @@ def shape_polyline(shape: PathShape, start: Point, end: Point, handles: list[Poi
     return [start, end]
 
 
-def bezier_polyline(start: Point, control1: Point, control2: Point, end: Point) -> list[Point]:
-    """Cubic Bézier curve from start to end."""
+def bezier_polyline(*controls: Point) -> list[Point]:
+    """Bézier curve from the first to the last point: quadratic with three
+    points (one control point), cubic with four."""
 
+    degree = len(controls) - 1
     points = []
 
     for index in range(CURVE_SAMPLES + 1):
         t = index / CURVE_SAMPLES
-        u = 1 - t
-        weights = (u**3, 3 * u * u * t, 3 * u * t * t, t**3)
-        controls = (start, control1, control2, end)
+        weights = [math.comb(degree, i) * (1 - t) ** (degree - i) * t**i for i in range(degree + 1)]
 
         x = sum(weight * point[0] for weight, point in zip(weights, controls, strict=True))
         z = sum(weight * point[1] for weight, point in zip(weights, controls, strict=True))

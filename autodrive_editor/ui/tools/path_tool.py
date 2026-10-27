@@ -195,7 +195,7 @@ class PathTool(MapTool):
             guide.moveTo(start.x, start.z)
             guide.lineTo(*handles[0])
             guide.moveTo(end.x, end.z)
-            guide.lineTo(*handles[1])
+            guide.lineTo(*handles[-1])
 
         pen = QPen(QColor(90, 90, 90), 1.0, Qt.DotLine)
         pen.setCosmetic(True)

@@ -11,6 +11,12 @@ from autodrive_editor.i18n import tr
 from autodrive_editor.project.autosave import AutosaveStore
 from autodrive_editor.project.project_coordinator import ProjectCoordinator
 from autodrive_editor.settings.app_settings import AppSettings
+from autodrive_editor.settings.recent_items import (
+    RecentItem,
+    RecentKind,
+    with_recent_item,
+    without_recent_item,
+)
 from autodrive_editor.ui.dialogs.list_choice_dialog import ListChoiceDialog
 from autodrive_editor.ui.dialogs.messages import APP_TITLE, inform
 
@@ -24,6 +30,9 @@ class FileController(QObject):
 
     # Data was saved; the window title shows the new name.
     saved = Signal()
+
+    # The list of recently opened files changed (list[RecentItem]).
+    recent_items_changed = Signal(list)
 
     def __init__(
         self,
@@ -127,7 +136,10 @@ class FileController(QObject):
         if entry is None:
             return
 
-        self._load_config(entry.path, display_name=entry.name, map_name=entry.map_name)
+        if self._load_config(entry.path, display_name=entry.name, map_name=entry.map_name):
+            self._remember(
+                RecentItem(RecentKind.ROUTE, str(entry.path), entry.name, entry.map_name)
+            )
 
     def open_savegame(self):
         if not self.confirm_discard_changes():
@@ -160,7 +172,10 @@ class FileController(QObject):
         if savegame is None:
             return
 
-        self._load_config(savegame.autodrive_config_path, display_name=savegame.display_name)
+        path = savegame.autodrive_config_path
+
+        if self._load_config(path, display_name=savegame.display_name):
+            self._remember(RecentItem(RecentKind.SAVEGAME, str(path), savegame.display_name))
 
     def load_xml(self):
         if not self.confirm_discard_changes():
@@ -176,22 +191,61 @@ class FileController(QObject):
             self.window, tr("Open AutoDrive XML"), start, tr("AutoDrive XML (*.xml)")
         )
 
-        if not filename:
-            return
+        if filename:
+            self._load_xml(filename)
 
+    def _load_xml(self, filename):
         try:
             self.project_coordinator.load_xml_file(filename)
 
         except Exception as ex:
             self.status_changed.emit(tr("The XML could not be loaded: {error}", error=ex))
+            return
 
-    def _load_config(self, path, display_name=None, map_name=None):
+        path = Path(filename)
+        self._remember(RecentItem(RecentKind.XML, str(path), path.name))
+
+    def _load_config(self, path, display_name=None, map_name=None) -> bool:
         try:
             self.project_coordinator.load_xml_file(
                 path, display_name=display_name, map_name=map_name
             )
         except Exception as ex:
             self._inform(tr("The AutoDrive data could not be loaded:\n{error}", error=ex))
+            return False
+
+        return True
+
+    def open_recent(self, item: RecentItem):
+        """Opens a file from the recent list. A file that is gone is removed
+        from the list."""
+
+        if not self.confirm_discard_changes():
+            return
+
+        if not Path(item.path).is_file():
+            self._set_recent_items(without_recent_item(self.settings.recent_items, item))
+            self._inform(tr("The file no longer exists:\n{path}", path=item.path))
+            return
+
+        if item.kind == RecentKind.XML:
+            self._load_xml(item.path)
+
+        elif item.kind == RecentKind.PROJECT:
+            self._load_project(item.path)
+
+        elif self._load_config(item.path, display_name=item.name, map_name=item.map_name):
+            self._remember(item)
+
+    def clear_recent_items(self):
+        self._set_recent_items([])
+
+    def _remember(self, item: RecentItem):
+        self._set_recent_items(with_recent_item(self.settings.recent_items, item))
+
+    def _set_recent_items(self, items: list[RecentItem]):
+        self.settings.set_recent_items(items)
+        self.recent_items_changed.emit(items)
 
     def _valid_game_folder(self):
         """The configured FS25 folder, or None after telling the user how
@@ -438,11 +492,16 @@ class FileController(QObject):
             tr("JSON project (*.json)"),
         )
 
-        if not config_path:
-            return
+        if config_path:
+            self._load_project(config_path)
 
+    def _load_project(self, config_path):
         try:
             self.project_coordinator.load_project_file(config_path)
 
         except Exception as ex:
             self.status_changed.emit(tr("The project could not be loaded: {error}", error=ex))
+            return
+
+        path = Path(config_path)
+        self._remember(RecentItem(RecentKind.PROJECT, str(path), path.stem))

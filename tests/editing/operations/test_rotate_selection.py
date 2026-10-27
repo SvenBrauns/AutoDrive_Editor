@@ -111,6 +111,18 @@ def test_shift_snaps_to_15_degree_steps(setup):
     coordinator.finish_rotation()
 
 
+def test_snap_step_can_be_changed(setup):
+    data, selection, edits, coordinator = setup
+    selection.replace([1, 2])
+    coordinator.snap_angle = 35.0
+    assert coordinator.begin_rotation(QPointF(30, 0))
+
+    angle = coordinator.update_rotation(QPointF(10 + 20 * 0.64, 20 * 0.77), snap=True)  # ~50°
+
+    assert angle == 35
+    coordinator.finish_rotation()
+
+
 def test_angle_is_reported_between_minus_180_and_180(setup):
     data, selection, edits, coordinator = setup
     selection.replace([1, 2])

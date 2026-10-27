@@ -131,7 +131,10 @@ NODE_POSITION_TOOL = ToolDefinition(
 ROTATE_TOOL = ToolDefinition(
     InteractionMode.ROTATE_SELECTION,
     tr("Rotate"),
-    tr("Rotate the selection around its center using the ring (Shift: 15° steps)"),
+    tr(
+        "Rotate the selection around its center using the ring "
+        "(Shift snaps, the arrow sets the step)"
+    ),
     "rotate",
     "R",
 )

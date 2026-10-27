@@ -8,8 +8,8 @@ from autodrive_editor.ui.tools.map_tool import DragGesture, MapTool
 
 class MoveNodesTool(MapTool):
     """Left dragging a node moves it, or the whole selection if the
-    node is selected. Left dragging empty map pans. Esc or a right-click
-    cancels."""
+    node is selected. Shift locks the move to one grid axis. Left dragging
+    empty map pans. Esc or a right-click cancels."""
 
     def __init__(self, view, move_nodes_operation: MoveNodesOperation):
         super().__init__(view)
@@ -39,7 +39,9 @@ class MoveNodesTool(MapTool):
 
         # Nodes only move once the drag threshold is reached.
         if self._node_drag.move(position) is not None:
-            self.move_nodes_operation.update_drag(position)
+            self.move_nodes_operation.update_drag(
+                position, axis_lock=bool(event.modifiers() & Qt.ShiftModifier)
+            )
 
         return True
 
@@ -65,7 +67,8 @@ class MoveNodesTool(MapTool):
 
     def status_hint(self) -> str | None:
         return tr(
-            "Drag a node; a selected node moves the whole selection. Esc or right-click cancels"
+            "Drag a node; a selected node moves the whole selection. "
+            "Shift moves along one grid axis. Esc or right-click cancels"
         )
 
     def cursor_at(self, view_position: QPoint) -> Qt.CursorShape:

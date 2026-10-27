@@ -19,6 +19,9 @@ APP_ICON_PATH = ICON_DIRECTORY / "app.svg"
 
 TOOL_ICON_DIRECTORY = ICON_DIRECTORY / "tools"
 
+# Shown under Help → Version history; the release build copies it next to the package.
+CHANGELOG_PATH = PROJECT_ROOT / "CHANGELOG.md"
+
 # Environment variable to use another user data folder, e.g. in tests.
 USER_DATA_DIRECTORY_VARIABLE = "AUTODRIVE_EDITOR_DATA_DIR"
 
@@ -38,6 +41,10 @@ def user_data_directory() -> Path:
         return Path(app_data) / "AutoDrive Editor"
 
     return Path.home() / ".autodrive_editor"
+
+
+def log_directory() -> Path:
+    return user_data_directory() / "logs"
 
 
 def local_projects_directory() -> Path:

@@ -18,7 +18,7 @@ class RotateSelectionOperation(EditOperation):
     """
 
     MIN_NODE_COUNT = 2
-    SNAP_ANGLE_DEGREES = 15.0
+    DEFAULT_SNAP_ANGLE = 15.0
 
     # Emitted when the selection or node positions change, so the
     # rotation ring can follow.
@@ -28,6 +28,9 @@ class RotateSelectionOperation(EditOperation):
         super().__init__(context, parent)
 
         self.terrain_follower = TerrainFollower(context.terrain_height_at)
+
+        # Step in degrees while Shift snaps the rotation.
+        self.snap_angle = self.DEFAULT_SNAP_ANGLE
 
         self._merge_keys = itertools.count(1)
 
@@ -122,7 +125,7 @@ class RotateSelectionOperation(EditOperation):
         angle = (angle + 180.0) % 360.0 - 180.0
 
         if snap:
-            angle = round(angle / self.SNAP_ANGLE_DEGREES) * self.SNAP_ANGLE_DEGREES
+            angle = round(angle / self.snap_angle) * self.snap_angle
 
         self._angle = angle
 

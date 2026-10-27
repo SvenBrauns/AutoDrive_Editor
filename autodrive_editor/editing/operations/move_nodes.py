@@ -1,4 +1,5 @@
 import itertools
+import math
 
 from PySide6.QtCore import QPoint, QPointF
 
@@ -71,7 +72,10 @@ class MoveNodesOperation(EditOperation):
 
         return True
 
-    def update_drag(self, view_position: QPoint):
+    def update_drag(self, view_position: QPoint, axis_lock: bool = False):
+        """Moves the nodes with the mouse. With axis_lock, they move only
+        along the grid axis the mouse has moved further along."""
+
         if not self._start_positions:
             return
 
@@ -84,6 +88,8 @@ class MoveNodesOperation(EditOperation):
 
         delta_z = scene_position.y() - self._press_scene_position.y()
 
+        axis = self._dominant_grid_axis(delta_x, delta_z) if axis_lock else None
+
         if self.snap_point is not None:
             grabbed_start = self._start_positions[self._grabbed_node_id]
             snapped_x, snapped_z = self.snap_point(
@@ -91,6 +97,10 @@ class MoveNodesOperation(EditOperation):
             )
             delta_x = snapped_x - grabbed_start[0]
             delta_z = snapped_z - grabbed_start[2]
+
+        if axis is not None:
+            along = delta_x * axis[0] + delta_z * axis[1]
+            delta_x, delta_z = along * axis[0], along * axis[1]
 
         target_positions = {}
 
@@ -127,6 +137,19 @@ class MoveNodesOperation(EditOperation):
             self.status_changed.emit(tr("Moving cancelled"))
 
         self._end_drag()
+
+    def _dominant_grid_axis(self, delta_x: float, delta_z: float) -> tuple[float, float]:
+        """Unit vector of the grid axis (X or Z, rotated with the grid) that
+        the movement follows more."""
+
+        rotation = math.radians(self.grid_rotation() if self.grid_rotation else 0.0)
+        x_axis = (math.cos(rotation), math.sin(rotation))
+        z_axis = (-math.sin(rotation), math.cos(rotation))
+
+        along_x = delta_x * x_axis[0] + delta_z * x_axis[1]
+        along_z = delta_x * z_axis[0] + delta_z * z_axis[1]
+
+        return x_axis if abs(along_x) >= abs(along_z) else z_axis
 
     def _begin_move(self):
         self._moved = True

@@ -17,6 +17,11 @@ from autodrive_editor.ui.actions.tool_catalog import (
 )
 from autodrive_editor.ui.controls.grid_controls import GridControls
 from autodrive_editor.ui.controls.rotation_controls import RotationControls
+from autodrive_editor.ui.dialogs.help_dialogs import (
+    open_log_folder,
+    show_about,
+    show_version_history,
+)
 from autodrive_editor.ui.panels.tool_panel import ToolPanel
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
@@ -170,6 +175,20 @@ class MainWindowActions:
         self.exit_action = QAction(tr("Exit"), self.window)
 
         self.exit_action.triggered.connect(self.window.close)
+
+        self.about_action = QAction(tr("About AutoDrive FS25 Editor"), self.window)
+
+        self.about_action.triggered.connect(lambda: show_about(self.window))
+
+        self.version_history_action = QAction(tr("Version history"), self.window)
+
+        self.version_history_action.triggered.connect(lambda: show_version_history(self.window))
+
+        self.open_log_folder_action = QAction(tr("Open log folder"), self.window)
+
+        self.open_log_folder_action.setStatusTip(tr("Show the editor's log file in Explorer"))
+
+        self.open_log_folder_action.triggered.connect(open_log_folder)
 
         self.display_options_action = QAction(tr("Display options…"), self.window)
 
@@ -365,6 +384,10 @@ class MainWindowActions:
 
         file_menu.addAction(self.load_xml_action)
 
+        self.recent_menu = file_menu.addMenu(tr("Open recent"))
+
+        self.recent_menu.aboutToShow.connect(self.fill_recent_menu)
+
         file_menu.addAction(self.save_xml_action)
 
         file_menu.addAction(self.save_xml_as_action)
@@ -468,6 +491,38 @@ class MainWindowActions:
         check_menu = menu_bar.addMenu(tr("Check"))
 
         check_menu.addAction(self.check_network_action)
+
+        help_menu = menu_bar.addMenu(tr("Help"))
+
+        help_menu.addAction(self.version_history_action)
+
+        help_menu.addAction(self.open_log_folder_action)
+
+        help_menu.addSeparator()
+
+        help_menu.addAction(self.about_action)
+
+    def fill_recent_menu(self):
+        """Fills File → Open recent from the settings each time it opens."""
+
+        files = self.window.files
+        items = files.settings.recent_items
+
+        self.recent_menu.clear()
+
+        for item in items:
+            action = self.recent_menu.addAction(item.label)
+            action.setStatusTip(item.path)
+            action.triggered.connect(lambda checked=False, item=item: files.open_recent(item))
+
+        if not items:
+            self.recent_menu.addAction(tr("No recent files")).setEnabled(False)
+
+        self.recent_menu.addSeparator()
+
+        clear_action = self.recent_menu.addAction(tr("Clear list"))
+        clear_action.setEnabled(bool(items))
+        clear_action.triggered.connect(files.clear_recent_items)
 
     def _create_quick_access_toolbar(self):
         self.quick_access_toolbar = QToolBar(tr("Quick access"), self.window)

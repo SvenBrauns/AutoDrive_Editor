@@ -1,10 +1,11 @@
 """Line, Bézier and arc tools with the real window."""
 
+import pytest
 from mouse_helpers import click, drag, press_escape, view_pos
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtTest import QTest
 
-from autodrive_editor.editing.path_shapes import PathOptions
+from autodrive_editor.editing.path_shapes import PathOptions, PathShape
 from autodrive_editor.model.autodrive_data import SUBPRIO_FLAG
 from autodrive_editor.model.connections import ConnectionType
 from autodrive_editor.settings.app_settings import AppSettings
@@ -75,7 +76,7 @@ def test_escape_cancels_the_pending_curve(zoomed_window):
 
 def test_apply_button_is_enabled_only_while_a_curve_is_pending(zoomed_window):
     window = tool_window(zoomed_window, InteractionMode.DRAW_BEZIER)
-    button = window.path_options_widget.apply_button
+    button = window.path_options_widgets[PathShape.BEZIER].apply_button
 
     assert not button.isEnabled()
 
@@ -89,28 +90,50 @@ def test_apply_button_is_enabled_only_while_a_curve_is_pending(zoomed_window):
     assert not button.isEnabled()
 
 
-def test_changing_options_updates_the_operation_and_settings(window):
-    widget = window.path_options_widget
+def test_changing_options_updates_the_operation_settings_and_other_tools(window):
+    widget = window.path_options_widgets[PathShape.BEZIER]
 
     widget.spacing_box.setValue(8.0)
     widget.connection_box.setCurrentIndex(widget.connection_box.findData("dual"))
     widget.flag_box.setCurrentIndex(widget.flag_box.findData(SUBPRIO_FLAG))
+    widget.control_points_box.setCurrentIndex(widget.control_points_box.findData(1))
 
-    expected = PathOptions(8.0, ConnectionType.DUAL, SUBPRIO_FLAG)
+    expected = PathOptions(8.0, ConnectionType.DUAL, SUBPRIO_FLAG, control_points=1)
     assert window.create_path_operation.options == expected
     assert AppSettings().path_options == expected
+    assert window.path_options_widgets[PathShape.LINE].options == expected
+    assert window.path_options_widgets[PathShape.ARC].spacing_box.value() == 8.0
 
 
-def test_tool_panel_has_the_lines_group_with_the_options(window):
-    group = window.actions.tool_panel.groups["Lines"]
+def test_path_tool_buttons_open_their_options_from_the_arrow(window):
+    panel = window.actions.tool_panel
 
-    assert window.path_options_widget.parent() is not None
-    assert group.isAncestorOf(window.path_options_widget)
-    assert {
-        InteractionMode.DRAW_LINE,
-        InteractionMode.DRAW_BEZIER,
-        InteractionMode.DRAW_ARC,
-    } <= set(window.actions.tool_actions)
+    for mode, shape in (
+        (InteractionMode.DRAW_LINE, PathShape.LINE),
+        (InteractionMode.DRAW_BEZIER, PathShape.BEZIER),
+        (InteractionMode.DRAW_ARC, PathShape.ARC),
+    ):
+        button = panel.tool_buttons[window.actions.tool_actions[mode]]
+        assert button.menu().isAncestorOf(window.path_options_widgets[shape])
+
+    assert window.path_options_widgets[PathShape.BEZIER].control_points_box.isVisibleTo(
+        window.path_options_widgets[PathShape.BEZIER]
+    )
+    assert not window.path_options_widgets[PathShape.LINE].control_points_box.isVisibleTo(
+        window.path_options_widgets[PathShape.LINE]
+    )
+
+
+def test_quadratic_bezier_shows_one_handle(zoomed_window):
+    window = tool_window(zoomed_window, InteractionMode.DRAW_BEZIER)
+    widget = window.path_options_widgets[PathShape.BEZIER]
+    widget.control_points_box.setCurrentIndex(widget.control_points_box.findData(1))
+
+    click(window, view_pos(window, 0, 20))
+    click(window, view_pos(window, 20, 20))
+
+    (handle,) = window.create_path_operation.handles
+    assert handle == pytest.approx((10, 20), abs=0.2)
 
 
 def test_loading_data_drops_the_pending_path(zoomed_window, write_xml, qapp):
@@ -122,4 +145,4 @@ def test_loading_data_drops_the_pending_path(zoomed_window, write_xml, qapp):
     qapp.processEvents()
 
     assert window.create_path_operation.start is None
-    assert not window.path_options_widget.apply_button.isEnabled()
+    assert not window.path_options_widgets[PathShape.BEZIER].apply_button.isEnabled()

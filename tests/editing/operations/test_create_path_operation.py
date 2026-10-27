@@ -130,6 +130,31 @@ def test_bezier_waits_for_apply(path):
     assert path.operation.start.x == 30
 
 
+def test_quadratic_bezier_has_one_handle(path):
+    path.operation.set_options(PathOptions(control_points=1))
+    path.operation.set_shape(PathShape.BEZIER)
+    path.click(0, 20)
+    path.click(30, 20)
+
+    assert path.operation.handles == [(15, 20)]
+
+    path.operation.move_handle(0, 15, 40)
+
+    assert path.operation.apply()
+    # A quadratic curve reaches halfway to its control point.
+    assert 27 < max(n.z for n in path.new_nodes) <= 30 + 1e-6
+
+
+def test_changing_control_points_resets_the_pending_handles(path):
+    path.operation.set_shape(PathShape.BEZIER)
+    path.click(0, 20)
+    path.click(30, 20)
+
+    path.operation.set_options(PathOptions(control_points=1))
+
+    assert path.operation.handles == [(15, 20)]
+
+
 def test_clicks_are_ignored_while_adjusting(path):
     path.operation.set_shape(PathShape.ARC)
     path.click(0, 20)

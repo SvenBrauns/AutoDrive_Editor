@@ -48,6 +48,7 @@ def test_saved_project_brings_back_route_map_and_heightmap(project_window, dialo
     assert window.actions.map_scale_actions[4].isChecked()
     assert window.heightmap.has_heightmap()
     assert "Project loaded with heightmap: hof.json" in window.status.text()
+    assert window.settings.recent_items[0].label == "hof – Project"
 
 
 def test_broken_project_keeps_the_loaded_data(loaded_window, dialog_answer, tmp_path):

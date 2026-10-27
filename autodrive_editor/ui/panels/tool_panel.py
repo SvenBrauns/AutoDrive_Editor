@@ -5,10 +5,12 @@ from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
     QMainWindow,
+    QMenu,
     QSizePolicy,
     QToolButton,
     QVBoxLayout,
     QWidget,
+    QWidgetAction,
 )
 
 from autodrive_editor.i18n import tr
@@ -58,19 +60,9 @@ class ToolGroup(QWidget):
 
         layout.addWidget(self.content)
 
-        self.extra_widgets: list[QWidget] = []
-
     @property
     def is_expanded(self) -> bool:
         return self.header_button.isChecked()
-
-    def add_widget(self, widget: QWidget):
-        """Adds a widget below the tool buttons, e.g. tool options. It is
-        hidden together with the buttons."""
-
-        self.layout().addWidget(widget)
-
-        self.extra_widgets.append(widget)
 
     def set_expanded(self, expanded: bool):
         self.header_button.setChecked(expanded)
@@ -78,9 +70,6 @@ class ToolGroup(QWidget):
         self.header_button.setArrowType(Qt.DownArrow if expanded else Qt.RightArrow)
 
         self.content.setVisible(expanded)
-
-        for widget in self.extra_widgets:
-            widget.setVisible(expanded)
 
 
 class ToolPanel(QDockWidget):
@@ -142,6 +131,22 @@ class ToolPanel(QDockWidget):
 
         return group
 
+    def set_tool_options(self, action: QAction, options_widget: QWidget) -> QMenu:
+        """Gives the tool's button an arrow, like the Grid button: clicking
+        the icon picks the tool, the arrow opens the options widget."""
+
+        button = self.tool_buttons[action]
+
+        menu = QMenu(button)
+        widget_action = QWidgetAction(menu)
+        widget_action.setDefaultWidget(options_widget)
+        menu.addAction(widget_action)
+
+        button.setMenu(menu)
+        button.setPopupMode(QToolButton.MenuButtonPopup)
+
+        return menu
+
     def set_labels_visible(self, visible: bool):
         self._labels_visible = bool(visible)
 
@@ -192,18 +197,11 @@ class ToolPanel(QDockWidget):
             )
 
             content_width = max(
-                content_width,
-                group_width,
-                group.header_button.minimumSizeHint().width(),
-                *(widget.sizeHint().width() for widget in group.extra_widgets),
+                content_width, group_width, group.header_button.minimumSizeHint().width()
             )
 
         outer_margins = self._layout.contentsMargins()
         frame_width = max(self.width() - self.widget().width(), 0)
-
-        # The tool options make the window keep the panel's old minimum
-        # width until its layout is updated, which would stop shrinking.
-        main_window.layout().activate()
 
         main_window.resizeDocks(
             [self],

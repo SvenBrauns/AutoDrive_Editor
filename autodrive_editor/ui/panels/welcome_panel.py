@@ -1,16 +1,19 @@
-from PySide6.QtCore import QSize, Qt
+from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtGui import QAction, QIcon
 from PySide6.QtWidgets import QLabel, QPushButton, QVBoxLayout, QWidget
 
 from autodrive_editor.i18n import tr
 from autodrive_editor.paths import APP_ICON_PATH
+from autodrive_editor.settings.recent_items import RecentItem
 
 
 class WelcomePanel(QWidget):
     """Shown on the empty map until a route is loaded. Offers the
-    open actions as buttons."""
+    open actions as buttons and the recently opened files."""
 
     ICON_SIZE = 96
+
+    recent_item_requested = Signal(object)
 
     def __init__(self, open_actions: list[QAction], parent=None):
         super().__init__(parent)
@@ -44,3 +47,35 @@ class WelcomePanel(QWidget):
             button.setMinimumHeight(34)
             button.clicked.connect(action.trigger)
             layout.addWidget(button, alignment=Qt.AlignCenter)
+
+        layout.addSpacing(16)
+
+        self.recent_title = QLabel(tr("Recently opened"), self)
+        self.recent_title.setAlignment(Qt.AlignCenter)
+        self.recent_title.setStyleSheet("font-weight: bold;")
+        layout.addWidget(self.recent_title)
+
+        self.recent_list = QWidget(self)
+        self.recent_layout = QVBoxLayout(self.recent_list)
+        self.recent_layout.setContentsMargins(0, 0, 0, 0)
+        self.recent_layout.setSpacing(2)
+        layout.addWidget(self.recent_list, alignment=Qt.AlignCenter)
+
+        self.set_recent_items([])
+
+    def set_recent_items(self, items: list[RecentItem]):
+        while self.recent_layout.count():
+            self.recent_layout.takeAt(0).widget().deleteLater()
+
+        for item in items:
+            button = QPushButton(item.label, self.recent_list)
+            button.setFlat(True)
+            button.setCursor(Qt.PointingHandCursor)
+            button.setToolTip(item.path)
+            button.clicked.connect(
+                lambda checked=False, item=item: self.recent_item_requested.emit(item)
+            )
+            self.recent_layout.addWidget(button)
+
+        self.recent_title.setVisible(bool(items))
+        self.recent_list.setVisible(bool(items))

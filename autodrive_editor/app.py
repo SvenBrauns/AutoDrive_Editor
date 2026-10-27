@@ -7,8 +7,9 @@ from PySide6.QtCore import QLibraryInfo, QTimer, QTranslator
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
-from autodrive_editor import i18n
-from autodrive_editor.paths import APP_ICON_PATH
+from autodrive_editor import __version__, i18n
+from autodrive_editor.error_log import install_error_handler, logger, setup_logging
+from autodrive_editor.paths import APP_ICON_PATH, log_directory
 from autodrive_editor.settings.app_settings import AppSettings
 
 APP_NAME = "AutoDrive FS25 Editor"
@@ -19,6 +20,9 @@ WINDOWS_APP_ID = "AutoDriveEditor.FS25"
 
 
 def run() -> int:
+    setup_logging(log_directory())
+    logger.info("%s %s started", APP_NAME, __version__)
+
     if sys.platform == "win32":
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(WINDOWS_APP_ID)
 
@@ -30,7 +34,13 @@ def run() -> int:
 
     # Imported only now, because some UI modules translate their texts
     # when they are imported.
+    from autodrive_editor.ui.dialogs.error_dialog import show_unexpected_error
     from autodrive_editor.ui.main_window import MainWindow
+
+    # Before the window is built, so errors while building it are logged too.
+    install_error_handler(
+        lambda details: show_unexpected_error(QApplication.activeWindow(), details)
+    )
 
     window = MainWindow()
     window.show()

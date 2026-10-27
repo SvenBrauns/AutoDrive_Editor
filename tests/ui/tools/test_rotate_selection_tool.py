@@ -5,6 +5,8 @@ from mouse_helpers import cursor_shape, drag, hover, press_escape, send_mouse, v
 from PySide6.QtCore import QEvent, QPoint, QRectF, Qt
 from PySide6.QtGui import QPainterPath
 
+from autodrive_editor.settings.app_settings import AppSettings
+from autodrive_editor.ui.panels.rotate_options import RotateOptionsWidget
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
 # Test network from conftest: nodes 1, 2, 3 on z=0 at x = 0, 10, 20.
@@ -76,6 +78,26 @@ def test_shift_snaps_while_dragging(rotating):
     )  # ~50°
 
     assert rotating.status.text() == "3 nodes rotated by 45.0°"
+
+
+def test_snap_step_is_set_from_the_tool_button_arrow(rotating):
+    button = rotating.actions.tool_panel.tool_buttons[
+        rotating.actions.tool_actions[InteractionMode.ROTATE_SELECTION]
+    ]
+    (options,) = button.menu().findChildren(RotateOptionsWidget)
+
+    options.snap_angle_box.setValue(35.0)
+    drag(
+        rotating,
+        on_ring(rotating, 1, 0),
+        on_ring(rotating, 0.64, 0.77),
+        steps=4,
+        modifiers=Qt.ShiftModifier,
+    )  # ~50°
+
+    assert rotating.status.text() == "3 nodes rotated by 35.0°"
+    assert AppSettings().rotate_snap_angle == 35.0
+    assert "35°" in tool(rotating).status_hint()
 
 
 def test_dragging_off_the_ring_pans(rotating):

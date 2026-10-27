@@ -192,3 +192,21 @@ def test_two_drags_are_two_undo_steps(editor):
     drag(editor, start, start + QPoint(0, 40))
 
     assert editor.edit_history.undo_stack.count() == 2
+
+
+def test_shift_drag_moves_along_the_axis_moved_further(editor):
+    drag(editor, view_pos(editor, 0, 0), view_pos(editor, 12, 4), modifiers=Qt.ShiftModifier)
+
+    assert node_xz(editor, 1) == pytest.approx((12, 0), abs=0.2)
+
+    drag(editor, view_pos(editor, 12, 0), view_pos(editor, 15, -10), modifiers=Qt.ShiftModifier)
+
+    assert node_xz(editor, 1) == pytest.approx((12, -10), abs=0.2)
+
+
+def test_shift_drag_follows_the_grid_rotation(editor):
+    editor.grid_coordinator.set_grid_rotation(45.0)
+
+    drag(editor, view_pos(editor, 0, 0), view_pos(editor, 10, 4), modifiers=Qt.ShiftModifier)
+
+    assert node_xz(editor, 1) == pytest.approx((7, 7), abs=0.2)

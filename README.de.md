@@ -30,14 +30,14 @@ Kartenbilder werden nicht mit dem Editor ausgeliefert. Über `Karte → Karten s
 
 - **Mausrad** zoomt, **linkes Ziehen** verschiebt die Karte, **mittleres Ziehen** dreht die Ansicht.
 - **Rechtsklick** oder **Esc** bricht den aktuellen Schritt eines Werkzeugs ab; **Enter** bestätigt ihn (zum Beispiel bei Kurven).
-- Die Werkzeuge liegen im Werkzeugbereich; die Statusleiste zeigt, was das aktive Werkzeug als Nächstes erwartet.
+- Die Werkzeuge liegen im Werkzeugbereich; die Statusleiste zeigt, was das aktive Werkzeug als Nächstes erwartet. Werkzeuge mit Optionen haben auf ihrem Knopf einen kleinen Pfeil, der sie öffnet.
 
 | Werkzeug | Taste | Was es tut |
 | --- | --- | --- |
 | Navigation | `N` | Karte verschieben und drehen |
 | Auswahl | `A` | Per Klick oder Rechtsziehen auswählen; Umschalt + Rechtsziehen für freie Auswahl; Strg ergänzt die Auswahl |
-| Verschieben | `V` | Node oder Auswahl ziehen |
-| Rotieren | `R` | Auswahl am Ring drehen (Umschalt: 15°-Schritte) |
+| Verschieben | `V` | Node oder Auswahl ziehen; Umschalt bewegt nur entlang einer Rasterachse |
+| Rotieren | `R` | Auswahl am Ring drehen; Umschalt rastet in Schritten ein (Standard 15°, über den Pfeil einstellbar) |
 | Erstellen (Regular / Subprio) | `E` / `Umschalt+E` | Node auf freier Fläche erstellen |
 | Typ wechseln | `T` | Zwischen Regular und Subprio wechseln |
 | Löschen | `L` | Node oder Auswahl löschen |
@@ -46,8 +46,8 @@ Kartenbilder werden nicht mit dem Editor ausgeliefert. Über `Karte → Karten s
 | Position eingeben | `P` | X/Y/Z einer Node als Zahlen eingeben |
 | Horizontal / vertikal ausrichten | `H` / `J` | Auswahl auf die Linie durch eine Referenz-Node legen |
 | Höhe wie Referenz / Höhe aus Heightmap | `Y` / `Umschalt+Y` | Höhen der Auswahl setzen |
-| Linie | `I` | Gerader Streckenabschnitt mit gleichmäßigem Node-Abstand |
-| Bézierkurve / Kreisbogen | `B` / `K` | Start und Ende anklicken, Griffe ziehen, Enter drücken |
+| Linie | `I` | Gerader Streckenabschnitt mit gleichmäßigem Node-Abstand (Abstand, Connection-Art und Node-Typ unter dem Pfeil) |
+| Bézierkurve / Kreisbogen | `B` / `K` | Start und Ende anklicken, Griffe ziehen, Enter drücken; die Bézierkurve hat einen oder zwei Kontrollpunkte |
 | Marker hinzufügen / bearbeiten | `M` / `Umschalt+M` | Marker hinzufügen oder bearbeiten; Name und Gruppe eingeben |
 | Marker verschieben / löschen | `Strg+M` / `Strg+Umschalt+M` | Marker auf eine andere Node verschieben oder löschen |
 
@@ -70,6 +70,12 @@ Einträge, die so in Ordnung sind, etwa Nodes auf einer Brücke, lassen sich mit
 `Speichern unter` speichert eine Route als neue Route im RoutesManager.
 
 Ungespeicherte Änderungen werden alle paar Minuten automatisch gesichert (Abstand unter `Datei → Einstellungen`). Wird der Editor unerwartet beendet, bietet er beim nächsten Start an, sie wiederherzustellen.
+
+`Datei → Zuletzt geöffnet` und der Startbildschirm listen die letzten fünf geöffneten Routen, Savegames, XML-Dateien und Projekte.
+
+## Hilfe und Fehler
+
+`Hilfe → Versionsverlauf` zeigt, was sich in jeder Version geändert hat (auf Englisch), `Hilfe → Über` zeigt Version und Lizenz. Tritt ein unerwarteter Fehler auf, zeigt der Editor eine Meldung und läuft weiter. Die Details landen in einer Log-Datei (`Hilfe → Log-Ordner öffnen`, in `%APPDATA%\AutoDrive Editor\logs`); bitte bei Fehlermeldungen anhängen.
 
 ## Lizenz
 
