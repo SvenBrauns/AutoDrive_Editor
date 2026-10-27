@@ -41,6 +41,7 @@ autodrive_editor/
     edit_history.py  shared undo/redo history
   selection/    node selection
   measurement/  distance and angle measurement
+  network_check/ checks that find problems in the network
   project/      loading XML, map, heightmap and projects
   rendering/    map drawing
     spatial/    spatial indexes for nodes and connections

@@ -125,6 +125,14 @@ def test_invalid_stored_path_options_fall_back_to_defaults():
     assert AppSettings().path_options == PathOptions()
 
 
+def test_check_tolerances_default_and_are_kept_between_sessions():
+    assert AppSettings().check_tolerances == (0.1, 5.0)
+
+    AppSettings().set_check_tolerances(0.25, 3)
+
+    assert AppSettings().check_tolerances == (0.25, 3.0)
+
+
 def test_language_follows_windows_until_one_is_chosen(monkeypatch):
     monkeypatch.setattr(app_settings, "system_language", lambda: "de")
     assert AppSettings().language == "de"

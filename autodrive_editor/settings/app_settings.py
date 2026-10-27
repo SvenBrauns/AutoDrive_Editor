@@ -24,8 +24,12 @@ class AppSettings:
     PATH_CONNECTION_KEY = "path/connection_type"
     PATH_FLAG_KEY = "path/flag"
     LANGUAGE_KEY = "app/language"
+    CHECK_OVERLAP_KEY = "check/overlap_tolerance"
+    CHECK_HEIGHT_KEY = "check/max_height_difference"
 
     DEFAULT_AUTOSAVE_MINUTES = 5
+    DEFAULT_OVERLAP_TOLERANCE = 0.1
+    DEFAULT_MAX_HEIGHT_DIFFERENCE = 5.0
 
     def __init__(self, settings_path: Path | None = None):
         if settings_path is None:
@@ -119,6 +123,25 @@ class AppSettings:
         self._settings.setValue(self.PATH_SPACING_KEY, float(options.spacing))
         self._settings.setValue(self.PATH_CONNECTION_KEY, options.connection_type.value)
         self._settings.setValue(self.PATH_FLAG_KEY, int(options.flag))
+        self._settings.sync()
+
+    @property
+    def check_tolerances(self) -> tuple[float, float]:
+        """Network check: overlap distance and largest height difference
+        from the terrain, in metres."""
+
+        return (
+            self._settings.value(
+                self.CHECK_OVERLAP_KEY, self.DEFAULT_OVERLAP_TOLERANCE, type=float
+            ),
+            self._settings.value(
+                self.CHECK_HEIGHT_KEY, self.DEFAULT_MAX_HEIGHT_DIFFERENCE, type=float
+            ),
+        )
+
+    def set_check_tolerances(self, overlap_tolerance: float, max_height_difference: float):
+        self._settings.setValue(self.CHECK_OVERLAP_KEY, float(overlap_tolerance))
+        self._settings.setValue(self.CHECK_HEIGHT_KEY, float(max_height_difference))
         self._settings.sync()
 
     @property

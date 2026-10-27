@@ -20,10 +20,10 @@ Not taken over on purpose:
 
 Menu `Check` with a result list that jumps to each location.
 
-- [ ] find nodes lying on top of each other
-- [ ] merge nodes lying on top of each other
-- [ ] move nodes outside the map back onto the map
-- [ ] recalculate invalid heights from the heightmap
+- [x] find nodes lying on top of each other
+- [x] merge nodes lying on top of each other
+- [x] move nodes outside the map back onto the map
+- [x] recalculate invalid heights from the heightmap
 
 ## 2. Display — high priority
 

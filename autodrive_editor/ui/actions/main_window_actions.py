@@ -194,6 +194,12 @@ class MainWindowActions:
 
         self.remove_heightmap_action.setEnabled(False)
 
+        self.check_network_action = QAction(tr("Check network"), self.window)
+        self.check_network_action.setStatusTip(
+            tr("Find overlapping nodes, nodes outside the map and wrong heights")
+        )
+        self.check_network_action.triggered.connect(self.window.network_check.run)
+
         self._create_undo_actions()
         self._create_delete_selection_action()
 
@@ -394,6 +400,8 @@ class MainWindowActions:
 
         view_menu.addAction(self.window.marker_dock.toggleViewAction())
 
+        view_menu.addAction(self.window.check_dock.toggleViewAction())
+
         view_menu.addAction(self.window.debug_dock.toggleViewAction())
 
         view_menu.addSeparator()
@@ -428,6 +436,10 @@ class MainWindowActions:
 
         for _, map_scale in self.MAP_SCALES:
             map_size_menu.addAction(self.map_scale_actions[map_scale])
+
+        check_menu = menu_bar.addMenu(tr("Check"))
+
+        check_menu.addAction(self.check_network_action)
 
     def _create_quick_access_toolbar(self):
         self.quick_access_toolbar = QToolBar(tr("Quick access"), self.window)

@@ -19,6 +19,7 @@ from autodrive_editor.editing.operations.create_path import CreatePathOperation
 from autodrive_editor.editing.operations.delete_nodes import DeleteNodesOperation
 from autodrive_editor.editing.operations.markers import MarkerOperation
 from autodrive_editor.editing.operations.move_nodes import MoveNodesOperation
+from autodrive_editor.editing.operations.network_check import NetworkCheckOperation
 from autodrive_editor.editing.operations.node_position import NodePositionOperation
 from autodrive_editor.editing.operations.node_types import NodeTypeOperation
 from autodrive_editor.editing.operations.reverse_direction import ReverseDirectionOperation
@@ -35,6 +36,7 @@ from autodrive_editor.model.autodrive_data import (
     NodeData,
 )
 from autodrive_editor.model.connections import ConnectionType
+from autodrive_editor.network_check.ignores import IgnoreStore
 from autodrive_editor.paths import MARKER_ICON_PATH, local_projects_directory, user_data_directory
 from autodrive_editor.project.autosave import AutosaveStore
 from autodrive_editor.project.project_coordinator import ProjectCoordinator
@@ -57,6 +59,8 @@ from autodrive_editor.ui.file_controller import FileController
 from autodrive_editor.ui.map_import_controller import MapImportController
 from autodrive_editor.ui.map_view.map_view import MapView
 from autodrive_editor.ui.map_view.rotation_controller import ViewRotationController
+from autodrive_editor.ui.network_check_controller import NetworkCheckController
+from autodrive_editor.ui.panels.check_dock import CheckDock
 from autodrive_editor.ui.panels.debug_dock import DebugDock
 from autodrive_editor.ui.panels.debug_dock_coordinator import DebugDockCoordinator
 from autodrive_editor.ui.panels.display_options_dialog import DisplayOptionsDialog
@@ -130,6 +134,7 @@ class MainWindow(QMainWindow):
         self._create_status_widgets()
         self._create_central_widget()
         self._create_marker_dock()
+        self._create_check_dock()
         self._create_debug_dock()
 
         self.scene_renderer.set_marker_names_visible(self.settings.marker_names_visible)
@@ -228,18 +233,30 @@ class MainWindow(QMainWindow):
     def focus_marker(self, node_id: int):
         """Centers the map on a marker's node and selects it."""
 
-        autodrive_data = self._get_autodrive_data()
-        node = autodrive_data.get_node(node_id) if autodrive_data is not None else None
+        self.focus_nodes([node_id])
 
-        if node is None:
+    def focus_nodes(self, node_ids: list[int]):
+        """Centers the map on the first of the nodes and selects them.
+        Nodes that no longer exist are left out."""
+
+        autodrive_data = self._get_autodrive_data()
+
+        if autodrive_data is None:
             return
+
+        node_ids = [node_id for node_id in node_ids if node_id in autodrive_data.nodes]
+
+        if not node_ids:
+            return
+
+        node = autodrive_data.nodes[node_ids[0]]
 
         # Zoom in far enough to see the node.
         if self.view.zoom_level < self.FOCUS_MARKER_ZOOM:
             self.view.set_zoom_level(self.FOCUS_MARKER_ZOOM)
 
         self.view.centerOn(node.x, node.z)
-        self.node_selection.replace({node_id}, node_id)
+        self.node_selection.replace(set(node_ids), node.node_id)
 
     def rename_marker_group(self, name: str):
         new_name = self._ask_group_name(name)
@@ -391,6 +408,10 @@ class MainWindow(QMainWindow):
             parent=self,
         )
 
+        self.network_check_operation = NetworkCheckOperation(
+            context, map_scale=lambda: self.background_map.map_scale, parent=self
+        )
+
         self.edit_operations = [
             self.move_nodes_operation,
             self.delete_nodes_operation,
@@ -404,6 +425,7 @@ class MainWindow(QMainWindow):
             self.node_position_operation,
             self.reverse_direction_operation,
             self.marker_operation,
+            self.network_check_operation,
         ]
 
     def _create_project_coordinator(self):
@@ -715,6 +737,33 @@ class MainWindow(QMainWindow):
         self.marker_dock.rename_group_requested.connect(self.rename_marker_group)
         self.marker_dock.delete_group_requested.connect(self.marker_operation.delete_group)
 
+    def _create_check_dock(self):
+        self.check_dock = CheckDock(*self.settings.check_tolerances, parent=self)
+
+        self.addDockWidget(Qt.RightDockWidgetArea, self.check_dock)
+
+        self.check_dock.hide()
+
+        self.check_dock.nodes_activated.connect(self.focus_nodes)
+
+        def network_path():
+            source = self.project_coordinator.config_source
+            return source.path if source is not None else None
+
+        self.network_check = NetworkCheckController(
+            self.check_dock,
+            self.network_check_operation,
+            self.settings,
+            IgnoreStore(user_data_directory() / "check_ignores.json"),
+            autodrive_data=self._get_autodrive_data,
+            network_path=network_path,
+            map_scale=lambda: self.background_map.map_scale,
+            terrain_height_at=lambda: (
+                self._get_terrain_height if self.heightmap.has_heightmap() else None
+            ),
+            parent=self,
+        )
+
     def _create_debug_dock(self):
         self.debug_dock = DebugDock(self)
 
@@ -807,6 +856,8 @@ class MainWindow(QMainWindow):
         self.create_path_operation.reset()
 
         self.marker_dock.set_data(autodrive_data)
+
+        self.network_check.network_loaded()
 
         self.welcome_panel.hide()
 
