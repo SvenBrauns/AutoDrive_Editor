@@ -20,3 +20,5 @@ maps/
 
 # Local project files
 local_projects/*.json
+# Test coverage
+.coverage
