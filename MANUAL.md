@@ -76,6 +76,8 @@ The editor is available in English and German. On first start it uses German on 
 
 The editor follows the light or dark mode of Windows. Under `File → Settings` you can choose a light or dark theme instead, and change the keyboard shortcuts of all menu entries and tools on the `Shortcuts` tab.
 
+`Help → Check for updates` asks GitHub whether a newer version exists. To check automatically at every start, turn this on in the setup dialog on first start or under `File → Settings`. It is off by default, because it connects to github.com. An update is installed by downloading the zip from the release page and replacing the old program folder with it; settings and imported maps are kept.
+
 ## Help and errors
 
 `Help → Version history` shows what changed in each version, `Help → About` shows the version and license. If an unexpected error occurs, the editor shows a message and keeps running. The details are written to a log file (`Help → Open log folder`, in `%APPDATA%\AutoDrive Editor\logs`); please attach it when reporting a bug.

@@ -36,6 +36,7 @@ class AppSettings:
     CHECK_HEIGHT_KEY = "check/max_height_difference"
     THEME_KEY = "app/theme"
     SHORTCUTS_KEY = "app/shortcuts"
+    CHECK_UPDATES_KEY = "app/check_updates"
 
     THEMES = ("system", "light", "dark")
     DEFAULT_AUTOSAVE_MINUTES = 5
@@ -146,6 +147,17 @@ class AppSettings:
 
     def set_theme(self, theme: str):
         self._settings.setValue(self.THEME_KEY, theme)
+        self._settings.sync()
+
+    @property
+    def check_updates(self) -> bool:
+        """Whether the editor asks GitHub for a newer version at startup. Off
+        until the user turns it on, because it contacts the internet."""
+
+        return self._settings.value(self.CHECK_UPDATES_KEY, False, type=bool)
+
+    def set_check_updates(self, enabled: bool):
+        self._settings.setValue(self.CHECK_UPDATES_KEY, bool(enabled))
         self._settings.sync()
 
     @property

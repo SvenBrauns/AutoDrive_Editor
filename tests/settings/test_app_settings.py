@@ -210,3 +210,11 @@ def test_unreadable_shortcuts_are_left_out():
 
     settings.set_shortcuts({"save_xml": "Ctrl+S", "exit": [1], "copy": ["Ctrl+C"]})
     assert settings.shortcuts == {"copy": ["Ctrl+C"]}
+
+
+def test_update_check_is_off_until_turned_on():
+    assert not AppSettings().check_updates
+
+    AppSettings().set_check_updates(True)
+
+    assert AppSettings().check_updates

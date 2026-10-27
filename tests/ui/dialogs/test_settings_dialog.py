@@ -154,3 +154,14 @@ def test_changed_shortcuts_are_stored(qapp):
     dialog.accept()
 
     assert AppSettings().shortcuts == {"save": ["F2"]}
+
+
+def test_update_check_is_shown_and_stored(qapp):
+    settings = AppSettings()
+    dialog = SettingsDialog(settings, ShortcutRegistry())
+    assert not dialog.check_updates_input.isChecked()
+
+    dialog.check_updates_input.setChecked(True)
+    dialog.accept()
+
+    assert AppSettings().check_updates

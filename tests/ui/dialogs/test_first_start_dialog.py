@@ -49,3 +49,22 @@ def test_skip_stores_nothing_and_does_not_scan(qapp, tmp_path):
 
     assert AppSettings().game_folder is None
     assert not dialog.scan_requested
+
+
+def test_update_check_is_off_and_can_be_turned_on(qapp):
+    dialog = FirstStartDialog(AppSettings())
+    assert not dialog.update_check_box.isChecked()
+
+    dialog.update_check_box.setChecked(True)
+    dialog.accept()
+
+    assert AppSettings().check_updates
+
+
+def test_skip_leaves_update_check_off(qapp):
+    dialog = FirstStartDialog(AppSettings())
+
+    dialog.update_check_box.setChecked(True)
+    dialog.reject()
+
+    assert not AppSettings().check_updates

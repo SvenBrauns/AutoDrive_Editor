@@ -48,6 +48,7 @@ def test_help_menu_has_the_entries(window):
 
     assert [action.text() for action in help_menu.actions() if action.text()] == [
         "Version history",
+        "Check for updates",
         "Open log folder",
         "About AutoDrive FS25 Editor",
     ]

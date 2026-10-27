@@ -6,6 +6,7 @@ from PySide6.QtWidgets import QCheckBox, QDialog, QDialogButtonBox, QLabel, QVBo
 from autodrive_editor.i18n import tr
 from autodrive_editor.settings.app_settings import AppSettings
 from autodrive_editor.ui.dialogs.folder_settings_widget import FolderSettingsWidget
+from autodrive_editor.ui.dialogs.settings_dialog import UPDATE_CHECK_TEXT
 
 
 class FirstStartDialog(QDialog):
@@ -33,6 +34,10 @@ class FirstStartDialog(QDialog):
         self.scan_check_box = QCheckBox(self.SCAN_TEXT, self)
         self.scan_check_box.setChecked(True)
 
+        self.update_check_box = QCheckBox(UPDATE_CHECK_TEXT, self)
+        self.update_check_box.setChecked(settings.check_updates)
+        self.settings = settings
+
         buttons = QDialogButtonBox(self)
         start_button = buttons.addButton(tr("Done"), QDialogButtonBox.ButtonRole.AcceptRole)
         start_button.setDefault(True)
@@ -44,6 +49,7 @@ class FirstStartDialog(QDialog):
         layout.addWidget(intro)
         layout.addWidget(self.folders)
         layout.addWidget(self.scan_check_box)
+        layout.addWidget(self.update_check_box)
         layout.addStretch(1)
         layout.addWidget(buttons)
 
@@ -53,5 +59,6 @@ class FirstStartDialog(QDialog):
 
     def accept(self):
         self.folders.store()
+        self.settings.set_check_updates(self.update_check_box.isChecked())
 
         super().accept()

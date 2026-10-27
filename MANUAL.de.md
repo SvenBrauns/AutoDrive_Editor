@@ -76,6 +76,8 @@ Den Editor gibt es auf Deutsch und Englisch. Beim ersten Start ist er auf einem 
 
 Der Editor folgt dem hellen oder dunklen Modus von Windows. Unter `Datei → Einstellungen` lässt sich stattdessen ein helles oder dunkles Design wählen, und im Reiter `Tastenkürzel` lassen sich die Tastenkürzel aller Menüeinträge und Werkzeuge ändern.
 
+`Hilfe → Nach Updates suchen` fragt bei GitHub nach, ob es eine neuere Version gibt. Die automatische Suche bei jedem Start lässt sich im Einrichtungsdialog beim ersten Start oder unter `Datei → Einstellungen` einschalten. Sie ist anfangs aus, weil sie sich mit github.com verbindet. Ein Update wird installiert, indem man die Zip-Datei von der Release-Seite herunterlädt und den alten Programmordner damit ersetzt; Einstellungen und importierte Karten bleiben erhalten.
+
 ## Hilfe und Fehler
 
 `Hilfe → Versionsverlauf` zeigt, was sich in jeder Version geändert hat (auf Englisch), `Hilfe → Über` zeigt Version und Lizenz. Tritt ein unerwarteter Fehler auf, zeigt der Editor eine Meldung und läuft weiter. Die Details landen in einer Log-Datei (`Hilfe → Log-Ordner öffnen`, in `%APPDATA%\AutoDrive Editor\logs`); bitte bei Fehlermeldungen anhängen.

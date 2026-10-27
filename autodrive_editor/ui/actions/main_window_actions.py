@@ -104,7 +104,7 @@ class MainWindowActions:
                 + ("remove_heightmap",),
             ),
             (tr("Check"), ("check_network",)),
-            (tr("Help"), ("version_history", "open_log_folder", "about")),
+            (tr("Help"), ("version_history", "check_updates", "open_log_folder", "about")),
         )
 
         for group, names in groups:
@@ -252,6 +252,10 @@ class MainWindowActions:
         self.version_history_action = QAction(tr("Version history"), self.window)
 
         self.version_history_action.triggered.connect(lambda: show_version_history(self.window))
+
+        self.check_updates_action = QAction(tr("Check for updates"), self.window)
+
+        self.check_updates_action.triggered.connect(self.window.updates.check_now)
 
         self.open_log_folder_action = QAction(tr("Open log folder"), self.window)
 
@@ -571,6 +575,8 @@ class MainWindowActions:
         help_menu = menu_bar.addMenu(tr("Help"))
 
         help_menu.addAction(self.version_history_action)
+
+        help_menu.addAction(self.check_updates_action)
 
         help_menu.addAction(self.open_log_folder_action)
 

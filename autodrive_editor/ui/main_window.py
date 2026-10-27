@@ -82,6 +82,7 @@ from autodrive_editor.ui.tools.path_tool import PathTool
 from autodrive_editor.ui.tools.rotate_selection_tool import RotateSelectionTool
 from autodrive_editor.ui.tools.select_tool import SelectTool
 from autodrive_editor.ui.tools.toggle_node_type_tool import ToggleNodeTypeTool
+from autodrive_editor.ui.update_controller import UpdateController
 
 
 class MainWindow(QMainWindow):
@@ -467,6 +468,8 @@ class MainWindow(QMainWindow):
         self.map_import = MapImportController(
             self, self.settings, self.map_cache, self.project_coordinator
         )
+
+        self.updates = UpdateController(self, self.settings)
 
     def _register_map_tools(self):
         self.view.register_tool(
