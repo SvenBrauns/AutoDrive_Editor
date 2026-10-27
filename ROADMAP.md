@@ -50,15 +50,15 @@ New display options are saved permanently.
 
 ## 5. Settings — low priority
 
-- [ ] change keyboard shortcuts
-- [ ] dark theme
+- [x] change keyboard shortcuts
+- [x] dark theme
 
 ## 6. Release — once phases 1–5 are done
 
 - [x] license chosen
 - [x] licenses of the used libraries checked (PySide6/LGPL, Pillow)
 - [x] provided as a Windows program (.exe)
-- [ ] all items from phases 1–5 implemented
+- [x] all items from phases 1–5 implemented
 
 ## 7. After the release
 

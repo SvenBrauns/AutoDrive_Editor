@@ -14,6 +14,8 @@
 - Recently opened files in `File → Open recent` and on the welcome screen
 - Log file and an error dialog for unexpected errors
 - `Help` menu with this version history
+- Keyboard shortcuts can be changed under `File → Settings → Shortcuts`
+- Light and dark theme, or following Windows (`File → Settings`)
 
 ## 0.2.0 – 2026-10-26
 

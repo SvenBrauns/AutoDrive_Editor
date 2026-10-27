@@ -30,12 +30,16 @@ def run() -> int:
     app.setApplicationName(APP_NAME)
     app.setWindowIcon(QIcon(str(APP_ICON_PATH)))
 
-    install_language(app, AppSettings().language)
+    settings = AppSettings()
+    install_language(app, settings.language)
 
     # Imported only now, because some UI modules translate their texts
     # when they are imported.
     from autodrive_editor.ui.dialogs.error_dialog import show_unexpected_error
     from autodrive_editor.ui.main_window import MainWindow
+    from autodrive_editor.ui.theme import apply_theme
+
+    apply_theme(app, settings.theme)
 
     # Before the window is built, so errors while building it are logged too.
     install_error_handler(

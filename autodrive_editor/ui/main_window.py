@@ -1,6 +1,7 @@
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import (
+    QApplication,
     QGraphicsScene,
     QInputDialog,
     QLabel,
@@ -69,6 +70,7 @@ from autodrive_editor.ui.panels.node_info_formatter import NodeInfoFormatter
 from autodrive_editor.ui.panels.path_options import PathOptionsWidget
 from autodrive_editor.ui.panels.rotate_options import RotateOptionsWidget
 from autodrive_editor.ui.panels.welcome_panel import WelcomePanel
+from autodrive_editor.ui.theme import apply_theme
 from autodrive_editor.ui.tools.connect_nodes_tool import ConnectNodesTool
 from autodrive_editor.ui.tools.create_node_tool import CreateNodeTool
 from autodrive_editor.ui.tools.delete_nodes_tool import DeleteNodesTool
@@ -212,10 +214,12 @@ class MainWindow(QMainWindow):
         self.measurement_coordinator.align_view_to_measurement()
 
     def open_settings(self):
-        dialog = SettingsDialog(self.settings, parent=self)
+        dialog = SettingsDialog(self.settings, self.actions.shortcuts, parent=self)
 
         if dialog.exec():
             self.files.apply_autosave_interval()
+            self.actions.apply_shortcuts(self.settings.shortcuts)
+            apply_theme(QApplication.instance(), self.settings.theme)
 
             folder = self.settings.game_folder
 

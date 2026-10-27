@@ -1,11 +1,12 @@
 from dataclasses import replace
 
 from PySide6.QtCore import QSize, Qt
-from PySide6.QtGui import QAction, QActionGroup, QKeySequence
+from PySide6.QtGui import QAction, QActionGroup, QGuiApplication, QKeySequence
 from PySide6.QtWidgets import QMainWindow, QSizePolicy, QToolBar, QToolButton, QWidget
 
 from autodrive_editor.i18n import tr
 from autodrive_editor.measurement.mode import MeasurementMode
+from autodrive_editor.ui.actions.shortcuts import ShortcutRegistry
 from autodrive_editor.ui.actions.tool_catalog import (
     NAVIGATION_TOOL,
     SELECTION_TOOL,
@@ -67,11 +68,79 @@ class MainWindowActions:
         self._create_tool_panel()
         self._create_menu_bar()
         self._create_quick_access_toolbar()
+        self._create_shortcut_registry()
+        self.apply_shortcuts(window.settings.shortcuts)
+
+    def _create_shortcut_registry(self):
+        """All actions whose shortcut can be changed, grouped like the menus. The names are
+        stored in the settings, so they must not change."""
+
+        self.shortcuts = ShortcutRegistry()
+        tools = tr("Tools")
+
+        for mode, action in self.tool_actions.items():
+            self.shortcuts.add(f"tool_{mode.name.lower()}", tools, action)
+
+        # The measuring buttons only show a symbol as text.
+        for name in ("distance_measurement", "angle_measurement", "align_measurement"):
+            action = getattr(self, f"{name}_action")
+            self.shortcuts.add(name, tools, action, action.toolTip())
+
+        groups = (
+            (
+                tr("File"),
+                ("open_route", "open_savegame", "load_xml", "save_xml", "save_xml_as")
+                + ("load_project", "save_project", "settings", "exit"),
+            ),
+            (
+                tr("Edit"),
+                ("undo", "redo", "copy", "cut", "paste", "paste_at_original")
+                + ("delete_selection", "grid_snap"),
+            ),
+            (tr("View"), ("display_options", "tool_labels", "reset_view", "reset_rotation")),
+            (
+                tr("Map"),
+                ("scan_map_mods", "import_map_mod", "select_background", "select_heightmap")
+                + ("remove_heightmap",),
+            ),
+            (tr("Check"), ("check_network",)),
+            (tr("Help"), ("version_history", "open_log_folder", "about")),
+        )
+
+        for group, names in groups:
+            for name in names:
+                self.shortcuts.add(name, group, getattr(self, f"{name}_action"))
+
+        view = tr("View")
+        docks = (self.tool_panel, self.window.marker_dock, self.window.check_dock)
+
+        for dock in docks + (self.window.debug_dock,):
+            self.shortcuts.add(f"panel_{dock.objectName()}", view, dock.toggleViewAction())
+
+        self.shortcuts.add("show_marker_names", view, self.marker_names_action)
+
+        for name, action in self.show_actions.items():
+            self.shortcuts.add(f"show_{name}", view, action)
+
+        for map_scale, action in self.map_scale_actions.items():
+            self.shortcuts.add(f"map_scale_{map_scale}", tr("Map"), action)
+
+    def apply_shortcuts(self, changed: dict[str, list[str]]):
+        """Sets the stored shortcuts and shows them in the tool tooltips."""
+
+        self.shortcuts.apply(changed)
+
+        for mode, definition in self.tool_definitions.items():
+            shortcut = self.tool_actions[mode].shortcut().toString(QKeySequence.NativeText)
+            self.tool_actions[mode].setToolTip(
+                tool_tooltip(definition.text, shortcut, definition.description)
+            )
 
     def _create_actions(self):
         # One exclusive group for all map tools, so exactly one tool
         # is active. The measuring tools un-check it while measuring.
         self.tool_actions: dict[InteractionMode, QAction] = {}
+        self.tool_definitions: dict[InteractionMode, ToolDefinition] = {}
 
         self.navigation_action = self._create_tool_action(NAVIGATION_TOOL)
 
@@ -282,11 +351,8 @@ class MainWindowActions:
 
         action.setCheckable(True)
 
+        # The tooltip with the shortcut is set by apply_shortcuts.
         action.setShortcut(QKeySequence(definition.shortcut))
-
-        action.setToolTip(
-            tool_tooltip(definition.text, definition.shortcut, definition.description)
-        )
 
         action.setStatusTip(definition.description)
 
@@ -295,6 +361,7 @@ class MainWindowActions:
         self.window.addAction(action)
 
         self.tool_actions[definition.interaction_mode] = action
+        self.tool_definitions[definition.interaction_mode] = definition
 
         return action
 
@@ -319,6 +386,15 @@ class MainWindowActions:
             can_run_changed=undo_stack.canRedoChanged,
             text_changed=undo_stack.redoTextChanged,
         )
+
+        style_hints = QGuiApplication.styleHints()
+        style_hints.colorSchemeChanged.connect(self._update_history_icons)
+        self._update_history_icons(style_hints.colorScheme())
+
+    def _update_history_icons(self, color_scheme: Qt.ColorScheme):
+        dark = color_scheme == Qt.ColorScheme.Dark
+        self.undo_action.setIcon(history_icon("undo", dark))
+        self.redo_action.setIcon(history_icon("redo", dark))
 
     def _create_delete_selection_action(self):
         self.delete_selection_action = QAction(tr("Delete selection"), self.window)

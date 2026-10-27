@@ -28,21 +28,23 @@ def tool_icon(name: str) -> QIcon:
 
 
 # Undo/redo icons are recolored so it is obvious whether they can be
-# used: blue when available, very light grey when not. Qt's automatic
-# disabled look of the dark grey icons was too similar.
+# used: blue when available, a grey close to the background when not.
+# Qt's automatic disabled look of the dark grey icons was too similar.
 HISTORY_ICON_SOURCE_COLOR = "#444"
 HISTORY_ICON_COLOR = "#1f6fd1"
 HISTORY_ICON_DISABLED_COLOR = "#cdcdcd"
+HISTORY_ICON_DISABLED_DARK_COLOR = "#555555"
 HISTORY_ICON_SIZES = (16, 20, 24, 32, 40, 48)
 
 
-def history_icon(name: str) -> QIcon:
+def history_icon(name: str, dark: bool = False) -> QIcon:
     svg = (TOOL_ICON_DIRECTORY / f"{name}.svg").read_text(encoding="utf-8")
     icon = QIcon()
+    disabled_color = HISTORY_ICON_DISABLED_DARK_COLOR if dark else HISTORY_ICON_DISABLED_COLOR
 
     for mode, color in (
         (QIcon.Mode.Normal, HISTORY_ICON_COLOR),
-        (QIcon.Mode.Disabled, HISTORY_ICON_DISABLED_COLOR),
+        (QIcon.Mode.Disabled, disabled_color),
     ):
         renderer = QSvgRenderer(
             QByteArray(svg.replace(HISTORY_ICON_SOURCE_COLOR, color).encode("utf-8"))
@@ -62,7 +64,9 @@ def history_icon(name: str) -> QIcon:
 
 
 def tool_tooltip(text: str, shortcut: str, description: str) -> str:
-    return f"<b>{text}</b> ({shortcut})<br>{description}"
+    shortcut = f" ({shortcut})" if shortcut else ""
+
+    return f"<b>{text}</b>{shortcut}<br>{description}"
 
 
 NAVIGATION_TOOL = ToolDefinition(

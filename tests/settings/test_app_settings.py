@@ -181,3 +181,32 @@ def test_each_visibility_switch_is_stored_on_its_own():
 
     assert settings._settings.value("view/show_parking", type=bool) is False
     assert settings._settings.value("view/show_nodes", type=bool) is True
+
+
+def test_theme_follows_windows_until_chosen():
+    assert AppSettings().theme == "system"
+
+    AppSettings().set_theme("dark")
+
+    assert AppSettings().theme == "dark"
+
+
+def test_unknown_theme_falls_back_to_windows():
+    AppSettings().set_theme("purple")
+
+    assert AppSettings().theme == "system"
+
+
+def test_changed_shortcuts_are_kept_between_sessions():
+    AppSettings().set_shortcuts({"save_xml": ["Ctrl+Alt+S"], "exit": []})
+
+    assert AppSettings().shortcuts == {"save_xml": ["Ctrl+Alt+S"], "exit": []}
+
+
+def test_unreadable_shortcuts_are_left_out():
+    settings = AppSettings()
+    settings._settings.setValue(AppSettings.SHORTCUTS_KEY, "not json")
+    assert settings.shortcuts == {}
+
+    settings.set_shortcuts({"save_xml": "Ctrl+S", "exit": [1], "copy": ["Ctrl+C"]})
+    assert settings.shortcuts == {"copy": ["Ctrl+C"]}

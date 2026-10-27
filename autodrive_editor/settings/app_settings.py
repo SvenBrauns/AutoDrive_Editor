@@ -34,7 +34,10 @@ class AppSettings:
     LANGUAGE_KEY = "app/language"
     CHECK_OVERLAP_KEY = "check/overlap_tolerance"
     CHECK_HEIGHT_KEY = "check/max_height_difference"
+    THEME_KEY = "app/theme"
+    SHORTCUTS_KEY = "app/shortcuts"
 
+    THEMES = ("system", "light", "dark")
     DEFAULT_AUTOSAVE_MINUTES = 5
     DEFAULT_OVERLAP_TOLERANCE = 0.1
     DEFAULT_MAX_HEIGHT_DIFFERENCE = 5.0
@@ -131,6 +134,42 @@ class AppSettings:
 
     def set_language(self, language: str):
         self._settings.setValue(self.LANGUAGE_KEY, language)
+        self._settings.sync()
+
+    @property
+    def theme(self) -> str:
+        """The look: "system" follows the Windows setting, "light" and "dark" force one."""
+
+        value = self._settings.value(self.THEME_KEY, "system")
+
+        return value if value in self.THEMES else "system"
+
+    def set_theme(self, theme: str):
+        self._settings.setValue(self.THEME_KEY, theme)
+        self._settings.sync()
+
+    @property
+    def shortcuts(self) -> dict[str, list[str]]:
+        """Changed keyboard shortcuts: action name → key sequences in Qt's
+        portable text, e.g. ["Ctrl+S"]. An empty list removes the shortcut.
+        Actions that are not listed keep their default."""
+
+        try:
+            values = json.loads(self._settings.value(self.SHORTCUTS_KEY, "{}"))
+        except (TypeError, ValueError):
+            return {}
+
+        if not isinstance(values, dict):
+            return {}
+
+        return {
+            name: keys
+            for name, keys in values.items()
+            if isinstance(keys, list) and all(isinstance(key, str) for key in keys)
+        }
+
+    def set_shortcuts(self, shortcuts: dict[str, list[str]]):
+        self._settings.setValue(self.SHORTCUTS_KEY, json.dumps(shortcuts))
         self._settings.sync()
 
     @property

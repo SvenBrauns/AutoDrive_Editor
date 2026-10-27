@@ -31,7 +31,11 @@ class WelcomePanel(QWidget):
 
         title = QLabel("AutoDrive FS25 Editor", self)
         title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("font-size: 22px; font-weight: bold;")
+        # A font instead of a style sheet, so the text color follows a theme change.
+        title_font = title.font()
+        title_font.setPixelSize(22)
+        title_font.setBold(True)
+        title.setFont(title_font)
         layout.addWidget(title)
 
         hint = QLabel(tr("Open a route, a savegame or an XML file to get started."), self)
@@ -52,7 +56,9 @@ class WelcomePanel(QWidget):
 
         self.recent_title = QLabel(tr("Recently opened"), self)
         self.recent_title.setAlignment(Qt.AlignCenter)
-        self.recent_title.setStyleSheet("font-weight: bold;")
+        recent_font = self.recent_title.font()
+        recent_font.setBold(True)
+        self.recent_title.setFont(recent_font)
         layout.addWidget(self.recent_title)
 
         self.recent_list = QWidget(self)

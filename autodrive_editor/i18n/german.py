@@ -372,6 +372,17 @@ TEXTS = {
     "Autosave every": "Automatisch sichern alle",
     "Language:": "Sprache:",
     "Takes effect after a restart.": "Wirkt nach einem Neustart.",
+    "Like Windows": "Wie Windows",
+    "Light": "Hell",
+    "Dark": "Dunkel",
+    "Theme:": "Design:",
+    "General": "Allgemein",
+    "Shortcuts": "Tastenkürzel",
+    # ui/dialogs/shortcuts_widget
+    "Action": "Aktion",
+    "Shortcut": "Tastenkürzel",
+    "Reset all": "Alle zurücksetzen",
+    "{shortcut} is used by “{action}”. Assign it here instead?": "{shortcut} ist bereits „{action}“ zugewiesen. Stattdessen hier zuweisen?",
     # ui/main_window
     "No file loaded": "Keine Datei geladen",
     "{count} map(s) imported.": "{count} Karte(n) importiert.",

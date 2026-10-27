@@ -73,6 +73,7 @@ packaging/      app icon and license texts for the Windows version
 - Nodes, node IDs, connections, markers and the selection are not graphics items. Five layer items paint them straight from the spatial indexes, using drawing data cached per 256 m tile; after an edit only the changed tiles are rebuilt. This keeps networks with over 100,000 nodes responsive. Clicks find nodes through `SceneRenderer.get_node_at()`.
 - Each editing workflow is an `EditOperation` under `editing/operations/`; it gets the shared parts (history, data, selection, view, terrain height, snapping) through one `EditContext`.
 - Each tool is a `MapTool` subclass under `ui/tools/` and is described in `ui/actions/tool_catalog.py` with its icon and shortcut.
+- Actions whose shortcut can be changed are registered in `MainWindowActions._create_shortcut_registry()` under a fixed name; settings.ini stores only the shortcuts that differ from the defaults, by that name. A new menu entry or tool should be registered there too.
 
 ## Translations
 
