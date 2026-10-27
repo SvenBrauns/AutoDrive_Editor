@@ -1,5 +1,6 @@
 """Settings that are kept between editor sessions."""
 
+from dataclasses import fields
 from pathlib import Path
 
 from PySide6.QtCore import QSettings
@@ -10,6 +11,7 @@ from autodrive_editor.game.game_installation import GameInstallation
 from autodrive_editor.i18n import LANGUAGES, system_language
 from autodrive_editor.model.connections import ConnectionType
 from autodrive_editor.paths import user_data_directory
+from autodrive_editor.rendering.visibility import Visibility
 
 
 class AppSettings:
@@ -19,6 +21,7 @@ class AppSettings:
     INSTALL_FOLDER_KEY = "game/install_folder"
     SETUP_DONE_KEY = "app/setup_done"
     MARKER_NAMES_KEY = "view/marker_names"
+    VISIBILITY_PREFIX = "view/show_"
     AUTOSAVE_MINUTES_KEY = "app/autosave_minutes"
     PATH_SPACING_KEY = "path/spacing"
     PATH_CONNECTION_KEY = "path/connection_type"
@@ -74,6 +77,31 @@ class AppSettings:
 
     def set_marker_names_visible(self, visible: bool):
         self._settings.setValue(self.MARKER_NAMES_KEY, bool(visible))
+        self._settings.sync()
+
+    @property
+    def visibility(self) -> Visibility:
+        """What the map shows; each switch is stored as view/show_<name>."""
+
+        default = Visibility()
+
+        return Visibility(
+            **{
+                field.name: self._settings.value(
+                    f"{self.VISIBILITY_PREFIX}{field.name}",
+                    getattr(default, field.name),
+                    type=bool,
+                )
+                for field in fields(Visibility)
+            }
+        )
+
+    def set_visibility(self, visibility: Visibility):
+        for field in fields(Visibility):
+            self._settings.setValue(
+                f"{self.VISIBILITY_PREFIX}{field.name}", bool(getattr(visibility, field.name))
+            )
+
         self._settings.sync()
 
     @property

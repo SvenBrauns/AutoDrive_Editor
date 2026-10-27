@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QAction, QActionGroup, QKeySequence
 from PySide6.QtWidgets import QMainWindow, QSizePolicy, QToolBar, QToolButton, QWidget
@@ -20,6 +22,23 @@ from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
 TOOLBAR_ICON_SIZE = QSize(28, 28)
 TOOLBAR_GAP_WIDTH = 8
+
+# Entries of View → Show by Visibility field, in groups. "marker_names" is its own setting.
+SHOW_GROUPS = (
+    (("nodes", tr("Nodes")), ("node_ids", tr("Node IDs"))),
+    (
+        ("regular_connections", tr("Regular connections")),
+        ("dual_connections", tr("Dual connections")),
+        ("reverse_connections", tr("Reverse connections")),
+        ("subprio_connections", tr("Subprio connections")),
+    ),
+    (
+        ("markers", tr("Markers")),
+        ("marker_names", tr("Marker names")),
+        ("parking", tr("Parking positions")),
+    ),
+    (("hidden_selectable", tr("Hidden items can be selected")),),
+)
 
 
 class MainWindowActions:
@@ -406,7 +425,16 @@ class MainWindowActions:
 
         view_menu.addSeparator()
 
-        view_menu.addAction(self.marker_names_action)
+        show_menu = view_menu.addMenu(tr("Show"))
+
+        for index, group in enumerate(SHOW_GROUPS):
+            if index > 0:
+                show_menu.addSeparator()
+
+            for name, _ in group:
+                show_menu.addAction(
+                    self.marker_names_action if name == "marker_names" else self.show_actions[name]
+                )
 
         view_menu.addSeparator()
 
@@ -572,12 +600,31 @@ class MainWindowActions:
 
         self.tool_labels_action.toggled.connect(self.tool_panel.set_labels_visible)
 
-        self.marker_names_action = QAction(tr("Show marker names"), self.window)
+        self.marker_names_action = QAction(tr("Marker names"), self.window)
         self.marker_names_action.setCheckable(True)
         self.marker_names_action.setChecked(self.window.settings.marker_names_visible)
         self.marker_names_action.toggled.connect(self.window.set_marker_names_visible)
 
+        visibility = self.window.scene_renderer.visibility
+        self.show_actions: dict[str, QAction] = {}
+
+        for group in SHOW_GROUPS:
+            for name, label in group:
+                if name == "marker_names":
+                    continue
+
+                action = QAction(label, self.window)
+                action.setCheckable(True)
+                action.setChecked(getattr(visibility, name))
+                action.toggled.connect(lambda checked, name=name: self._set_shown(name, checked))
+                self.show_actions[name] = action
+
         self.window.addDockWidget(Qt.LeftDockWidgetArea, self.tool_panel)
+
+    def _set_shown(self, name: str, shown: bool):
+        visibility = self.window.scene_renderer.visibility
+
+        self.window.set_visibility(replace(visibility, **{name: shown}))
 
     def set_current_map_scale(self, map_scale: int):
         action = self.map_scale_actions.get(map_scale)

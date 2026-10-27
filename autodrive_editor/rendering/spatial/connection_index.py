@@ -4,7 +4,7 @@ from collections import defaultdict
 from PySide6.QtCore import QRectF
 
 from autodrive_editor.model.autodrive_data import AutoDriveData
-from autodrive_editor.model.connections import get_connection_type
+from autodrive_editor.model.connections import get_connection_type, is_subprio_connection
 from autodrive_editor.rendering.connections.connection_data import ConnectionData
 
 
@@ -68,6 +68,7 @@ class ConnectionSpatialIndex:
                     target_x=target_node.x,
                     target_z=target_node.z,
                     connection_type=connection_type,
+                    subprio=is_subprio_connection(source_node, target_node, connection_type),
                 )
 
                 if connection_data.key in self._connections_by_key:
@@ -79,7 +80,7 @@ class ConnectionSpatialIndex:
 
     def update_node_positions(self, autodrive_data: AutoDriveData, node_ids):
         """Updates all connections touching the given nodes to the
-        nodes' current positions. Connection types stay unchanged."""
+        nodes' current positions. Connection types and kinds stay unchanged."""
 
         affected_keys = set()
 
@@ -107,6 +108,7 @@ class ConnectionSpatialIndex:
                     target_x=target_node.x,
                     target_z=target_node.z,
                     connection_type=old_connection.connection_type,
+                    subprio=old_connection.subprio,
                 )
             )
 
@@ -149,6 +151,7 @@ class ConnectionSpatialIndex:
                 ):
                     continue
 
+                connection_type = get_connection_type(source_node, target_node)
                 connection_data = ConnectionData(
                     source_id=source_node.node_id,
                     target_id=target_node.node_id,
@@ -156,7 +159,8 @@ class ConnectionSpatialIndex:
                     source_z=source_node.z,
                     target_x=target_node.x,
                     target_z=target_node.z,
-                    connection_type=get_connection_type(source_node, target_node),
+                    connection_type=connection_type,
+                    subprio=is_subprio_connection(source_node, target_node, connection_type),
                 )
 
                 if connection_data.key in self._connections_by_key:

@@ -5,10 +5,11 @@ from drawing_helpers import paint_scene
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QGraphicsScene
 
-from autodrive_editor.model.autodrive_data import AutoDriveData, MarkerData, NodeData
+from autodrive_editor.model.autodrive_data import SUBPRIO_FLAG, AutoDriveData, MarkerData, NodeData
 from autodrive_editor.paths import MARKER_ICON_PATH
 from autodrive_editor.rendering.display_style import DisplayStyle
 from autodrive_editor.rendering.scene_renderer import SceneRenderer
+from autodrive_editor.rendering.visibility import Visibility
 
 
 def render(*nodes, markers=()):
@@ -97,3 +98,68 @@ def test_names_fade_in_below_their_zoom(qapp, scale, shown):
     paint_scene(renderer.scene, (0, 0), scale=scale)
 
     assert (renderer.marker_layer.shown_names == {1: "Hof"}) == shown
+
+
+def test_hidden_connection_kind_is_not_drawn_with_its_arrow(long_connection):
+    long_connection.set_visibility(Visibility(regular_connections=False))
+
+    painted = paint_scene(long_connection.scene, (50, 0), scale=2.0)
+
+    assert long_connection.connection_layer.drawn_arrows == 0
+    assert painted.color_at(30, 0) == "#ffffff"
+
+
+def test_other_connection_kinds_are_still_drawn(long_connection):
+    long_connection.set_visibility(Visibility(dual_connections=False))
+
+    paint_scene(long_connection.scene, (50, 0), scale=2.0)
+
+    assert long_connection.connection_layer.drawn_arrows == 1
+
+
+def test_subprio_connection_has_its_own_color(qapp):
+    renderer = render(
+        NodeData(1, 0, 0, 0, outgoing={2}), NodeData(2, 100, 0, 0, flag=SUBPRIO_FLAG, incoming={1})
+    )
+    color = QColor(*DisplayStyle().subprio_connection_color).name()
+
+    assert paint_scene(renderer.scene, (50, 0), scale=4.0).color_at(49, 0.25) == color
+
+    renderer.set_visibility(Visibility(subprio_connections=False))
+
+    assert paint_scene(renderer.scene, (50, 0), scale=4.0).color_at(49, 0.25) == "#ffffff"
+
+
+def test_hidden_nodes_and_their_selection_are_not_drawn(qapp):
+    renderer = render(NodeData(1, 0, 0, 0))
+    renderer.set_selected_node_ids({1})
+    renderer.set_visibility(Visibility(nodes=False))
+
+    assert paint_scene(renderer.scene, (0, 0), scale=4.0).color_at(0, 0) == "#ffffff"
+
+    renderer.set_visibility(Visibility())
+
+    assert paint_scene(renderer.scene, (0, 0), scale=4.0).color_at(0, 0) != "#ffffff"
+
+
+def test_markers_can_be_hidden(qapp):
+    renderer = render(NodeData(1, 0, 0, 0), markers=[MarkerData(1, "Hof")])
+    renderer.set_visibility(Visibility(markers=False))
+
+    paint_scene(renderer.scene, (0, 0), scale=1.0)
+
+    assert renderer.marker_layer.drawn_markers == 0
+    assert renderer.marker_layer.shown_names == {}
+
+
+@pytest.mark.parametrize(("parking", "expected"), [(True, 1), (False, 0)])
+def test_parking_sign_is_drawn_on_parking_markers_only(qapp, parking, expected):
+    markers = [MarkerData(1, "Hof"), MarkerData(2, "Silo")]
+    renderer = render(NodeData(1, 0, 0, 0), NodeData(2, 50, 0, 0), markers=markers)
+    renderer.set_parking_markers([markers[0]])
+    renderer.set_visibility(Visibility(parking=parking))
+
+    paint_scene(renderer.scene, (25, 0), scale=2.0)
+
+    assert renderer.marker_layer.drawn_markers == 2
+    assert renderer.marker_layer.drawn_parking == expected

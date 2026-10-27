@@ -4,12 +4,13 @@ from PySide6.QtCore import QRectF
 from PySide6.QtGui import QPainterPath
 from PySide6.QtWidgets import QGraphicsScene
 
-from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
+from autodrive_editor.model.autodrive_data import AutoDriveData, MarkerData, NodeData
 from autodrive_editor.rendering.connections.connection_data import ConnectionData
 from autodrive_editor.rendering.display_style import DisplayStyle
 from autodrive_editor.rendering.layers.connection_layer import ConnectionLayerItem
 from autodrive_editor.rendering.layers.marker_layer import MarkerLayerItem
 from autodrive_editor.rendering.layers.network_tiles import NetworkTiles
+from autodrive_editor.rendering.layers.node_label_layer import NodeLabelLayerItem
 from autodrive_editor.rendering.layers.node_layer import (
     NodeLayerItem,
     node_diameter_px,
@@ -22,14 +23,15 @@ from autodrive_editor.rendering.layers.selection_layer import (
 )
 from autodrive_editor.rendering.spatial.connection_index import ConnectionSpatialIndex
 from autodrive_editor.rendering.spatial.node_index import NodeSpatialIndex
+from autodrive_editor.rendering.visibility import Visibility
 
 # Nodes can be clicked within this distance on screen, even when drawn smaller.
 NODE_HIT_MIN_PX = 4.0
 
 
 class SceneRenderer:
-    """Draws the AutoDrive network with four layer items: connections, nodes, markers and the
-    selection. Each layer paints straight from the spatial indexes, so there are no graphics
+    """Draws the AutoDrive network with five layer items: connections, nodes, node IDs, markers
+    and the selection. Each layer paints straight from the spatial indexes, so there are no graphics
     items per node, and sizes follow the zoom smoothly (see DisplayStyle). After edits,
     apply_changes updates the indexes; only the changed map tiles are drawn anew.
     """
@@ -48,6 +50,9 @@ class SceneRenderer:
         self.tiles = NetworkTiles(self.node_spatial_index, self.connection_spatial_index)
 
         self.marker_names_visible = True
+        self.visibility = Visibility()
+        # Markers vehicles park at (savegames).
+        self.parking_markers: list[MarkerData] = []
         self.selected_node_ids: set[int] = set()
 
         self.autodrive_data: AutoDriveData | None = None
@@ -56,6 +61,7 @@ class SceneRenderer:
 
         self.connection_layer: ConnectionLayerItem | None = None
         self.node_layer: NodeLayerItem | None = None
+        self.node_label_layer: NodeLabelLayerItem | None = None
         self.marker_layer: MarkerLayerItem | None = None
         self.selection_layer: SelectionLayerItem | None = None
 
@@ -66,6 +72,7 @@ class SceneRenderer:
             for layer in (
                 self.connection_layer,
                 self.node_layer,
+                self.node_label_layer,
                 self.marker_layer,
                 self.selection_layer,
             )
@@ -84,14 +91,17 @@ class SceneRenderer:
 
         self.connection_layer = ConnectionLayerItem(self.tiles, style)
         self.node_layer = NodeLayerItem(self.tiles, style)
+        self.node_label_layer = NodeLabelLayerItem(self.node_spatial_index, style)
         self.marker_layer = MarkerLayerItem(autodrive_data, self.marker_icon_path, style)
         self.marker_layer.set_names_visible(self.marker_names_visible)
+        self.marker_layer.set_parking_markers(self.parking_markers)
         self.selection_layer = SelectionLayerItem(style)
 
         self.network_bounds = _get_bounds(autodrive_data.nodes.values())
 
         for layer in self.layers:
             layer.set_network_bounds(self.network_bounds)
+            layer.set_visibility(self.visibility)
             self.scene.addItem(layer)
 
         self._refresh_selection()
@@ -103,8 +113,11 @@ class SceneRenderer:
 
         self.connection_layer = None
         self.node_layer = None
+        self.node_label_layer = None
         self.marker_layer = None
         self.selection_layer = None
+
+        self.parking_markers = []
 
         self.node_spatial_index.clear()
         self.connection_spatial_index.clear()
@@ -157,7 +170,13 @@ class SceneRenderer:
             self.autodrive_data, [node.node_id for node in moved_nodes]
         )
 
-        rebuilt_node_ids = removed_node_ids | set(added_node_ids) | set(connection_node_ids)
+        # A changed flag can make the node's connections subprio or not.
+        rebuilt_node_ids = (
+            removed_node_ids
+            | set(added_node_ids)
+            | set(connection_node_ids)
+            | set(changed_flag_node_ids)
+        )
 
         if rebuilt_node_ids:
             self.connection_spatial_index.rebuild_node_connections(
@@ -196,13 +215,20 @@ class SceneRenderer:
         )
 
     def get_nodes_in_selection_path(self, selection_path: QPainterPath) -> list[NodeData]:
+        """Nodes inside the path. None while nodes are hidden and hidden items are not
+        selectable."""
+
+        if not self.visibility.nodes_selectable:
+            return []
+
         return self.node_spatial_index.get_nodes_in_path(selection_path)
 
     def get_node_at(self, x: float, z: float, zoom_level: float) -> NodeData | None:
         """The drawn node closest to the scene point, if the point is on it or within
-        NODE_HIT_MIN_PX on screen. While nodes are hidden, only selected nodes count."""
+        NODE_HIT_MIN_PX on screen. While nodes fade out when zoomed out, only selected nodes
+        count. Nodes switched off count only when hidden items are selectable."""
 
-        if zoom_level <= 0:
+        if zoom_level <= 0 or not self.visibility.nodes_selectable:
             return None
 
         style = self.display_style
@@ -244,13 +270,16 @@ class SceneRenderer:
 
     def get_connection_at(self, x: float, z: float, tolerance: float) -> ConnectionData | None:
         """The connection closest to the scene point, if it is within
-        tolerance (in scene units)."""
+        tolerance (in scene units). Hidden kinds count only when hidden items are selectable."""
 
         search_rect = QRectF(x - tolerance, z - tolerance, 2 * tolerance, 2 * tolerance)
 
         closest, closest_distance = None, tolerance
 
         for connection in self.connection_spatial_index.get_connections_in_rect(search_rect):
+            if not self.visibility.connection_selectable(connection.kind):
+                continue
+
             distance = _distance_to_segment(
                 x,
                 z,
@@ -280,6 +309,18 @@ class SceneRenderer:
 
         if self.marker_layer is not None:
             self.marker_layer.set_names_visible(self.marker_names_visible)
+
+    def set_visibility(self, visibility: Visibility):
+        self.visibility = visibility
+
+        for layer in self.layers:
+            layer.set_visibility(visibility)
+
+    def set_parking_markers(self, markers):
+        self.parking_markers = list(markers)
+
+        if self.marker_layer is not None:
+            self.marker_layer.set_parking_markers(self.parking_markers)
 
     def set_display_style(self, display_style: DisplayStyle):
         if not isinstance(display_style, DisplayStyle):

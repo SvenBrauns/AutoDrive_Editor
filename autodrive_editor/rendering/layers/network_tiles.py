@@ -5,17 +5,18 @@ from PySide6.QtCore import QPointF, QRectF
 from PySide6.QtGui import QPainterPath, QPolygonF
 
 from autodrive_editor.model.connections import ConnectionType
+from autodrive_editor.rendering.connections.connection_data import ConnectionKind
 from autodrive_editor.rendering.spatial.connection_index import ConnectionSpatialIndex
 from autodrive_editor.rendering.spatial.node_index import NodeSpatialIndex
 
 
 @dataclass
 class ConnectionTile:
-    """One path per connection type, plus the one-way connections that can get arrows as
-    (length, source_x, source_z, target_x, target_z, type), longest first."""
+    """One path per connection kind, plus the one-way connections that can get arrows as
+    (length, source_x, source_z, target_x, target_z, kind), longest first."""
 
-    paths: dict[ConnectionType, QPainterPath]
-    one_way: list[tuple[float, float, float, float, float, ConnectionType]]
+    paths: dict[ConnectionKind, QPainterPath]
+    one_way: list[tuple[float, float, float, float, float, ConnectionKind]]
     bounds: QRectF
 
 
@@ -74,11 +75,11 @@ class NetworkTiles:
 
 
 def _build_connection_tile(connections) -> ConnectionTile:
-    paths = {connection_type: QPainterPath() for connection_type in ConnectionType}
+    paths = {kind: QPainterPath() for kind in ConnectionKind}
     one_way = []
 
     for connection in connections:
-        path = paths[connection.connection_type]
+        path = paths[connection.kind]
         path.moveTo(connection.source_x, connection.source_z)
         path.lineTo(connection.target_x, connection.target_z)
 
@@ -88,9 +89,7 @@ def _build_connection_tile(connections) -> ConnectionTile:
             length = math.hypot(target_x - source_x, target_z - source_z)
 
             if length > 0:
-                one_way.append(
-                    (length, source_x, source_z, target_x, target_z, connection.connection_type)
-                )
+                one_way.append((length, source_x, source_z, target_x, target_z, connection.kind))
 
     one_way.sort(key=lambda entry: entry[0], reverse=True)
 

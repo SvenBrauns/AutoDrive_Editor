@@ -68,7 +68,7 @@ packaging/      app icon and license texts for the Windows version
 
 - Every change to the data model is an `EditCommand` and goes through `EditHistory.push()`, so it can be undone.
 - After each change, the command reports a `DataChange`; the `SceneRenderer` then updates only the affected nodes.
-- Nodes, connections, markers and the selection are not graphics items. Four layer items paint them straight from the spatial indexes, using drawing data cached per 256 m tile; after an edit only the changed tiles are rebuilt. This keeps networks with over 100,000 nodes responsive. Clicks find nodes through `SceneRenderer.get_node_at()`.
+- Nodes, node IDs, connections, markers and the selection are not graphics items. Five layer items paint them straight from the spatial indexes, using drawing data cached per 256 m tile; after an edit only the changed tiles are rebuilt. This keeps networks with over 100,000 nodes responsive. Clicks find nodes through `SceneRenderer.get_node_at()`.
 - Each editing workflow is an `EditOperation` under `editing/operations/`; it gets the shared parts (history, data, selection, view, terrain height, snapping) through one `EditContext`.
 - Each tool is a `MapTool` subclass under `ui/tools/` and is described in `ui/actions/tool_catalog.py` with its icon and shortcut.
 
@@ -108,7 +108,8 @@ tr("Marker “{name}” added", name=name)
 - **Maps**: for FS22/FS25, `overview.dds` has a middle quarter that must be cropped (4096² → 2048²). The map size (`map_scale` 1/2/4/8 for original/4x/16x/64x) comes from the map configuration, never from the network bounds. For a 16x map: 8192 × 8192 m, world coordinates −4096 to +4096.
 - **Heightmap** (`dem.png`, 16-bit grayscale): `height = raw_value / 65535.0 * 255.0`. Compared with the Y values of a test network with 113,058 nodes, the median difference is 0.02 m; larger differences occur only on bridges, ramps and building platforms.
 - **Angles**: map angle 0° = up, 90° = right; independent of view and grid rotation.
-- **Zoom**: there are no zoom thresholds. Every size in `DisplayStyle` is in metres and grows with the zoom, but stays between a minimum and maximum size on screen. Nodes fade in while they grow from 1.5 to 4 px, and only drawn nodes can be clicked (selected nodes always). Arrows sit in the middle of one-way connections once the connection is long enough on screen. Marker icons are drawn at every zoom level; their names fade in just below `marker_name_min_zoom` (1.0), and names that would overlap an earlier one are left out.
+- **Zoom**: there are no zoom thresholds. Every size in `DisplayStyle` is in metres and grows with the zoom, but stays between a minimum and maximum size on screen. Nodes fade in while they grow from 1.5 to 4 px, and only drawn nodes can be clicked (selected nodes always). Arrows sit in the middle of one-way connections once the connection is long enough on screen. Marker icons are drawn at every zoom level; their names fade in just below `marker_name_min_zoom` (1.0), and names that would overlap an earlier one are left out. Node IDs are shown from `node_id_min_zoom` (4.0), left out where they would overlap the label of a lower ID.
+- **Visibility** (`rendering/visibility.py`, `View → Show`): the layers skip hidden nodes and connection kinds, and `SceneRenderer.get_node_at()`, `get_connection_at()` and area selection ignore them unless `hidden_selectable` is on. Connections are drawn by `ConnectionKind`: their type, or `subprio` when they lead into a subprio node (dual: either end).
 
 ## File formats when saving
 

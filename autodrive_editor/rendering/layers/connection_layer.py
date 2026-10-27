@@ -1,7 +1,7 @@
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen, QPolygonF
 
-from autodrive_editor.model.connections import ConnectionType
+from autodrive_editor.rendering.connections.connection_data import ConnectionKind
 from autodrive_editor.rendering.display_style import DisplayStyle
 from autodrive_editor.rendering.layers.map_layer_item import MapLayerItem
 from autodrive_editor.rendering.layers.network_tiles import NetworkTiles
@@ -22,13 +22,21 @@ class ConnectionLayerItem(MapLayerItem):
         self.tiles = tiles
         self.drawn_arrows = 0
 
-    def _colors(self) -> dict[ConnectionType, QColor]:
+    def _colors(self) -> dict[ConnectionKind, QColor]:
+        """Colors of the shown connection kinds."""
+
         style = self.display_style
+        colors = {
+            ConnectionKind.REGULAR: style.regular_connection_color,
+            ConnectionKind.DUAL: style.dual_connection_color,
+            ConnectionKind.REVERSE: style.reverse_connection_color,
+            ConnectionKind.SUBPRIO: style.subprio_connection_color,
+        }
 
         return {
-            ConnectionType.REGULAR: QColor(*style.regular_connection_color),
-            ConnectionType.DUAL: QColor(*style.dual_connection_color),
-            ConnectionType.REVERSE: QColor(*style.reverse_connection_color),
+            kind: QColor(*color)
+            for kind, color in colors.items()
+            if self.visibility.shows_connection(kind)
         }
 
     def paint(self, painter: QPainter, option, widget=None):
@@ -54,7 +62,7 @@ class ConnectionLayerItem(MapLayerItem):
             style.connection_width, scale, style.connection_min_px, style.connection_max_px
         )
 
-        for connection_type, color in colors.items():
+        for kind, color in colors.items():
             pen = QPen(color, width_px)
             pen.setCosmetic(True)
             # Round caps make Qt stroke every segment slowly; nodes cover the joints anyway.
@@ -62,20 +70,22 @@ class ConnectionLayerItem(MapLayerItem):
             painter.setPen(pen)
 
             for tile in tiles:
-                path = tile.paths[connection_type]
+                path = tile.paths[kind]
 
                 if not path.isEmpty():
                     painter.drawPath(path)
 
-        arrow_paths = self._build_arrow_paths(tiles, exposed, scale)
+        arrow_paths = self._build_arrow_paths(tiles, exposed, scale, colors.keys())
 
         painter.setPen(Qt.NoPen)
 
-        for connection_type, path in arrow_paths.items():
+        for kind, path in arrow_paths.items():
             if not path.isEmpty():
-                painter.fillPath(path, colors[connection_type])
+                painter.fillPath(path, colors[kind])
 
-    def _build_arrow_paths(self, tiles, exposed, scale) -> dict[ConnectionType, QPainterPath]:
+    def _build_arrow_paths(
+        self, tiles, exposed, scale, shown_kinds
+    ) -> dict[ConnectionKind, QPainterPath]:
         style = self.display_style
 
         arrow_length = (
@@ -85,14 +95,17 @@ class ConnectionLayerItem(MapLayerItem):
         # Connections shorter than this cannot hold an arrow of the minimum size.
         shortest_connection = shortest_arrow / ARROW_SHARE
 
-        paths = {ConnectionType.REGULAR: QPainterPath(), ConnectionType.REVERSE: QPainterPath()}
+        paths = {kind: QPainterPath() for kind in shown_kinds if kind != ConnectionKind.DUAL}
         count = 0
 
         for tile in tiles:
             # Sorted longest first, so the loop stops at the first one that is too short.
-            for length, source_x, source_z, target_x, target_z, connection_type in tile.one_way:
+            for length, source_x, source_z, target_x, target_z, kind in tile.one_way:
                 if length < shortest_connection:
                     break
+
+                if kind not in paths:
+                    continue
 
                 middle_x = (source_x + target_x) / 2
                 middle_z = (source_z + target_z) / 2
@@ -110,7 +123,7 @@ class ConnectionLayerItem(MapLayerItem):
                 base_x = middle_x - direction_x * size / 2
                 base_z = middle_z - direction_z * size / 2
 
-                paths[connection_type].addPolygon(
+                paths[kind].addPolygon(
                     QPolygonF(
                         (
                             QPointF(tip_x, tip_z),

@@ -19,7 +19,10 @@ from autodrive_editor.file_io.routes_index import (
     mark_route_saved,
     routes_index_for,
 )
-from autodrive_editor.file_io.savegame_vehicles import renumber_vehicle_markers
+from autodrive_editor.file_io.savegame_vehicles import (
+    read_park_destinations,
+    renumber_vehicle_markers,
+)
 from autodrive_editor.i18n import tr
 from autodrive_editor.measurement.coordinator import MeasurementCoordinator
 from autodrive_editor.model.autodrive_data import AutoDriveData
@@ -202,6 +205,7 @@ class ProjectCoordinator(QObject):
             self.background_map.restore()
 
         self.scene_renderer.render(self.autodrive_data)
+        self._show_parking()
 
         self.selection_coordinator.synchronize()
 
@@ -377,6 +381,20 @@ class ProjectCoordinator(QObject):
                 file_markers[number - 1] = marker
 
         self._file_markers = file_markers
+        self._show_parking()
+
+    def _show_parking(self):
+        """Marks the markers the savegame's vehicles park at. vehicles.xml numbers them in the
+        order of the file on disk."""
+
+        numbers = set()
+
+        if self._vehicles_path is not None and self._vehicles_path.is_file():
+            numbers = read_park_destinations(self._vehicles_path)
+
+        self.scene_renderer.set_parking_markers(
+            marker for number, marker in enumerate(self._file_markers, start=1) if number in numbers
+        )
 
     def _back_up(self, path: Path):
         if path in self._backed_up_paths:

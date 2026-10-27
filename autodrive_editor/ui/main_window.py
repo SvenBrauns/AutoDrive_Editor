@@ -42,6 +42,7 @@ from autodrive_editor.project.autosave import AutosaveStore
 from autodrive_editor.project.project_coordinator import ProjectCoordinator
 from autodrive_editor.rendering.display_style import DisplayStyle
 from autodrive_editor.rendering.scene_renderer import SceneRenderer
+from autodrive_editor.rendering.visibility import Visibility
 from autodrive_editor.selection.node_selection import NodeSelection
 from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
 from autodrive_editor.settings.app_settings import AppSettings
@@ -138,6 +139,7 @@ class MainWindow(QMainWindow):
         self._create_debug_dock()
 
         self.scene_renderer.set_marker_names_visible(self.settings.marker_names_visible)
+        self.scene_renderer.set_visibility(self.settings.visibility)
 
         self.actions = MainWindowActions(self)
         self.actions.set_current_map_scale(self.background_map.map_scale)
@@ -229,6 +231,10 @@ class MainWindow(QMainWindow):
     def set_marker_names_visible(self, visible: bool):
         self.scene_renderer.set_marker_names_visible(visible)
         self.settings.set_marker_names_visible(visible)
+
+    def set_visibility(self, visibility: Visibility):
+        self.scene_renderer.set_visibility(visibility)
+        self.settings.set_visibility(visibility)
 
     def focus_marker(self, node_id: int):
         """Centers the map on a marker's node and selects it."""

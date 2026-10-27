@@ -326,3 +326,20 @@ def test_dock_is_empty_without_markers(window):
     tree = window.marker_dock.tree
 
     assert tree.topLevelItem(0).text(0) == window.marker_dock.EMPTY_TEXT
+
+
+def test_show_menu_toggles_update_the_map_and_are_kept(marker_window):
+    renderer = marker_window.scene_renderer
+    action = marker_window.actions.show_actions["node_ids"]
+    assert not action.isChecked()
+
+    action.setChecked(True)
+
+    assert renderer.visibility.node_ids
+    assert marker_window.settings.visibility.node_ids
+
+    marker_window.actions.show_actions["markers"].setChecked(False)
+
+    assert not renderer.visibility.markers
+    assert renderer.visibility.node_ids
+    assert not marker_window.settings.visibility.markers

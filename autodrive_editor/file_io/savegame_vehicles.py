@@ -20,6 +20,14 @@ from pathlib import Path, PurePosixPath
 # Vehicle start tags and their AutoDrive elements, in file order.
 _TAG = re.compile(r"<(vehicle|AutoDrive)\b[^>]*>")
 _MARKER_ATTRIBUTE = re.compile(r'\s(firstMarker|secondMarker|parkDestination)="(-?\d+)"')
+_PARK_DESTINATION = re.compile(r'<AutoDrive\b[^>]*\sparkDestination="(\d+)"')
+
+
+def read_park_destinations(vehicles_path: Path) -> set[int]:
+    """The marker numbers vehicles use as parking destination."""
+
+    with open(vehicles_path, encoding="utf-8-sig") as file:
+        return {int(number) for number in _PARK_DESTINATION.findall(file.read())}
 
 
 def renumber_vehicle_markers(vehicles_path: Path, new_numbers: dict[int, int | None]) -> list[str]:

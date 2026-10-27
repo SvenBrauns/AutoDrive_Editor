@@ -22,6 +22,9 @@ class DisplayStyle:
     selected_node_min_px: float = 5.0
     selected_node_ring_width: float = 0.3
 
+    # Node IDs, when switched on, are shown from this zoom on.
+    node_id_min_zoom: float = 4.0
+
     connection_width: float = 0.35
     connection_min_px: float = 1.0
     connection_max_px: float = 3.0
@@ -29,6 +32,8 @@ class DisplayStyle:
     regular_connection_color: tuple[int, int, int] = (0, 230, 0)
     dual_connection_color: tuple[int, int, int] = (40, 110, 255)
     reverse_connection_color: tuple[int, int, int] = (100, 220, 255)
+    # Connections into subprio nodes.
+    subprio_connection_color: tuple[int, int, int] = (255, 140, 0)
 
     # Arrows sit in the middle of one-way connections. They shrink on short connections and are
     # left out once they would be smaller than arrow_min_px.

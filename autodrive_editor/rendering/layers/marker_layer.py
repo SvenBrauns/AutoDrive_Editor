@@ -2,7 +2,7 @@ from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QFontMetricsF, QPainter, QPixmap
 from PySide6.QtSvg import QSvgRenderer
 
-from autodrive_editor.model.autodrive_data import AutoDriveData
+from autodrive_editor.model.autodrive_data import AutoDriveData, MarkerData
 from autodrive_editor.rendering.display_style import DisplayStyle
 from autodrive_editor.rendering.layers.map_layer_item import MapLayerItem
 from autodrive_editor.rendering.layers.node_layer import node_diameter_px, node_opacity
@@ -17,6 +17,9 @@ LABEL_BORDER_COLOR = QColor(15, 45, 82, 140)
 LABEL_GRID_PX = 128
 # Names start to fade in at this share of marker_name_min_zoom.
 NAME_FADE_START = 0.7
+PARKING_SIGN_COLOR = QColor(30, 90, 200)
+# Size of the parking sign as share of the icon height.
+PARKING_SIGN_SHARE = 0.5
 
 
 class MarkerLayerItem(MapLayerItem):
@@ -42,12 +45,25 @@ class MarkerLayerItem(MapLayerItem):
         self._label_layout_key = None
         self._labeled_node_ids: set[int] = set()
 
+        # Markers vehicles park at, by object id; the list keeps the objects (and their ids) alive.
+        self._parking_markers: list[MarkerData] = []
+        self._parking_ids: set[int] = set()
+
         self.drawn_markers = 0
+        self.drawn_parking = 0
         # Names drawn in the last paint, by node id.
         self.shown_names: dict[int, str] = {}
 
     def set_names_visible(self, visible: bool):
         self.names_visible = bool(visible)
+        self.update()
+
+    def set_parking_markers(self, markers):
+        """Markers that get a parking sign. Markers are recognised by object, so the sign
+        follows a marker that is moved to another node."""
+
+        self._parking_markers = list(markers)
+        self._parking_ids = {id(marker) for marker in self._parking_markers}
         self.update()
 
     def invalidate(self):
@@ -64,7 +80,9 @@ class MarkerLayerItem(MapLayerItem):
     def paint(self, painter: QPainter, option, widget=None):
         scale = view_scale(painter)
 
-        if scale <= 0 or not self.autodrive_data.markers:
+        if scale <= 0 or not self.autodrive_data.markers or not self.visibility.markers:
+            self.drawn_markers = self.drawn_parking = 0
+            self.shown_names = {}
             return
 
         style = self.display_style
@@ -76,7 +94,11 @@ class MarkerLayerItem(MapLayerItem):
         )
         icon_width = icon_height * self._icon_aspect_ratio()
         # The icon's tip touches the top of the node while nodes are drawn.
-        node_gap = node_diameter_px(style, scale) / 2 * node_opacity(style, scale)
+        node_gap = (
+            node_diameter_px(style, scale) / 2 * node_opacity(style, scale)
+            if self.visibility.nodes
+            else 0.0
+        )
 
         markers = []
 
@@ -108,12 +130,16 @@ class MarkerLayerItem(MapLayerItem):
         painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
 
         icon = self._get_icon(icon_height, painter.device().devicePixelRatioF())
-        drawn = 0
+        drawn = drawn_parking = 0
 
-        for _marker, icon_rect in markers:
+        for marker, icon_rect in markers:
             if icon_rect.intersects(device_rect):
                 painter.drawPixmap(icon_rect.topLeft(), icon)
                 drawn += 1
+
+                if self.visibility.parking and id(marker) in self._parking_ids:
+                    _draw_parking_sign(painter, icon_rect)
+                    drawn_parking += 1
 
         painter.setFont(self.font)
         painter.setOpacity(painter.opacity() * name_opacity)
@@ -128,6 +154,7 @@ class MarkerLayerItem(MapLayerItem):
         painter.restore()
 
         self.drawn_markers = drawn
+        self.drawn_parking = drawn_parking
 
     def _get_labeled_node_ids(self, transform, markers) -> set[int]:
         key = (transform.m11(), transform.m12(), transform.m21(), transform.m22())
@@ -144,7 +171,7 @@ class MarkerLayerItem(MapLayerItem):
                 continue
 
             label_rect = self._label_rect(marker.name, icon_rect)
-            cells = _grid_cells(label_rect)
+            cells = grid_cells(label_rect)
 
             if any(
                 label_rect.intersects(other)
@@ -213,7 +240,27 @@ class MarkerLayerItem(MapLayerItem):
         return icon
 
 
-def _grid_cells(rect: QRectF):
+def _draw_parking_sign(painter: QPainter, icon_rect: QRectF):
+    """A small "P" sign left of the marker icon's upper part."""
+
+    size = icon_rect.height() * PARKING_SIGN_SHARE
+    rect = QRectF(icon_rect.left() - size + 1, icon_rect.top(), size, size)
+
+    painter.setPen(Qt.NoPen)
+    painter.setBrush(PARKING_SIGN_COLOR)
+    painter.drawRoundedRect(rect, size * 0.2, size * 0.2)
+
+    font = QFont()
+    font.setBold(True)
+    font.setPixelSize(max(1, round(size * 0.75)))
+    painter.setFont(font)
+    painter.setPen(QColor(255, 255, 255))
+    painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "P")
+
+
+def grid_cells(rect: QRectF):
+    """The LABEL_GRID_PX cells a rectangle on screen touches, to find overlapping labels."""
+
     return [
         (cell_x, cell_y)
         for cell_x in range(

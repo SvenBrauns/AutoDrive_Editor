@@ -30,11 +30,11 @@ Menu `Check` with a result list that jumps to each location.
 New display options are saved permanently.
 
 - [x] minimum and maximum node size on screen
-- [ ] show and hide nodes and each connection type (regular, dual, reverse, subprio)
-- [ ] option whether hidden nodes and connections can be selected
-- [ ] show node IDs
-- [ ] show and hide marker icons
-- [ ] show parking positions of vehicles (savegames)
+- [x] show and hide nodes and each connection type (regular, dual, reverse, subprio)
+- [x] option whether hidden nodes and connections can be selected
+- [x] show node IDs
+- [x] show and hide marker icons
+- [x] show parking positions of vehicles (savegames)
 
 ## 3. Editing — medium priority
 

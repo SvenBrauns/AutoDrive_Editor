@@ -1,12 +1,19 @@
 import pytest
 from drawing_helpers import ORANGE, RED, paint_scene
+from PySide6.QtCore import QRectF
+from PySide6.QtGui import QPainterPath
 from PySide6.QtWidgets import QGraphicsScene
 
 from autodrive_editor.model.autodrive_data import SUBPRIO_FLAG, AutoDriveData, MarkerData, NodeData
 from autodrive_editor.paths import MARKER_ICON_PATH
 from autodrive_editor.rendering.scene_renderer import SceneRenderer
+from autodrive_editor.rendering.visibility import Visibility
 
 WHITE = "#ffffff"
+
+
+def everything():
+    return QRectF(-10_000, -10_000, 20_000, 20_000)
 
 
 @pytest.fixture
@@ -158,3 +165,66 @@ def test_closest_node_wins(renderer):
     move_node(renderer, 2, 1, 0)
 
     assert renderer.get_node_at(0.8, 0, 4.0).node_id == 2
+
+
+def test_flag_change_makes_connections_subprio_and_back(renderer):
+    def subprio():
+        connections = renderer.connection_spatial_index.get_connections_in_rect(everything())
+        return [c.subprio for c in connections]
+
+    renderer.autodrive_data.nodes[2].flag = SUBPRIO_FLAG
+    renderer.apply_changes(changed_flag_node_ids={2})
+
+    assert subprio() == [True]
+
+    renderer.autodrive_data.nodes[2].flag = 0
+    renderer.apply_changes(changed_flag_node_ids={2})
+
+    assert subprio() == [False]
+
+
+def test_hidden_nodes_are_not_found_unless_hidden_items_are_selectable(renderer):
+    area = QPainterPath()
+    area.addRect(-10, -10, 100, 20)
+    renderer.set_visibility(Visibility(nodes=False))
+
+    assert renderer.get_node_at(0, 0, 4.0) is None
+    assert renderer.get_nodes_in_selection_path(area) == []
+
+    renderer.set_visibility(Visibility(nodes=False, hidden_selectable=True))
+
+    assert renderer.get_node_at(0, 0, 4.0).node_id == 1
+    assert len(renderer.get_nodes_in_selection_path(area)) == 2
+
+
+def test_hidden_connection_kinds_are_not_found_unless_hidden_items_are_selectable(renderer):
+    renderer.set_visibility(Visibility(regular_connections=False))
+
+    assert renderer.get_connection_at(25, 0, 2) is None
+
+    renderer.set_visibility(Visibility(regular_connections=False, hidden_selectable=True))
+
+    assert renderer.get_connection_at(25, 0, 2).target_id == 2
+
+
+def test_other_connection_kinds_stay_selectable(renderer):
+    renderer.set_visibility(Visibility(dual_connections=False))
+
+    assert renderer.get_connection_at(25, 0, 2) is not None
+
+
+def test_visibility_is_kept_for_layers_rendered_later(renderer):
+    renderer.set_visibility(Visibility(nodes=False))
+
+    renderer.render(renderer.autodrive_data)
+
+    assert not renderer.node_layer.visibility.nodes
+
+
+def test_reset_clears_parking_markers(renderer):
+    renderer.set_parking_markers(renderer.autodrive_data.markers.values())
+    assert len(renderer.parking_markers) == 1
+
+    renderer.reset()
+
+    assert renderer.parking_markers == []

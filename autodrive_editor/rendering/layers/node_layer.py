@@ -67,6 +67,9 @@ class NodeLayerItem(MapLayerItem):
     def paint(self, painter: QPainter, option, widget=None):
         self.tiles.refresh()
 
+        if not self.visibility.nodes:
+            return
+
         style = self.display_style
         scale = view_scale(painter)
         opacity = node_opacity(style, scale) if scale > 0 else 0.0

@@ -7,6 +7,7 @@ from autodrive_editor.game.game_folder import GameFolder
 from autodrive_editor.game.game_installation import GameInstallation
 from autodrive_editor.model.autodrive_data import SUBPRIO_FLAG
 from autodrive_editor.model.connections import ConnectionType
+from autodrive_editor.rendering.visibility import Visibility
 from autodrive_editor.settings import app_settings
 from autodrive_editor.settings.app_settings import AppSettings
 
@@ -147,3 +148,22 @@ def test_unknown_stored_language_falls_back_to_windows(monkeypatch):
     AppSettings().set_language("fr")
 
     assert AppSettings().language == "de"
+
+
+def test_visibility_defaults_and_is_kept_between_sessions():
+    assert AppSettings().visibility == Visibility()
+
+    shown = Visibility(
+        nodes=False, node_ids=True, subprio_connections=False, hidden_selectable=True
+    )
+    AppSettings().set_visibility(shown)
+
+    assert AppSettings().visibility == shown
+
+
+def test_each_visibility_switch_is_stored_on_its_own():
+    settings = AppSettings()
+    settings.set_visibility(Visibility(parking=False))
+
+    assert settings._settings.value("view/show_parking", type=bool) is False
+    assert settings._settings.value("view/show_nodes", type=bool) is True

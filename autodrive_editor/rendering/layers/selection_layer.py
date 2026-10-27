@@ -44,7 +44,7 @@ class SelectionLayerItem(MapLayerItem):
         self.update()
 
     def paint(self, painter: QPainter, option, widget=None):
-        if self.node_count == 0:
+        if self.node_count == 0 or not self.visibility.nodes:
             return
 
         style = self.display_style

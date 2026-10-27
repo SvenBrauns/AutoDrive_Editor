@@ -1,4 +1,7 @@
-from autodrive_editor.file_io.savegame_vehicles import renumber_vehicle_markers
+from autodrive_editor.file_io.savegame_vehicles import (
+    read_park_destinations,
+    renumber_vehicle_markers,
+)
 
 VEHICLES = (
     '﻿<?xml version="1.0" encoding="utf-8" standalone="no"?>\r\n<vehicles>\r\n'
@@ -49,3 +52,14 @@ def test_unchanged_numbers_leave_the_file_alone(tmp_path):
 
     assert renumber_vehicle_markers(path, {1: 1, 2: 2, 3: 3}) == []
     assert path.read_bytes() == VEHICLES.encode("utf-8")
+
+
+def test_park_destinations_are_read_from_the_vehicles(tmp_path):
+    assert read_park_destinations(write_vehicles(tmp_path)) == {3}
+
+
+def test_vehicles_without_park_destination_give_none(tmp_path):
+    path = tmp_path / "vehicles.xml"
+    path.write_text('<vehicles><vehicle><AutoDrive firstMarker="1"/></vehicle></vehicles>')
+
+    assert read_park_destinations(path) == set()
