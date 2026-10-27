@@ -1,10 +1,13 @@
 """Importing maps from mods via the Karte menu."""
 
+import zipfile
+
 import pytest
 from base_game_helpers import make_installation
 from game_folder_helpers import make_game_folder
 from map_mod_helpers import make_single_map_mod
 from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QFileDialog
 
 from autodrive_editor.file_io.map_mod import read_map_mod
 from autodrive_editor.game.map_scanner import scan_for_map_mods
@@ -87,6 +90,40 @@ def test_map_menu_offers_scan_and_import(window):
     texts = [action.text() for action in map_menu.actions()]
 
     assert texts[:2] == ["Scan maps…", "Import map from mod…"]
+
+
+def choose_file(monkeypatch, path):
+    monkeypatch.setattr(QFileDialog, "getOpenFileName", lambda *args: (str(path), ""))
+
+
+def test_import_from_mod_imports_all_its_maps(map_window, tmp_path, monkeypatch):
+    choose_file(monkeypatch, make_single_map_mod(tmp_path / "elsewhere", title="Karte A"))
+
+    map_window.map_import.import_map_mod()
+
+    assert [m.title for m in map_window.map_cache.maps()] == ["Karte A"]
+    assert map_window.messages == []
+
+
+@pytest.mark.parametrize(
+    ("content", "message"),
+    [(b"no zip", "could not be read"), (None, "contains no map")],
+)
+def test_import_from_mod_explains_unusable_files(
+    map_window, tmp_path, monkeypatch, content, message
+):
+    path = tmp_path / "FS25_Mod.zip"
+    if content is None:
+        with zipfile.ZipFile(path, "w") as archive:
+            archive.writestr("modDesc.xml", "<modDesc/>")
+    else:
+        path.write_bytes(content)
+    choose_file(monkeypatch, path)
+
+    map_window.map_import.import_map_mod()
+
+    assert message in map_window.messages[0]
+    assert map_window.map_cache.maps() == []
 
 
 def test_scan_lists_base_game_maps_first(map_window, tmp_path, monkeypatch):

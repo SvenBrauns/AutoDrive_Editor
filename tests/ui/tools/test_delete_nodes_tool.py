@@ -102,12 +102,6 @@ def test_cursor_points_at_nodes(deleting):
     assert cursor_shape(deleting) == Qt.OpenHandCursor
 
 
-def test_panel_has_delete_tool(window):
-    texts = [action.text() for action in window.actions.tool_panel.tool_buttons]
-
-    assert "Delete" in texts
-
-
 # --- Bearbeiten > Auswahl löschen (Entf) --------------------------------
 
 

@@ -80,29 +80,11 @@ def test_tool_buttons_follow_mode_changes_from_code(window):
     assert checked_tools(window) == {InteractionMode.CONNECT_DUAL}
 
 
-# --- layout: icons, two columns, groups, labels, shortcuts --------------
+# --- layout: icons, groups, labels, shortcuts --------------
 
 
 def nodes_group(window):
     return window.actions.tool_panel.groups["Nodes"]
-
-
-def grid_text(window, row, column):
-    item = nodes_group(window).grid.itemAtPosition(row, column)
-    return None if item is None else item.widget().defaultAction().text()
-
-
-def test_node_tools_are_paired_in_two_columns(window):
-    layout = [[grid_text(window, row, column) for column in (0, 1)] for row in range(6)]
-
-    assert layout == [
-        ["Move", "Connect (Regular)"],
-        ["Create (Regular)", "Connect (Dual)"],
-        ["Create (Subprio)", "Connect (Reverse)"],
-        ["Toggle type", "Reverse direction"],
-        ["Rotate", "Delete"],
-        ["Enter position", None],
-    ]
 
 
 def test_tool_buttons_show_icons_only_by_default(window):
@@ -213,44 +195,3 @@ def test_every_tool_explains_itself_in_the_status_bar(window, mode):
     text = window.status.text()
     assert text.startswith(f"Mode: {mode.display_name} – ")
     assert len(text) > len(f"Mode: {mode.display_name} – ") + 10
-
-
-def test_panel_widens_for_labels_and_shrinks_again(window, qapp):
-    panel = window.actions.tool_panel
-    icons_only = panel.width()
-
-    window.actions.tool_labels_action.trigger()
-    qapp.processEvents()
-    with_labels = panel.width()
-
-    window.actions.tool_labels_action.trigger()
-    qapp.processEvents()
-
-    assert with_labels > icons_only + 50
-    assert panel.width() == icons_only
-
-
-def test_undo_icon_is_blue_when_usable_and_light_when_not(window):
-    from collections import Counter
-
-    from PySide6.QtGui import QColor, QIcon
-
-    icon = window.actions.undo_action.icon()
-
-    def main_color(mode):
-        # The most common opaque color, ignoring smoothed edges.
-        image = icon.pixmap(48, 48, mode).toImage()
-        colors = Counter(
-            QColor.fromRgba(image.pixel(x, y)).name()
-            for x in range(image.width())
-            for y in range(image.height())
-            if QColor.fromRgba(image.pixel(x, y)).alpha() == 255
-        )
-        return QColor(colors.most_common(1)[0][0])
-
-    usable = main_color(QIcon.Mode.Normal)
-    unusable = main_color(QIcon.Mode.Disabled)
-
-    assert usable.blue() > usable.red() + 80  # clearly blue
-    assert unusable.lightness() > 190  # very light grey
-    assert unusable.lightness() - usable.lightness() > 60

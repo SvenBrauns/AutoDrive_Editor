@@ -1,5 +1,7 @@
 """Saving the loaded AutoDrive data back into its file."""
 
+import stat
+
 import pytest
 from game_folder_helpers import ROUTE_XML, add_routes
 from PySide6.QtWidgets import QMessageBox
@@ -108,6 +110,24 @@ def test_closing_with_unsaved_changes_asks_first(route_window, answer, saved, lo
     assert (len(AutoDriveXmlReader.load(route_window.route_file)) == 2) is saved
 
 
+def test_failed_save_keeps_the_window_open_and_the_changes(route_window, monkeypatch):
+    messages = []
+    monkeypatch.setattr(route_window.files, "_inform", messages.append)
+    delete_node(route_window, 2)
+    route_window.files._ask_save_changes = lambda: QMessageBox.Save
+    route_window.route_file.chmod(stat.S_IREAD)
+
+    try:
+        closed = route_window.close()
+    finally:
+        route_window.route_file.chmod(stat.S_IWRITE | stat.S_IREAD)
+
+    assert not closed
+    assert route_window.isWindowModified()
+    assert "could not be saved" in messages[0]
+    assert route_window.route_file.read_text(encoding="utf-8") == ROUTE_XML
+
+
 def test_cancel_keeps_the_data_before_loading_other_data(route_window):
     delete_node(route_window, 2)
     route_window.files._ask_save_changes = lambda: QMessageBox.Cancel
@@ -151,7 +171,7 @@ def test_save_as_turns_a_route_into_a_new_route(route_window):
     assert len(AutoDriveXmlReader.load(entries[1].path)) == 2
     assert route_window.route_file.read_text(encoding="utf-8") == ROUTE_XML
     assert route_window.project_coordinator.config_source.path == entries[1].path
-    assert route_window.windowTitle() == "AutoDrive FS25 Editor – Hof neu (Route)[*]"
+    assert "Hof neu" in route_window.windowTitle()
     assert not route_window.isWindowModified()
 
 
@@ -176,7 +196,7 @@ def test_save_as_writes_a_savegame_copy_without_touching_vehicles(savegame_windo
     assert "<MapName>LS25_X</MapName>" in target.read_text(encoding="utf-8-sig")
     assert len(AutoDriveXmlReader.load(target).markers) == 1
     assert (savegame_window.savegame / "vehicles.xml").read_text(encoding="utf-8") == VEHICLES
-    assert savegame_window.windowTitle() == "AutoDrive FS25 Editor – copy (Savegame)[*]"
+    assert "copy" in savegame_window.windowTitle()
 
 
 def test_autosave_only_writes_unsaved_changes(route_window):

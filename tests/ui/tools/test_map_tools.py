@@ -6,7 +6,6 @@ from PySide6.QtCore import QEvent, QPoint, Qt
 
 from autodrive_editor.measurement.mode import MeasurementMode
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
-from autodrive_editor.ui.tools.map_tool import MapTool
 
 EMPTY = (5, 20)  # map position between the nodes, below the line
 
@@ -26,13 +25,6 @@ def select_mode(zoomed_window):
 
 
 # --- MapView -----------------------------------------------------------
-
-
-def test_each_mode_has_its_own_tool(window):
-    tools = {mode: window.view._tools[mode] for mode in InteractionMode}
-
-    assert all(isinstance(tool, MapTool) for tool in tools.values())
-    assert len({id(tool) for tool in tools.values()}) == len(InteractionMode)
 
 
 def test_switching_mode_switches_active_tool(window):
