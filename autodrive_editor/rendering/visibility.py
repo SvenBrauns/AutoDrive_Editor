@@ -15,6 +15,7 @@ class Visibility:
     reverse_connections: bool = True
     markers: bool = True
     parking: bool = True
+    sheds: bool = True
     hidden_selectable: bool = False
 
     def shows_connection(self, connection_type: ConnectionType) -> bool:

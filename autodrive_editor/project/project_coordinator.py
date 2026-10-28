@@ -1,4 +1,5 @@
 import shutil
+from collections.abc import Callable
 from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
@@ -12,6 +13,7 @@ from autodrive_editor.file_io.autodrive_xml import (
     ConfigSource,
 )
 from autodrive_editor.file_io.autodrive_xml_writer import save_config
+from autodrive_editor.file_io.game_files import GameFiles
 from autodrive_editor.file_io.project_file import ProjectFileStore
 from autodrive_editor.file_io.routes_index import (
     add_route,
@@ -20,6 +22,7 @@ from autodrive_editor.file_io.routes_index import (
     routes_index_for,
 )
 from autodrive_editor.file_io.savegame_parking import linked_park_markers
+from autodrive_editor.file_io.savegame_sheds import read_sheds
 from autodrive_editor.file_io.savegame_vehicles import (
     read_park_destinations,
     renumber_vehicle_markers,
@@ -66,6 +69,7 @@ class ProjectCoordinator(QObject):
         selection_coordinator: SelectionCoordinator,
         measurement_coordinator: MeasurementCoordinator,
         map_cache: MapCache | None = None,
+        game_files: Callable[[], GameFiles] | None = None,
         parent=None,
     ):
         super().__init__(parent)
@@ -85,6 +89,9 @@ class ProjectCoordinator(QObject):
         # Imported maps, used to load the matching map automatically.
         self.map_cache = map_cache
 
+        # Opens the game and mod files the savegame's buildings are read from.
+        self.game_files = game_files
+
         self.autodrive_data: AutoDriveData | None = None
 
         # Format, path and map name of the loaded data.
@@ -101,6 +108,9 @@ class ProjectCoordinator(QObject):
 
         # Savegame folder linked to a route; its vehicles' parking positions are shown.
         self.savegame_directory: Path | None = None
+
+        # Status bar note about buildings that could not be read.
+        self.sheds_note = ""
 
         # Files backed up as .bak in this session.
         self._backed_up_paths: set[Path] = set()
@@ -211,6 +221,7 @@ class ProjectCoordinator(QObject):
 
         self.scene_renderer.render(self.autodrive_data)
         self._show_parking()
+        self._show_sheds()
 
         self.selection_coordinator.synchronize()
 
@@ -227,7 +238,7 @@ class ProjectCoordinator(QObject):
                 format=source.format_label,
                 name=source.display_name,
                 count=len(self.autodrive_data),
-                map_note=map_note,
+                map_note=map_note + self.sheds_note,
             )
         )
 
@@ -393,6 +404,7 @@ class ProjectCoordinator(QObject):
 
         self.savegame_directory = Path(directory) if directory is not None else None
         self._show_parking()
+        self._show_sheds()
 
     def _show_parking(self):
         """Marks the markers vehicles park at: those of the loaded savegame, numbered in the order
@@ -411,6 +423,29 @@ class ProjectCoordinator(QObject):
 
         self.scene_renderer.set_parking_markers(
             marker for number, marker in enumerate(self._file_markers, start=1) if number in numbers
+        )
+
+    def _show_sheds(self):
+        """Outlines the indoor areas of the buildings in the loaded or the linked savegame."""
+
+        directory = self.savegame_directory
+
+        source = self.config_source
+
+        if directory is None and source is not None and source.format == ConfigFormat.SAVEGAME:
+            directory = source.path.parent
+
+        areas, failed = [], []
+
+        if directory is not None and self.game_files is not None:
+            with self.game_files() as files:
+                areas, failed = read_sheds(directory, files)
+
+        self.scene_renderer.set_shed_areas(areas)
+        self.sheds_note = (
+            tr(" – {count} buildings could not be read (see log file)", count=len(failed))
+            if failed
+            else ""
         )
 
     def _back_up(self, path: Path):
@@ -453,7 +488,7 @@ class ProjectCoordinator(QObject):
         else:
             status_text = tr("Project loaded: {name}", name=project_name)
 
-        self.status_changed.emit(status_text)
+        self.status_changed.emit(status_text + self.sheds_note)
 
         self.debug_refresh_requested.emit()
 

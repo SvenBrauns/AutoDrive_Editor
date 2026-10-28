@@ -27,6 +27,7 @@ from autodrive_editor.editing.operations.reverse_direction import ReverseDirecti
 from autodrive_editor.editing.operations.rotate_selection import RotateSelectionOperation
 from autodrive_editor.editing.path_shapes import PathShape
 from autodrive_editor.file_io.autodrive_xml import ConfigFormat
+from autodrive_editor.file_io.game_files import GameFiles
 from autodrive_editor.file_io.project_file import ProjectFileStore
 from autodrive_editor.i18n import tr
 from autodrive_editor.measurement.coordinator import MeasurementCoordinator
@@ -454,7 +455,17 @@ class MainWindow(QMainWindow):
             selection_coordinator=self.selection_coordinator,
             measurement_coordinator=self.measurement_coordinator,
             map_cache=self.map_cache,
+            game_files=self._game_files,
             parent=self,
+        )
+
+    def _game_files(self) -> GameFiles:
+        installation = self.settings.install_folder
+        game_folder = self.settings.game_folder
+
+        return GameFiles(
+            installation.path if installation is not None else None,
+            game_folder.mods_directory if game_folder is not None else None,
         )
 
     def _create_file_controllers(self):

@@ -50,6 +50,12 @@ class DisplayStyle:
     # Marker names fade in just below this zoom and are fully shown from it on.
     marker_name_min_zoom: float = 1.0
 
+    # Indoor areas of buildings in the savegame: outline and a faint fill.
+    shed_color: tuple[int, int, int] = (220, 60, 230)
+    shed_outline_px: float = 2.0
+    shed_fill_alpha: int = 40
+
+    shed_z: float = -20.0
     connection_z: float = -10.0
     node_z: float = 0.0
     marker_z: float = 10.0

@@ -41,6 +41,7 @@ SHOW_GROUPS = (
         ("markers", tr("Markers")),
         ("marker_names", tr("Marker names")),
         ("parking", tr("Parking positions")),
+        ("sheds", tr("Sheds")),
     ),
     (("hidden_selectable", tr("Hidden items can be selected")),),
 )
