@@ -4,6 +4,7 @@ from PySide6.QtCore import QRectF
 from PySide6.QtGui import QPainterPath
 from PySide6.QtWidgets import QGraphicsScene
 
+from autodrive_editor.file_io.savegame_sheds import IndoorArea
 from autodrive_editor.model.autodrive_data import AutoDriveData, MarkerData, NodeData
 from autodrive_editor.rendering.connections.connection_data import ConnectionData
 from autodrive_editor.rendering.display_style import DisplayStyle
@@ -21,6 +22,7 @@ from autodrive_editor.rendering.layers.selection_layer import (
     selected_node_diameter_px,
     selection_ring_px,
 )
+from autodrive_editor.rendering.layers.shed_layer import ShedLayerItem
 from autodrive_editor.rendering.spatial.connection_index import ConnectionSpatialIndex
 from autodrive_editor.rendering.spatial.node_index import NodeSpatialIndex
 from autodrive_editor.rendering.visibility import Visibility
@@ -31,9 +33,10 @@ NODE_HIT_MIN_PX = 4.0
 
 class SceneRenderer:
     """Draws the AutoDrive network with five layer items: connections, nodes, node IDs, markers
-    and the selection. Each layer paints straight from the spatial indexes, so there are no graphics
-    items per node, and sizes follow the zoom smoothly (see DisplayStyle). After edits,
-    apply_changes updates the indexes; only the changed map tiles are drawn anew.
+    and the selection, plus the sheds of the savegame below them. Each layer paints straight from
+    the spatial indexes, so there are no graphics items per node, and sizes follow the zoom
+    smoothly (see DisplayStyle). After edits, apply_changes updates the indexes; only the changed
+    map tiles are drawn anew.
     """
 
     SPATIAL_TILE_SIZE = 256.0
@@ -53,6 +56,8 @@ class SceneRenderer:
         self.visibility = Visibility()
         # Markers vehicles park at (savegames).
         self.parking_markers: list[MarkerData] = []
+        # Indoor areas of the buildings in the savegame.
+        self.shed_areas: list[IndoorArea] = []
         self.selected_node_ids: set[int] = set()
 
         self.autodrive_data: AutoDriveData | None = None
@@ -64,12 +69,14 @@ class SceneRenderer:
         self.node_label_layer: NodeLabelLayerItem | None = None
         self.marker_layer: MarkerLayerItem | None = None
         self.selection_layer: SelectionLayerItem | None = None
+        self.shed_layer: ShedLayerItem | None = None
 
     @property
     def layers(self) -> list:
         return [
             layer
             for layer in (
+                self.shed_layer,
                 self.connection_layer,
                 self.node_layer,
                 self.node_label_layer,
@@ -96,6 +103,7 @@ class SceneRenderer:
         self.marker_layer.set_names_visible(self.marker_names_visible)
         self.marker_layer.set_parking_markers(self.parking_markers)
         self.selection_layer = SelectionLayerItem(style)
+        self.shed_layer = ShedLayerItem(style)
 
         self.network_bounds = _get_bounds(autodrive_data.nodes.values())
 
@@ -103,6 +111,8 @@ class SceneRenderer:
             layer.set_network_bounds(self.network_bounds)
             layer.set_visibility(self.visibility)
             self.scene.addItem(layer)
+
+        self.shed_layer.set_areas(self.shed_areas)
 
         self._refresh_selection()
 
@@ -116,8 +126,10 @@ class SceneRenderer:
         self.node_label_layer = None
         self.marker_layer = None
         self.selection_layer = None
+        self.shed_layer = None
 
         self.parking_markers = []
+        self.shed_areas = []
 
         self.node_spatial_index.clear()
         self.connection_spatial_index.clear()
@@ -315,6 +327,12 @@ class SceneRenderer:
 
         if self.marker_layer is not None:
             self.marker_layer.set_parking_markers(self.parking_markers)
+
+    def set_shed_areas(self, areas: list[IndoorArea]):
+        self.shed_areas = list(areas)
+
+        if self.shed_layer is not None:
+            self.shed_layer.set_areas(self.shed_areas)
 
     def set_display_style(self, display_style: DisplayStyle):
         if not isinstance(display_style, DisplayStyle):

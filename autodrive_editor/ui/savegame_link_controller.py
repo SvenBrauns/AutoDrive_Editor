@@ -125,9 +125,13 @@ class SavegameLinkController(QObject):
         elif project_path is None:
             self.status_changed.emit(
                 tr("“{name}” linked for this session", name=savegame.display_name)
+                + self.project_coordinator.sheds_note
             )
         else:
-            self.status_changed.emit(tr("“{name}” linked", name=savegame.display_name))
+            self.status_changed.emit(
+                tr("“{name}” linked", name=savegame.display_name)
+                + self.project_coordinator.sheds_note
+            )
 
     def _create_project(self, source: ConfigSource) -> Path | None:
         """Offers to save a project for the route, so the link is kept."""

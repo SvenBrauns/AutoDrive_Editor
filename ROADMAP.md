@@ -8,7 +8,6 @@ The editor supports only Farming Simulator 25.
 
 Design: [docs/parking_spots.md](docs/parking_spots.md). Each step is its own branch.
 
-- [ ] read sheds with an indoor area from the savegame and show them as a layer
 - [ ] parking spot dialog and generator (back in and drive through, templates per shed type)
 - [ ] afterwards: turn docs/parking_spots.md into a manual section and delete it
 
