@@ -52,7 +52,7 @@ Also available: Undo and Redo (`Ctrl+Z` / `Ctrl+Y`), Copy, Cut and Paste (`Ctrl+
 
 ## Display
 
-`View → Show` switches nodes, node IDs, each connection type (Regular, Dual, Reverse, Subprio), markers, marker names and the parking positions of vehicles on and off. Subprio connections are the ones leading into a Subprio node. Node IDs appear only when zoomed in; parking positions (a "P" next to the marker) are read from a savegame's `vehicles.xml`. Hidden nodes and connections cannot be clicked or selected unless `Hidden items can be selected` is on. Sizes and colors are set under `View → Display options`. All switches are remembered.
+`View → Show` switches nodes, node IDs, each connection type (Regular, Dual, Reverse), markers, marker names and the parking positions of vehicles on and off. The line color shows the connection type; arrows show the direction, dual connections get one pointing to each end. Subprio nodes are drawn orange. Node IDs appear only when zoomed in; parking positions (a "P" next to the marker) are read from a savegame's `vehicles.xml`. Hidden nodes and connections cannot be clicked or selected unless `Hidden items can be selected` is on. Sizes and colors are set under `View → Display options`. All switches are remembered.
 
 ## Checking the network
 

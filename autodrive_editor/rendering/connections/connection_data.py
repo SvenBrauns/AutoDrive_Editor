@@ -1,18 +1,8 @@
 from dataclasses import dataclass
-from enum import StrEnum
 
 from PySide6.QtCore import QRectF
 
 from autodrive_editor.model.connections import ConnectionType
-
-
-class ConnectionKind(StrEnum):
-    """How a connection is drawn: by its type, or as subprio when it leads into a subprio node."""
-
-    REGULAR = "regular"
-    DUAL = "dual"
-    REVERSE = "reverse"
-    SUBPRIO = "subprio"
 
 
 @dataclass(frozen=True)
@@ -29,12 +19,6 @@ class ConnectionData:
     target_z: float
 
     connection_type: ConnectionType
-
-    subprio: bool = False
-
-    @property
-    def kind(self) -> ConnectionKind:
-        return ConnectionKind.SUBPRIO if self.subprio else ConnectionKind(self.connection_type)
 
     @property
     def key(self) -> tuple[ConnectionType, int, int]:

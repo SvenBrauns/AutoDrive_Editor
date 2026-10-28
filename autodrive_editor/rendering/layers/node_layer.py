@@ -6,8 +6,6 @@ from autodrive_editor.rendering.layers.map_layer_item import MapLayerItem
 from autodrive_editor.rendering.layers.network_tiles import NetworkTiles
 from autodrive_editor.rendering.screen_size import fade_in, view_scale
 
-REGULAR_NODE_COLOR = QColor(230, 30, 30)
-SUBPRIO_NODE_COLOR = QColor(255, 160, 0)
 NODE_BORDER_COLOR = QColor(0, 0, 0)
 MAX_BORDER_PX = 2.0
 
@@ -43,6 +41,7 @@ def draw_points(painter: QPainter, polygons, color: QColor, diameter_px: float):
 
 def draw_nodes(
     painter: QPainter,
+    display_style: DisplayStyle,
     regular: list[QPolygonF],
     subprio: list[QPolygonF],
     diameter_px: float,
@@ -51,8 +50,8 @@ def draw_nodes(
     if border_px > 0.05:
         draw_points(painter, regular + subprio, NODE_BORDER_COLOR, diameter_px + 2 * border_px)
 
-    draw_points(painter, regular, REGULAR_NODE_COLOR, diameter_px)
-    draw_points(painter, subprio, SUBPRIO_NODE_COLOR, diameter_px)
+    draw_points(painter, regular, QColor(*display_style.regular_node_color), diameter_px)
+    draw_points(painter, subprio, QColor(*display_style.subprio_node_color), diameter_px)
 
 
 class NodeLayerItem(MapLayerItem):
@@ -90,6 +89,7 @@ class NodeLayerItem(MapLayerItem):
 
         draw_nodes(
             painter,
+            style,
             [tile.regular for tile in tiles],
             [tile.subprio for tile in tiles],
             diameter_px,

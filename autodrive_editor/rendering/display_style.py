@@ -14,6 +14,9 @@ class DisplayStyle:
     node_max_px: float = 16.0
     node_border_width: float = 0.2
 
+    regular_node_color: tuple[int, int, int] = (230, 30, 30)
+    subprio_node_color: tuple[int, int, int] = (255, 160, 0)
+
     # Nodes fade in while their diameter on screen grows from start to end.
     node_fade_start_px: float = 1.5
     node_fade_end_px: float = 4.0
@@ -32,10 +35,9 @@ class DisplayStyle:
     regular_connection_color: tuple[int, int, int] = (0, 230, 0)
     dual_connection_color: tuple[int, int, int] = (40, 110, 255)
     reverse_connection_color: tuple[int, int, int] = (100, 220, 255)
-    # Connections into subprio nodes.
-    subprio_connection_color: tuple[int, int, int] = (255, 140, 0)
 
-    # Arrows sit in the middle of one-way connections. They shrink on short connections and are
+    # Arrows sit in the middle of one-way connections; dual connections get one at a third of
+    # their length from each end, pointing to that end. They shrink on short connections and are
     # left out once they would be smaller than arrow_min_px.
     arrow_length: float = 2.5
     arrow_min_px: float = 6.0

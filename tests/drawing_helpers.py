@@ -1,12 +1,12 @@
 """Checks what the map view really draws, by painting it into an image."""
 
 from PySide6.QtCore import QRectF, Qt
-from PySide6.QtGui import QImage, QPainter
+from PySide6.QtGui import QColor, QImage, QPainter
 
-from autodrive_editor.rendering.layers.node_layer import REGULAR_NODE_COLOR, SUBPRIO_NODE_COLOR
+from autodrive_editor.rendering.display_style import DisplayStyle
 
-RED = REGULAR_NODE_COLOR.name()
-ORANGE = SUBPRIO_NODE_COLOR.name()
+RED = QColor(*DisplayStyle().regular_node_color).name()
+ORANGE = QColor(*DisplayStyle().subprio_node_color).name()
 
 
 def drawn_color(window, x, z) -> str:

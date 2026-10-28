@@ -170,13 +170,7 @@ class SceneRenderer:
             self.autodrive_data, [node.node_id for node in moved_nodes]
         )
 
-        # A changed flag can make the node's connections subprio or not.
-        rebuilt_node_ids = (
-            removed_node_ids
-            | set(added_node_ids)
-            | set(connection_node_ids)
-            | set(changed_flag_node_ids)
-        )
+        rebuilt_node_ids = removed_node_ids | set(added_node_ids) | set(connection_node_ids)
 
         if rebuilt_node_ids:
             self.connection_spatial_index.rebuild_node_connections(
@@ -270,14 +264,14 @@ class SceneRenderer:
 
     def get_connection_at(self, x: float, z: float, tolerance: float) -> ConnectionData | None:
         """The connection closest to the scene point, if it is within
-        tolerance (in scene units). Hidden kinds count only when hidden items are selectable."""
+        tolerance (in scene units). Hidden types count only when hidden items are selectable."""
 
         search_rect = QRectF(x - tolerance, z - tolerance, 2 * tolerance, 2 * tolerance)
 
         closest, closest_distance = None, tolerance
 
         for connection in self.connection_spatial_index.get_connections_in_rect(search_rect):
-            if not self.visibility.connection_selectable(connection.kind):
+            if not self.visibility.connection_selectable(connection.connection_type):
                 continue
 
             distance = _distance_to_segment(
