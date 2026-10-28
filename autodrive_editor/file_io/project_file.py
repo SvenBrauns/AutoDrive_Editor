@@ -6,8 +6,8 @@ from autodrive_editor.i18n import tr
 
 
 class ProjectFileStore:
-    """Saves and loads project files (JSON). Paths to the XML, background and heightmap are stored
-    relative to the project file, so projects can be moved.
+    """Saves and loads project files (JSON). Paths to the XML, background, heightmap and linked
+    savegame folder are stored relative to the project file, so projects can be moved.
     """
 
     FORMAT_VERSION = 1
@@ -18,7 +18,15 @@ class ProjectFileStore:
 
         self.projects_directory.mkdir(parents=True, exist_ok=True)
 
-    def save_project(self, config_path, xml_path, background_path, map_scale, heightmap_path=None):
+    def save_project(
+        self,
+        config_path,
+        xml_path,
+        background_path,
+        map_scale,
+        heightmap_path=None,
+        savegame_path=None,
+    ):
         config_path = Path(config_path).resolve()
 
         if config_path.suffix.lower() != ".json":
@@ -44,6 +52,9 @@ class ProjectFileStore:
             "map_scale": map_scale,
             "heightmap": self._make_relative_path(heightmap_path, config_directory),
         }
+
+        if savegame_path is not None:
+            project_data["savegame"] = self._make_relative_path(savegame_path, config_directory)
 
         config_directory.mkdir(parents=True, exist_ok=True)
 
@@ -85,13 +96,72 @@ class ProjectFileStore:
 
         heightmap_path = self._validate_optional_path(heightmap_path, tr("heightmap"))
 
+        # A savegame folder that is gone only drops the link.
+        savegame_path = self.stored_savegame(config_path)
+
         return {
             "config_path": str(config_path),
             "autodrive_xml": str(xml_path),
             "background_dds": (str(background_path) if background_path is not None else None),
             "map_scale": int(project_data["map_scale"]),
             "heightmap": (str(heightmap_path) if heightmap_path is not None else None),
+            "savegame": str(savegame_path) if savegame_path is not None else None,
         }
+
+    def set_savegame(self, config_path, savegame_path):
+        """Links a savegame folder to an existing project, or removes the link (None). The other
+        settings in the file are kept."""
+
+        config_path = Path(config_path).resolve()
+
+        with config_path.open("r", encoding="utf-8") as config_file:
+            project_data = json.load(config_file)
+
+        if savegame_path is None:
+            project_data.pop("savegame", None)
+        else:
+            project_data["savegame"] = self._make_relative_path(savegame_path, config_path.parent)
+
+        with config_path.open("w", encoding="utf-8") as config_file:
+            json.dump(project_data, config_file, indent=2, ensure_ascii=False)
+
+    def stored_savegame(self, config_path) -> Path | None:
+        """The savegame folder linked in a project, if it still exists."""
+
+        config_path = Path(config_path).resolve()
+
+        with config_path.open("r", encoding="utf-8") as config_file:
+            stored = json.load(config_file).get("savegame")
+
+        savegame_path = self._resolve_relative_path(stored, config_path.parent)
+
+        return savegame_path if savegame_path is not None and savegame_path.is_dir() else None
+
+    def find_project_for(self, xml_path) -> Path | None:
+        """The first project in the projects folder that uses this AutoDrive XML."""
+
+        for config_path in sorted(self.projects_directory.glob("*.json")):
+            if self.project_uses(config_path, xml_path):
+                return config_path
+
+        return None
+
+    @staticmethod
+    def project_uses(config_path, xml_path) -> bool:
+        """Whether the project file refers to this AutoDrive XML. Unreadable files do not."""
+
+        config_path = Path(config_path)
+
+        try:
+            with config_path.open("r", encoding="utf-8") as config_file:
+                stored = json.load(config_file).get("autodrive_xml")
+
+            return (
+                bool(stored) and (config_path.parent / stored).resolve() == Path(xml_path).resolve()
+            )
+
+        except (OSError, ValueError, AttributeError, TypeError):
+            return False
 
     def _validate_project_data(self, project_data):
         if not isinstance(project_data, dict):
@@ -117,6 +187,8 @@ class ProjectFileStore:
         self._validate_relative_config_path(project_data.get("background_dds"), tr("DDS file"))
 
         self._validate_relative_config_path(project_data.get("heightmap"), tr("heightmap"))
+
+        self._validate_relative_config_path(project_data.get("savegame"), tr("savegame"))
 
     @staticmethod
     def _validate_required_path(file_path, description):

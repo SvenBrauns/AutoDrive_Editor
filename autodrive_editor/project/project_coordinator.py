@@ -19,6 +19,7 @@ from autodrive_editor.file_io.routes_index import (
     mark_route_saved,
     routes_index_for,
 )
+from autodrive_editor.file_io.savegame_parking import linked_park_markers
 from autodrive_editor.file_io.savegame_vehicles import (
     read_park_destinations,
     renumber_vehicle_markers,
@@ -97,6 +98,9 @@ class ProjectCoordinator(QObject):
         # vehicles.xml of the loaded savegame. Only saving into that
         # savegame updates it, not saving a copy elsewhere.
         self._vehicles_path: Path | None = None
+
+        # Savegame folder linked to a route; its vehicles' parking positions are shown.
+        self.savegame_directory: Path | None = None
 
         # Files backed up as .bak in this session.
         self._backed_up_paths: set[Path] = set()
@@ -193,6 +197,7 @@ class ProjectCoordinator(QObject):
         self.autodrive_data = loaded.data
         self.config_source = source
         self._file_markers = list(loaded.data.markers.values())
+        self.savegame_directory = None
         self._vehicles_path = (
             xml_path.parent / "vehicles.xml" if source.format == ConfigFormat.SAVEGAME else None
         )
@@ -383,9 +388,21 @@ class ProjectCoordinator(QObject):
         self._file_markers = file_markers
         self._show_parking()
 
+    def set_savegame(self, directory: Path | None):
+        """Links a savegame folder to the loaded route, or removes the link (None)."""
+
+        self.savegame_directory = Path(directory) if directory is not None else None
+        self._show_parking()
+
     def _show_parking(self):
-        """Marks the markers the savegame's vehicles park at. vehicles.xml numbers them in the
-        order of the file on disk."""
+        """Marks the markers vehicles park at: those of the loaded savegame, numbered in the order
+        of the file on disk, or those of the savegame linked to a route."""
+
+        if self.savegame_directory is not None:
+            self.scene_renderer.set_parking_markers(
+                linked_park_markers(self._file_markers, self.savegame_directory)
+            )
+            return
 
         numbers = set()
 
@@ -413,6 +430,7 @@ class ProjectCoordinator(QObject):
             background_path=self.background_map.file_path,
             map_scale=self.background_map.map_scale,
             heightmap_path=self.current_heightmap_path,
+            savegame_path=self.savegame_directory,
         )
 
         self.current_config_path = str(saved_path)
@@ -472,6 +490,9 @@ class ProjectCoordinator(QObject):
             self._set_heightmap_path(None)
 
         self.load_xml_file(project_data["autodrive_xml"], detect_map=False)
+
+        if project_data.get("savegame"):
+            self.set_savegame(project_data["savegame"])
 
     def clear_scene_content(self):
         self.measurement_coordinator.remove_scene_items()

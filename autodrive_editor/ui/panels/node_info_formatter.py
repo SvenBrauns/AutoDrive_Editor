@@ -60,6 +60,7 @@ class NodeInfoFormatter:
         return [
             tr("Name: {name}", name=marker_data.name),
             tr("Group: {group}", group=marker_data.group),
+            tr("Number: {number}", number=autodrive_data.marker_position(node_data.node_id) + 1),
         ]
 
     def _get_heightmap_lines(self, node_data: NodeData) -> list[str]:

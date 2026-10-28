@@ -106,3 +106,57 @@ def test_load_reports_a_missing_referenced_file(store, tmp_path, files):
 
     with pytest.raises(FileNotFoundError):
         store.load_project(path)
+
+
+def test_linked_savegame_is_stored_relative(store, tmp_path, files):
+    savegame = tmp_path / "savegame3"
+    savegame.mkdir()
+
+    path = save(store, tmp_path, files, savegame_path=savegame)
+
+    assert json.loads(path.read_text(encoding="utf-8"))["savegame"] == "../savegame3"
+    assert store.load_project(path)["savegame"] == str(savegame.resolve())
+
+
+def test_project_without_savegame_has_no_link(store, tmp_path, files):
+    path = save(store, tmp_path, files)
+
+    assert "savegame" not in json.loads(path.read_text(encoding="utf-8"))
+    assert store.load_project(path)["savegame"] is None
+
+
+def test_missing_savegame_folder_only_drops_the_link(store, tmp_path, files):
+    savegame = tmp_path / "savegame3"
+    savegame.mkdir()
+    path = save(store, tmp_path, files, savegame_path=savegame)
+    savegame.rmdir()
+
+    assert store.load_project(path)["savegame"] is None
+    assert store.stored_savegame(path) is None
+
+
+def test_set_savegame_keeps_the_other_settings(store, tmp_path, files):
+    savegame = tmp_path / "savegame3"
+    savegame.mkdir()
+    path = save(store, tmp_path, files)
+
+    store.set_savegame(path, savegame)
+
+    assert store.stored_savegame(path) == savegame.resolve()
+    assert store.load_project(path)["map_scale"] == 4
+
+    store.set_savegame(path, None)
+
+    assert "savegame" not in json.loads(path.read_text(encoding="utf-8"))
+
+
+def test_finds_the_project_of_an_xml(store, tmp_path, files):
+    (tmp_path / "projects" / "broken.json").write_text("{", encoding="utf-8")
+    other = files / "other.xml"
+    other.write_text("x", encoding="utf-8")
+    path = save(store, tmp_path, files)
+
+    assert store.find_project_for(files / "route.xml") == path
+    assert store.find_project_for(other) is None
+    assert store.project_uses(path, files / "route.xml")
+    assert not store.project_uses(tmp_path / "projects" / "broken.json", files / "route.xml")
