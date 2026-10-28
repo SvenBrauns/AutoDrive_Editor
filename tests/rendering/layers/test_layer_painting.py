@@ -117,17 +117,51 @@ def test_other_connection_kinds_are_still_drawn(long_connection):
     assert long_connection.connection_layer.drawn_arrows == 1
 
 
-def test_subprio_connection_has_its_own_color(qapp):
+def test_connection_into_subprio_node_keeps_its_type_color(qapp):
     renderer = render(
         NodeData(1, 0, 0, 0, outgoing={2}), NodeData(2, 100, 0, 0, flag=SUBPRIO_FLAG, incoming={1})
     )
-    color = QColor(*DisplayStyle().subprio_connection_color).name()
+    color = QColor(*DisplayStyle().regular_connection_color).name()
 
     assert paint_scene(renderer.scene, (50, 0), scale=4.0).color_at(49, 0.25) == color
 
-    renderer.set_visibility(Visibility(subprio_connections=False))
 
-    assert paint_scene(renderer.scene, (50, 0), scale=4.0).color_at(49, 0.25) == "#ffffff"
+def test_dual_connection_gets_an_arrow_a_third_from_each_end(qapp):
+    renderer = render(
+        NodeData(1, 0, 0, 0, outgoing={2}, incoming={2}),
+        NodeData(2, 90, 0, 0, outgoing={1}, incoming={1}),
+    )
+    color = QColor(*DisplayStyle().dual_connection_color).name()
+
+    painted = paint_scene(renderer.scene, (45, 0), scale=4.0)
+
+    assert renderer.connection_layer.drawn_arrows == 2
+    # Each arrow's wide base faces the middle, its tip points to the nearer end.
+    assert painted.color_at(31, 0.5) == color
+    assert painted.color_at(59, 0.5) == color
+    assert painted.color_at(45, 0.5) != color
+
+
+def test_short_dual_connection_has_no_arrows(qapp):
+    renderer = render(
+        NodeData(1, 0, 0, 0, outgoing={2}, incoming={2}),
+        NodeData(2, 90, 0, 0, outgoing={1}, incoming={1}),
+    )
+
+    paint_scene(renderer.scene, (45, 0), scale=0.05)
+
+    assert renderer.connection_layer.drawn_arrows == 0
+
+
+def test_node_colors_come_from_the_display_style(qapp):
+    renderer = render(NodeData(1, 0, 0, 0), NodeData(2, 10, 0, 0, flag=SUBPRIO_FLAG))
+    renderer.set_display_style(
+        DisplayStyle(regular_node_color=(0, 0, 255), subprio_node_color=(255, 0, 255))
+    )
+
+    painted = paint_scene(renderer.scene, (5, 0), scale=8.0)
+
+    assert (painted.color_at(0, 0), painted.color_at(10, 0)) == ("#0000ff", "#ff00ff")
 
 
 def test_hidden_nodes_and_their_selection_are_not_drawn(qapp):

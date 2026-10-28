@@ -61,4 +61,4 @@ class SelectionLayerItem(MapLayerItem):
 
         draw_points(painter, polygons, OUTLINE_COLOR, diameter_px + 2 * ring_px + 2)
         draw_points(painter, polygons, RING_COLOR, diameter_px + 2 * ring_px)
-        draw_nodes(painter, [self.regular], [self.subprio], diameter_px, border_px=0)
+        draw_nodes(painter, style, [self.regular], [self.subprio], diameter_px, border_px=0)

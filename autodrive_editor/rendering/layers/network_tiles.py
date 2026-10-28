@@ -5,18 +5,17 @@ from PySide6.QtCore import QPointF, QRectF
 from PySide6.QtGui import QPainterPath, QPolygonF
 
 from autodrive_editor.model.connections import ConnectionType
-from autodrive_editor.rendering.connections.connection_data import ConnectionKind
 from autodrive_editor.rendering.spatial.connection_index import ConnectionSpatialIndex
 from autodrive_editor.rendering.spatial.node_index import NodeSpatialIndex
 
 
 @dataclass
 class ConnectionTile:
-    """One path per connection kind, plus the one-way connections that can get arrows as
-    (length, source_x, source_z, target_x, target_z, kind), longest first."""
+    """One path per connection type, plus the connections that can get arrows as
+    (length, source_x, source_z, target_x, target_z, type), longest first."""
 
-    paths: dict[ConnectionKind, QPainterPath]
-    one_way: list[tuple[float, float, float, float, float, ConnectionKind]]
+    paths: dict[ConnectionType, QPainterPath]
+    arrows: list[tuple[float, float, float, float, float, ConnectionType]]
     bounds: QRectF
 
 
@@ -75,23 +74,25 @@ class NetworkTiles:
 
 
 def _build_connection_tile(connections) -> ConnectionTile:
-    paths = {kind: QPainterPath() for kind in ConnectionKind}
-    one_way = []
+    paths = {connection_type: QPainterPath() for connection_type in ConnectionType}
+    arrows = []
 
     for connection in connections:
-        path = paths[connection.kind]
-        path.moveTo(connection.source_x, connection.source_z)
-        path.lineTo(connection.target_x, connection.target_z)
+        source_x, source_z = connection.source_x, connection.source_z
+        target_x, target_z = connection.target_x, connection.target_z
 
-        if connection.connection_type != ConnectionType.DUAL:
-            source_x, source_z = connection.source_x, connection.source_z
-            target_x, target_z = connection.target_x, connection.target_z
-            length = math.hypot(target_x - source_x, target_z - source_z)
+        path = paths[connection.connection_type]
+        path.moveTo(source_x, source_z)
+        path.lineTo(target_x, target_z)
 
-            if length > 0:
-                one_way.append((length, source_x, source_z, target_x, target_z, connection.kind))
+        length = math.hypot(target_x - source_x, target_z - source_z)
 
-    one_way.sort(key=lambda entry: entry[0], reverse=True)
+        if length > 0:
+            arrows.append(
+                (length, source_x, source_z, target_x, target_z, connection.connection_type)
+            )
+
+    arrows.sort(key=lambda entry: entry[0], reverse=True)
 
     bounds = QRectF()
 
@@ -100,7 +101,7 @@ def _build_connection_tile(connections) -> ConnectionTile:
             bounds = bounds.united(path.boundingRect())
 
     # Bounds of zero width or height (one straight line) never intersect, hence the margin.
-    return ConnectionTile(paths=paths, one_way=one_way, bounds=bounds.adjusted(-1, -1, 1, 1))
+    return ConnectionTile(paths=paths, arrows=arrows, bounds=bounds.adjusted(-1, -1, 1, 1))
 
 
 def _build_node_tile(nodes) -> NodeTile:

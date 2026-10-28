@@ -36,7 +36,6 @@ SHOW_GROUPS = (
         ("regular_connections", tr("Regular connections")),
         ("dual_connections", tr("Dual connections")),
         ("reverse_connections", tr("Reverse connections")),
-        ("subprio_connections", tr("Subprio connections")),
     ),
     (
         ("markers", tr("Markers")),

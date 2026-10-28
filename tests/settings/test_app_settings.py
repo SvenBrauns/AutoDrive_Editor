@@ -168,7 +168,7 @@ def test_visibility_defaults_and_is_kept_between_sessions():
     assert AppSettings().visibility == Visibility()
 
     shown = Visibility(
-        nodes=False, node_ids=True, subprio_connections=False, hidden_selectable=True
+        nodes=False, node_ids=True, reverse_connections=False, hidden_selectable=True
     )
     AppSettings().set_visibility(shown)
 

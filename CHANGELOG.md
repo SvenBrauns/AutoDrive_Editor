@@ -1,5 +1,11 @@
 # Version history
 
+## Unreleased
+
+- Dual connections get an arrow pointing to each end
+- Connections are always colored by their type, also into subprio nodes; the separate subprio connection color and `View → Show → Subprio connections` are gone
+- The colors of regular and subprio nodes can be set under `View → Display options`
+
 ## 1.1.0 – 2026-10-27
 
 - `Help → Check for updates`: asks GitHub whether a newer version exists and links to its release page; optional check at startup (off by default, set in the first-start dialog or under `File → Settings`)

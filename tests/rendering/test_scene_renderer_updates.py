@@ -41,7 +41,7 @@ def drawn_connections(renderer):
     return sorted(
         (source_x, source_z, target_x, target_z)
         for tile in renderer.tiles.connection_tiles.values()
-        for _, source_x, source_z, target_x, target_z, _ in tile.one_way
+        for _, source_x, source_z, target_x, target_z, _ in tile.arrows
     )
 
 
@@ -165,22 +165,6 @@ def test_closest_node_wins(renderer):
     move_node(renderer, 2, 1, 0)
 
     assert renderer.get_node_at(0.8, 0, 4.0).node_id == 2
-
-
-def test_flag_change_makes_connections_subprio_and_back(renderer):
-    def subprio():
-        connections = renderer.connection_spatial_index.get_connections_in_rect(everything())
-        return [c.subprio for c in connections]
-
-    renderer.autodrive_data.nodes[2].flag = SUBPRIO_FLAG
-    renderer.apply_changes(changed_flag_node_ids={2})
-
-    assert subprio() == [True]
-
-    renderer.autodrive_data.nodes[2].flag = 0
-    renderer.apply_changes(changed_flag_node_ids={2})
-
-    assert subprio() == [False]
 
 
 def test_hidden_nodes_are_not_found_unless_hidden_items_are_selectable(renderer):

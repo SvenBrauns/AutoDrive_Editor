@@ -1,8 +1,7 @@
 from PySide6.QtCore import QRectF
 
-from autodrive_editor.model.autodrive_data import SUBPRIO_FLAG, AutoDriveData, NodeData
+from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
 from autodrive_editor.model.connections import ConnectionType
-from autodrive_editor.rendering.connections.connection_data import ConnectionKind
 from autodrive_editor.rendering.spatial.connection_index import ConnectionSpatialIndex
 
 
@@ -202,53 +201,3 @@ def test_changed_drawing_tiles_are_reported_once():
     assert index.take_changed_tiles() == {(0, 0), (2, 0)}
     assert index.take_changed_tiles() == set()
     assert (2, 0) in index.connections_by_drawing_tile
-
-
-def subprio_by_ids(index):
-    return {
-        (c.source_id, c.target_id): c.subprio for c in index.get_connections_in_rect(everything())
-    }
-
-
-def test_connections_into_subprio_nodes_are_subprio():
-    data = build_data()
-    data.nodes[2].flag = SUBPRIO_FLAG
-
-    index = build_index(data)
-
-    # 1 -> 2 leads into node 2; the dual connection 2 <-> 3 starts at it.
-    assert subprio_by_ids(index) == {(1, 2): True, (2, 3): True}
-    assert {c.kind for c in index.get_connections_in_rect(everything())} == {ConnectionKind.SUBPRIO}
-
-
-def test_connection_kind_is_its_type_unless_subprio():
-    kinds = {
-        c.connection_type: c.kind
-        for c in build_index(build_data()).get_connections_in_rect(everything())
-    }
-
-    assert kinds == {
-        ConnectionType.REGULAR: ConnectionKind.REGULAR,
-        ConnectionType.DUAL: ConnectionKind.DUAL,
-    }
-
-
-def test_moving_a_node_keeps_the_subprio_state():
-    data = build_data()
-    data.nodes[3].flag = SUBPRIO_FLAG
-    index = build_index(data)
-
-    data.nodes[3].x = 500
-    index.update_node_positions(data, {3})
-
-    assert subprio_by_ids(index) == {(1, 2): False, (2, 3): True}
-
-
-def test_rebuilding_a_node_picks_up_its_new_flag():
-    data = build_data()
-    index = build_index(data)
-
-    data.nodes[2].flag = SUBPRIO_FLAG
-    index.rebuild_node_connections(data, {2})
-
-    assert subprio_by_ids(index) == {(1, 2): True, (2, 3): True}

@@ -94,7 +94,10 @@ OPTION_GROUPS = (
             ("selected_node_ring_width", tr("Selection ring width (m):"), 0.0, 20.0, 0.05),
             ("node_id_min_zoom", tr("IDs from zoom:"), 0.0, 50.0, 0.1),
         ),
-        (),
+        (
+            ("regular_node_color", tr("Regular color:")),
+            ("subprio_node_color", tr("Subprio color:")),
+        ),
     ),
     (
         tr("Connections"),
@@ -110,7 +113,6 @@ OPTION_GROUPS = (
             ("regular_connection_color", tr("Regular color:")),
             ("dual_connection_color", tr("Dual color:")),
             ("reverse_connection_color", tr("Reverse color:")),
-            ("subprio_connection_color", tr("Subprio color:")),
         ),
     ),
     (

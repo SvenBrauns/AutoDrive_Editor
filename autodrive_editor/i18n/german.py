@@ -249,7 +249,6 @@ TEXTS = {
     "Regular connections": "Regular-Connections",
     "Dual connections": "Dual-Connections",
     "Reverse connections": "Reverse-Connections",
-    "Subprio connections": "Subprio-Connections",
     "Marker names": "Markernamen",
     "Parking positions": "Parkpositionen",
     "Hidden items can be selected": "Ausgeblendete Elemente auswählbar",

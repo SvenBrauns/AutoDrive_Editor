@@ -31,17 +31,6 @@ def get_connection_type(source_node: NodeData, target_node: NodeData) -> Connect
     return ConnectionType.REGULAR
 
 
-def is_subprio_connection(
-    source_node: NodeData, target_node: NodeData, connection_type: ConnectionType
-) -> bool:
-    """The connection leads into a subprio node; a dual connection also when it starts at one."""
-
-    if connection_type == ConnectionType.DUAL:
-        return source_node.is_subprio or target_node.is_subprio
-
-    return target_node.is_subprio
-
-
 def is_dual_connection(source_node: NodeData, target_node: NodeData) -> bool:
     """Both nodes list each other as incoming and outgoing."""
 

@@ -24,7 +24,7 @@ def build(*nodes):
     return data, node_index, connection_index, tiles
 
 
-def test_dual_connection_is_drawn_once_without_arrow(qapp):
+def test_dual_connection_is_drawn_once_and_can_get_arrows(qapp):
     _, _, _, tiles = build(
         NodeData(1, 0, 0, 0, outgoing={2}, incoming={2}),
         NodeData(2, 10, 0, 0, outgoing={1}, incoming={1}),
@@ -33,10 +33,10 @@ def test_dual_connection_is_drawn_once_without_arrow(qapp):
     (tile,) = tiles.connection_tiles.values()
 
     assert tile.paths[ConnectionType.DUAL].elementCount() == 2  # one moveTo, one lineTo
-    assert tile.one_way == []
+    assert tile.arrows == [(10, 0, 0, 10, 0, ConnectionType.DUAL)]
 
 
-def test_one_way_connections_are_sorted_longest_first(qapp):
+def test_arrow_connections_are_sorted_longest_first(qapp):
     _, _, _, tiles = build(
         NodeData(1, 0, 0, 0, outgoing={2, 3}),
         NodeData(2, 5, 0, 0, incoming={1}),
@@ -45,7 +45,7 @@ def test_one_way_connections_are_sorted_longest_first(qapp):
 
     (tile,) = tiles.connection_tiles.values()
 
-    assert [(entry[0], entry[5]) for entry in tile.one_way] == [
+    assert [(entry[0], entry[5]) for entry in tile.arrows] == [
         (30, ConnectionType.REVERSE),
         (5, ConnectionType.REGULAR),
     ]
@@ -74,7 +74,7 @@ def test_only_changed_tiles_are_rebuilt(qapp):
 
     assert tiles.node_tiles[(5, 0)] is far_tile
     assert tiles.node_tiles[(0, 0)].regular.at(1).x() in (10, 30)
-    assert tiles.connection_tiles[(0, 0)].one_way[0][3] == 30
+    assert tiles.connection_tiles[(0, 0)].arrows[0][3] == 30
 
 
 def test_emptied_tiles_are_dropped(qapp):

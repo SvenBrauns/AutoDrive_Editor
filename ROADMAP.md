@@ -8,7 +8,6 @@ The editor supports only Farming Simulator 25.
 
 Design: [docs/parking_spots.md](docs/parking_spots.md). Each step is its own branch.
 
-- [ ] connection display: dual connections get arrows in both directions, the line color shows the connection type, subprio is shown on the nodes only
 - [ ] link a savegame to a route (parking positions for routes, matched by marker name and group; marker number in the debug info)
 - [ ] read sheds with an indoor area from the savegame and show them as a layer
 - [ ] parking spot dialog and generator (back in and drive through, templates per shed type)
