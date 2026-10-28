@@ -23,6 +23,7 @@ from autodrive_editor.editing.operations.move_nodes import MoveNodesOperation
 from autodrive_editor.editing.operations.network_check import NetworkCheckOperation
 from autodrive_editor.editing.operations.node_position import NodePositionOperation
 from autodrive_editor.editing.operations.node_types import NodeTypeOperation
+from autodrive_editor.editing.operations.parking_spots import ParkingSpotOperation
 from autodrive_editor.editing.operations.reverse_direction import ReverseDirectionOperation
 from autodrive_editor.editing.operations.rotate_selection import RotateSelectionOperation
 from autodrive_editor.editing.path_shapes import PathShape
@@ -57,6 +58,7 @@ from autodrive_editor.ui.controls.grid_coordinator import GridCoordinator
 from autodrive_editor.ui.dialogs.marker_dialog import MarkerDialog
 from autodrive_editor.ui.dialogs.messages import APP_TITLE
 from autodrive_editor.ui.dialogs.node_position_dialog import NodePositionDialog
+from autodrive_editor.ui.dialogs.parking_spot_dialog import ParkingSpotDialog
 from autodrive_editor.ui.dialogs.settings_dialog import SettingsDialog
 from autodrive_editor.ui.file_controller import FileController
 from autodrive_editor.ui.map_import_controller import MapImportController
@@ -290,6 +292,14 @@ class MainWindow(QMainWindow):
 
         return dialog.values if dialog.exec() else None
 
+    def _ask_parking_settings(self, area, autodrive_data):
+        taken_names = {(marker.name, marker.group) for marker in autodrive_data.markers.values()}
+        dialog = ParkingSpotDialog(
+            area, autodrive_data.marker_group_names(), taken_names, parent=self
+        )
+
+        return dialog.settings if dialog.exec() else None
+
     def _ask_marker(self, title, marker, group, groups, taken_names):
         dialog = MarkerDialog(
             title,
@@ -413,6 +423,14 @@ class MainWindow(QMainWindow):
             parent=self,
         )
 
+        self.parking_spot_operation = ParkingSpotOperation(
+            context,
+            shed_at=self._get_shed_at,
+            # Looked up on each call, so tests can replace _ask_parking_settings.
+            ask_settings=lambda area, data: self._ask_parking_settings(area, data),
+            parent=self,
+        )
+
         self.reverse_direction_operation = ReverseDirectionOperation(
             context, connection_at=self._get_connection_at, parent=self
         )
@@ -439,6 +457,7 @@ class MainWindow(QMainWindow):
             self.create_path_operation,
             self.clipboard_operation,
             self.node_position_operation,
+            self.parking_spot_operation,
             self.reverse_direction_operation,
             self.marker_operation,
             self.network_check_operation,
@@ -519,6 +538,20 @@ class MainWindow(QMainWindow):
 
         self.view.register_tool(
             InteractionMode.MOVE_NODES, MoveNodesTool(self.view, self.move_nodes_operation)
+        )
+
+        self.view.register_tool(
+            InteractionMode.PARKING_SPOTS,
+            NodeClickTool(
+                self.view,
+                self.parking_spot_operation.create_at,
+                lambda: (
+                    tr("Click a shed to create parking spots in it")
+                    if self.scene_renderer.shed_areas
+                    else tr("No sheds shown: open a savegame or link one to the route")
+                ),
+                is_target=lambda view_position: self._get_shed_at(view_position) is not None,
+            ),
         )
 
         self.view.register_tool(
@@ -753,6 +786,11 @@ class MainWindow(QMainWindow):
         scene_position = self.view.mapToScene(view_position)
 
         return scene_position.x(), scene_position.y()
+
+    def _get_shed_at(self, view_position):
+        scene_position = self.view.mapToScene(view_position)
+
+        return self.scene_renderer.get_shed_at(scene_position.x(), scene_position.y())
 
     def _get_connection_at(self, view_position):
         scene_position = self.view.mapToScene(view_position)

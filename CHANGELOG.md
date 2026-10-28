@@ -8,6 +8,7 @@
 - Routes can be linked to a savegame (`File → Link savegame…`, also offered when a route is opened) to show where its vehicles park; the link is kept in the route's project
 - The debug info shows the number of a selected marker
 - `View → Show → Sheds`: outlines of the indoor areas of the buildings placed in the loaded or linked savegame
+- Parking spots tool (`S`, next to Selection): click a shed to create its parking spots, backed in or driven through, with markers and shared entry and exit lines, in one undo step
 
 ## 1.1.0 – 2026-10-27
 

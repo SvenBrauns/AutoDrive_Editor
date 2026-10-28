@@ -9,6 +9,7 @@ from autodrive_editor.measurement.mode import MeasurementMode
 from autodrive_editor.ui.actions.shortcuts import ShortcutRegistry
 from autodrive_editor.ui.actions.tool_catalog import (
     NAVIGATION_TOOL,
+    PARKING_TOOL,
     SELECTION_TOOL,
     TOOL_GROUPS,
     ToolDefinition,
@@ -145,6 +146,8 @@ class MainWindowActions:
         self.navigation_action = self._create_tool_action(NAVIGATION_TOOL)
 
         self.selection_action = self._create_tool_action(SELECTION_TOOL)
+
+        self.parking_action = self._create_tool_action(PARKING_TOOL)
 
         for _, rows in TOOL_GROUPS:
             for row in rows:
@@ -650,6 +653,8 @@ class MainWindowActions:
         self.quick_access_toolbar.addAction(self.navigation_action)
 
         self.quick_access_toolbar.addAction(self.selection_action)
+
+        self.quick_access_toolbar.addAction(self.parking_action)
 
         self._add_toolbar_gap()
 

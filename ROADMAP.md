@@ -8,7 +8,9 @@ The editor supports only Farming Simulator 25.
 
 Design: [docs/parking_spots.md](docs/parking_spots.md). Each step is its own branch.
 
-- [ ] parking spot dialog and generator (back in and drive through, templates per shed type)
+- [ ] 3a: parking spot dialog with all fields, static top view and generator
+- [ ] 3b: clickable previews (walls, gaps and open side in the top view, bay line in the side view)
+- [ ] 3c: templates per shed type
 - [ ] afterwards: turn docs/parking_spots.md into a manual section and delete it
 
 ## 2. Heightmap

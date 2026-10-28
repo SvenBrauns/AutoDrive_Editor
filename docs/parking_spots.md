@@ -2,7 +2,7 @@
 
 Agreed design for creating AutoDrive parking spots in sheds. Temporary: when the feature is done, this file becomes a section of the manual and is deleted.
 
-Steps (each its own branch, in this order): 0 connection display, 1 savegame link, 2 sheds layer, 3 parking spot dialog.
+Steps (each its own branch, in this order): 0 connection display, 1 savegame link, 2 sheds layer, 3 parking spot dialog. Step 3 is split: 3a dialog with all fields, static top view and generator; 3b clickable previews (top view and side view); 3c templates.
 
 ## Step 0 – Connection display
 
@@ -27,21 +27,22 @@ Steps (each its own branch, in this order): 0 connection display, 1 savegame lin
 
 ## Step 3 – Parking spot dialog
 
-Opened by right-clicking a shed outline → "Create parking spots…".
+Opened with the "Parking spots" tool (toolbar, next to Selection; shortcut S): left-click a shed outline. Right-click stays area selection.
 
 ### Fields
 
 - Mode: back in, or drive through.
-- Open side (back in) or entry side (drive through, the exit is the opposite side; front ↔ back or left ↔ right, never neighboring sides).
-- Number of bays. The bay width is calculated: (shed length − wall offsets − gaps) ÷ bays. It is shown read-only; if it is too small, it turns red and Create is disabled.
+- Open side (back in) or entry side (drive through, the exit is the opposite side; front ↔ back or left ↔ right, never neighboring sides). Sides are relative to the building (front = the indoor area's height end, the building's +Z) and show their compass direction. Without a template a long side is open: the front if it is long, otherwise the left.
+- Number of bays. The bay width is calculated: (shed length − wall offsets − gaps) ÷ bays. It is shown read-only; if it is below 3 m, it turns red and Create is disabled. Default number of bays: shed length ÷ 6.6 m (G1's bay width).
 - Offsets in metres (one decimal): left wall, right wall, back wall (back in) or exit offset (drive through), and the gap between bays. "All gaps" sets every gap; single gaps are edited by clicking them in the preview.
-- Direction of the entry line and the exit line, each chosen by the user.
+  Defaults: walls 0.5 m, back wall or exit offset 2.0 m, gaps 0 m.
+- Direction of the entry line and the exit line, each chosen by the user: left to right or right to left, seen from outside the open side (as in the preview).
 - Markers: base name, start number (e.g. "Shed" from 3 → "Shed 3", "Shed 4", …), group (existing or new).
 - Buttons: Reset shed settings, Create, Cancel.
 
 ### Previews
 
-- Top view of the shed, rotated so the open side is at the bottom; updates live. Walls and gaps can be clicked to edit their offset; sides can be clicked to make them the open side.
+- Top view of the shed, rotated so the open side is at the bottom, with an arrow to map north; updates live. Walls and gaps can be clicked to edit their offset; sides can be clicked to make them the open side.
 - Side view of one bay line: click a segment to edit its length, "+" inserts a node, Delete removes the selected node; the entry and exit branch points can be moved to other nodes. All bays use this layout.
 
 ### Generated network (back in)
@@ -49,18 +50,20 @@ Opened by right-clicking a shed outline → "Create parking spots…".
 Per bay, copied from marker G1 in group "15.P&R Hörmannhof" of the example route (`xml/g8Cq02ZGwaIPuGPr.xml`, marker node 108774). Distances are from the marker; all nodes are subprio.
 
 - Marker: the last node before the back wall (at the back wall offset).
-- Dual line from the marker out of the shed: first step 0.5 m, then 1.5 m steps, to about 31 m.
-- Entry branch from the entry line joins the dual line about 14 m from the marker, just outside the shed, pointing away from the shed (so the vehicle can't turn straight into the bay).
-- Exit branch from the second-to-last node of the dual line (about 26.5 m) into the exit line.
+- Default bay line, fitted to the shed depth: dual line from the marker 0.5 m, then 1.5 m steps up to 1 m before the entry branch. Outside the open side G1's spacing: nodes at 2.3, 3.3, 4.8, 6.3, 7.8, 11.2, 14.8 and 19.7 m.
+- Entry line 1 m outside the open side. Its branch starts 1.2 m before the bay (against the travel direction) and joins the dual line 2.3 m outside, pointing away from the shed (so the vehicle can't turn straight into the bay).
+- Exit branch from the second-to-last node of the dual line (14.8 m outside) to the exit line, 1.6 m further out and 1.7 m along the line.
 - Turn: from the dual line's end two forward connections (+3.2 m, +1.2 m); the last node has a reverse connection back to the dual line's end. The vehicle reverses straight to the marker.
-- Shared by all bays: the entry line and the exit line. Their open ends are selected after creation so the user can connect them to the road network.
+- Shared by all bays: the entry line and the exit line, straight and parallel to the open side, one node per bay plus an end 5 m beyond the outer bays. Their four open ends are selected after creation so the user can connect them to the road network.
 
 ### Generated network (drive through)
 
 - One straight forward line per bay from the entry line, through the shed, to the marker just before the exit side (exit offset), then on to the exit line. No dual and no reverse connections.
+- The lines run 10 m outside the entry and exit side; bay line nodes about every 1.5 m, evenly spread.
 
 ### Other rules
 
+- All new nodes are subprio, also on the entry and exit lines.
 - New nodes take the shed's height from `placeables.xml` (placing a shed levels the ground).
 - Everything is one `EditCommand`, one undo step. No check for existing spots: running it twice creates them twice, undo removes them.
 - Each bay holds a list of stopping points (one for now), so rows of parking positions in drive-through sheds can be added later.

@@ -45,3 +45,12 @@ def test_new_route_clears_the_sheds(renderer):
 
     assert renderer.shed_areas == []
     assert renderer.shed_layer.polygons == []
+
+
+def test_shed_is_found_inside_its_outline_while_shown(renderer):
+    assert renderer.get_shed_at(510, 505) == AREA
+    assert renderer.get_shed_at(540, 505) is None
+
+    renderer.set_visibility(Visibility(sheds=False))
+
+    assert renderer.get_shed_at(510, 505) is None
