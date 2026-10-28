@@ -89,7 +89,7 @@ class MainWindowActions:
             (
                 tr("File"),
                 ("open_route", "open_savegame", "load_xml", "save_xml", "save_xml_as")
-                + ("load_project", "save_project", "settings", "exit"),
+                + ("load_project", "save_project", "link_savegame", "settings", "exit"),
             ),
             (
                 tr("Edit"),
@@ -207,6 +207,13 @@ class MainWindowActions:
         self.save_project_action = QAction(tr("Save project"), self.window)
 
         self.save_project_action.triggered.connect(self.window.files.save_project)
+
+        self.link_savegame_action = QAction(tr("Link savegame…"), self.window)
+        self.link_savegame_action.setStatusTip(
+            tr("Show where the vehicles of a savegame park on the loaded route")
+        )
+        self.link_savegame_action.setEnabled(False)
+        self.link_savegame_action.triggered.connect(self.window.savegame_link.choose_link)
 
         self.open_route_action = QAction(tr("Open route…"), self.window)
         self.open_route_action.setStatusTip(
@@ -476,6 +483,8 @@ class MainWindowActions:
         file_menu.addAction(self.load_project_action)
 
         file_menu.addAction(self.save_project_action)
+
+        file_menu.addAction(self.link_savegame_action)
 
         file_menu.addSeparator()
 

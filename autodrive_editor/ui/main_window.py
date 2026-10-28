@@ -26,6 +26,7 @@ from autodrive_editor.editing.operations.node_types import NodeTypeOperation
 from autodrive_editor.editing.operations.reverse_direction import ReverseDirectionOperation
 from autodrive_editor.editing.operations.rotate_selection import RotateSelectionOperation
 from autodrive_editor.editing.path_shapes import PathShape
+from autodrive_editor.file_io.autodrive_xml import ConfigFormat
 from autodrive_editor.file_io.project_file import ProjectFileStore
 from autodrive_editor.i18n import tr
 from autodrive_editor.measurement.coordinator import MeasurementCoordinator
@@ -70,6 +71,7 @@ from autodrive_editor.ui.panels.node_info_formatter import NodeInfoFormatter
 from autodrive_editor.ui.panels.path_options import PathOptionsWidget
 from autodrive_editor.ui.panels.rotate_options import RotateOptionsWidget
 from autodrive_editor.ui.panels.welcome_panel import WelcomePanel
+from autodrive_editor.ui.savegame_link_controller import SavegameLinkController
 from autodrive_editor.ui.theme import apply_theme
 from autodrive_editor.ui.tools.connect_nodes_tool import ConnectNodesTool
 from autodrive_editor.ui.tools.create_node_tool import CreateNodeTool
@@ -465,6 +467,11 @@ class MainWindow(QMainWindow):
             self.local_projects_directory,
         )
 
+        self.savegame_link = SavegameLinkController(
+            self, self.settings, self.project_coordinator, self.project_files
+        )
+        self.files.config_opened.connect(self.savegame_link.offer_link)
+
         self.map_import = MapImportController(
             self, self.settings, self.map_cache, self.project_coordinator
         )
@@ -854,6 +861,7 @@ class MainWindow(QMainWindow):
         self.files.status_changed.connect(self._set_status)
 
         self.files.saved.connect(self._update_window_title)
+        self.savegame_link.status_changed.connect(self._set_status)
 
         self.map_import.status_changed.connect(self._set_status)
 
@@ -911,6 +919,10 @@ class MainWindow(QMainWindow):
         self.setWindowModified(False)
         self.actions.save_xml_action.setEnabled(True)
         self.actions.save_xml_as_action.setEnabled(True)
+        source = self.project_coordinator.config_source
+        self.actions.link_savegame_action.setEnabled(
+            source is not None and source.format == ConfigFormat.ROUTE_EXPORT
+        )
 
         self._update_window_title()
 

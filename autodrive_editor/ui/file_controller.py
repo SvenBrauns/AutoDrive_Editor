@@ -34,6 +34,9 @@ class FileController(QObject):
     # The list of recently opened files changed (list[RecentItem]).
     recent_items_changed = Signal(list)
 
+    # The user opened AutoDrive data, a project or an autosave.
+    config_opened = Signal()
+
     def __init__(
         self,
         window: QWidget,
@@ -204,6 +207,7 @@ class FileController(QObject):
 
         path = Path(filename)
         self._remember(RecentItem(RecentKind.XML, str(path), path.name))
+        self.config_opened.emit()
 
     def _load_config(self, path, display_name=None, map_name=None) -> bool:
         try:
@@ -214,6 +218,7 @@ class FileController(QObject):
             self._inform(tr("The AutoDrive data could not be loaded:\n{error}", error=ex))
             return False
 
+        self.config_opened.emit()
         return True
 
     def open_recent(self, item: RecentItem):
@@ -402,6 +407,7 @@ class FileController(QObject):
             return
 
         self.edit_history.mark_unsaved()
+        self.config_opened.emit()
 
     def _ask_restore_autosave(self, info) -> bool:
         answer = QMessageBox.question(
@@ -505,3 +511,4 @@ class FileController(QObject):
 
         path = Path(config_path)
         self._remember(RecentItem(RecentKind.PROJECT, str(path), path.stem))
+        self.config_opened.emit()

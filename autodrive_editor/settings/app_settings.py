@@ -1,6 +1,7 @@
 """Settings that are kept between editor sessions."""
 
 import json
+import os
 from dataclasses import fields
 from pathlib import Path
 
@@ -37,6 +38,7 @@ class AppSettings:
     THEME_KEY = "app/theme"
     SHORTCUTS_KEY = "app/shortcuts"
     CHECK_UPDATES_KEY = "app/check_updates"
+    NO_SAVEGAME_QUESTION_KEY = "routes/no_savegame_question"
 
     THEMES = ("system", "light", "dark")
     DEFAULT_AUTOSAVE_MINUTES = 5
@@ -238,6 +240,36 @@ class AppSettings:
         )
         self._settings.sync()
 
+    def asks_for_savegame(self, route_path) -> bool:
+        """Whether loading this route without a linked savegame asks for one."""
+
+        return _route_key(route_path) not in self._no_savegame_question_routes()
+
+    def set_asks_for_savegame(self, route_path, asks: bool):
+        routes = [
+            route
+            for route in self._no_savegame_question_routes()
+            if route != _route_key(route_path)
+        ]
+
+        if not asks:
+            routes.append(_route_key(route_path))
+
+        self._settings.setValue(self.NO_SAVEGAME_QUESTION_KEY, json.dumps(routes))
+        self._settings.sync()
+
+    def _no_savegame_question_routes(self) -> list[str]:
+        try:
+            routes = json.loads(self._settings.value(self.NO_SAVEGAME_QUESTION_KEY, "[]"))
+        except (TypeError, ValueError):
+            return []
+
+        return (
+            [route for route in routes if isinstance(route, str)]
+            if isinstance(routes, list)
+            else []
+        )
+
     @property
     def rotate_snap_angle(self) -> float:
         """Step in degrees while Shift snaps the Rotate tool."""
@@ -308,3 +340,7 @@ class AppSettings:
                 self.set_game_folder(detected.path)
 
         return self.game_folder
+
+
+def _route_key(route_path) -> str:
+    return os.path.normcase(str(Path(route_path).resolve()))

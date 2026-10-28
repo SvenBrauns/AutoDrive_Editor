@@ -34,3 +34,9 @@ def test_only_savegames_with_autodrive_are_listed(tmp_path):
     listed = savegames_with_autodrive(GameFolder(folder))
 
     assert [info.name for info in listed] == ["Zwei", "Zehn"]
+
+
+def test_autodrive_map_name_is_the_name_routes_xml_uses(tmp_path):
+    directory = add_savegame(tmp_path, 3, "Hof", "LS25 Thüringen 2.0 16x", "LS25_X")
+
+    assert read_savegame_info(directory).autodrive_map_name == "LS25_Thüringen_2_0_16x"

@@ -132,6 +132,8 @@ def window(qapp, tmp_path):
     main_window.files.autosave_store = AutosaveStore(tmp_path / "autosave")
     # Tests that need the missing-map question replace this again.
     main_window.map_import._ask_missing_map = lambda map_name: None
+    # Tests that link a savegame replace this again.
+    main_window.savegame_link._run_dialog = lambda dialog: 0
     # Closing at the end of a test drops unsaved edits without asking.
     main_window.files._ask_save_changes = lambda: QMessageBox.Discard
     main_window.show()

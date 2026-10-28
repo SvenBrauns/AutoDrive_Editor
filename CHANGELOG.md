@@ -5,6 +5,8 @@
 - Dual connections get an arrow pointing to each end
 - Connections are always colored by their type, also into subprio nodes; the separate subprio connection color and `View → Show → Subprio connections` are gone
 - The colors of regular and subprio nodes can be set under `View → Display options`
+- Routes can be linked to a savegame (`File → Link savegame…`, also offered when a route is opened) to show where its vehicles park; the link is kept in the route's project
+- The debug info shows the number of a selected marker
 
 ## 1.1.0 – 2026-10-27
 

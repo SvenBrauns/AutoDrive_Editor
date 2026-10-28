@@ -218,3 +218,15 @@ def test_update_check_is_off_until_turned_on():
     AppSettings().set_check_updates(True)
 
     assert AppSettings().check_updates
+
+
+def test_savegame_question_can_be_turned_off_per_route(tmp_path):
+    settings = AppSettings()
+    settings.set_asks_for_savegame(tmp_path / "a.xml", False)
+
+    reloaded = AppSettings()
+    assert not reloaded.asks_for_savegame(tmp_path / "a.xml")
+    assert reloaded.asks_for_savegame(tmp_path / "b.xml")
+
+    reloaded.set_asks_for_savegame(tmp_path / "a.xml", True)
+    assert AppSettings().asks_for_savegame(tmp_path / "a.xml")

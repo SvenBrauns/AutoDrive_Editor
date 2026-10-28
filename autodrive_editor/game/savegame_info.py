@@ -14,6 +14,7 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
 
+from autodrive_editor.file_io.map_mod import autodrive_map_name
 from autodrive_editor.game.game_folder import GameFolder
 
 AUTODRIVE_CONFIG_NAME = "AutoDrive_config.xml"
@@ -31,6 +32,12 @@ class SavegameInfo:
     @property
     def autodrive_config_path(self) -> Path:
         return self.directory / AUTODRIVE_CONFIG_NAME
+
+    @property
+    def autodrive_map_name(self) -> str:
+        """The map name AutoDrive stores in routes.xml."""
+
+        return autodrive_map_name(self.map_title)
 
     @property
     def display_name(self) -> str:
