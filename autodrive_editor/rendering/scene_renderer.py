@@ -1,7 +1,7 @@
 import math
 
-from PySide6.QtCore import QRectF
-from PySide6.QtGui import QPainterPath
+from PySide6.QtCore import QPointF, QRectF, Qt
+from PySide6.QtGui import QPainterPath, QPolygonF
 from PySide6.QtWidgets import QGraphicsScene
 
 from autodrive_editor.file_io.savegame_sheds import IndoorArea
@@ -273,6 +273,22 @@ class SceneRenderer:
                 closest, closest_distance = node, distance
 
         return closest
+
+    def get_shed_at(self, x: float, z: float) -> IndoorArea | None:
+        """The shed whose outline contains the scene point, while sheds are shown."""
+
+        if not self.visibility.sheds:
+            return None
+
+        point = QPointF(x, z)
+
+        for area in self.shed_areas:
+            outline = QPolygonF([QPointF(*corner) for corner in area.corners])
+
+            if outline.containsPoint(point, Qt.OddEvenFill):
+                return area
+
+        return None
 
     def get_connection_at(self, x: float, z: float, tolerance: float) -> ConnectionData | None:
         """The connection closest to the scene point, if it is within

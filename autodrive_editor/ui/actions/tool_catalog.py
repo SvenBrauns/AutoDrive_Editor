@@ -81,6 +81,14 @@ SELECTION_TOOL = ToolDefinition(
     "A",
 )
 
+PARKING_TOOL = ToolDefinition(
+    InteractionMode.PARKING_SPOTS,
+    tr("Parking spots"),
+    tr("Click a shed to create parking spots in it"),
+    "parking_spots",
+    "S",
+)
+
 MOVE_TOOL = ToolDefinition(
     InteractionMode.MOVE_NODES,
     tr("Move"),

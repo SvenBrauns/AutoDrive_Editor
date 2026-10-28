@@ -1,0 +1,198 @@
+import math
+
+import pytest
+
+from autodrive_editor.editing.parking_layout import (
+    OUTSIDE_NODES,
+    ParkingMode,
+    ParkingSettings,
+    ShedFrame,
+    bay_centers,
+    bay_width,
+    default_open_side,
+    plan_parking,
+    side_angle,
+)
+from autodrive_editor.file_io.savegame_sheds import IndoorArea
+from autodrive_editor.model.connections import ConnectionType
+
+# 30 × 15 m like easyShed01; the front (height end, +z) is at the bottom of the screen.
+SHED = IndoorArea("shed.xml", "1", ((-15, -7.5), (15, -7.5), (15, 7.5), (-15, 7.5)), 90.0)
+
+
+def settings(**values) -> ParkingSettings:
+    defaults = dict(bays=4, gaps=(0.0, 0.0, 0.0), marker_name="Shed", start_number=3, group="G")
+
+    return ParkingSettings(**(defaults | values))
+
+
+def connections_of(network, connection_type):
+    return {(s, t) for s, t, kind in network.connections if kind == connection_type}
+
+
+def test_frame_of_the_front_starts_on_the_left_seen_from_outside():
+    frame = ShedFrame.from_area(SHED, "front")
+
+    assert frame.origin == (-15, 7.5)
+    assert frame.along == (1, 0)
+    assert frame.inward == (0, -1)
+    assert (frame.length, frame.depth) == (30, 15)
+    assert frame.to_map(30, 15) == (15, -7.5)
+
+
+def test_frame_of_the_back_looks_the_other_way():
+    frame = ShedFrame.from_area(SHED, "back")
+
+    assert frame.origin == (15, -7.5)
+    assert frame.along == (-1, 0)
+    assert frame.inward == (0, 1)
+
+
+def test_frame_of_a_short_side():
+    frame = ShedFrame.from_area(SHED, "left")
+
+    assert (frame.length, frame.depth) == (15, 30)
+    assert frame.origin == (-15, -7.5)
+    assert frame.inward == (1, 0)
+
+
+def test_side_angles_point_outward():
+    assert side_angle(SHED, "front") == pytest.approx(180)
+    assert side_angle(SHED, "back") == pytest.approx(0)
+    assert side_angle(SHED, "left") == pytest.approx(270)
+    assert side_angle(SHED, "right") == pytest.approx(90)
+
+
+def test_default_open_side_is_a_long_side():
+    assert default_open_side(SHED) == "front"
+
+    tall = IndoorArea("x", "2", ((0, 0), (10, 0), (10, 30), (0, 30)), 0.0)
+
+    assert default_open_side(tall) == "left"
+
+
+def test_bay_width_and_centers():
+    frame = ShedFrame.from_area(SHED, "front")
+    values = settings(left_offset=1.0, right_offset=1.0, gaps=(0.5, 0.5, 1.0))
+
+    assert bay_width(frame, values) == pytest.approx(6.5)
+    assert bay_centers(frame, values) == pytest.approx([4.25, 11.25, 18.25, 25.75])
+
+
+def test_back_in_bay_line():
+    frame = ShedFrame.from_area(SHED, "front")
+    network = plan_parking(frame, settings(bays=1, gaps=(), back_offset=1.0))
+
+    marker = network.markers[0][0]
+    assert network.markers == [(marker, "Shed 3")]
+    assert network.points[marker] == (15.0, 14.0)
+
+    # The dual line runs from the marker straight out of the shed.
+    dual = connections_of(network, ConnectionType.DUAL)
+    line = [marker]
+
+    while next_nodes := [t for s, t in dual if s == line[-1] and t not in line]:
+        line.append(next_nodes[0])
+
+    distances = [14.0 - network.points[index][1] for index in line]
+    assert distances[:4] == pytest.approx([0, 0.5, 1.5, 3.0])
+    assert distances[-len(OUTSIDE_NODES) :] == pytest.approx([14 + o for o in OUTSIDE_NODES])
+    assert all(network.points[index][0] == 15.0 for index in line)
+
+    # Turn: two forward steps, then reverse back to the end of the dual line.
+    reverse = connections_of(network, ConnectionType.REVERSE)
+    assert len(reverse) == 1
+    turn_end, line_end = next(iter(reverse))
+    assert line_end == line[-1]
+    assert network.points[turn_end][1] == pytest.approx(-19.7 - 4.4)
+
+    regular = connections_of(network, ConnectionType.REGULAR)
+    join = line[-len(OUTSIDE_NODES)]
+    entry = next(s for s, t in regular if t == join)
+    assert network.points[entry] == pytest.approx((13.8, -1.0))
+    exit_ = next(t for s, t in regular if s == line[-2])
+    assert network.points[exit_] == pytest.approx((16.7, -16.4))
+
+
+def test_back_in_lines_connect_all_bays_in_travel_order():
+    frame = ShedFrame.from_area(SHED, "front")
+    network = plan_parking(frame, settings(exit_left_to_right=False))
+
+    assert [name for _, name in network.markers] == ["Shed 3", "Shed 4", "Shed 5", "Shed 6"]
+    assert len(network.open_ends) == 4
+
+    entry_start, entry_end, exit_start, exit_end = network.open_ends
+    regular = connections_of(network, ConnectionType.REGULAR)
+
+    def follow(start):
+        path = [start]
+
+        while next_nodes := [t for s, t in regular if s == path[-1] and t in on_line]:
+            path.append(next_nodes[0])
+
+        return path
+
+    on_line = {i for i, (_, d) in enumerate(network.points) if d == -1.0}
+    entry = follow(entry_start)
+    assert entry[-1] == entry_end
+    assert len(entry) == 6
+    # Bays 7.25 m wide; each branch starts 1.2 m before its bay, the ends 5 m beyond.
+    assert [network.points[i][0] for i in entry] == pytest.approx(
+        [-2.075, 2.925, 10.175, 17.425, 24.675, 29.675]
+    )
+
+    on_line = {i for i, (_, d) in enumerate(network.points) if d == pytest.approx(-16.4)}
+    exit_ = follow(exit_start)
+    assert exit_[-1] == exit_end
+    xs = [network.points[i][0] for i in exit_]
+    assert xs == sorted(xs, reverse=True)
+
+
+def test_drive_through_bay_line():
+    frame = ShedFrame.from_area(SHED, "front")
+    network = plan_parking(
+        frame, settings(mode=ParkingMode.DRIVE_THROUGH, bays=1, gaps=(), back_offset=1.0)
+    )
+
+    assert {kind for _, _, kind in network.connections} == {ConnectionType.REGULAR}
+
+    marker = network.markers[0][0]
+    assert network.points[marker] == pytest.approx((15.0, 14.0))
+
+    line = sorted(
+        (i for i, (a, _) in enumerate(network.points) if a == 15.0),
+        key=lambda i: network.points[i][1],
+    )
+    ds = [network.points[i][1] for i in line]
+    assert ds[0] == -10 and ds[-1] == 25
+    assert max(b - a for a, b in zip(ds, ds[1:], strict=False)) <= 1.6
+    assert all(
+        (s, t) in connections_of(network, ConnectionType.REGULAR)
+        for s, t in zip(line, line[1:], strict=False)
+    )
+
+
+def test_plan_on_the_map_is_rotated_with_the_shed():
+    angle = math.radians(30)
+    corners = tuple(
+        (x * math.cos(angle) - z * math.sin(angle), x * math.sin(angle) + z * math.cos(angle))
+        for x, z in SHED.corners
+    )
+    frame = ShedFrame.from_area(IndoorArea("shed.xml", "1", corners, 0.0), "front")
+
+    assert frame.length == pytest.approx(30)
+    assert frame.depth == pytest.approx(15)
+    assert frame.to_map(0, 0) == pytest.approx(corners[3])
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        dict(bays=4, gaps=(0.0,)),
+        dict(bays=10, gaps=(0.0,) * 9),
+        dict(back_offset=15.0),
+    ],
+)
+def test_invalid_settings_are_refused(values):
+    with pytest.raises(ValueError):
+        plan_parking(ShedFrame.from_area(SHED, "front"), settings(**values))

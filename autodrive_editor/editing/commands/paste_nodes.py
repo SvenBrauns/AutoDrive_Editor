@@ -10,12 +10,18 @@ class PasteNodesCommand(EditCommand):
     groups are created."""
 
     def __init__(
-        self, autodrive_data: AutoDriveData, nodes: list[NodeData], markers: list[MarkerData]
+        self,
+        autodrive_data: AutoDriveData,
+        nodes: list[NodeData],
+        markers: list[MarkerData],
+        text: str | None = None,
     ):
-        super().__init__(
-            tr("Paste node") if len(nodes) == 1 else tr("Paste {count} nodes", count=len(nodes)),
-            autodrive_data,
-        )
+        if text is None:
+            text = (
+                tr("Paste node") if len(nodes) == 1 else tr("Paste {count} nodes", count=len(nodes))
+            )
+
+        super().__init__(text, autodrive_data)
 
         if not nodes:
             raise ValueError("No nodes to paste were given.")
