@@ -14,7 +14,6 @@ from autodrive_editor.file_io.autodrive_xml import (
 )
 from autodrive_editor.file_io.autodrive_xml_writer import save_config
 from autodrive_editor.file_io.game_files import GameFiles
-from autodrive_editor.file_io.project_file import ProjectFileStore
 from autodrive_editor.file_io.routes_index import (
     add_route,
     find_route_entry,
@@ -43,7 +42,7 @@ SAVEGAME_HEIGHTMAP_NAME = "terrain.heightmap.png"
 
 
 class ProjectCoordinator(QObject):
-    """Loads XML, background, heightmap and project files and rebuilds the scene from them."""
+    """Loads XML, background and heightmap and rebuilds the scene from them."""
 
     status_changed = Signal(str)
 
@@ -62,7 +61,6 @@ class ProjectCoordinator(QObject):
         self,
         scene: QGraphicsScene,
         view: MapView,
-        project_files: ProjectFileStore,
         background_map: BackgroundMap,
         heightmap: Heightmap,
         scene_renderer: SceneRenderer,
@@ -77,7 +75,6 @@ class ProjectCoordinator(QObject):
         self.scene = scene
         self.view = view
 
-        self.project_files = project_files
         self.background_map = background_map
         self.heightmap = heightmap
         self.scene_renderer = scene_renderer
@@ -96,7 +93,6 @@ class ProjectCoordinator(QObject):
 
         # Format, path and map name of the loaded data.
         self.config_source: ConfigSource | None = None
-        self.current_config_path: str | None = None
         self.current_heightmap_path: str | None = None
 
         # Markers in the order of the file on disk, to renumber vehicle targets on save.
@@ -169,15 +165,11 @@ class ProjectCoordinator(QObject):
 
         self.debug_refresh_requested.emit()
 
-    def load_xml_file(
-        self, file_path, display_name=None, map_name=None, detect_map=True, original_path=None
-    ):
+    def load_xml_file(self, file_path, display_name=None, map_name=None, original_path=None):
         """Loads a route file or savegame config. Route files do not contain
-        their map name; it comes from the caller or from routes.xml.
-
-        With detect_map, the imported map with that name is loaded as
-        background together with its heightmap and map size. Project files
-        bring their own map settings and turn this off.
+        their map name; it comes from the caller or from routes.xml. The
+        imported map with that name is loaded as background together with
+        its heightmap and map size.
 
         original_path is set when an autosave copy is restored: the data
         then counts as loaded from that file and is saved there."""
@@ -214,7 +206,7 @@ class ProjectCoordinator(QObject):
 
         self.selection_coordinator.clear()
 
-        map_loaded, map_note = self._load_detected_map(source) if detect_map else (False, "")
+        map_loaded, map_note = self._load_detected_map(source)
 
         if not map_loaded:
             self.background_map.restore()
@@ -244,7 +236,7 @@ class ProjectCoordinator(QObject):
 
         self.debug_refresh_requested.emit()
 
-        if detect_map and not map_loaded and self._map_is_missing(source):
+        if not map_loaded and self._map_is_missing(source):
             self.map_missing.emit(source.map_name)
 
     def load_map_for_current_config(self) -> bool:
@@ -461,80 +453,6 @@ class ProjectCoordinator(QObject):
 
         shutil.copy2(path, path.with_name(path.name + ".bak"))
         self._backed_up_paths.add(path)
-
-    def save_project_file(self, config_path) -> Path:
-        if self.config_source is None:
-            raise ValueError(tr("Load an AutoDrive XML first"))
-
-        saved_path = self.project_files.save_project(
-            config_path=config_path,
-            xml_path=str(self.config_source.path),
-            background_path=self.background_map.file_path,
-            map_scale=self.background_map.map_scale,
-            heightmap_path=self.current_heightmap_path,
-            savegame_path=self.savegame_directory,
-        )
-
-        self.current_config_path = str(saved_path)
-
-        self.status_changed.emit(tr("Project saved: {name}", name=saved_path.name))
-
-        return saved_path
-
-    def load_project_file(self, config_path):
-        project_data = self.project_files.load_project(config_path)
-
-        self.apply_project_data(project_data)
-
-        self.current_config_path = str(Path(config_path).resolve())
-
-        project_name = Path(config_path).name
-
-        if self.heightmap.has_heightmap():
-            status_text = tr("Project loaded with heightmap: {name}", name=project_name)
-        else:
-            status_text = tr("Project loaded: {name}", name=project_name)
-
-        self.status_changed.emit(status_text + self.sheds_note)
-
-        self.debug_refresh_requested.emit()
-
-    def apply_project_data(self, project_data: dict):
-        map_scale = int(project_data["map_scale"])
-
-        if map_scale not in self.project_files.VALID_MAP_SCALES:
-            raise ValueError(tr("Unknown map size: {scale}", scale=map_scale))
-
-        self.selection_coordinator.clear()
-
-        self.background_map.set_map_scale(map_scale)
-
-        self.map_scale_changed.emit(map_scale)
-
-        background_path = project_data["background_dds"]
-
-        if background_path:
-            self.background_map.load(background_path)
-
-        else:
-            self.background_map.remove_from_scene(preserve_file_path=False)
-
-        heightmap_path = project_data["heightmap"]
-
-        if heightmap_path:
-            heightmap_data = self.heightmap.load(heightmap_path)
-
-            self._set_heightmap_path(heightmap_data.file_path)
-
-        else:
-            self.heightmap.clear()
-
-            self._set_heightmap_path(None)
-
-        self.load_xml_file(project_data["autodrive_xml"], detect_map=False)
-
-        if project_data.get("savegame"):
-            self.set_savegame(project_data["savegame"])
 
     def clear_scene_content(self):
         self.measurement_coordinator.remove_scene_items()

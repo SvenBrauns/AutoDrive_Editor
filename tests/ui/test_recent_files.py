@@ -7,15 +7,17 @@ from game_folder_helpers import add_routes, make_game_folder
 from PySide6.QtWidgets import QFileDialog
 
 from autodrive_editor.settings.recent_items import RecentItem, RecentKind
+from autodrive_editor.ui.dialogs.open_dialog import OpenDialog
 
 
 @pytest.fixture
 def open_xml(window, monkeypatch):
-    """Opens a file through File → Open XML file."""
+    """Opens a file through File → Open… → Browse file…."""
 
     def _open(path):
+        monkeypatch.setattr(window.files, "_ask_open", lambda *args: OpenDialog.BROWSE)
         monkeypatch.setattr(QFileDialog, "getOpenFileName", lambda *args: (str(path), ""))
-        window.files.load_xml()
+        window.files.open()
 
     return _open
 

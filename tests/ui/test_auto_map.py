@@ -106,12 +106,3 @@ def test_without_map_name_nothing_is_detected(map_window, write_xml):
 
     assert not map_window.background_map.has_background()
     assert "not imported" not in map_window.status.text()
-
-
-def test_project_files_keep_their_own_map(map_window):
-    import_test_map(map_window)
-    manager = add_routes(map_window.folder, [("Testroute", "route.xml", MAP_NAME, 1)])
-
-    map_window.project_coordinator.load_xml_file(manager / "routes" / "route.xml", detect_map=False)
-
-    assert not map_window.background_map.has_background()

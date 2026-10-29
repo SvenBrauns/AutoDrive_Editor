@@ -20,9 +20,13 @@ Map images are not shipped with the editor. Use `Map → Scan maps` to search th
 
 ## Opening a network
 
-- **Open route** (recommended): routes from AutoDrive's RoutesManager. AutoDrive can reload them in a running game, so the game does not need to be restarted.
-- **Open savegame**: the `AutoDrive_config.xml` of a savegame. The savegame's heightmap is loaded with it.
-- **Open XML file**: a single file in either format.
+`File → Open…` (`Ctrl+O`) shows the routes and savegames of the game folder on two tabs:
+
+- **Routes** (recommended): routes from AutoDrive's RoutesManager. AutoDrive can reload them in a running game, so the game does not need to be restarted.
+- **Savegames**: the `AutoDrive_config.xml` of a savegame. The savegame's heightmap is loaded with it.
+- **Browse file…**: any AutoDrive XML file in either format.
+
+The dialog opens on the tab you used last.
 
 ## Controls
 
@@ -60,7 +64,7 @@ Also available: Undo and Redo (`Ctrl+Z` / `Ctrl+Y`), Copy, Cut and Paste (`Ctrl+
 
 The editor creates AutoDrive parking spots in the sheds placed in a savegame.
 
-**Link a savegame.** A route has no savegame. When a route is opened, the editor offers to link one (savegames on the route's map come first); `File → Link savegame…` changes or removes the link. The link is stored in the route's project; if there is none, the editor offers to create one. With "Don't ask again for this route" the question no longer comes for that route. The linked savegame's heightmap replaces the map's, since terraforming and buildings change the ground. An opened savegame needs no link.
+**Link a savegame.** A route has no savegame. When a route is opened, the editor offers to link one (savegames on the route's map come first); `File → Link savegame…` changes or removes the link. The editor remembers the link for the route. With "Don't ask again for this route" the question no longer comes for that route. The linked savegame's heightmap replaces the map's, since terraforming and buildings change the ground. An opened savegame needs no link.
 
 **Sheds.** `View → Show → Sheds` draws the indoor areas of the buildings placed in the savegame as purple outlines. Buildings that came with the map are not included. The building files are read from the game install folder and the mods folder; buildings whose files are missing are left out and counted in the status bar.
 
@@ -93,7 +97,7 @@ Entries that are fine as they are, such as nodes on a bridge, can be hidden with
 
 Unsaved changes are backed up automatically every few minutes (interval under `File → Settings`). If the editor closes unexpectedly, it offers to restore them on the next start.
 
-`File → Open recent` and the welcome screen list the last five opened routes, savegames, XML files and projects.
+`File → Open recent` and the welcome screen list the last five opened routes, savegames and XML files.
 
 ## Settings
 

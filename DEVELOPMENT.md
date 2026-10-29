@@ -32,7 +32,7 @@ git push origin v0.1.0
 ```text
 autodrive_editor/
   model/        data model: nodes, markers, connection types
-  file_io/      file formats: AutoDrive XML, project files, heightmap, DDS
+  file_io/      file formats: AutoDrive XML, heightmap, DDS
   terrain/      background map, heightmap, terrain height for moved nodes
   editing/
     commands/   undoable changes to the data model
@@ -42,7 +42,7 @@ autodrive_editor/
   selection/    node selection
   measurement/  distance and angle measurement
   network_check/ checks that find problems in the network
-  project/      loading XML, map, heightmap and projects
+  project/      loading XML, map and heightmap
   rendering/    map drawing
     spatial/    spatial indexes for nodes and connections
     layers/     the network layers (connections, nodes, markers, selection), their tile cache and the sheds
@@ -50,7 +50,7 @@ autodrive_editor/
     items/      other graphics items (grid, measurement)
   ui/
     main_window.py  main window, assembles all parts
-    file_controller.py  File menu: open, save, autosave, projects
+    file_controller.py  File menu: open, save, autosave
     map_import_controller.py  map import, first start, missing maps
     actions/    tool catalog, menus, toolbars
     map_view/   map view with zoom, rotation and area selection

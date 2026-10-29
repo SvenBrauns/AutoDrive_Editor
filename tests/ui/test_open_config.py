@@ -1,11 +1,14 @@
-"""Opening routes, savegames and XML files from the game folder."""
+"""File → Open…: routes, savegames and XML files from the game folder."""
 
 import pytest
 from game_folder_helpers import add_routes, add_savegame, make_game_folder
-from PySide6.QtWidgets import QDialogButtonBox
+from PySide6.QtWidgets import QDialog, QDialogButtonBox, QFileDialog
 
 from autodrive_editor.file_io.autodrive_xml import ConfigFormat
+from autodrive_editor.game.game_folder import GameFolder
+from autodrive_editor.game.savegame_info import savegames_with_autodrive
 from autodrive_editor.ui.dialogs.list_choice_dialog import ListChoiceDialog
+from autodrive_editor.ui.dialogs.open_dialog import OpenDialog
 
 ROUTES = [
     ("Thueringen", "g8Cq.xml", "LS25_Thüringen_2_0_16x", 1),
@@ -18,29 +21,30 @@ def game_window(window, tmp_path, monkeypatch):
     folder = make_game_folder(tmp_path / "FarmingSimulator2025")
     window.settings.set_game_folder(folder)
 
-    window.messages = []
-    monkeypatch.setattr(window.files, "_inform", window.messages.append)
+    def choose(name):
+        """The open dialog picks the route or savegame with this name."""
 
-    def choose_by_name(name):
-        def choose(title, hint, columns, rows, **sorting):
-            window.offered = [texts for texts, _ in rows]
-            return next((value for texts, value in rows if name in texts), None)
+        def ask(routes, routes_hint, savegames, savegames_hint):
+            window.offered = (routes, routes_hint, savegames, savegames_hint)
+            names = {entry.name: entry for entry in routes}
+            names.update({info.display_name: info for info in savegames})
+            return names.get(name)
 
-        monkeypatch.setattr(window.files, "_choose", choose)
+        monkeypatch.setattr(window.files, "_ask_open", ask)
 
-    window.choose_by_name = choose_by_name
+    window.choose = choose
     window.folder = folder
     return window
 
 
-def test_open_route_lists_routes_and_loads_the_chosen_one(game_window):
+def test_open_lists_routes_and_loads_the_chosen_one(game_window):
     add_routes(game_window.folder, ROUTES)
-    game_window.choose_by_name("NF Marsch")
+    game_window.choose("NF Marsch")
 
-    game_window.files.open_route()
+    game_window.files.open()
 
     source = game_window.project_coordinator.config_source
-    assert [row[0] for row in game_window.offered] == ["Thueringen", "NF Marsch"]
+    assert [entry.name for entry in game_window.offered[0]] == ["Thueringen", "NF Marsch"]
     assert source.format == ConfigFormat.ROUTE_EXPORT
     assert source.map_name == "NF_Marsch_4fach_oG"
     assert source.display_name == "NF Marsch"
@@ -51,33 +55,36 @@ def test_open_route_lists_routes_and_loads_the_chosen_one(game_window):
 def test_routes_with_missing_files_are_not_offered(game_window):
     manager = add_routes(game_window.folder, ROUTES)
     (manager / "routes" / "I0pc.xml").unlink()
-    game_window.choose_by_name("nothing")
+    game_window.choose("nothing")
 
-    game_window.files.open_route()
+    game_window.files.open()
 
-    assert [row[0] for row in game_window.offered] == ["Thueringen"]
+    assert [entry.name for entry in game_window.offered[0]] == ["Thueringen"]
 
 
-def test_open_route_without_routes_manager_explains_it(game_window):
-    game_window.files.open_route()
+def test_without_routes_manager_the_routes_tab_explains_it(game_window):
+    game_window.choose("nothing")
 
-    assert "route list" in game_window.messages[0]
+    game_window.files.open()
+
+    assert game_window.offered[0] == []
+    assert "route list" in game_window.offered[1]
 
 
 def test_cancelling_the_choice_loads_nothing(game_window):
     add_routes(game_window.folder, ROUTES)
-    game_window.choose_by_name("nothing")
+    game_window.choose("nothing")
 
-    game_window.files.open_route()
+    game_window.files.open()
 
     assert game_window.project_coordinator.autodrive_data is None
 
 
-def test_open_savegame_loads_its_autodrive_config(game_window):
+def test_open_loads_the_autodrive_config_of_a_savegame(game_window):
     add_savegame(game_window.folder, 1, "Mein Spielstand", "LS25 Thüringen 2.0 16x", "LS25_X")
-    game_window.choose_by_name("Mein Spielstand")
+    game_window.choose("Mein Spielstand")
 
-    game_window.files.open_savegame()
+    game_window.files.open()
 
     source = game_window.project_coordinator.config_source
     assert source.format == ConfigFormat.SAVEGAME
@@ -86,22 +93,47 @@ def test_open_savegame_loads_its_autodrive_config(game_window):
     assert game_window.windowTitle() == "AutoDrive FS25 Editor – Mein Spielstand (Savegame)[*]"
 
 
-def test_open_savegame_without_autodrive_data_explains_it(game_window):
-    game_window.files.open_savegame()
+def test_without_savegames_the_savegames_tab_explains_it(game_window):
+    game_window.choose("nothing")
 
-    assert "AutoDrive data" in game_window.messages[0]
+    game_window.files.open()
+
+    assert game_window.offered[2] == []
+    assert "AutoDrive data" in game_window.offered[3]
 
 
-def test_without_valid_game_folder_the_user_is_sent_to_settings(window, monkeypatch, tmp_path):
-    messages = []
-    monkeypatch.setattr(window.files, "_inform", messages.append)
-    window.settings.set_game_folder(tmp_path / "not_a_game_folder")
+def test_without_valid_game_folder_both_tabs_send_the_user_to_settings(game_window, tmp_path):
+    game_window.settings.set_game_folder(tmp_path / "not_a_game_folder")
+    game_window.choose("nothing")
 
-    window.files.open_route()
-    window.files.open_savegame()
+    game_window.files.open()
 
-    assert len(messages) == 2
-    assert all("Settings" in message for message in messages)
+    assert "Settings" in game_window.offered[1]
+    assert "Settings" in game_window.offered[3]
+
+
+def test_browse_opens_any_xml_file(game_window, monkeypatch):
+    manager = add_routes(game_window.folder, ROUTES)
+    monkeypatch.setattr(game_window.files, "_ask_open", lambda *args: OpenDialog.BROWSE)
+    monkeypatch.setattr(
+        QFileDialog, "getOpenFileName", lambda *args: (str(manager / "routes" / "g8Cq.xml"), "")
+    )
+
+    game_window.files.open()
+
+    assert game_window.project_coordinator.config_source.display_name == "Thueringen"
+
+
+def test_open_dialog_remembers_the_last_tab(game_window, monkeypatch):
+    def run(dialog):
+        dialog.tabs.setCurrentIndex(OpenDialog.SAVEGAMES_TAB)
+        return QDialog.DialogCode.Rejected
+
+    monkeypatch.setattr(OpenDialog, "exec", run)
+
+    game_window.files.open()
+
+    assert game_window.settings.open_tab == OpenDialog.SAVEGAMES_TAB
 
 
 def test_route_file_opened_by_hand_finds_its_map_name(game_window):
@@ -114,22 +146,40 @@ def test_route_file_opened_by_hand_finds_its_map_name(game_window):
     assert source.display_name == "Thueringen"
 
 
-def test_broken_file_is_reported_instead_of_crashing(game_window, tmp_path):
+def test_broken_file_is_reported_instead_of_crashing(game_window, tmp_path, monkeypatch):
+    messages = []
+    monkeypatch.setattr(game_window.files, "_inform", messages.append)
     broken = tmp_path / "broken.xml"
     broken.write_text("<AutoDrive><version>2.0</version></AutoDrive>", encoding="utf-8")
 
     game_window.files._load_config(broken)
 
-    assert "FS25" in game_window.messages[0]
+    assert "FS25" in messages[0]
 
 
-def test_file_menu_offers_route_savegame_and_file(window):
+def test_file_menu_offers_one_open_entry(window):
     texts = [action.text() for action in window.menuBar().actions()[0].menu().actions()]
 
-    assert texts[:3] == ["Open route…", "Open savegame…", "Open XML file…"]
+    assert texts[:2] == ["Open…", "Open recent"]
 
 
-# --- the choice dialog ---------------------------------------------------
+# --- the dialogs -----------------------------------------------------------
+
+
+def test_open_dialog_returns_the_row_of_the_current_tab(qapp, tmp_path):
+    folder = make_game_folder(tmp_path / "FarmingSimulator2025")
+    add_savegame(folder, 1, "Mein Spielstand", "LS25 Thüringen 2.0 16x", "LS25_X")
+    savegames = savegames_with_autodrive(GameFolder(folder))
+    dialog = OpenDialog([], "no routes", savegames, "hint")
+    open_button = dialog.buttons.button(QDialogButtonBox.StandardButton.Ok)
+
+    assert dialog.chosen_value is None
+    assert not open_button.isEnabled()
+
+    dialog.tabs.setCurrentIndex(OpenDialog.SAVEGAMES_TAB)
+
+    assert dialog.chosen_value == savegames[0]
+    assert open_button.isEnabled()
 
 
 def test_choice_dialog_returns_the_value_of_the_chosen_row(qapp):

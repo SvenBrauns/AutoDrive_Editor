@@ -90,8 +90,7 @@ class MainWindowActions:
         groups = (
             (
                 tr("File"),
-                ("open_route", "open_savegame", "load_xml", "save_xml", "save_xml_as")
-                + ("load_project", "save_project", "link_savegame", "settings", "exit"),
+                ("open", "save_xml", "save_xml_as", "link_savegame", "settings", "exit"),
             ),
             (
                 tr("Edit"),
@@ -204,14 +203,6 @@ class MainWindowActions:
 
         self.align_measurement_action.triggered.connect(self.window.align_view_to_measurement)
 
-        self.load_project_action = QAction(tr("Load project"), self.window)
-
-        self.load_project_action.triggered.connect(self.window.files.load_project)
-
-        self.save_project_action = QAction(tr("Save project"), self.window)
-
-        self.save_project_action.triggered.connect(self.window.files.save_project)
-
         self.link_savegame_action = QAction(tr("Link savegame…"), self.window)
         self.link_savegame_action.setStatusTip(
             tr("Show where the vehicles of a savegame park on the loaded route")
@@ -219,19 +210,10 @@ class MainWindowActions:
         self.link_savegame_action.setEnabled(False)
         self.link_savegame_action.triggered.connect(self.window.savegame_link.choose_link)
 
-        self.open_route_action = QAction(tr("Open route…"), self.window)
-        self.open_route_action.setStatusTip(
-            tr("Open a route from the RoutesManager of the game folder")
-        )
-        self.open_route_action.triggered.connect(self.window.files.open_route)
-
-        self.open_savegame_action = QAction(tr("Open savegame…"), self.window)
-        self.open_savegame_action.setStatusTip(tr("Open the AutoDrive data of a savegame"))
-        self.open_savegame_action.triggered.connect(self.window.files.open_savegame)
-
-        self.load_xml_action = QAction(tr("Open XML file…"), self.window)
-
-        self.load_xml_action.triggered.connect(self.window.files.load_xml)
+        self.open_action = QAction(tr("Open…"), self.window)
+        self.open_action.setShortcut(QKeySequence.Open)
+        self.open_action.setStatusTip(tr("Open a route, a savegame or an AutoDrive XML file"))
+        self.open_action.triggered.connect(self.window.files.open)
 
         self.save_xml_action = QAction(tr("Save"), self.window)
         self.save_xml_action.setShortcut(QKeySequence.Save)
@@ -468,11 +450,7 @@ class MainWindowActions:
 
         file_menu = menu_bar.addMenu(tr("File"))
 
-        file_menu.addAction(self.open_route_action)
-
-        file_menu.addAction(self.open_savegame_action)
-
-        file_menu.addAction(self.load_xml_action)
+        file_menu.addAction(self.open_action)
 
         self.recent_menu = file_menu.addMenu(tr("Open recent"))
 
@@ -483,10 +461,6 @@ class MainWindowActions:
         file_menu.addAction(self.save_xml_as_action)
 
         file_menu.addSeparator()
-
-        file_menu.addAction(self.load_project_action)
-
-        file_menu.addAction(self.save_project_action)
 
         file_menu.addAction(self.link_savegame_action)
 

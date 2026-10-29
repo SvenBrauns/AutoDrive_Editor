@@ -39,6 +39,8 @@ class AppSettings:
     SHORTCUTS_KEY = "app/shortcuts"
     CHECK_UPDATES_KEY = "app/check_updates"
     NO_SAVEGAME_QUESTION_KEY = "routes/no_savegame_question"
+    LINKED_SAVEGAMES_KEY = "routes/linked_savegames"
+    OPEN_TAB_KEY = "app/open_dialog_tab"
     PARKING_TEMPLATES_KEY = "parking/templates"
 
     THEMES = ("system", "light", "dark")
@@ -270,6 +272,43 @@ class AppSettings:
             if isinstance(routes, list)
             else []
         )
+
+    def linked_savegame(self, route_path) -> Path | None:
+        """The savegame folder linked to this route, if it still exists."""
+
+        stored = self._linked_savegames().get(_route_key(route_path))
+
+        return Path(stored) if isinstance(stored, str) and Path(stored).is_dir() else None
+
+    def set_linked_savegame(self, route_path, savegame_directory):
+        """Links a savegame folder to the route, or removes the link (None)."""
+
+        links = self._linked_savegames()
+        links.pop(_route_key(route_path), None)
+
+        if savegame_directory is not None:
+            links[_route_key(route_path)] = str(Path(savegame_directory).resolve())
+
+        self._settings.setValue(self.LINKED_SAVEGAMES_KEY, json.dumps(links))
+        self._settings.sync()
+
+    def _linked_savegames(self) -> dict:
+        try:
+            links = json.loads(self._settings.value(self.LINKED_SAVEGAMES_KEY, "{}"))
+        except (TypeError, ValueError):
+            return {}
+
+        return links if isinstance(links, dict) else {}
+
+    @property
+    def open_tab(self) -> int:
+        """The tab File → Open… shows first: the one used last."""
+
+        return self._settings.value(self.OPEN_TAB_KEY, 0, type=int)
+
+    def set_open_tab(self, tab: int):
+        self._settings.setValue(self.OPEN_TAB_KEY, int(tab))
+        self._settings.sync()
 
     def parking_templates(self, building_file: str) -> dict[str, dict]:
         """Parking spot templates of a shed type (its building file), by name."""

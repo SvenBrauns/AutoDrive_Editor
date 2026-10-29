@@ -14,10 +14,57 @@ from PySide6.QtWidgets import (
 from autodrive_editor.i18n import tr
 
 
+class ChoiceTable(QTreeWidget):
+    """A table to pick one row from. Each row carries a value that
+    `chosen_value` returns. With sort_column None the rows keep their order
+    until a column header is clicked."""
+
+    def __init__(
+        self,
+        columns: list[str],
+        rows: list[tuple[list[str], Any]],
+        sort_column: int | None = 0,
+        newest_first: bool = False,
+        parent=None,
+    ):
+        super().__init__(parent)
+
+        self.setColumnCount(len(columns))
+        self.setHeaderLabels(columns)
+        self.setRootIsDecorated(False)
+        self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+
+        if sort_column is None:
+            self.header().setSortIndicator(-1, Qt.SortOrder.AscendingOrder)
+
+        self.setSortingEnabled(True)
+
+        for texts, value in rows:
+            item = QTreeWidgetItem(texts)
+            item.setData(0, Qt.ItemDataRole.UserRole, value)
+            self.addTopLevelItem(item)
+
+        for column in range(len(columns)):
+            self.resizeColumnToContents(column)
+
+        if sort_column is not None:
+            self.sortItems(
+                sort_column,
+                Qt.SortOrder.DescendingOrder if newest_first else Qt.SortOrder.AscendingOrder,
+            )
+
+        if self.topLevelItemCount():
+            self.setCurrentItem(self.topLevelItem(0))
+
+    @property
+    def chosen_value(self) -> Any:
+        item = self.currentItem()
+
+        return None if item is None else item.data(0, Qt.ItemDataRole.UserRole)
+
+
 class ListChoiceDialog(QDialog):
-    """Lets the user pick one row of a table, e.g. a route or a savegame.
-    Each row carries a value that `chosen_value` returns. With sort_column
-    None the rows keep their order until a column header is clicked."""
+    """Lets the user pick one row of a table, e.g. a savegame."""
 
     def __init__(
         self,
@@ -38,31 +85,7 @@ class ListChoiceDialog(QDialog):
         hint_label = QLabel(hint, self)
         hint_label.setWordWrap(True)
 
-        self.table = QTreeWidget(self)
-        self.table.setColumnCount(len(columns))
-        self.table.setHeaderLabels(columns)
-        self.table.setRootIsDecorated(False)
-        self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
-
-        if sort_column is None:
-            self.table.header().setSortIndicator(-1, Qt.SortOrder.AscendingOrder)
-
-        self.table.setSortingEnabled(True)
-
-        for texts, value in rows:
-            item = QTreeWidgetItem(texts)
-            item.setData(0, Qt.ItemDataRole.UserRole, value)
-            self.table.addTopLevelItem(item)
-
-        for column in range(len(columns)):
-            self.table.resizeColumnToContents(column)
-
-        if sort_column is not None:
-            self.table.sortItems(
-                sort_column,
-                Qt.SortOrder.DescendingOrder if newest_first else Qt.SortOrder.AscendingOrder,
-            )
-
+        self.table = ChoiceTable(columns, rows, sort_column, newest_first, self)
         self.table.itemDoubleClicked.connect(lambda item, column: self.accept())
 
         self.buttons = QDialogButtonBox(
@@ -73,10 +96,6 @@ class ListChoiceDialog(QDialog):
         self.buttons.rejected.connect(self.reject)
 
         self.table.itemSelectionChanged.connect(self._update_ok_button)
-
-        if self.table.topLevelItemCount():
-            self.table.setCurrentItem(self.table.topLevelItem(0))
-
         self._update_ok_button()
 
         layout = QVBoxLayout(self)
@@ -86,9 +105,7 @@ class ListChoiceDialog(QDialog):
 
     @property
     def chosen_value(self) -> Any:
-        item = self.table.currentItem()
-
-        return None if item is None else item.data(0, Qt.ItemDataRole.UserRole)
+        return self.table.chosen_value
 
     def _update_ok_button(self):
         self.buttons.button(QDialogButtonBox.StandardButton.Ok).setEnabled(

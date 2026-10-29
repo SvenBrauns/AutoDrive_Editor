@@ -29,7 +29,6 @@ from autodrive_editor.editing.operations.rotate_selection import RotateSelection
 from autodrive_editor.editing.path_shapes import PathShape
 from autodrive_editor.file_io.autodrive_xml import ConfigFormat
 from autodrive_editor.file_io.game_files import GameFiles
-from autodrive_editor.file_io.project_file import ProjectFileStore
 from autodrive_editor.i18n import tr
 from autodrive_editor.measurement.coordinator import MeasurementCoordinator
 from autodrive_editor.measurement.mode import MeasurementMode
@@ -41,7 +40,7 @@ from autodrive_editor.model.autodrive_data import (
 )
 from autodrive_editor.model.connections import ConnectionType
 from autodrive_editor.network_check.ignores import IgnoreStore
-from autodrive_editor.paths import MARKER_ICON_PATH, local_projects_directory, user_data_directory
+from autodrive_editor.paths import MARKER_ICON_PATH, user_data_directory
 from autodrive_editor.project.autosave import AutosaveStore
 from autodrive_editor.project.project_coordinator import ProjectCoordinator
 from autodrive_editor.rendering.display_style import DisplayStyle
@@ -95,7 +94,7 @@ class MainWindow(QMainWindow):
     them together:
 
     1. scene and map view
-    2. map layers: background, heightmap, renderer, project files
+    2. map layers: background, heightmap, renderer
     3. selection and measurement
     4. edit history and edit operations, then the map tools using them
     5. project coordinator, which loads data into all of the above
@@ -119,8 +118,6 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-
-        self.local_projects_directory = local_projects_directory()
 
         # Detects the FS25 folder on first start and keeps it afterwards.
         self.settings = AppSettings()
@@ -341,7 +338,7 @@ class MainWindow(QMainWindow):
         self.view.setScene(self.scene)
 
     def _create_map_layers(self):
-        """Background map, heightmap, node rendering and project files."""
+        """Background map, heightmap and node rendering."""
 
         self.background_map = BackgroundMap(self.scene, map_scale=self.DEFAULT_MAP_SCALE)
 
@@ -352,8 +349,6 @@ class MainWindow(QMainWindow):
         )
 
         self.scene_renderer = SceneRenderer(self.scene, MARKER_ICON_PATH)
-
-        self.project_files = ProjectFileStore(self.local_projects_directory)
 
     def _create_selection_and_measurement(self):
         self.node_selection = NodeSelection()
@@ -467,7 +462,6 @@ class MainWindow(QMainWindow):
         self.project_coordinator = ProjectCoordinator(
             scene=self.scene,
             view=self.view,
-            project_files=self.project_files,
             background_map=self.background_map,
             heightmap=self.heightmap,
             scene_renderer=self.scene_renderer,
@@ -494,12 +488,9 @@ class MainWindow(QMainWindow):
             self.project_coordinator,
             self.edit_history,
             AutosaveStore(user_data_directory() / "autosave"),
-            self.local_projects_directory,
         )
 
-        self.savegame_link = SavegameLinkController(
-            self, self.settings, self.project_coordinator, self.project_files
-        )
+        self.savegame_link = SavegameLinkController(self, self.settings, self.project_coordinator)
         self.files.config_opened.connect(self.savegame_link.offer_link)
 
         self.map_import = MapImportController(
@@ -814,11 +805,7 @@ class MainWindow(QMainWindow):
 
     def _create_welcome_panel(self):
         self.welcome_panel = WelcomePanel(
-            [
-                self.actions.open_route_action,
-                self.actions.open_savegame_action,
-                self.actions.load_xml_action,
-            ],
+            [self.actions.open_action],
             self.view.viewport(),
         )
 

@@ -1,7 +1,6 @@
 """File system locations used by the editor."""
 
 import os
-import sys
 from pathlib import Path
 
 # The autodrive_editor package folder.
@@ -45,14 +44,3 @@ def user_data_directory() -> Path:
 
 def log_directory() -> Path:
     return user_data_directory() / "logs"
-
-
-def local_projects_directory() -> Path:
-    """Default folder for project files: local_projects/ in the repository,
-    the user data folder in the bundled .exe (its own folder is replaced on
-    updates and may not be writable)."""
-
-    if getattr(sys, "frozen", False):
-        return user_data_directory() / "projects"
-
-    return PROJECT_ROOT / "local_projects"

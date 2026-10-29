@@ -1,4 +1,4 @@
-"""The recently opened routes, savegames, XML files and projects."""
+"""The recently opened routes, savegames and XML files."""
 
 from dataclasses import asdict, dataclass
 from enum import Enum
@@ -13,14 +13,12 @@ class RecentKind(Enum):
     ROUTE = "route"
     SAVEGAME = "savegame"
     XML = "xml"
-    PROJECT = "project"
 
 
 KIND_NAMES = {
     RecentKind.ROUTE: tr("Route"),
     RecentKind.SAVEGAME: tr("Savegame"),
     RecentKind.XML: tr("XML file"),
-    RecentKind.PROJECT: tr("Project"),
 }
 
 

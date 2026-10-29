@@ -132,7 +132,7 @@ def test_cancel_keeps_the_data_before_loading_other_data(route_window):
     delete_node(route_window, 2)
     route_window.files._ask_save_changes = lambda: QMessageBox.Cancel
 
-    route_window.files.open_route()
+    route_window.files.open()
 
     assert route_window.isWindowModified()
     assert len(route_window.project_coordinator.autodrive_data) == 2
