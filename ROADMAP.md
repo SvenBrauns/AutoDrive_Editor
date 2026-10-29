@@ -8,7 +8,6 @@ The editor supports only Farming Simulator 25.
 
 Features the old editor does not have.
 
-- [ ] reopen the last opened item at startup
 - [ ] measuring points bound to nodes follow moved nodes
 - [ ] drive-through sheds: several parking positions in a row per bay
 - [ ] parking spots: show the result on the map while the dialog is open

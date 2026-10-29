@@ -302,3 +302,11 @@ def test_ground_map_switch_is_kept_between_sessions():
     AppSettings().set_ground_map_visible(True)
 
     assert AppSettings().ground_map_visible is True
+
+
+def test_last_file_is_reopened_until_turned_off():
+    assert AppSettings().reopen_last
+
+    AppSettings().set_reopen_last(False)
+
+    assert not AppSettings().reopen_last

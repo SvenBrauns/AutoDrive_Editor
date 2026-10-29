@@ -97,7 +97,7 @@ Beim Speichern läuft zuerst die Prüfung. Findet sie Probleme, die nicht ignori
 
 Ungespeicherte Änderungen werden alle paar Minuten automatisch gesichert (Abstand unter `Datei → Einstellungen`). Wird der Editor unerwartet beendet, bietet er beim nächsten Start an, sie wiederherzustellen.
 
-`Datei → Zuletzt geöffnet` und der Startbildschirm listen die letzten fünf geöffneten Routen, Savegames, XML-Dateien und Projekte.
+`Datei → Zuletzt geöffnet` und der Startbildschirm listen die letzten fünf geöffneten Routen, Savegames, XML-Dateien und Projekte. Beim Start öffnet der Editor die zuletzt geöffnete wieder, außer es wird eine automatische Sicherung wiederhergestellt; das lässt sich unter `Datei → Einstellungen` abschalten.
 
 ## Einstellungen
 

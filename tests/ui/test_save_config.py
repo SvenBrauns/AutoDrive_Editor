@@ -280,3 +280,14 @@ def test_autosave_interval_follows_the_setting(isolated_user_data, window):
     window.settings.set_autosave_minutes(3)
     window.files.apply_autosave_interval()
     assert window.files.autosave_timer.interval() == 3 * 60_000
+
+
+def test_restored_autosave_is_not_replaced_by_the_last_file(route_window, monkeypatch):
+    delete_node(route_window, 2)
+    route_window.files.autosave()
+    route_window.files._ask_restore_autosave = lambda info: True
+    monkeypatch.setattr(route_window.files, "_open_item", lambda item: pytest.fail("reopened"))
+
+    route_window.files.open_at_startup()
+
+    assert route_window.isWindowModified()

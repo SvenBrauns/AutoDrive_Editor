@@ -101,7 +101,7 @@ Saving runs the check first. If it finds problems that are not ignored, the dock
 
 Unsaved changes are backed up automatically every few minutes (interval under `File → Settings`). If the editor closes unexpectedly, it offers to restore them on the next start.
 
-`File → Open recent` and the welcome screen list the last five opened routes, savegames and XML files.
+`File → Open recent` and the welcome screen list the last five opened routes, savegames and XML files. At startup the editor opens the last one again, unless an autosave is restored; this can be turned off under `File → Settings`.
 
 ## Settings
 

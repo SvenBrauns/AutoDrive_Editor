@@ -67,12 +67,16 @@ class SettingsDialog(QDialog):
         self.check_updates_input = QCheckBox(UPDATE_CHECK_TEXT, general)
         self.check_updates_input.setChecked(settings.check_updates)
 
+        self.reopen_last_input = QCheckBox(tr("Open the last opened file at startup"), general)
+        self.reopen_last_input.setChecked(settings.reopen_last)
+
         form = QFormLayout()
         form.addRow(tr("Autosave every"), self.autosave_input)
         form.addRow(tr("Language:"), self.language_input)
         form.addRow("", QLabel(tr("Takes effect after a restart."), general))
         form.addRow(tr("Theme:"), self.theme_input)
         form.addRow("", self.check_updates_input)
+        form.addRow("", self.reopen_last_input)
 
         general_layout = QVBoxLayout(general)
         general_layout.addWidget(self.folders)
@@ -100,6 +104,7 @@ class SettingsDialog(QDialog):
         self.settings.set_autosave_minutes(self.autosave_input.value())
         self.settings.set_theme(self.theme_input.currentData())
         self.settings.set_check_updates(self.check_updates_input.isChecked())
+        self.settings.set_reopen_last(self.reopen_last_input.isChecked())
         self.settings.set_shortcuts(self.shortcuts.changed_keys())
 
         # Stored only when changed, so the editor keeps following the
