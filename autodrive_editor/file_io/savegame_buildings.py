@@ -32,6 +32,9 @@ from autodrive_editor.file_io.savegame_sheds import IndoorArea, local_areas, pla
 from autodrive_editor.file_io.savegame_stations import TRIGGERS, Stop, local_stops, placed_stop
 from autodrive_editor.i18n import tr
 
+# Shop categories of buildings only the player's character uses; their types are in Other.
+CHARACTER_CATEGORIES = {"farmhouses"}
+
 
 class BuildingGroup(StrEnum):
     """What the editor does with a building type. Each type belongs to exactly one group."""
@@ -171,7 +174,7 @@ def placed_buildings(
 
 def read_definition(building_file: str, files: GameFiles) -> tuple | None:
     """(type, indoor areas, stops) of a building file, None if it has none of them and is no
-    bunker silo. See savegame_sheds and savegame_stations."""
+    bunker silo. Farmhouses are in Other. See savegame_sheds and savegame_stations."""
 
     mod, path = locate(building_file)
     definition = ET.fromstring(files.read(mod, path))
@@ -180,10 +183,15 @@ def read_definition(building_file: str, files: GameFiles) -> tuple | None:
     if group == BuildingGroup.OTHER:
         return None
 
+    category = (definition.findtext("storeData/category") or "").strip()
+
+    if category.lower() in CHARACTER_CATEGORIES:
+        group = BuildingGroup.OTHER
+
     building_type = BuildingType(
         building_file=building_file,
         name=building_name(definition, building_file, mod, files),
-        category=(definition.findtext("storeData/category") or "").strip(),
+        category=category,
         group=group,
     )
     # A bunker silo may have neither.
