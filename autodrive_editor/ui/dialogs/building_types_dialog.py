@@ -95,6 +95,9 @@ class BuildingTypesDialog(QDialog):
         show_all_button.clicked.connect(lambda: self._check_all(Qt.CheckState.Checked))
         hide_all_button = QPushButton(tr("Hide all"), self)
         hide_all_button.clicked.connect(lambda: self._check_all(Qt.CheckState.Unchecked))
+        reset_button = QPushButton(tr("Reset"), self)
+        reset_button.setToolTip(tr("Put every listed type back in its own group and show it"))
+        reset_button.clicked.connect(self.reset)
 
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel, self
@@ -105,6 +108,7 @@ class BuildingTypesDialog(QDialog):
         all_buttons = QHBoxLayout()
         all_buttons.addWidget(show_all_button)
         all_buttons.addWidget(hide_all_button)
+        all_buttons.addWidget(reset_button)
         all_buttons.addStretch(1)
 
         layout = QVBoxLayout(self)
@@ -170,6 +174,17 @@ class BuildingTypesDialog(QDialog):
         )
         choice.currentIndexChanged.connect(lambda: self.set_group(item, choice.currentData()))
         self.table.setItemWidget(item, GROUP, choice)
+
+    def reset(self):
+        """Puts every listed type back in its own group and ticks it."""
+
+        for item in self._items():
+            own_group = self._types[item.data(BUILDING, Qt.ItemDataRole.UserRole)].group
+
+            if item.parent() is not self._group_items[own_group]:
+                self.set_group(item, own_group)
+
+        self._check_all(Qt.CheckState.Checked)
 
     def _check_all(self, state: Qt.CheckState):
         for item in self._items():

@@ -400,6 +400,8 @@ TEXTS = {
     "Category": "Kategorie",
     "Count": "Anzahl",
     "Group": "Gruppe",
+    "Reset": "Zurücksetzen",
+    "Put every listed type back in its own group and show it": "Jeden aufgeführten Typ in seine eigene Gruppe zurücksetzen und anzeigen",
     # file_io/savegame_buildings
     "Stations": "Stationen",
     "Bunker silos": "Fahrsilos",
