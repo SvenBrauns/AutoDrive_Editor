@@ -38,6 +38,9 @@ class MapView(QGraphicsView):
         self._measure_tool: MapTool | None = None
         self._measurement_active = False
 
+        # Replaces every other tool while set, e.g. while a dialog is open beside the map.
+        self._override_tool: MapTool | None = None
+
         self._rotation_drag = DragGesture()
 
         self._node_finder: Callable[[QPoint], object | None] = lambda view_position: None
@@ -86,6 +89,9 @@ class MapView(QGraphicsView):
 
     @property
     def active_tool(self) -> MapTool:
+        if self._override_tool is not None:
+            return self._override_tool
+
         if self._measurement_active and self._measure_tool is not None:
             return self._measure_tool
 
@@ -145,6 +151,9 @@ class MapView(QGraphicsView):
             return
 
         self._switch_tool(lambda: setattr(self, "_measurement_active", active))
+
+    def set_override_tool(self, tool: MapTool | None):
+        self._switch_tool(lambda: setattr(self, "_override_tool", tool))
 
     def get_visible_scene_rect(self) -> QRectF:
         return self._zoom_controller.get_visible_scene_rect()

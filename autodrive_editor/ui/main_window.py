@@ -1,7 +1,8 @@
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QEventLoop, Qt
 from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import (
     QApplication,
+    QDialog,
     QGraphicsScene,
     QInputDialog,
     QLabel,
@@ -57,11 +58,13 @@ from autodrive_editor.ui.controls.grid_coordinator import GridCoordinator
 from autodrive_editor.ui.dialogs.marker_dialog import MarkerDialog
 from autodrive_editor.ui.dialogs.messages import APP_TITLE
 from autodrive_editor.ui.dialogs.node_position_dialog import NodePositionDialog
+from autodrive_editor.ui.dialogs.parking_map_overlay import ParkingMapOverlay
 from autodrive_editor.ui.dialogs.parking_spot_dialog import ParkingSpotDialog
 from autodrive_editor.ui.dialogs.settings_dialog import SettingsDialog
 from autodrive_editor.ui.dialogs.shed_types_dialog import ShedTypesDialog
 from autodrive_editor.ui.file_controller import FileController
 from autodrive_editor.ui.map_import_controller import MapImportController
+from autodrive_editor.ui.map_view.map_only_input import MapOnlyInput
 from autodrive_editor.ui.map_view.map_view import MapView
 from autodrive_editor.ui.map_view.rotation_controller import ViewRotationController
 from autodrive_editor.ui.network_check_controller import NetworkCheckController
@@ -82,6 +85,7 @@ from autodrive_editor.ui.tools.delete_nodes_tool import DeleteNodesTool
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 from autodrive_editor.ui.tools.measure_tool import MeasureTool
 from autodrive_editor.ui.tools.move_nodes_tool import MoveNodesTool
+from autodrive_editor.ui.tools.navigate_tool import NavigateTool
 from autodrive_editor.ui.tools.node_click_tool import NodeClickTool
 from autodrive_editor.ui.tools.path_tool import PathTool
 from autodrive_editor.ui.tools.rotate_selection_tool import RotateSelectionTool
@@ -301,8 +305,36 @@ class MainWindow(QMainWindow):
         dialog = ParkingSpotDialog(
             area, autodrive_data.marker_group_names(), taken_names, self.settings, parent=self
         )
+        overlay = ParkingMapOverlay(self.scene_renderer.display_style)
+        overlay.set_plan(*dialog.plan)
+        dialog.plan_changed.connect(overlay.set_plan)
+        self.scene.addItem(overlay)
 
-        return dialog.settings if dialog.exec() else None
+        try:
+            accepted = self._run_beside_map(dialog)
+        finally:
+            self.scene.removeItem(overlay)
+
+        return dialog.settings if accepted else None
+
+    def _run_beside_map(self, dialog: QDialog) -> bool:
+        """Runs the dialog without blocking the map: it can be moved, zoomed and rotated, but
+        nothing else in the window reacts until the dialog is closed."""
+
+        loop = QEventLoop()
+        dialog.finished.connect(loop.quit)
+        input_filter = MapOnlyInput(self, self.view)
+        QApplication.instance().installEventFilter(input_filter)
+        self.view.set_override_tool(NavigateTool(self.view))
+
+        try:
+            dialog.show()
+            loop.exec()
+        finally:
+            QApplication.instance().removeEventFilter(input_filter)
+            self.view.set_override_tool(None)
+
+        return dialog.result() == QDialog.DialogCode.Accepted
 
     def _ask_marker(self, title, marker, group, groups, taken_names):
         dialog = MarkerDialog(

@@ -2,12 +2,14 @@
 
 import pytest
 from mouse_helpers import click, hover, view_pos
-from PySide6.QtCore import QEvent
-from PySide6.QtWidgets import QApplication, QLabel
+from PySide6.QtCore import QEvent, QTimer
+from PySide6.QtWidgets import QApplication, QDialog, QLabel
 
 from autodrive_editor.editing.parking_layout import ParkingSettings
 from autodrive_editor.file_io.savegame_sheds import IndoorArea
+from autodrive_editor.ui.dialogs.parking_map_overlay import ParkingMapOverlay
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
+from autodrive_editor.ui.tools.navigate_tool import NavigateTool
 
 # Below the nodes 1–3 on the line z=0.
 SHED = IndoorArea(
@@ -94,3 +96,44 @@ def test_hover_name_is_hidden_when_the_tool_changes(parking_window):
     parking_window.set_interaction_mode(InteractionMode.SELECT)
 
     assert hover_label(parking_window) is None
+
+
+def test_dialog_shows_its_plan_on_the_map_and_keeps_the_map_movable(zoomed_window, monkeypatch):
+    window = zoomed_window
+    data = window.project_coordinator.autodrive_data
+    seen = {}
+
+    def run(dialog):
+        overlays = [item for item in window.scene.items() if isinstance(item, ParkingMapOverlay)]
+        seen["markers"] = len(overlays[0].network.markers)
+        dialog.bays_input.setValue(1)
+        seen["after_change"] = len(overlays[0].network.markers)
+        dialog.group_input.setCurrentText("Farm")
+        return True
+
+    monkeypatch.setattr(window, "_run_beside_map", run)
+
+    settings = window._ask_parking_settings(SHED, data)
+
+    assert seen["markers"] > 1 and seen["after_change"] == 1
+    assert settings.bays == 1
+    assert not any(isinstance(item, ParkingMapOverlay) for item in window.scene.items())
+
+
+def test_only_the_map_can_be_used_while_the_dialog_is_open(zoomed_window):
+    window = zoomed_window
+    dialog = QDialog(window)
+    before = window.view.active_tool
+    seen = {}
+
+    def check():
+        seen["tool"] = window.view.active_tool
+        seen["visible"] = dialog.isVisible()
+        dialog.accept()
+
+    QTimer.singleShot(0, check)
+
+    assert window._run_beside_map(dialog)
+    assert isinstance(seen["tool"], NavigateTool) and seen["tool"] is not before
+    assert seen["visible"]
+    assert window.view.active_tool is before
