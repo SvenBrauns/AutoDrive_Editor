@@ -5,7 +5,8 @@ from PySide6.QtTest import QTest
 from autodrive_editor.editing.parking_layout import ParkingMode
 from autodrive_editor.file_io.savegame_sheds import IndoorArea
 from autodrive_editor.settings.app_settings import AppSettings
-from autodrive_editor.ui.dialogs.parking_spot_dialog import ParkingSpotDialog, compass_name
+from autodrive_editor.ui.dialogs.parking_preview import compass_name
+from autodrive_editor.ui.dialogs.parking_spot_dialog import ParkingSpotDialog
 
 pytestmark = pytest.mark.usefixtures("isolated_user_data")
 
