@@ -3,13 +3,16 @@ from PySide6.QtGui import QTransform
 from PySide6.QtWidgets import QGraphicsPixmapItem, QGraphicsScene
 
 from autodrive_editor.file_io.background_image import load_background_pixmap
+from autodrive_editor.file_io.ground_map import Field
 from autodrive_editor.i18n import tr
+from autodrive_editor.rendering.items.field_outline_item import FieldOutlineItem
 from autodrive_editor.rendering.items.map_grid_item import MapGridItem
 from autodrive_editor.terrain.background_transform import BackgroundTransform
 
 
 class BackgroundMap:
-    """The map image (overview.dds) under the network, scaled to the map size, plus the grid."""
+    """The map image (overview.dds) under the network, scaled to the map size, plus the grid.
+    An imported map can show its ground map with the field outlines instead."""
 
     def __init__(self, scene: QGraphicsScene, map_scale: int = 1):
         self.scene = scene
@@ -18,6 +21,11 @@ class BackgroundMap:
         self.file_path = None
         self.background_item = None
         self.grid_item = None
+        self.field_item = None
+
+        self.ground_path = None
+        self.fields: list[Field] = []
+        self.ground_visible = False
 
         self.grid_visible = True
         self.grid_spacing = 10.0
@@ -33,8 +41,31 @@ class BackgroundMap:
             raise ValueError(tr("The image file contains no readable image."))
 
         self.file_path = file_path
+        self.ground_path = None
+        self.fields = []
 
         self._replace_background(pixmap)
+
+    def set_ground(self, ground_path, fields: list[Field]):
+        """The ground map of the loaded map image; None if it has none."""
+
+        self.ground_path = ground_path
+        self.fields = list(fields)
+
+        if self.showing_ground():
+            self.restore()
+
+    def set_ground_visible(self, visible: bool):
+        """Shows the ground map instead of the map image, where there is one."""
+
+        was_showing = self.showing_ground()
+        self.ground_visible = bool(visible)
+
+        if self.showing_ground() != was_showing:
+            self.restore()
+
+    def showing_ground(self) -> bool:
+        return self.ground_visible and self.ground_path is not None
 
     def restore(self):
         """
@@ -45,7 +76,9 @@ class BackgroundMap:
         if not self.file_path:
             return False
 
-        pixmap = load_background_pixmap(self.file_path)
+        pixmap = load_background_pixmap(
+            self.ground_path if self.showing_ground() else self.file_path
+        )
 
         if pixmap.isNull():
             raise ValueError(tr("The image file could not be loaded again."))
@@ -78,8 +111,16 @@ class BackgroundMap:
 
             self.background_item = None
 
+        if self.field_item is not None:
+            if self.field_item.scene() is self.scene:
+                self.scene.removeItem(self.field_item)
+
+            self.field_item = None
+
         if not preserve_file_path:
             self.file_path = None
+            self.ground_path = None
+            self.fields = []
 
     def has_background(self):
         return self.background_item is not None
@@ -96,6 +137,10 @@ class BackgroundMap:
 
         self.scene.addItem(self.background_item)
 
+        if self.showing_ground() and self.fields:
+            self.field_item = FieldOutlineItem(self.fields)
+            self.scene.addItem(self.field_item)
+
         self._apply_transform()
         self._create_grid_item()
 
@@ -108,10 +153,12 @@ class BackgroundMap:
         if pixmap.isNull():
             return
 
-        background_scale = BackgroundTransform.calculate_background_scale(self.map_scale)
+        background_scale = BackgroundTransform.calculate_background_scale(
+            self.map_scale, pixmap.width()
+        )
 
         position_x, position_z = BackgroundTransform.calculate_background_position(
-            pixmap.width(), pixmap.height(), self.map_scale
+            pixmap.width(), pixmap.height(), background_scale
         )
 
         self.background_item.setScale(background_scale)

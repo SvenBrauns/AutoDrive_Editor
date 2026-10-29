@@ -24,6 +24,7 @@ class AppSettings:
     INSTALL_FOLDER_KEY = "game/install_folder"
     SETUP_DONE_KEY = "app/setup_done"
     MARKER_NAMES_KEY = "view/marker_names"
+    GROUND_MAP_KEY = "view/ground_map"
     VISIBILITY_PREFIX = "view/show_"
     AUTOSAVE_MINUTES_KEY = "app/autosave_minutes"
     PATH_SPACING_KEY = "path/spacing"
@@ -92,6 +93,14 @@ class AppSettings:
 
     def set_marker_names_visible(self, visible: bool):
         self._settings.setValue(self.MARKER_NAMES_KEY, bool(visible))
+        self._settings.sync()
+
+    @property
+    def ground_map_visible(self) -> bool:
+        return self._settings.value(self.GROUND_MAP_KEY, False, type=bool)
+
+    def set_ground_map_visible(self, visible: bool):
+        self._settings.setValue(self.GROUND_MAP_KEY, bool(visible))
         self._settings.sync()
 
     @property

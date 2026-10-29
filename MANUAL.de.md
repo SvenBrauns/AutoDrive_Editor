@@ -18,6 +18,8 @@ Der Editor sucht den LS25-Benutzerordner (meist `Dokumente\My Games\FarmingSimul
 
 Kartenbilder werden nicht mit dem Editor ausgeliefert. Über `Karte → Karten scannen` durchsucht der Editor den `mods`-Ordner und die Grundspiel-Karten und importiert Kartenbild, Heightmap und Kartengröße. Das ist pro Karte nur einmal nötig. Danach lädt beim Öffnen einer Route automatisch die passende Karte. Fehlt die Karte, bietet der Editor den Scan direkt an.
 
+**Bodenkarte.** `Ansicht → Bodenkarte` ersetzt das Kartenbild durch eine Karte, die aus den Bodentexturen der Karte gezeichnet ist: Asphalt, Beton, Schotter, Gras, Matsch, Wald, Fels und Sand je in einer eigenen Farbe, darüber die Feldgrenzen und Feldnummern. Sie zeigt die Karte so, wie das Spiel sie bemalt, was hilft, wo das Kartenbild veraltet ist. Mit einer älteren Version des Editors importierte Karten haben keine Bodenkarte; dafür die Karte neu importieren. Der Import einer großen Karte dauert dadurch etwas länger (etwa 15 Sekunden bei einer 16x-Karte).
+
 ## Netz öffnen
 
 - **Route öffnen** (empfohlen): Routen aus dem RoutesManager von AutoDrive. AutoDrive kann sie im laufenden Spiel neu laden, das Spiel muss also nicht neu gestartet werden.

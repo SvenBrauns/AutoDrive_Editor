@@ -209,6 +209,10 @@ class MapImportController(QObject):
 
         progress.setValue(len(chosen))
 
+        # Shows a new or re-imported map (e.g. now with its ground map) right away.
+        if imported:
+            self.project_coordinator.load_map_for_current_config()
+
         message = tr("{count} map(s) imported.", count=len(imported))
 
         if failed:

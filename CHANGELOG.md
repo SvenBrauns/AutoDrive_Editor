@@ -5,6 +5,7 @@
 - `View → Show → Sheds` also shows the buildings that came with the map
 - The Parking spots tool shows the name and category of the building under the pointer
 - `View → Sheds…` hides building types or whole categories that are no sheds, e.g. beehives, on every map
+- `View → Ground map`: a map drawn from the map's ground textures (asphalt, concrete, gravel, grass, …) with field outlines and numbers, instead of the map image. Maps need to be imported again for it
 
 ## 1.2.0 – 2026-10-29
 

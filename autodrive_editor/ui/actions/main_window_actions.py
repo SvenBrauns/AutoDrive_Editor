@@ -99,7 +99,8 @@ class MainWindowActions:
             ),
             (
                 tr("View"),
-                ("display_options", "shed_types", "tool_labels", "reset_view", "reset_rotation"),
+                ("display_options", "shed_types", "ground_map", "tool_labels")
+                + ("reset_view", "reset_rotation"),
             ),
             (
                 tr("Map"),
@@ -267,6 +268,19 @@ class MainWindowActions:
         self.shed_types_action.setStatusTip(tr("Choose which building types are shown as sheds"))
 
         self.shed_types_action.triggered.connect(self.window.open_shed_types)
+
+        self.ground_map_action = QAction(tr("Ground map"), self.window)
+        self.ground_map_action.setCheckable(True)
+        self.ground_map_action.setChecked(self.window.settings.ground_map_visible)
+        # Enabled once a map with a ground map is loaded.
+        self.ground_map_action.setEnabled(False)
+        self.ground_map_action.setStatusTip(
+            tr(
+                "Show the map drawn from its ground textures, with the fields, instead of the "
+                "map image. Maps imported with an older version need to be imported again."
+            )
+        )
+        self.ground_map_action.toggled.connect(self.window.set_ground_map_visible)
 
         self.reset_view_action = QAction(tr("Reset view"), self.window)
 
@@ -510,6 +524,8 @@ class MainWindowActions:
         view_menu.addAction(self.display_options_action)
 
         view_menu.addAction(self.shed_types_action)
+
+        view_menu.addAction(self.ground_map_action)
 
         view_menu.addSeparator()
 

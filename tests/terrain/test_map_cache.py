@@ -1,9 +1,17 @@
 import json
 
 import pytest
-from map_mod_helpers import FRAME_COLOR, MAP_COLOR, make_single_map_mod
+from map_mod_helpers import (
+    FRAME_COLOR,
+    MAP_COLOR,
+    make_single_map_mod,
+    map_files,
+    mod_desc,
+    write_map_mod,
+)
 from PIL import Image
 
+from autodrive_editor.file_io.ground_map import SURFACE_COLORS, Field
 from autodrive_editor.file_io.map_mod import read_map_mod
 from autodrive_editor.terrain.map_cache import MapCache
 
@@ -37,6 +45,34 @@ def test_import_stores_cropped_map_image_heightmap_and_info(cache, tmp_path):
     assert info["autodrive_names"] == ["LS25_Testkarte_2_0"]
     assert info["map_scale"] == 2
     assert info["mod_name"] == "FS25_Testkarte"
+
+
+def test_import_stores_ground_map_and_fields(cache, tmp_path):
+    cached, _, _ = import_test_map(cache, tmp_path)
+
+    assert Image.open(cached.ground_path).getpixel((0, 0)) == SURFACE_COLORS["asphalt"]
+    assert MapCache().maps()[0].fields() == [Field(1, [(110, 220), (140, 220), (140, 250)])]
+
+
+def test_maps_imported_before_have_no_ground_map(cache, tmp_path):
+    cached, _, _ = import_test_map(cache, tmp_path)
+    (cached.directory / "ground.png").unlink()
+    (cached.directory / "fields.json").unlink()
+
+    assert cached.ground_path is None
+    assert cached.fields() == []
+
+
+def test_a_broken_ground_texture_does_not_stop_the_import(cache, tmp_path):
+    files = map_files()
+    files["maps/data/asphalt01_weight.png"] = b"not a png"
+    files["modDesc.xml"] = mod_desc([("SampleModMap", "maps/config/map.xml", {"de": "Karte"})])
+    mod_path = write_map_mod(tmp_path / "FS25_Broken.zip", files)
+
+    cached = cache.import_map(mod_path, read_map_mod(mod_path).maps[0])
+
+    assert cached.overview_path.is_file()
+    assert cached.ground_path is None
 
 
 def test_imported_map_is_found_by_its_autodrive_name(cache, tmp_path):

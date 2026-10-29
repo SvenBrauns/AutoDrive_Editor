@@ -32,7 +32,7 @@ git push origin v0.1.0
 ```text
 autodrive_editor/
   model/        data model: nodes, markers, connection types
-  file_io/      file formats: AutoDrive XML, heightmap, DDS
+  file_io/      file formats: AutoDrive XML, heightmap, DDS, ground map from weight maps
   terrain/      background map, heightmap, terrain height for moved nodes
   editing/
     commands/   undoable changes to the data model

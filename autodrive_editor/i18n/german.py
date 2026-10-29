@@ -207,6 +207,8 @@ TEXTS = {
     "Display options…": "Darstellungsoptionen…",
     "Sheds…": "Hallen…",
     "Choose which building types are shown as sheds": "Auswählen, welche Gebäudetypen als Hallen angezeigt werden",
+    "Ground map": "Bodenkarte",
+    "Show the map drawn from its ground textures, with the fields, instead of the map image. Maps imported with an older version need to be imported again.": "Statt des Kartenbilds die aus den Bodentexturen gezeichnete Karte mit den Feldern zeigen. Mit einer älteren Version importierte Karten müssen neu importiert werden.",
     "Reset view": "Ansicht zurücksetzen",
     "Reset rotation": "Rotation zurücksetzen",
     "Import map from mod…": "Karte aus Mod importieren…",

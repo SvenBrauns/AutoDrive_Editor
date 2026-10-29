@@ -4,6 +4,8 @@ user data folder so a mod only has to be imported once.
     <user data>\\maps\\<folder>\\
         overview.png   map image, already cut to the map area (2048 px)
         dem.png        terrain heightmap, as in the mod
+        ground.png     map drawn from the ground textures (see ground_map)
+        fields.json    field numbers and outlines
         map.json       names, titles, map size and which mod it came from
 
 The editor ships no map images; each user imports them from their own
@@ -16,8 +18,10 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+from autodrive_editor.error_log import logger
 from autodrive_editor.file_io.background_image import map_image_from_dds_bytes
 from autodrive_editor.file_io.base_game_maps import open_mod_archive
+from autodrive_editor.file_io.ground_map import Field, read_map_scene, render_ground_map
 from autodrive_editor.file_io.map_mod import MapEntry, MapMod, pick_title
 from autodrive_editor.file_io.mod_archive import ModArchive
 from autodrive_editor.paths import user_data_directory
@@ -25,6 +29,8 @@ from autodrive_editor.paths import user_data_directory
 INFO_FILE = "map.json"
 OVERVIEW_FILE = "overview.png"
 HEIGHTMAP_FILE = "dem.png"
+GROUND_FILE = "ground.png"
+FIELDS_FILE = "fields.json"
 
 
 @dataclass(frozen=True)
@@ -50,6 +56,23 @@ class CachedMap:
     def heightmap_path(self) -> Path | None:
         path = self.directory / HEIGHTMAP_FILE
         return path if path.is_file() else None
+
+    @property
+    def ground_path(self) -> Path | None:
+        """None for maps imported before the editor drew ground maps."""
+
+        path = self.directory / GROUND_FILE
+        return path if path.is_file() else None
+
+    def fields(self) -> list[Field]:
+        try:
+            entries = json.loads((self.directory / FIELDS_FILE).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return []
+
+        return [
+            Field(entry["number"], [tuple(point) for point in entry["points"]]) for entry in entries
+        ]
 
     @property
     def source_key(self) -> tuple[str, str]:
@@ -112,6 +135,9 @@ class MapCache:
             if map_entry.heightmap_file:
                 (folder / HEIGHTMAP_FILE).write_bytes(archive.read(map_entry.heightmap_file))
 
+            if map_entry.i3d_file:
+                self._import_ground(archive, map_entry.i3d_file, folder)
+
             info = {
                 "title": map_entry.title,
                 "titles": map_entry.titles,
@@ -128,6 +154,23 @@ class MapCache:
         )
 
         return self._read(folder)
+
+    @staticmethod
+    def _import_ground(archive: ModArchive, i3d_file: str, folder: Path):
+        """Ground map and fields. A map whose ground cannot be read is still imported."""
+
+        try:
+            scene = read_map_scene(archive, i3d_file)
+            ground = render_ground_map(archive, scene.weight_maps)
+        except (OSError, ValueError, SyntaxError) as ex:
+            logger.warning("Ground map of %s not readable: %s", archive.name, ex)
+            return
+
+        if ground is not None:
+            ground.save(folder / GROUND_FILE)
+
+        fields = [{"number": field.number, "points": field.points} for field in scene.fields]
+        (folder / FIELDS_FILE).write_text(json.dumps(fields), encoding="utf-8")
 
     def _new_folder(self, map_entry: MapEntry) -> Path:
         base = (
