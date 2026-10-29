@@ -4,8 +4,15 @@ Planned features of the AutoDrive FS25 Editor, in the order they should be imple
 
 The editor supports only Farming Simulator 25.
 
-## 1. Further features
+## 1. Planning mode and generators
 
-Features the old editor does not have.
+Design: [docs/generators.md](docs/generators.md). Each step is its own branch.
 
-- [ ] road helper: a separate view of the map with its roads (traffic splines from the map's `.i3d.shapes`), buildings and unloading and selling points; creates small network pieces to be joined by hand, e.g. click a road for a two-way road with one lane per direction (regular or subprio), click a crossing to connect the roads into it, click a road next to a field for a field entrance
+- [ ] planning mode: edit a draft of the network with all tools, then apply it as one undo step or discard it (toolbar button on the right)
+- [ ] readers and building groups: shared building loop, stations from the building XMLs, every building type in one group (sheds, stations, bunker silos), `Generate` menu with `Building types…`
+- [ ] drivability map from the savegame's `vehicleNavigationCostmap.dat`, route finder with turning radius, `Find route` in planning mode
+- [ ] join rules: fixed nodes, join points, reuse of separate pieces, replacement of pass-through stretches, regular and subprio for yards
+- [ ] stations generator: pick buildings on the map, lanes over the triggers, markers, entry and exit routes
+- [ ] shed generator: connect the parking layout to the network, move it to the `Generate` menu
+- [ ] bunker silos generator (designed separately)
+- [ ] afterwards: turn docs/generators.md into manual sections and delete it
