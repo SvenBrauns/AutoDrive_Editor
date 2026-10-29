@@ -121,3 +121,32 @@ def test_clear_list_empties_menu_and_welcome_screen(window, write_xml, open_xml)
 
     assert menu_texts(window) == ["No recent files", "Clear list"]
     assert welcome_texts(window) == []
+
+
+def test_last_file_opens_at_startup(window, write_xml):
+    path = write_xml()
+    window.settings.set_recent_items([RecentItem(RecentKind.XML, str(path), path.name)])
+
+    window.files.open_at_startup()
+
+    assert window.project_coordinator.config_source.path == path
+
+
+def test_nothing_opens_at_startup_when_turned_off(window, write_xml):
+    path = write_xml()
+    window.settings.set_recent_items([RecentItem(RecentKind.XML, str(path), path.name)])
+    window.settings.set_reopen_last(False)
+
+    window.files.open_at_startup()
+
+    assert window.project_coordinator.autodrive_data is None
+
+
+def test_missing_last_file_is_skipped_quietly_at_startup(window, monkeypatch, tmp_path):
+    monkeypatch.setattr(window.files, "_inform", lambda message: pytest.fail(message))
+    gone = RecentItem(RecentKind.XML, str(tmp_path / "gone.xml"), "gone.xml")
+    window.settings.set_recent_items([gone])
+
+    window.files.open_at_startup()
+
+    assert window.project_coordinator.autodrive_data is None

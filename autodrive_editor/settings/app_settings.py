@@ -39,6 +39,7 @@ class AppSettings:
     THEME_KEY = "app/theme"
     SHORTCUTS_KEY = "app/shortcuts"
     CHECK_UPDATES_KEY = "app/check_updates"
+    REOPEN_LAST_KEY = "app/reopen_last"
     NO_SAVEGAME_QUESTION_KEY = "routes/no_savegame_question"
     LINKED_SAVEGAMES_KEY = "routes/linked_savegames"
     OPEN_TAB_KEY = "app/open_dialog_tab"
@@ -173,6 +174,16 @@ class AppSettings:
 
     def set_check_updates(self, enabled: bool):
         self._settings.setValue(self.CHECK_UPDATES_KEY, bool(enabled))
+        self._settings.sync()
+
+    @property
+    def reopen_last(self) -> bool:
+        """Whether the last opened file is opened again at startup."""
+
+        return self._settings.value(self.REOPEN_LAST_KEY, True, type=bool)
+
+    def set_reopen_last(self, enabled: bool):
+        self._settings.setValue(self.REOPEN_LAST_KEY, bool(enabled))
         self._settings.sync()
 
     @property

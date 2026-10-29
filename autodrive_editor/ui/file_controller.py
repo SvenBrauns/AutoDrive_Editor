@@ -231,6 +231,23 @@ class FileController(QObject):
             self._inform(tr("The file no longer exists:\n{path}", path=item.path))
             return
 
+        self._open_item(item)
+
+    def open_at_startup(self):
+        """Offers to restore an autosave; if none is restored, opens the last
+        opened file again (if that is turned on and the file still exists)."""
+
+        self.offer_autosave_restore()
+
+        if self.project_coordinator.config_source is not None or not self.settings.reopen_last:
+            return
+
+        items = self.settings.recent_items
+
+        if items and Path(items[0].path).is_file():
+            self._open_item(items[0])
+
+    def _open_item(self, item: RecentItem):
         if item.kind == RecentKind.XML:
             self._load_xml(item.path)
 

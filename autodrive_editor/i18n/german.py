@@ -360,6 +360,7 @@ TEXTS = {
     "off": "aus",
     "Unsaved changes are backed up at this interval in the editor's data folder and offered on the next start after a crash.": "Ungespeicherte Änderungen werden in diesem Abstand im Datenordner des Editors gesichert und nach einem Absturz beim nächsten Start angeboten.",
     "Autosave every": "Automatisch sichern alle",
+    "Open the last opened file at startup": "Beim Start die zuletzt geöffnete Datei öffnen",
     "Language:": "Sprache:",
     "Takes effect after a restart.": "Wirkt nach einem Neustart.",
     "Like Windows": "Wie Windows",
