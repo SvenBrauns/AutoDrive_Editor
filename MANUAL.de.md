@@ -60,7 +60,7 @@ Außerdem: Rückgängig und Wiederholen (`Strg+Z` / `Strg+Y`), Kopieren, Ausschn
 
 Der Editor legt AutoDrive-Parkplätze in den Hallen an, die in einem Savegame gebaut wurden.
 
-**Savegame verknüpfen.** Eine Route hat kein Savegame. Beim Öffnen einer Route bietet der Editor an, eins zu verknüpfen (Savegames auf der Karte der Route zuerst); `Datei → Savegame verknüpfen…` ändert oder entfernt die Verknüpfung. Sie wird im Projekt der Route gespeichert; gibt es keins, bietet der Editor an, eins anzulegen. Mit „Für diese Route nicht mehr fragen“ kommt die Frage für diese Route nicht mehr. Ein geöffnetes Savegame braucht keine Verknüpfung.
+**Savegame verknüpfen.** Eine Route hat kein Savegame. Beim Öffnen einer Route bietet der Editor an, eins zu verknüpfen (Savegames auf der Karte der Route zuerst); `Datei → Savegame verknüpfen…` ändert oder entfernt die Verknüpfung. Sie wird im Projekt der Route gespeichert; gibt es keins, bietet der Editor an, eins anzulegen. Mit „Für diese Route nicht mehr fragen“ kommt die Frage für diese Route nicht mehr. Die Heightmap des verknüpften Savegames ersetzt die der Karte, da Terraforming und Gebäude den Boden verändern. Ein geöffnetes Savegame braucht keine Verknüpfung.
 
 **Hallen.** `Ansicht → Anzeigen → Hallen` zeichnet die Innenbereiche der im Savegame gebauten Gebäude als lila Umrisse. Gebäude, die mit der Karte kommen, sind nicht dabei. Die Gebäudedateien werden aus dem Installationsordner des Spiels und dem Mods-Ordner gelesen; Gebäude, deren Dateien fehlen, werden weggelassen und in der Statusleiste gezählt.
 

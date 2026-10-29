@@ -6,6 +6,7 @@
 - Connections are always colored by their type, also into subprio nodes; the separate subprio connection color and `View → Show → Subprio connections` are gone
 - The colors of regular and subprio nodes can be set under `View → Display options`
 - Routes can be linked to a savegame (`File → Link savegame…`, also offered when a route is opened) to show where its vehicles park; the link is kept in the route's project
+- A route linked to a savegame uses the savegame's heightmap, which includes terrain changes made in game
 - The debug info shows the number of a selected marker
 - `View → Show → Sheds`: outlines of the indoor areas of the buildings placed in the loaded or linked savegame
 - Parking spots tool (`S`, next to Selection): click a shed to create its parking spots, backed in or driven through, with markers and shared entry and exit lines, in one undo step

@@ -6,7 +6,6 @@ The editor supports only Farming Simulator 25.
 
 ## 1. Heightmap
 
-- [ ] use the linked savegame's `terrain.heightmap.png` instead of the map's `dem.png`, since terraforming and placing buildings change the ground
 - [ ] interpolate heightmap values between pixels instead of taking the nearest pixel
 
 ## 2. Further features

@@ -403,6 +403,13 @@ class ProjectCoordinator(QObject):
         """Links a savegame folder to the loaded route, or removes the link (None)."""
 
         self.savegame_directory = Path(directory) if directory is not None else None
+
+        source = self.config_source
+        cached = self.map_cache.find(source.map_name) if self.map_cache and source else None
+
+        if cached is not None:
+            self._load_map_heightmap(source, cached)
+
         self._show_parking()
         self._show_sheds()
 
@@ -570,12 +577,22 @@ class ProjectCoordinator(QObject):
 
         self.background_map.load(str(cached.overview_path))
 
-        # A savegame's own heightmap includes terrain changes made in game.
-        heightmap_path = cached.heightmap_path
-        savegame_heightmap = source.path.parent / SAVEGAME_HEIGHTMAP_NAME
+        self._load_map_heightmap(source, cached)
 
-        if source.format == ConfigFormat.SAVEGAME and savegame_heightmap.is_file():
-            heightmap_path = savegame_heightmap
+        return True, tr(" – map “{name}”", name=cached.title)
+
+    def _load_map_heightmap(self, source: ConfigSource, cached):
+        """Loads the heightmap of the loaded or linked savegame, else the map's dem.png.
+        A savegame's own heightmap includes terrain changes made in game."""
+
+        heightmap_path = cached.heightmap_path
+        savegame = self.savegame_directory
+
+        if savegame is None and source.format == ConfigFormat.SAVEGAME:
+            savegame = source.path.parent
+
+        if savegame is not None and (savegame / SAVEGAME_HEIGHTMAP_NAME).is_file():
+            heightmap_path = savegame / SAVEGAME_HEIGHTMAP_NAME
 
         if heightmap_path is not None:
             heightmap_data = self.heightmap.load(heightmap_path)
@@ -583,8 +600,6 @@ class ProjectCoordinator(QObject):
         else:
             self.heightmap.clear()
             self._set_heightmap_path(None)
-
-        return True, tr(" – map “{name}”", name=cached.title)
 
     def _set_heightmap_path(self, file_path):
         self.current_heightmap_path = str(file_path) if file_path is not None else None

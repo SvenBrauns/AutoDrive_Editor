@@ -67,6 +67,30 @@ def test_savegame_prefers_its_own_heightmap(map_window):
     )
 
 
+def test_linked_savegame_heightmap_replaces_the_map_heightmap_until_unlinked(map_window):
+    cached = import_test_map(map_window)
+    savegame = add_savegame(map_window.folder, 1, "Spielstand", "LS25 Testkarte 2.0", MAP_NAME)
+    (savegame / "terrain.heightmap.png").write_bytes(heightmap_png())
+    open_route(map_window, MAP_NAME)
+    coordinator = map_window.project_coordinator
+
+    coordinator.set_savegame(savegame)
+    assert coordinator.current_heightmap_path == str((savegame / "terrain.heightmap.png").resolve())
+
+    coordinator.set_savegame(None)
+    assert coordinator.current_heightmap_path == str(cached.heightmap_path)
+
+
+def test_linked_savegame_without_heightmap_keeps_the_map_heightmap(map_window):
+    cached = import_test_map(map_window)
+    savegame = add_savegame(map_window.folder, 1, "Spielstand", "LS25 Testkarte 2.0", MAP_NAME)
+    open_route(map_window, MAP_NAME)
+
+    map_window.project_coordinator.set_savegame(savegame)
+
+    assert map_window.project_coordinator.current_heightmap_path == str(cached.heightmap_path)
+
+
 def test_map_that_is_not_imported_is_named_in_the_status(map_window):
     open_route(map_window, "Unbekannte_Karte")
 
