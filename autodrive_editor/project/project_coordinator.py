@@ -20,8 +20,8 @@ from autodrive_editor.file_io.routes_index import (
     mark_route_saved,
     routes_index_for,
 )
+from autodrive_editor.file_io.savegame_buildings import SavegameBuildings, read_savegame_buildings
 from autodrive_editor.file_io.savegame_parking import linked_park_markers
-from autodrive_editor.file_io.savegame_sheds import read_sheds
 from autodrive_editor.file_io.savegame_vehicles import (
     read_park_destinations,
     renumber_vehicle_markers,
@@ -109,7 +109,7 @@ class ProjectCoordinator(QObject):
         self.savegame_directory: Path | None = None
 
         # Status bar note about buildings that could not be read.
-        self.sheds_note = ""
+        self.buildings_note = ""
 
         # Files backed up as .bak in this session.
         self._backed_up_paths: set[Path] = set()
@@ -217,7 +217,7 @@ class ProjectCoordinator(QObject):
 
         self.scene_renderer.render(self.autodrive_data)
         self._show_parking()
-        self._show_sheds()
+        self._show_buildings()
 
         self.selection_coordinator.synchronize()
 
@@ -234,7 +234,7 @@ class ProjectCoordinator(QObject):
                 format=source.format_label,
                 name=source.display_name,
                 count=len(self.autodrive_data),
-                map_note=map_note + self.sheds_note,
+                map_note=map_note + self.buildings_note,
             )
         )
 
@@ -407,7 +407,7 @@ class ProjectCoordinator(QObject):
             self._load_map_heightmap(source, cached)
 
         self._show_parking()
-        self._show_sheds()
+        self._show_buildings()
 
     def _show_parking(self):
         """Marks the markers vehicles park at: those of the loaded savegame, numbered in the order
@@ -428,8 +428,8 @@ class ProjectCoordinator(QObject):
             marker for number, marker in enumerate(self._file_markers, start=1) if number in numbers
         )
 
-    def _show_sheds(self):
-        """Outlines the indoor areas of the buildings in the loaded or the linked savegame."""
+    def _show_buildings(self):
+        """Shows the sheds and stations of the buildings in the loaded or the linked savegame."""
 
         directory = self.savegame_directory
 
@@ -438,14 +438,15 @@ class ProjectCoordinator(QObject):
         if directory is None and source is not None and source.format == ConfigFormat.SAVEGAME:
             directory = source.path.parent
 
-        areas, failed = [], []
+        buildings = SavegameBuildings()
 
         if directory is not None and self.game_files is not None:
             with self.game_files() as files:
-                areas, failed = read_sheds(directory, files)
+                buildings = read_savegame_buildings(directory, files)
 
-        self.scene_renderer.set_shed_areas(areas)
-        self.sheds_note = (
+        self.scene_renderer.set_buildings(buildings)
+        failed = buildings.failed
+        self.buildings_note = (
             tr(" – {count} buildings could not be read (see log file)", count=len(failed))
             if failed
             else ""

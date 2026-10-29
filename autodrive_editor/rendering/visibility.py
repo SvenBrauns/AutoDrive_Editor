@@ -16,6 +16,7 @@ class Visibility:
     markers: bool = True
     parking: bool = True
     sheds: bool = True
+    stations: bool = True
     hidden_selectable: bool = False
 
     def shows_connection(self, connection_type: ConnectionType) -> bool:

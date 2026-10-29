@@ -1,8 +1,10 @@
-"""The indoor areas of the buildings in the loaded or linked savegame are shown as sheds."""
+"""The sheds and stations of the buildings in the loaded or linked savegame are shown."""
 
 import pytest
 from game_folder_helpers import add_routes, add_savegame, make_game_folder
 from PySide6.QtCore import Qt
+
+from autodrive_editor.file_io.savegame_buildings import BuildingGroup
 
 MAP = "LS25_Test"
 
@@ -43,7 +45,7 @@ def game(window, tmp_path):
 
 
 def shed_ids(window):
-    return [area.unique_id for area in window.scene_renderer.shed_areas]
+    return [area.unique_id for area in window.scene_renderer.buildings.areas]
 
 
 def test_loaded_savegame_shows_its_sheds_and_notes_unreadable_buildings(game):
@@ -65,15 +67,18 @@ def test_route_shows_the_sheds_of_the_linked_savegame_only(game):
     assert shed_ids(game) == []
 
 
-def test_hidden_shed_types_are_remembered(game):
+def test_building_types_are_remembered(game):
     game.project_coordinator.load_xml_file(game.savegame / "AutoDrive_config.xml")
 
-    def untick_all(dialog):
+    def change(dialog):
         dialog._check_all(Qt.CheckState.Unchecked)
+        dialog.set_group(dialog._items()[0], BuildingGroup.STATIONS)
         return True
 
-    game._run_dialog = untick_all
-    game.actions.shed_types_action.trigger()
+    game._run_dialog = change
+    game.actions.building_types_action.trigger()
 
-    assert game.settings.hidden_shed_types == {"$moddir$FS25_Shed/shed.xml"}
+    assert game.settings.hidden_building_types == {"$moddir$FS25_Shed/shed.xml"}
+    assert game.settings.building_groups == {"$moddir$FS25_Shed/shed.xml": BuildingGroup.STATIONS}
     assert game.scene_renderer.shown_shed_areas == []
+    assert game.scene_renderer.group_of("$moddir$FS25_Shed/shed.xml") == BuildingGroup.STATIONS

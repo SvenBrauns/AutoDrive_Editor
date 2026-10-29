@@ -43,6 +43,7 @@ SHOW_GROUPS = (
         ("marker_names", tr("Marker names")),
         ("parking", tr("Parking positions")),
         ("sheds", tr("Sheds")),
+        ("stations", tr("Stations")),
     ),
     (("hidden_selectable", tr("Hidden items can be selected")),),
 )
@@ -99,8 +100,7 @@ class MainWindowActions:
             ),
             (
                 tr("View"),
-                ("display_options", "shed_types", "ground_map", "tool_labels")
-                + ("reset_view", "reset_rotation"),
+                ("display_options", "ground_map", "tool_labels") + ("reset_view", "reset_rotation"),
             ),
             (
                 tr("Map"),
@@ -108,6 +108,7 @@ class MainWindowActions:
                 + ("remove_heightmap",),
             ),
             (tr("Check"), ("check_network",)),
+            (tr("Generate"), ("building_types",)),
             (tr("Help"), ("version_history", "check_updates", "open_log_folder", "about")),
         )
 
@@ -263,11 +264,13 @@ class MainWindowActions:
 
         self.display_options_action.triggered.connect(self.window.open_display_options)
 
-        self.shed_types_action = QAction(tr("Sheds…"), self.window)
+        self.building_types_action = QAction(tr("Building types…"), self.window)
 
-        self.shed_types_action.setStatusTip(tr("Choose which building types are shown as sheds"))
+        self.building_types_action.setStatusTip(
+            tr("Choose the group of each building type and which ones are shown")
+        )
 
-        self.shed_types_action.triggered.connect(self.window.open_shed_types)
+        self.building_types_action.triggered.connect(self.window.open_building_types)
 
         self.ground_map_action = QAction(tr("Ground map"), self.window)
         self.ground_map_action.setCheckable(True)
@@ -529,8 +532,6 @@ class MainWindowActions:
 
         view_menu.addAction(self.display_options_action)
 
-        view_menu.addAction(self.shed_types_action)
-
         view_menu.addAction(self.ground_map_action)
 
         view_menu.addSeparator()
@@ -590,6 +591,10 @@ class MainWindowActions:
         check_menu = menu_bar.addMenu(tr("Check"))
 
         check_menu.addAction(self.check_network_action)
+
+        generate_menu = menu_bar.addMenu(tr("Generate"))
+
+        generate_menu.addAction(self.building_types_action)
 
         help_menu = menu_bar.addMenu(tr("Help"))
 

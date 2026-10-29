@@ -8,7 +8,6 @@ The editor supports only Farming Simulator 25.
 
 Design: [docs/generators.md](docs/generators.md). Each step is its own branch.
 
-- [ ] readers and building groups: shared building loop, stations from the building XMLs, every building type in one group (sheds, stations, bunker silos), `Generate` menu with `Building types…`
 - [ ] drivability map from the savegame's `vehicleNavigationCostmap.dat`, route finder with turning radius, `Find route` in planning mode
 - [ ] join rules: fixed nodes, join points, reuse of separate pieces, replacement of pass-through stretches, regular and subprio for yards
 - [ ] stations generator: pick buildings on the map, lanes over the triggers, markers, entry and exit routes
