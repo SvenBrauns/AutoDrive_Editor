@@ -62,13 +62,13 @@ Also available: Undo and Redo (`Ctrl+Z` / `Ctrl+Y`), Copy, Cut and Paste (`Ctrl+
 
 ## Parking spots in sheds
 
-The editor creates AutoDrive parking spots in the sheds placed in a savegame.
+The editor creates AutoDrive parking spots in the sheds of a savegame.
 
 **Link a savegame.** A route has no savegame. When a route is opened, the editor offers to link one (savegames on the route's map come first); `File → Link savegame…` changes or removes the link. The editor remembers the link for the route. With "Don't ask again for this route" the question no longer comes for that route. The linked savegame's heightmap replaces the map's, since terraforming and buildings change the ground. An opened savegame needs no link.
 
-**Sheds.** `View → Show → Sheds` draws the indoor areas of the buildings placed in the savegame as purple outlines. Buildings that came with the map are not included. The building files are read from the game install folder and the mods folder; buildings whose files are missing are left out and counted in the status bar.
+**Sheds.** `View → Show → Sheds` draws the indoor areas of the savegame's buildings as purple outlines: those placed in game and those that came with the map, unless they were torn down. The building files are read from the game install folder and the mods folder; buildings whose files are missing are left out and counted in the status bar. `View → Sheds…` lists the building types of the loaded sheds, grouped by their shop category (Vehicle sheds, Production points, Beehives, …); unticked types or categories are hidden on every map. The category comes from the building, so some map barns are listed under Decoration although vehicles fit in.
 
-**Create parking spots.** Choose the Parking spots tool (`S`) and left-click a shed outline. The dialog shows a top view of the shed, turned so the open side is at the bottom, with an arrow to north, and updates while you type.
+**Create parking spots.** Choose the Parking spots tool (`S`); pointing at a shed shows the building's name and category. Left-click a shed outline. The dialog shows a top view of the shed, turned so the open side is at the bottom, with an arrow to north, and updates while you type.
 
 - **Mode**: *Back in* (vehicles reverse into the bay, the marker is at the back wall) or *Drive through* (one forward line per bay through the shed, the exit is on the opposite side).
 - **Open side** / **Entry side**: the side the vehicles come in. Click a side or its compass label in the top view to change it.

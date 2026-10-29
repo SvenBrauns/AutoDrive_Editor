@@ -54,3 +54,24 @@ def test_shed_is_found_inside_its_outline_while_shown(renderer):
     renderer.set_visibility(Visibility(sheds=False))
 
     assert renderer.get_shed_at(510, 505) is None
+
+
+def test_hidden_type_is_neither_drawn_nor_found(renderer):
+    renderer.set_hidden_shed_types({"shed.xml"})
+
+    assert renderer.shed_layer.polygons == []
+    assert renderer.get_shed_at(510, 505) is None
+    # Kept, so the type can be shown again.
+    assert renderer.shed_areas == [AREA]
+
+    renderer.set_hidden_shed_types(set())
+
+    assert renderer.get_shed_at(510, 505) == AREA
+
+
+def test_hidden_types_stay_hidden_for_the_next_route(renderer):
+    renderer.set_hidden_shed_types({"shed.xml"})
+    renderer.render(AutoDriveData())
+    renderer.set_shed_areas([AREA])
+
+    assert renderer.shed_layer.polygons == []

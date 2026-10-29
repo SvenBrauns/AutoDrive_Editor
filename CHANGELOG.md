@@ -1,5 +1,11 @@
 # Version history
 
+## Unreleased
+
+- `View → Show → Sheds` also shows the buildings that came with the map
+- The Parking spots tool shows the name and category of the building under the pointer
+- `View → Sheds…` hides building types or whole categories that are no sheds, e.g. beehives, on every map
+
 ## 1.2.0 – 2026-10-29
 
 - Dual connections get an arrow pointing to each end

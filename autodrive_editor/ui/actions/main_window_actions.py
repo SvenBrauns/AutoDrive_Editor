@@ -97,7 +97,10 @@ class MainWindowActions:
                 ("undo", "redo", "copy", "cut", "paste", "paste_at_original")
                 + ("delete_selection", "grid_snap"),
             ),
-            (tr("View"), ("display_options", "tool_labels", "reset_view", "reset_rotation")),
+            (
+                tr("View"),
+                ("display_options", "shed_types", "tool_labels", "reset_view", "reset_rotation"),
+            ),
             (
                 tr("Map"),
                 ("scan_map_mods", "import_map_mod", "select_background", "select_heightmap")
@@ -258,6 +261,12 @@ class MainWindowActions:
         self.display_options_action = QAction(tr("Display options…"), self.window)
 
         self.display_options_action.triggered.connect(self.window.open_display_options)
+
+        self.shed_types_action = QAction(tr("Sheds…"), self.window)
+
+        self.shed_types_action.setStatusTip(tr("Choose which building types are shown as sheds"))
+
+        self.shed_types_action.triggered.connect(self.window.open_shed_types)
 
         self.reset_view_action = QAction(tr("Reset view"), self.window)
 
@@ -499,6 +508,8 @@ class MainWindowActions:
         view_menu = menu_bar.addMenu(tr("View"))
 
         view_menu.addAction(self.display_options_action)
+
+        view_menu.addAction(self.shed_types_action)
 
         view_menu.addSeparator()
 

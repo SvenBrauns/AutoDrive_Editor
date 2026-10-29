@@ -58,13 +58,13 @@ Außerdem: Rückgängig und Wiederholen (`Strg+Z` / `Strg+Y`), Kopieren, Ausschn
 
 ## Parkplätze in Hallen
 
-Der Editor legt AutoDrive-Parkplätze in den Hallen an, die in einem Savegame gebaut wurden.
+Der Editor legt AutoDrive-Parkplätze in den Hallen eines Savegames an.
 
 **Savegame verknüpfen.** Eine Route hat kein Savegame. Beim Öffnen einer Route bietet der Editor an, eins zu verknüpfen (Savegames auf der Karte der Route zuerst); `Datei → Savegame verknüpfen…` ändert oder entfernt die Verknüpfung. Sie wird im Projekt der Route gespeichert; gibt es keins, bietet der Editor an, eins anzulegen. Mit „Für diese Route nicht mehr fragen“ kommt die Frage für diese Route nicht mehr. Die Heightmap des verknüpften Savegames ersetzt die der Karte, da Terraforming und Gebäude den Boden verändern. Ein geöffnetes Savegame braucht keine Verknüpfung.
 
-**Hallen.** `Ansicht → Anzeigen → Hallen` zeichnet die Innenbereiche der im Savegame gebauten Gebäude als lila Umrisse. Gebäude, die mit der Karte kommen, sind nicht dabei. Die Gebäudedateien werden aus dem Installationsordner des Spiels und dem Mods-Ordner gelesen; Gebäude, deren Dateien fehlen, werden weggelassen und in der Statusleiste gezählt.
+**Hallen.** `Ansicht → Anzeigen → Hallen` zeichnet die Innenbereiche der Gebäude des Savegames als lila Umrisse: die im Spiel gebauten und die, die mit der Karte kommen, sofern sie nicht abgerissen wurden. Die Gebäudedateien werden aus dem Installationsordner des Spiels und dem Mods-Ordner gelesen; Gebäude, deren Dateien fehlen, werden weggelassen und in der Statusleiste gezählt. `Ansicht → Hallen…` listet die Gebäudetypen der geladenen Hallen, nach ihrer Shop-Kategorie gruppiert (Fahrzeughallen, Produktionen, Bienenstöcke, …); nicht angehakte Typen oder Kategorien werden auf jeder Karte ausgeblendet. Die Kategorie stammt vom Gebäude, daher stehen manche Scheunen der Karte unter Dekoration, obwohl Fahrzeuge hineinpassen.
 
-**Parkplätze anlegen.** Das Werkzeug Parkplätze (`S`) wählen und einen Hallenumriss mit links anklicken. Der Dialog zeigt die Halle von oben, so gedreht, dass die offene Seite unten liegt, mit einem Pfeil nach Norden, und aktualisiert sich bei jeder Eingabe.
+**Parkplätze anlegen.** Das Werkzeug Parkplätze (`S`) wählen; zeigt der Mauszeiger auf eine Halle, erscheinen Name und Kategorie des Gebäudes. Einen Hallenumriss mit links anklicken. Der Dialog zeigt die Halle von oben, so gedreht, dass die offene Seite unten liegt, mit einem Pfeil nach Norden, und aktualisiert sich bei jeder Eingabe.
 
 - **Modus**: *Rückwärts einparken* (die Fahrzeuge setzen rückwärts in den Stellplatz, der Marker liegt an der Rückwand) oder *Durchfahren* (eine Vorwärtslinie je Stellplatz durch die Halle, die Ausfahrt liegt auf der gegenüberliegenden Seite).
 - **Offene Seite** / **Einfahrtseite**: die Seite, von der die Fahrzeuge kommen. Zum Ändern eine Seite oder ihre Himmelsrichtung in der Draufsicht anklicken.

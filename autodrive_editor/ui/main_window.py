@@ -59,6 +59,7 @@ from autodrive_editor.ui.dialogs.messages import APP_TITLE
 from autodrive_editor.ui.dialogs.node_position_dialog import NodePositionDialog
 from autodrive_editor.ui.dialogs.parking_spot_dialog import ParkingSpotDialog
 from autodrive_editor.ui.dialogs.settings_dialog import SettingsDialog
+from autodrive_editor.ui.dialogs.shed_types_dialog import ShedTypesDialog
 from autodrive_editor.ui.file_controller import FileController
 from autodrive_editor.ui.map_import_controller import MapImportController
 from autodrive_editor.ui.map_view.map_view import MapView
@@ -145,6 +146,7 @@ class MainWindow(QMainWindow):
 
         self.scene_renderer.set_marker_names_visible(self.settings.marker_names_visible)
         self.scene_renderer.set_visibility(self.settings.visibility)
+        self.scene_renderer.set_hidden_shed_types(self.settings.hidden_shed_types)
 
         self.actions = MainWindowActions(self)
         self.actions.set_current_map_scale(self.background_map.map_scale)
@@ -315,6 +317,18 @@ class MainWindow(QMainWindow):
         dialog.style_applied.connect(self.apply_display_style)
 
         dialog.exec()
+
+    def open_shed_types(self):
+        dialog = ShedTypesDialog(
+            self.scene_renderer.shed_areas, self.settings.hidden_shed_types, parent=self
+        )
+
+        if self._run_dialog(dialog):
+            self.settings.set_hidden_shed_types(dialog.hidden_types)
+            self.scene_renderer.set_hidden_shed_types(dialog.hidden_types)
+
+    def _run_dialog(self, dialog) -> bool:
+        return bool(dialog.exec())
 
     def apply_display_style(self, display_style: DisplayStyle):
         if not isinstance(display_style, DisplayStyle):
@@ -542,6 +556,7 @@ class MainWindow(QMainWindow):
                     else tr("No sheds shown: open a savegame or link one to the route")
                 ),
                 is_target=lambda view_position: self._get_shed_at(view_position) is not None,
+                hover_text=self._get_shed_name_at,
             ),
         )
 
@@ -782,6 +797,11 @@ class MainWindow(QMainWindow):
         scene_position = self.view.mapToScene(view_position)
 
         return self.scene_renderer.get_shed_at(scene_position.x(), scene_position.y())
+
+    def _get_shed_name_at(self, view_position) -> str:
+        area = self._get_shed_at(view_position)
+
+        return f"{area.name} – {area.category_label}" if area is not None else ""
 
     def _get_connection_at(self, view_position):
         scene_position = self.view.mapToScene(view_position)

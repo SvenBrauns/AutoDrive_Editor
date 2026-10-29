@@ -244,6 +244,11 @@ class MapView(QGraphicsView):
         else:
             super().mouseMoveEvent(event)
 
+    def leaveEvent(self, event):
+        self.active_tool.mouse_leave()
+
+        super().leaveEvent(event)
+
     def mouseReleaseEvent(self, event: QMouseEvent):
         mouse_position = event.position().toPoint()
 

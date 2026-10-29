@@ -286,3 +286,11 @@ def test_last_parking_template_follows_loading_and_deleting():
     settings.delete_parking_template("a.xml", "Big")
     assert settings.parking_templates("a.xml") == {"Small": {}}
     assert settings.last_parking_template("a.xml") is None
+
+
+def test_hidden_shed_types_are_kept():
+    assert AppSettings().hidden_shed_types == set()
+
+    AppSettings().set_hidden_shed_types({"b.xml", "a.xml"})
+
+    assert AppSettings().hidden_shed_types == {"a.xml", "b.xml"}

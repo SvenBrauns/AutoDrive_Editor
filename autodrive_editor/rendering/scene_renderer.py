@@ -58,6 +58,8 @@ class SceneRenderer:
         self.parking_markers: list[MarkerData] = []
         # Indoor areas of the buildings in the savegame.
         self.shed_areas: list[IndoorArea] = []
+        # Building files whose sheds are left out.
+        self.hidden_shed_types: set[str] = set()
         self.selected_node_ids: set[int] = set()
 
         self.autodrive_data: AutoDriveData | None = None
@@ -112,7 +114,7 @@ class SceneRenderer:
             layer.set_visibility(self.visibility)
             self.scene.addItem(layer)
 
-        self.shed_layer.set_areas(self.shed_areas)
+        self.shed_layer.set_areas(self.shown_shed_areas)
 
         self._refresh_selection()
 
@@ -282,7 +284,7 @@ class SceneRenderer:
 
         point = QPointF(x, z)
 
-        for area in self.shed_areas:
+        for area in self.shown_shed_areas:
             outline = QPolygonF([QPointF(*corner) for corner in area.corners])
 
             if outline.containsPoint(point, Qt.OddEvenFill):
@@ -344,11 +346,23 @@ class SceneRenderer:
         if self.marker_layer is not None:
             self.marker_layer.set_parking_markers(self.parking_markers)
 
+    @property
+    def shown_shed_areas(self) -> list[IndoorArea]:
+        return [
+            area for area in self.shed_areas if area.building_file not in self.hidden_shed_types
+        ]
+
     def set_shed_areas(self, areas: list[IndoorArea]):
         self.shed_areas = list(areas)
 
         if self.shed_layer is not None:
-            self.shed_layer.set_areas(self.shed_areas)
+            self.shed_layer.set_areas(self.shown_shed_areas)
+
+    def set_hidden_shed_types(self, building_files: set[str]):
+        self.hidden_shed_types = set(building_files)
+
+        if self.shed_layer is not None:
+            self.shed_layer.set_areas(self.shown_shed_areas)
 
     def set_display_style(self, display_style: DisplayStyle):
         if not isinstance(display_style, DisplayStyle):

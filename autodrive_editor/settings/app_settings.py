@@ -42,6 +42,7 @@ class AppSettings:
     LINKED_SAVEGAMES_KEY = "routes/linked_savegames"
     OPEN_TAB_KEY = "app/open_dialog_tab"
     PARKING_TEMPLATES_KEY = "parking/templates"
+    HIDDEN_SHED_TYPES_KEY = "view/hidden_shed_types"
 
     THEMES = ("system", "light", "dark")
     DEFAULT_AUTOSAVE_MINUTES = 5
@@ -340,6 +341,23 @@ class AppSettings:
         self._set_parking_templates(
             building_file, templates, self.last_parking_template(building_file)
         )
+
+    @property
+    def hidden_shed_types(self) -> set[str]:
+        """Building files whose sheds are not shown, on every map."""
+
+        try:
+            files = json.loads(self._settings.value(self.HIDDEN_SHED_TYPES_KEY, "[]"))
+        except (TypeError, ValueError):
+            return set()
+
+        return (
+            {file for file in files if isinstance(file, str)} if isinstance(files, list) else set()
+        )
+
+    def set_hidden_shed_types(self, building_files: set[str]):
+        self._settings.setValue(self.HIDDEN_SHED_TYPES_KEY, json.dumps(sorted(building_files)))
+        self._settings.sync()
 
     def _parking_templates(self) -> dict:
         try:

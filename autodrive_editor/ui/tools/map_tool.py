@@ -117,6 +117,9 @@ class MapTool:
 
         return True
 
+    def mouse_leave(self):
+        """The pointer left the map."""
+
     def cancel(self) -> bool:
         """Called on Esc and right-click. Returns True if something was
         cancelled."""

@@ -2,6 +2,7 @@
 
 import pytest
 from game_folder_helpers import add_routes, add_savegame, make_game_folder
+from PySide6.QtCore import Qt
 
 MAP = "LS25_Test"
 
@@ -62,3 +63,17 @@ def test_route_shows_the_sheds_of_the_linked_savegame_only(game):
 
     coordinator.set_savegame(None)
     assert shed_ids(game) == []
+
+
+def test_hidden_shed_types_are_remembered(game):
+    game.project_coordinator.load_xml_file(game.savegame / "AutoDrive_config.xml")
+
+    def untick_all(dialog):
+        dialog._check_all(Qt.CheckState.Unchecked)
+        return True
+
+    game._run_dialog = untick_all
+    game.actions.shed_types_action.trigger()
+
+    assert game.settings.hidden_shed_types == {"$moddir$FS25_Shed/shed.xml"}
+    assert game.scene_renderer.shown_shed_areas == []
