@@ -76,14 +76,15 @@ The editor creates AutoDrive parking spots in the sheds of a savegame.
 - **Open side** / **Entry side**: the side the vehicles come in. Click a side or its compass label in the top view to change it.
 - **Number of bays**: the bay width is calculated from it and shown below. Bays narrower than 3 m are shown in red and cannot be created.
 - **Left wall**, **Right wall**, **Back wall** (or **Exit offset**), **All gaps**: distances in metres. Click a wall or a gap in the top view to edit just that one; a small box opens at the click spot (Enter applies, Esc cancels). Single gaps are kept when the number of bays changes.
+- **Positions per bay**, **Position spacing** (drive through only): several parking positions in a row in each bay, the first at the exit offset and the others toward the entry, each with its own marker.
 - **Entry line**, **Exit line**: the driving direction of the two lines outside the open side, seen from outside.
-- **Marker name**, **Start number**, **Group**: "Shed" from 3 gives "Shed 3", "Shed 4", … A new group name creates the group.
+- **Marker name**, **Start number**, **Group**: "Shed" from 3 gives "Shed 3", "Shed 4", … With several positions per bay the numbers count on through the positions of each bay, starting at the exit. A new group name creates the group.
 
 When backing in, the side view below shows the line of one bay, which all bays use. Click a segment to change its length, "+" splits a segment in half, `Delete` removes the selected node. The points where the entry and exit lines branch off can be dragged to another node. In drive-through mode the side view only shows the line.
 
 `Create` adds all nodes as subprio nodes at the shed's height, as one undo step. Running it twice creates the spots twice. Afterwards the four open ends of the entry and exit lines are selected, so you can connect them to the road network. `Reset shed settings` brings back the default layout.
 
-**Templates.** `Save as template…` stores the mode, side, number of bays, distances and bay line under a name for this shed type, so it works for the same building on any map. Line directions, marker name, start number and group are not stored. `Load template…` lists the templates of the shed type, where they can also be deleted. The dialog opens with the template saved or loaded last for the shed type.
+**Templates.** `Save as template…` stores the mode, side, number of bays, distances, parking positions and bay line under a name for this shed type, so it works for the same building on any map. Line directions, marker name, start number and group are not stored. `Load template…` lists the templates of the shed type, where they can also be deleted. The dialog opens with the template saved or loaded last for the shed type.
 
 ## Checking the network
 

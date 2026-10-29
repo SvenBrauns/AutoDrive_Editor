@@ -11,6 +11,7 @@
 - Saving runs the network check first; if it finds problems, they are shown and the editor asks whether to save anyway
 - The last opened file opens again at startup; can be turned off under `File → Settings`
 - Measuring points on a node move with the node (e.g. on undo); if the node is deleted, the point stays as a free point
+- Drive-through parking spots can have several parking positions in a row per bay (`Positions per bay`, `Position spacing`), each with its own marker
 
 ## 1.2.0 – 2026-10-29
 

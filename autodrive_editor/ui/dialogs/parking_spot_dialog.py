@@ -26,8 +26,10 @@ from autodrive_editor.editing.parking_layout import (
     default_open_side,
     drive_through_line,
     from_template,
+    marker_count,
     marker_depth,
     plan_parking,
+    positions_fit,
     side_angle,
     template_values,
 )
@@ -87,6 +89,11 @@ class ParkingSpotDialog(QDialog):
         # Blank while the gaps differ.
         self.gap_input.setMinimum(-0.1)
         self.gap_input.setSpecialValueText(" ")
+
+        self.positions_input = QSpinBox(self)
+        self.positions_input.setRange(1, 20)
+        self.spacing_input = self._length_input()
+        self.spacing_input.setMinimum(1.0)
 
         self.entry_direction_input = self._direction_input()
         self.exit_direction_input = self._direction_input()
@@ -149,6 +156,9 @@ class ParkingSpotDialog(QDialog):
         self.back_label = QLabel(self)
         form.addRow(self.back_label, self.back_input)
         form.addRow(tr("All gaps:"), self.gap_input)
+        form.addRow(tr("Positions per bay:"), self.positions_input)
+        form.addRow(tr("Position spacing:"), self.spacing_input)
+        self.form = form
         form.addRow(tr("Entry line:"), self.entry_direction_input)
         form.addRow(tr("Exit line:"), self.exit_direction_input)
         form.addRow(tr("Marker name:"), self.name_input)
@@ -179,7 +189,14 @@ class ParkingSpotDialog(QDialog):
         for widget in (self.mode_input, self.side_input) + self._direction_inputs():
             widget.currentIndexChanged.connect(self._update)
 
-        for widget in (self.start_input, self.left_input, self.right_input, self.back_input):
+        for widget in (
+            self.start_input,
+            self.left_input,
+            self.right_input,
+            self.back_input,
+            self.positions_input,
+            self.spacing_input,
+        ):
             widget.valueChanged.connect(self._update)
 
         self.bays_input.valueChanged.connect(self._bays_changed)
@@ -205,6 +222,8 @@ class ParkingSpotDialog(QDialog):
             entry_left_to_right=self.entry_direction_input.currentData(),
             exit_left_to_right=self.exit_direction_input.currentData(),
             bay_line=self.bay_line,
+            positions=self.positions_input.value(),
+            position_spacing=self.spacing_input.value(),
             marker_name=self.name_input.text().strip(),
             start_number=self.start_input.value(),
             group=self.group_input.currentText().strip(),
@@ -226,6 +245,8 @@ class ParkingSpotDialog(QDialog):
         self.left_input.setValue(DEFAULTS.left_offset)
         self.right_input.setValue(DEFAULTS.right_offset)
         self.back_input.setValue(DEFAULTS.back_offset)
+        self.positions_input.setValue(DEFAULTS.positions)
+        self.spacing_input.setValue(DEFAULTS.position_spacing)
         self.gap_input.setValue(0.0)
         self.gaps = [0.0] * (self.bays_input.value() - 1)
         self.bay_line = None
@@ -252,6 +273,8 @@ class ParkingSpotDialog(QDialog):
         self.left_input.setValue(template.left_offset)
         self.right_input.setValue(template.right_offset)
         self.back_input.setValue(template.back_offset)
+        self.positions_input.setValue(template.positions)
+        self.spacing_input.setValue(template.position_spacing)
         self.gaps = list(template.gaps)
         self.bay_line = template.bay_line
         self._update()
@@ -368,6 +391,9 @@ class ParkingSpotDialog(QDialog):
         self.back_label.setText(tr("Back wall:") if back_in else tr("Exit offset:"))
         self.gap_input.setEnabled(settings.bays > 1)
         self._show_all_gaps()
+        self.form.setRowVisible(self.positions_input, not back_in)
+        self.form.setRowVisible(self.spacing_input, not back_in)
+        self.spacing_input.setEnabled(settings.positions > 1)
 
         frame = ShedFrame.from_area(self.area, settings.open_side)
         width = bay_width(frame, settings)
@@ -376,18 +402,19 @@ class ParkingSpotDialog(QDialog):
         marker_d = marker_depth(frame, settings)
         line = bay_line(frame, settings) if inside else None
         line_fits = not back_in or not inside or line.fits(marker_d)
+        positions_inside = not inside or positions_fit(frame, settings)
 
         self.bay_width_label.setText(f"{self.locale().toString(width, 'f', 1)} m")
         self.bay_width_label.setStyleSheet("color: red;" if too_narrow else "")
 
-        problem = self._problem(settings, frame, too_narrow, line_fits)
-        fits = not too_narrow and inside and line_fits
+        problem = self._problem(settings, frame, too_narrow, line_fits, positions_inside)
+        fits = not too_narrow and inside and line_fits and positions_inside
         network = plan_parking(frame, settings) if fits else None
 
         self.preview.show_plan(self.area, frame, settings, network)
         self.create_button.setEnabled(problem is None)
 
-        if not inside:
+        if not inside or not positions_inside:
             self.side_view.clear()
         elif back_in:
             self.side_view.show_bay_line(frame, settings, line)
@@ -399,12 +426,15 @@ class ParkingSpotDialog(QDialog):
         else:
             self.hint_label.setText(problem or "")
 
-    def _problem(self, settings, frame, too_narrow, line_fits) -> str | None:
+    def _problem(self, settings, frame, too_narrow, line_fits, positions_inside) -> str | None:
         if too_narrow:
             return tr("The bays are narrower than {width} m.", width=f"{MIN_BAY_WIDTH:.1f}")
 
         if settings.back_offset >= frame.depth:
             return tr("The marker must be inside the shed.")
+
+        if not positions_inside:
+            return tr("The parking positions don't fit in the shed.")
 
         if not line_fits:
             return tr(
@@ -418,7 +448,7 @@ class ParkingSpotDialog(QDialog):
         if not settings.group:
             return self.EMPTY_GROUP_TEXT
 
-        for number in range(settings.start_number, settings.start_number + settings.bays):
+        for number in range(settings.start_number, settings.start_number + marker_count(settings)):
             name = f"{settings.marker_name} {number}"
 
             if (name, settings.group) in self.taken_names:
