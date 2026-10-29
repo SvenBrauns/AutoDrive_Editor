@@ -58,6 +58,7 @@ Dieser Editor ist ein neuer Editor nur für den LS25. Sein erstes Ziel war alles
 | Prüfergebnisse als Liste: zu jedem Problem springen, Einträge ignorieren | | ✅ |
 | Freie Auswahl | | ✅ |
 | Abstands- und Winkelmessung | | ✅ |
+| Parkplätze in Hallen, mit Vorlagen | | ✅ |
 | Kartenansicht drehen | | ✅ |
 | Automatische Sicherung, Tastenkürzel, dunkles Design | ✅ | ✅ |
 | Experimentelle Werkzeuge (Straßenanbindung, Skalieren, Vorlagen) | ✅ | |

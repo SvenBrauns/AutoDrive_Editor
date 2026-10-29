@@ -4,18 +4,12 @@ Planned features of the AutoDrive FS25 Editor, in the order they should be imple
 
 The editor supports only Farming Simulator 25.
 
-## 1. Parking spots in sheds
-
-Design: [docs/parking_spots.md](docs/parking_spots.md). Each step is its own branch.
-
-- [ ] afterwards: turn docs/parking_spots.md into a manual section and delete it
-
-## 2. Heightmap
+## 1. Heightmap
 
 - [ ] use the linked savegame's `terrain.heightmap.png` instead of the map's `dem.png`, since terraforming and placing buildings change the ground
 - [ ] interpolate heightmap values between pixels instead of taking the nearest pixel
 
-## 3. Further features
+## 2. Further features
 
 Features the old editor does not have.
 

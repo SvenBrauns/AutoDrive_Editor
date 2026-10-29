@@ -6,6 +6,7 @@
 - [Netz öffnen](#netz-öffnen)
 - [Bedienung](#bedienung)
 - [Darstellung](#darstellung)
+- [Parkplätze in Hallen](#parkplätze-in-hallen)
 - [Netz prüfen](#netz-prüfen)
 - [Speichern](#speichern)
 - [Einstellungen](#einstellungen)
@@ -33,6 +34,7 @@ Kartenbilder werden nicht mit dem Editor ausgeliefert. Über `Karte → Karten s
 | --- | --- | --- |
 | Navigation | `N` | Karte verschieben und drehen |
 | Auswahl | `A` | Per Klick oder Rechtsziehen auswählen; Umschalt + Rechtsziehen für freie Auswahl; Strg ergänzt die Auswahl |
+| Parkplätze | `S` | Eine Halle anklicken, um darin Parkplätze anzulegen, siehe [Parkplätze in Hallen](#parkplätze-in-hallen) |
 | Verschieben | `V` | Node oder Auswahl ziehen; Umschalt bewegt nur entlang einer Rasterachse |
 | Rotieren | `R` | Auswahl am Ring drehen; Umschalt rastet in Schritten ein (Standard 15°, über den Pfeil einstellbar) |
 | Erstellen (Regular / Subprio) | `E` / `Umschalt+E` | Node auf freier Fläche erstellen |
@@ -52,7 +54,30 @@ Außerdem: Rückgängig und Wiederholen (`Strg+Z` / `Strg+Y`), Kopieren, Ausschn
 
 ## Darstellung
 
-`Ansicht → Anzeigen` blendet Nodes, Node-IDs, jede Connection-Art (Regular, Dual, Reverse), Marker, Markernamen, die Parkpositionen der Fahrzeuge und Hallen ein und aus. Die Linienfarbe zeigt die Connection-Art, Pfeile zeigen die Richtung; Dual-Connections bekommen zu jedem Ende einen. Subprio-Nodes sind orange. Node-IDs erscheinen erst beim Hineinzoomen; Parkpositionen (ein „P“ neben dem Marker) werden aus der `vehicles.xml` eines Spielstands gelesen. Eine Route hat keinen Spielstand: Beim Öffnen bietet der Editor an, ein Savegame zu verknüpfen (Savegames auf der Karte der Route zuerst), `Datei → Savegame verknüpfen…` ändert oder entfernt die Verknüpfung. Sie wird im Projekt der Route gespeichert; gibt es keins, bietet der Editor an, eins anzulegen. Hallen sind die Innenbereiche der Gebäude, die im geladenen oder verknüpften Savegame gebaut wurden; sie werden als lila Umrisse gezeichnet. Gelesen werden sie aus dem Installationsordner des Spiels und dem Mods-Ordner; Gebäude, deren Dateien fehlen, werden weggelassen und in der Statusleiste gezählt. Ausgeblendete Nodes und Connections lassen sich nur anklicken und auswählen, wenn `Ausgeblendete Elemente auswählbar` an ist. Größen und Farben stellt man unter `Ansicht → Darstellungsoptionen` ein. Alle Einstellungen bleiben gespeichert.
+`Ansicht → Anzeigen` blendet Nodes, Node-IDs, jede Connection-Art (Regular, Dual, Reverse), Marker, Markernamen, die Parkpositionen der Fahrzeuge und Hallen ein und aus. Die Linienfarbe zeigt die Connection-Art, Pfeile zeigen die Richtung; Dual-Connections bekommen zu jedem Ende einen. Subprio-Nodes sind orange. Node-IDs erscheinen erst beim Hineinzoomen; Parkpositionen (ein „P“ neben dem Marker) werden aus der `vehicles.xml` eines Spielstands gelesen. Eine Route braucht dafür ein verknüpftes Savegame, siehe [Parkplätze in Hallen](#parkplätze-in-hallen); dort sind auch die Hallen erklärt. Ausgeblendete Nodes und Connections lassen sich nur anklicken und auswählen, wenn `Ausgeblendete Elemente auswählbar` an ist. Größen und Farben stellt man unter `Ansicht → Darstellungsoptionen` ein. Alle Einstellungen bleiben gespeichert.
+
+## Parkplätze in Hallen
+
+Der Editor legt AutoDrive-Parkplätze in den Hallen an, die in einem Savegame gebaut wurden.
+
+**Savegame verknüpfen.** Eine Route hat kein Savegame. Beim Öffnen einer Route bietet der Editor an, eins zu verknüpfen (Savegames auf der Karte der Route zuerst); `Datei → Savegame verknüpfen…` ändert oder entfernt die Verknüpfung. Sie wird im Projekt der Route gespeichert; gibt es keins, bietet der Editor an, eins anzulegen. Mit „Für diese Route nicht mehr fragen“ kommt die Frage für diese Route nicht mehr. Ein geöffnetes Savegame braucht keine Verknüpfung.
+
+**Hallen.** `Ansicht → Anzeigen → Hallen` zeichnet die Innenbereiche der im Savegame gebauten Gebäude als lila Umrisse. Gebäude, die mit der Karte kommen, sind nicht dabei. Die Gebäudedateien werden aus dem Installationsordner des Spiels und dem Mods-Ordner gelesen; Gebäude, deren Dateien fehlen, werden weggelassen und in der Statusleiste gezählt.
+
+**Parkplätze anlegen.** Das Werkzeug Parkplätze (`S`) wählen und einen Hallenumriss mit links anklicken. Der Dialog zeigt die Halle von oben, so gedreht, dass die offene Seite unten liegt, mit einem Pfeil nach Norden, und aktualisiert sich bei jeder Eingabe.
+
+- **Modus**: *Rückwärts einparken* (die Fahrzeuge setzen rückwärts in den Stellplatz, der Marker liegt an der Rückwand) oder *Durchfahren* (eine Vorwärtslinie je Stellplatz durch die Halle, die Ausfahrt liegt auf der gegenüberliegenden Seite).
+- **Offene Seite** / **Einfahrtseite**: die Seite, von der die Fahrzeuge kommen. Zum Ändern eine Seite oder ihre Himmelsrichtung in der Draufsicht anklicken.
+- **Anzahl Stellplätze**: Daraus wird die Stellplatzbreite berechnet und darunter angezeigt. Stellplätze unter 3 m Breite werden rot angezeigt und lassen sich nicht anlegen.
+- **Linke Wand**, **Rechte Wand**, **Rückwand** (bzw. **Abstand zur Ausfahrt**), **Alle Zwischenräume**: Abstände in Metern. Eine Wand oder einen Zwischenraum in der Draufsicht anklicken, um nur diesen zu ändern; an der Klickstelle öffnet sich ein kleines Feld (Enter übernimmt, Esc bricht ab). Einzeln geänderte Zwischenräume bleiben erhalten, wenn sich die Anzahl der Stellplätze ändert.
+- **Zufahrtslinie**, **Abfahrtslinie**: die Fahrtrichtung der beiden Linien vor der offenen Seite, von außen gesehen.
+- **Markername**, **Startnummer**, **Gruppe**: „Halle“ ab 3 ergibt „Halle 3“, „Halle 4“, … Ein neuer Gruppenname legt die Gruppe an.
+
+Beim Rückwärts-Einparken zeigt die Seitenansicht darunter die Linie eines Stellplatzes, die für alle Stellplätze gilt. Ein Segment anklicken, um seine Länge zu ändern; „+“ teilt ein Segment in der Mitte, `Entf` löscht die ausgewählte Node. Die Punkte, an denen Zufahrts- und Abfahrtslinie abzweigen, lassen sich auf eine andere Node ziehen. Beim Durchfahren zeigt die Seitenansicht die Linie nur an.
+
+`Anlegen` erzeugt alle Nodes als Subprio-Nodes auf der Höhe der Halle, als ein Rückgängig-Schritt. Zweimal ausgeführt entstehen die Parkplätze zweimal. Danach sind die vier offenen Enden von Zufahrts- und Abfahrtslinie ausgewählt, damit man sie ans Straßennetz anschließen kann. `Halleneinstellungen zurücksetzen` stellt die Standardaufteilung wieder her.
+
+**Vorlagen.** `Als Vorlage speichern…` speichert Modus, Seite, Anzahl Stellplätze, Abstände und Stellplatzlinie unter einem Namen für diesen Hallentyp; die Vorlage gilt so für dasselbe Gebäude auf jeder Karte. Linienrichtungen, Markername, Startnummer und Gruppe werden nicht gespeichert. `Vorlage laden…` listet die Vorlagen des Hallentyps, dort lassen sie sich auch löschen. Der Dialog öffnet mit der zuletzt gespeicherten oder geladenen Vorlage des Hallentyps.
 
 ## Netz prüfen
 

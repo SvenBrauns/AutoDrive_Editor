@@ -6,6 +6,7 @@
 - [Opening a network](#opening-a-network)
 - [Controls](#controls)
 - [Display](#display)
+- [Parking spots in sheds](#parking-spots-in-sheds)
 - [Checking the network](#checking-the-network)
 - [Saving](#saving)
 - [Settings](#settings)
@@ -33,6 +34,7 @@ Map images are not shipped with the editor. Use `Map → Scan maps` to search th
 | --- | --- | --- |
 | Navigation | `N` | Move and rotate the map |
 | Selection | `A` | Click or right-drag to select; Shift + right-drag for freehand selection; Ctrl adds to the selection |
+| Parking spots | `S` | Click a shed to create parking spots in it, see [Parking spots in sheds](#parking-spots-in-sheds) |
 | Move | `V` | Drag a node or the selection; Shift moves along one grid axis only |
 | Rotate | `R` | Rotate the selection using the ring; Shift snaps in steps (default 15°, set with the arrow) |
 | Create (Regular / Subprio) | `E` / `Shift+E` | Create a node on free ground |
@@ -52,7 +54,30 @@ Also available: Undo and Redo (`Ctrl+Z` / `Ctrl+Y`), Copy, Cut and Paste (`Ctrl+
 
 ## Display
 
-`View → Show` switches nodes, node IDs, each connection type (Regular, Dual, Reverse), markers, marker names, the parking positions of vehicles and sheds on and off. The line color shows the connection type; arrows show the direction, dual connections get one pointing to each end. Subprio nodes are drawn orange. Node IDs appear only when zoomed in; parking positions (a "P" next to the marker) are read from a savegame's `vehicles.xml`. A route has no savegame: when one is opened, the editor offers to link a savegame (savegames on the route's map first), and `File → Link savegame…` changes or removes the link. The link is stored in the route's project; if there is none, the editor offers to create one. Sheds are the indoor areas of the buildings placed in the loaded or linked savegame, drawn as purple outlines. They are read from the game install folder and the mods folder; buildings whose files are missing are left out and counted in the status bar. Hidden nodes and connections cannot be clicked or selected unless `Hidden items can be selected` is on. Sizes and colors are set under `View → Display options`. All switches are remembered.
+`View → Show` switches nodes, node IDs, each connection type (Regular, Dual, Reverse), markers, marker names, the parking positions of vehicles and sheds on and off. The line color shows the connection type; arrows show the direction, dual connections get one pointing to each end. Subprio nodes are drawn orange. Node IDs appear only when zoomed in; parking positions (a "P" next to the marker) are read from a savegame's `vehicles.xml`. A route needs a linked savegame for this, see [Parking spots in sheds](#parking-spots-in-sheds), which also explains the sheds. Hidden nodes and connections cannot be clicked or selected unless `Hidden items can be selected` is on. Sizes and colors are set under `View → Display options`. All switches are remembered.
+
+## Parking spots in sheds
+
+The editor creates AutoDrive parking spots in the sheds placed in a savegame.
+
+**Link a savegame.** A route has no savegame. When a route is opened, the editor offers to link one (savegames on the route's map come first); `File → Link savegame…` changes or removes the link. The link is stored in the route's project; if there is none, the editor offers to create one. With "Don't ask again for this route" the question no longer comes for that route. An opened savegame needs no link.
+
+**Sheds.** `View → Show → Sheds` draws the indoor areas of the buildings placed in the savegame as purple outlines. Buildings that came with the map are not included. The building files are read from the game install folder and the mods folder; buildings whose files are missing are left out and counted in the status bar.
+
+**Create parking spots.** Choose the Parking spots tool (`S`) and left-click a shed outline. The dialog shows a top view of the shed, turned so the open side is at the bottom, with an arrow to north, and updates while you type.
+
+- **Mode**: *Back in* (vehicles reverse into the bay, the marker is at the back wall) or *Drive through* (one forward line per bay through the shed, the exit is on the opposite side).
+- **Open side** / **Entry side**: the side the vehicles come in. Click a side or its compass label in the top view to change it.
+- **Number of bays**: the bay width is calculated from it and shown below. Bays narrower than 3 m are shown in red and cannot be created.
+- **Left wall**, **Right wall**, **Back wall** (or **Exit offset**), **All gaps**: distances in metres. Click a wall or a gap in the top view to edit just that one; a small box opens at the click spot (Enter applies, Esc cancels). Single gaps are kept when the number of bays changes.
+- **Entry line**, **Exit line**: the driving direction of the two lines outside the open side, seen from outside.
+- **Marker name**, **Start number**, **Group**: "Shed" from 3 gives "Shed 3", "Shed 4", … A new group name creates the group.
+
+When backing in, the side view below shows the line of one bay, which all bays use. Click a segment to change its length, "+" splits a segment in half, `Delete` removes the selected node. The points where the entry and exit lines branch off can be dragged to another node. In drive-through mode the side view only shows the line.
+
+`Create` adds all nodes as subprio nodes at the shed's height, as one undo step. Running it twice creates the spots twice. Afterwards the four open ends of the entry and exit lines are selected, so you can connect them to the road network. `Reset shed settings` brings back the default layout.
+
+**Templates.** `Save as template…` stores the mode, side, number of bays, distances and bay line under a name for this shed type, so it works for the same building on any map. Line directions, marker name, start number and group are not stored. `Load template…` lists the templates of the shed type, where they can also be deleted. The dialog opens with the template saved or loaded last for the shed type.
 
 ## Checking the network
 
