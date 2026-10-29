@@ -2,8 +2,10 @@ from collections.abc import Callable
 from pathlib import Path
 
 from PySide6.QtCore import QObject
+from PySide6.QtWidgets import QMessageBox
 
 from autodrive_editor.editing.operations.network_check import NetworkCheckOperation
+from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData
 from autodrive_editor.network_check.checks import ALL_CHECKS, CheckResults, check_network
 from autodrive_editor.network_check.ignores import (
@@ -14,6 +16,7 @@ from autodrive_editor.network_check.ignores import (
 )
 from autodrive_editor.settings.app_settings import AppSettings
 from autodrive_editor.terrain.terrain_follower import TerrainHeightProvider
+from autodrive_editor.ui.dialogs.messages import APP_TITLE
 from autodrive_editor.ui.panels.check_dock import CheckDock
 
 
@@ -65,8 +68,40 @@ class NetworkCheckController(QObject):
     def run(self):
         autodrive_data = self.autodrive_data()
 
+        if autodrive_data is not None:
+            self._show(*self._check(autodrive_data))
+
+    def confirm_save(self) -> bool:
+        """Checks the network before saving. If there are problems, shows them and asks
+        whether to save anyway."""
+
+        autodrive_data = self.autodrive_data()
+
         if autodrive_data is None:
-            return
+            return True
+
+        visible, ignored = self._check(autodrive_data)
+
+        if visible.problem_count == 0:
+            return True
+
+        self._show(visible, ignored)
+
+        return self._ask_save_anyway(visible.problem_count)
+
+    def _ask_save_anyway(self, count: int) -> bool:
+        answer = QMessageBox.question(
+            self.dock.window(),
+            APP_TITLE,
+            tr("The network check found {count} problems. Save anyway?", count=count),
+            QMessageBox.Save | QMessageBox.Cancel,
+            QMessageBox.Cancel,
+        )
+
+        return answer == QMessageBox.Save
+
+    def _check(self, autodrive_data: AutoDriveData) -> tuple[CheckResults, CheckResults]:
+        """The shown and the ignored results."""
 
         overlap_tolerance, max_height_difference = self.dock.tolerances
 
@@ -79,7 +114,10 @@ class NetworkCheckController(QObject):
             checks=self.ignores.enabled_checks,
         )
 
-        self.dock.set_results(*split_ignored(autodrive_data, results, self.ignores.ignored))
+        return split_ignored(autodrive_data, results, self.ignores.ignored)
+
+    def _show(self, visible: CheckResults, ignored: CheckResults):
+        self.dock.set_results(visible, ignored)
         self.dock.show()
         self.dock.raise_()
 

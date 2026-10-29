@@ -91,6 +91,8 @@ When backing in, the side view below shows the line of one bay, which all bays u
 
 Entries that are fine as they are, such as nodes on a bridge, can be hidden with `Ignore`. They move to the `Ignored` group and are not fixed by `Fix all`; `Don't ignore` brings them back. An ignored entry also shows up again when one of its nodes is moved. The checkboxes switch off a whole check. Ignored entries and switched-off checks are remembered for each route or savegame.
 
+Saving runs the check first. If it finds problems that are not ignored, the dock shows them and the editor asks whether to save anyway.
+
 ## Saving
 
 `File → Save` (`Ctrl+S`) writes to the same format and file you loaded from. Before the first overwrite, the editor creates a backup copy (`.bak`). For savegames, the marker targets of vehicles in `vehicles.xml` are updated as well.

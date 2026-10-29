@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
@@ -51,6 +52,9 @@ class FileController(QObject):
         self.settings = settings
         self.project_coordinator = project_coordinator
         self.edit_history = edit_history
+
+        # Asked before saving; False cancels the save.
+        self.confirm_save: Callable[[], bool] = lambda: True
 
         # Unsaved changes are backed up here regularly.
         self.autosave_store = autosave_store
@@ -248,6 +252,9 @@ class FileController(QObject):
             self.status_changed.emit(tr("Load an AutoDrive XML first"))
             return False
 
+        if not self.confirm_save():
+            return False
+
         try:
             affected_vehicles = self.project_coordinator.save_xml_file()
         except Exception as ex:
@@ -266,6 +273,9 @@ class FileController(QObject):
 
         if source is None:
             self.status_changed.emit(tr("Load an AutoDrive XML first"))
+            return False
+
+        if not self.confirm_save():
             return False
 
         affected_vehicles = []

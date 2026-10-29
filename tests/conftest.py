@@ -136,6 +136,8 @@ def window(qapp, tmp_path):
     main_window.savegame_link._run_dialog = lambda dialog: 0
     # Closing at the end of a test drops unsaved edits without asking.
     main_window.files._ask_save_changes = lambda: QMessageBox.Discard
+    # Saving a network with problems saves without asking.
+    main_window.network_check._ask_save_anyway = lambda count: True
     main_window.show()
     qapp.processEvents()
 
