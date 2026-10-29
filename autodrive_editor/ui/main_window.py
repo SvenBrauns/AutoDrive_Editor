@@ -1016,6 +1016,13 @@ class MainWindow(QMainWindow):
         if data_change.removed_node_ids:
             self.node_selection.remove(data_change.removed_node_ids)
 
+        autodrive_data = self._get_autodrive_data()
+
+        if autodrive_data is not None:
+            self.measurement_coordinator.follow_nodes(
+                data_change.moved_node_ids | data_change.removed_node_ids, autodrive_data.nodes
+            )
+
         # Node coordinates in the info panel may have changed.
         self.selection_coordinator.refresh_info()
 

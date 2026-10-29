@@ -5,6 +5,7 @@ from PySide6.QtCore import QPointF
 from autodrive_editor.measurement.calculations import MeasurementResult, calculate_measurement
 from autodrive_editor.measurement.mode import MeasurementMode
 from autodrive_editor.measurement.point import MeasurementPoint
+from autodrive_editor.model.autodrive_data import NodeData
 
 
 @dataclass
@@ -97,6 +98,27 @@ class MeasurementState:
             raise ValueError("The measuring point is not set yet.")
 
         measurement_point.set_position(position)
+
+    def follow_nodes(self, node_ids, nodes: dict[int, NodeData]) -> bool:
+        """Moves the points bound to the given nodes onto them. A point whose node is gone
+        stays where it is as a free point. Returns whether a point changed."""
+
+        changed = False
+
+        for point in (self.start_point, self.end_point):
+            if point is None or point.node_id not in node_ids:
+                continue
+
+            node = nodes.get(point.node_id)
+
+            if node is None:
+                point.node_id = None
+            else:
+                point.position = QPointF(node.x, node.z)
+
+            changed = True
+
+        return changed
 
     def calculate_result(self, include_preview: bool = False) -> MeasurementResult | None:
         if self.start_point is None:

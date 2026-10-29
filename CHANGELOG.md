@@ -10,6 +10,7 @@
 - The network check also finds invalid connection references (to unknown nodes, to the node itself, or incoming without the matching outgoing entry) and nodes without connections. `Fix` removes the invalid entries and deletes the unconnected nodes, except those with a marker
 - Saving runs the network check first; if it finds problems, they are shown and the editor asks whether to save anyway
 - The last opened file opens again at startup; can be turned off under `File → Settings`
+- Measuring points on a node move with the node (e.g. on undo); if the node is deleted, the point stays as a free point
 
 ## 1.2.0 – 2026-10-29
 
