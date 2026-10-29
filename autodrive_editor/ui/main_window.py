@@ -145,6 +145,7 @@ class MainWindow(QMainWindow):
         self._create_debug_dock()
 
         self.scene_renderer.set_marker_names_visible(self.settings.marker_names_visible)
+        self.background_map.set_ground_visible(self.settings.ground_map_visible)
         self.scene_renderer.set_visibility(self.settings.visibility)
         self.scene_renderer.set_hidden_shed_types(self.settings.hidden_shed_types)
 
@@ -240,6 +241,10 @@ class MainWindow(QMainWindow):
     def set_marker_names_visible(self, visible: bool):
         self.scene_renderer.set_marker_names_visible(visible)
         self.settings.set_marker_names_visible(visible)
+
+    def set_ground_map_visible(self, visible: bool):
+        self.background_map.set_ground_visible(visible)
+        self.settings.set_ground_map_visible(visible)
 
     def set_visibility(self, visibility: Visibility):
         self.scene_renderer.set_visibility(visibility)
@@ -905,6 +910,10 @@ class MainWindow(QMainWindow):
         self.project_coordinator.map_scale_changed.connect(self._handle_map_scale_changed)
 
         self.project_coordinator.heightmap_path_changed.connect(self._handle_heightmap_path_changed)
+
+        self.project_coordinator.ground_map_available.connect(
+            self.actions.ground_map_action.setEnabled
+        )
 
         self.project_coordinator.autodrive_data_loaded.connect(self._handle_autodrive_data_loaded)
 

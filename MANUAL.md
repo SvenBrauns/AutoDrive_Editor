@@ -18,6 +18,8 @@ The editor looks for the FS25 user folder (usually `Documents\My Games\FarmingSi
 
 Map images are not shipped with the editor. Use `Map → Scan maps` to search the `mods` folder and the base game maps; the editor then imports the map image, heightmap and map size. This is needed only once per map. After that, the matching map loads automatically when you open a route. If the map is missing, the editor offers the scan directly.
 
+**Ground map.** `View → Ground map` replaces the map image with a map drawn from the map's ground textures: asphalt, concrete, gravel, grass, mud, forest, rock and sand each in their own color, with the field outlines and field numbers on top. It shows the map as the game paints it, which helps where the map image is out of date. Maps imported with an older version of the editor have no ground map; import them again to get one. Importing a large map takes a little longer for this (about 15 seconds for a 16x map).
+
 ## Opening a network
 
 `File → Open…` (`Ctrl+O`) shows the routes and savegames of the game folder on two tabs:

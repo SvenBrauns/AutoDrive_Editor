@@ -106,3 +106,42 @@ def test_without_map_name_nothing_is_detected(map_window, write_xml):
 
     assert not map_window.background_map.has_background()
     assert "not imported" not in map_window.status.text()
+
+
+def test_ground_map_can_be_switched_on_for_an_imported_map(map_window):
+    cached = import_test_map(map_window)
+    action = map_window.actions.ground_map_action
+    assert not action.isEnabled()
+
+    open_route(map_window, MAP_NAME)
+    assert action.isEnabled()
+
+    action.setChecked(True)
+
+    assert map_window.background_map.showing_ground()
+    assert map_window.background_map.ground_path == cached.ground_path
+    assert map_window.background_map.field_item is not None
+    assert map_window.settings.ground_map_visible
+
+
+def test_ground_map_is_unavailable_for_maps_imported_before(map_window):
+    cached = import_test_map(map_window)
+    (cached.directory / "ground.png").unlink()
+
+    open_route(map_window, MAP_NAME)
+
+    assert not map_window.actions.ground_map_action.isEnabled()
+
+
+def test_importing_the_shown_map_again_offers_its_ground_map(map_window):
+    cached = import_test_map(map_window)
+    (cached.directory / "ground.png").unlink()
+    open_route(map_window, MAP_NAME)
+    assert not map_window.actions.ground_map_action.isEnabled()
+
+    mod_path = map_window.tmp / "mods" / "FS25_Testkarte.zip"
+    map_mod = read_map_mod(mod_path)
+    map_window.map_import._import_maps([(map_mod, map_mod.maps[0])])
+
+    assert map_window.actions.ground_map_action.isEnabled()
+    assert map_window.background_map.ground_path == cached.ground_path

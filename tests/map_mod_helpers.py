@@ -27,6 +27,30 @@ def heightmap_png(size=33) -> bytes:
     return buffer.getvalue()
 
 
+def weight_png(size=16, value=255) -> bytes:
+    buffer = io.BytesIO()
+    Image.new("L", (size, size), value).save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+TERRAIN_LAYERS = (
+    '<TerrainTransformGroup name="terrain"><Layers>'
+    '<Layer name="asphalt01" weightMapId="3"/><Layer name="grass01" weightMapId="99"/>'
+    "</Layers></TerrainTransformGroup>"
+)
+
+# One field whose points are relative to the field and the group around it.
+FIELDS = (
+    '<TransformGroup name="map" translation="100 0 200"><TransformGroup name="fields">'
+    '<TransformGroup name="field1" translation="10 5 20"><TransformGroup name="polygonPoints">'
+    '<TransformGroup name="point1" translation="0 0 0"/>'
+    '<TransformGroup name="point2" translation="30 0 0"/>'
+    '<TransformGroup name="point3" translation="30 0 30"/>'
+    '</TransformGroup><TransformGroup name="nameIndicator" translation="15 0 15"/>'
+    "</TransformGroup></TransformGroup></TransformGroup>"
+)
+
+
 def map_files(folder="maps", title="LS25 Testkarte 2.0", width=4096, data_folder="data"):
     """Files of one map inside a mod."""
 
@@ -37,10 +61,13 @@ def map_files(folder="maps", title="LS25 Testkarte 2.0", width=4096, data_folder
         ),
         f"{folder}/map.i3d": (
             '<i3D><Files><File fileId="1" filename="textures/grass.png"/>'
-            f'<File fileId="2" filename="{data_folder}/dem.png"/></Files></i3D>'
+            f'<File fileId="2" filename="{data_folder}/dem.png"/>'
+            f'<File fileId="3" filename="{data_folder}/asphalt01_weight.png"/></Files>'
+            f"<Scene>{TERRAIN_LAYERS}{FIELDS}</Scene></i3D>"
         ),
         f"{folder}/overview.dds": overview_dds(),
         f"{folder}/{data_folder}/dem.png": heightmap_png(),
+        f"{folder}/{data_folder}/asphalt01_weight.png": weight_png(),
     }
 
 

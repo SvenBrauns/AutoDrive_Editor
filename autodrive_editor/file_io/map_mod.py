@@ -57,6 +57,8 @@ class MapEntry:
     width: int
     image_file: str | None
     heightmap_file: str | None
+    # The map scene, which names the ground textures and fields.
+    i3d_file: str | None = None
 
     @property
     def title(self) -> str:
@@ -171,6 +173,7 @@ def read_map_entry(
         width=int(width) if width.isdigit() else 0,
         image_file=_find_image_file(archive, config.get("imageFilename", "")),
         heightmap_file=_find_heightmap_file(archive, i3d_file) if i3d_file else None,
+        i3d_file=i3d_file,
     )
 
 

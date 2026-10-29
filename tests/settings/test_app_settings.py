@@ -294,3 +294,11 @@ def test_hidden_shed_types_are_kept():
     AppSettings().set_hidden_shed_types({"b.xml", "a.xml"})
 
     assert AppSettings().hidden_shed_types == {"a.xml", "b.xml"}
+
+
+def test_ground_map_switch_is_kept_between_sessions():
+    assert AppSettings().ground_map_visible is False
+
+    AppSettings().set_ground_map_visible(True)
+
+    assert AppSettings().ground_map_visible is True

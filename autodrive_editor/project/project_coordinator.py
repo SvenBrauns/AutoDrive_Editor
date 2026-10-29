@@ -52,6 +52,9 @@ class ProjectCoordinator(QObject):
 
     heightmap_path_changed = Signal(object)
 
+    # Whether the loaded map image has a ground map to switch to.
+    ground_map_available = Signal(bool)
+
     autodrive_data_loaded = Signal(object)
 
     # A loaded config names a map that is not imported (AutoDrive map name).
@@ -113,6 +116,7 @@ class ProjectCoordinator(QObject):
 
     def load_background_file(self, file_path):
         self.background_map.load(file_path)
+        self.ground_map_available.emit(False)
 
         self.update_scene_rect()
 
@@ -494,6 +498,8 @@ class ProjectCoordinator(QObject):
         self.map_scale_changed.emit(cached.map_scale)
 
         self.background_map.load(str(cached.overview_path))
+        self.background_map.set_ground(cached.ground_path, cached.fields())
+        self.ground_map_available.emit(cached.ground_path is not None)
 
         self._load_map_heightmap(source, cached)
 
