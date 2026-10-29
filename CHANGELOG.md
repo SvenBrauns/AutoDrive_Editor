@@ -4,7 +4,7 @@
 
 - `View → Show → Sheds` also shows the buildings that came with the map
 - The Parking spots tool shows the name and category of the building under the pointer
-- `Generate → Building types…` (replaces `View → Sheds…`): the building types of the savegame in the groups Stations, Sheds, Bunker silos and Other; a type can be moved to another group or hidden, on every map; `Reset` undoes both. Productions and farmhouses are no longer drawn as sheds
+- `Generate → Building types…` (replaces `View → Sheds…`): the building types of the savegame in the groups Stations, Sheds, Bunker silos and Other; a type can be moved to another group or hidden, on every map; `Reset` undoes both. Productions, farmhouses and weighing stations are no longer drawn as sheds
 - `View → Show → Stations`: an arrow at each stop of the savegame's selling points, productions, silos, animal barns and diesel tanks, along the lane over the trigger
 - `View → Ground map`: a map drawn from the map's ground textures (asphalt, concrete, gravel, grass, …) with field outlines and numbers, instead of the map image. Maps need to be imported again for it
 - Terrain heights are interpolated between the heightmap pixels instead of taken from the nearest pixel, so nodes follow slopes smoothly

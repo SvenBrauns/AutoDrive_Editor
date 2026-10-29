@@ -19,6 +19,7 @@ DEFINITIONS = {
     "bunker_with_trigger": "<bunkerSilo/>" + TRIGGER,
     "fence": "",
     "house": AREAS,
+    "scale": AREAS + "<weighingStation/>",
 }
 
 
@@ -62,6 +63,8 @@ def test_each_type_with_sheds_stations_or_a_bunker_silo_is_in_one_group(building
         "bunker_with_trigger": BuildingGroup.BUNKER_SILOS,
         # Only for the player's character.
         "house": BuildingGroup.OTHER,
+        # Vehicles only drive over it.
+        "scale": BuildingGroup.OTHER,
     }
 
 
@@ -74,7 +77,12 @@ def test_types_are_counted_and_read_once(buildings):
 
 
 def test_areas_and_stops_are_read_whatever_the_group(buildings):
-    assert sorted(area.unique_id for area in buildings.areas) == ["hall", "house", "mill_with_hall"]
+    assert sorted(area.unique_id for area in buildings.areas) == [
+        "hall",
+        "house",
+        "mill_with_hall",
+        "scale",
+    ]
     assert sorted(stop.unique_id for stop in buildings.stops) == [
         "bunker_with_trigger",
         "mill",
