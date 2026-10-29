@@ -55,3 +55,16 @@ def test_only_png_files_are_accepted(tmp_path):
 
     with pytest.raises(ValueError):
         Heightmap().load(path)
+
+
+def test_heights_between_pixels_are_interpolated(tmp_path):
+    heightmap = Heightmap()
+    heightmap.load(heightmap_file(tmp_path, "I;16", 0x8080, 0))
+
+    # Pixels are 1024 m apart on a 1x map: 512 m from the center is halfway to the edge.
+    halfway = heightmap.get_height_at(512, 0, map_scale=1)
+    diagonal = heightmap.get_height_at(512, 512, map_scale=1)
+
+    assert halfway.height == pytest.approx(HALF_HEIGHT / 2)
+    assert diagonal.height == pytest.approx(HALF_HEIGHT / 4)
+    assert (halfway.pixel_x, halfway.pixel_y) == (2, 1)

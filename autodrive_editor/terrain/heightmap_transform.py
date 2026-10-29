@@ -30,6 +30,16 @@ class HeightmapTransform:
 
     @classmethod
     def world_to_pixel(cls, world_x, world_z, image_width, image_height, map_scale, clamp=False):
+        pixel_x, pixel_y = cls.world_to_pixel_position(
+            world_x, world_z, image_width, image_height, map_scale, clamp
+        )
+        return round(pixel_x), round(pixel_y)
+
+    @classmethod
+    def world_to_pixel_position(
+        cls, world_x, world_z, image_width, image_height, map_scale, clamp=False
+    ):
+        """The pixel position as floats, between the pixel centers."""
         image_width = int(image_width)
 
         image_height = int(image_height)
@@ -56,15 +66,7 @@ class HeightmapTransform:
 
         normalized_z = max(0.0, min(normalized_z, 1.0))
 
-        pixel_x_float = normalized_x * (image_width - 1)
-
-        pixel_y_float = normalized_z * (image_height - 1)
-
-        pixel_x = round(pixel_x_float)
-
-        pixel_y = round(pixel_y_float)
-
-        return pixel_x, pixel_y
+        return normalized_x * (image_width - 1), normalized_z * (image_height - 1)
 
     @classmethod
     def pixel_to_world(cls, pixel_x, pixel_y, image_width, image_height, map_scale):

@@ -4,11 +4,7 @@ Planned features of the AutoDrive FS25 Editor, in the order they should be imple
 
 The editor supports only Farming Simulator 25.
 
-## 1. Heightmap
-
-- [ ] interpolate heightmap values between pixels instead of taking the nearest pixel
-
-## 2. Further features
+## 1. Further features
 
 Features the old editor does not have.
 

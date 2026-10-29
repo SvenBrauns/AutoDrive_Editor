@@ -91,5 +91,5 @@ class NodeInfoFormatter:
             "",
             "Heightmap",
             (f"Pixel: {height_sample.pixel_x}, {height_sample.pixel_y}"),
-            tr("Raw value: {value}", value=height_sample.raw_value),
+            tr("Raw value: {value:.1f}", value=height_sample.raw_value),
         ]

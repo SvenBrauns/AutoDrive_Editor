@@ -7,7 +7,10 @@ from autodrive_editor.terrain.heightmap_transform import HeightmapTransform
 
 @dataclass(frozen=True)
 class HeightSample:
-    """The terrain height at a map position and the pixel it was read from."""
+    """The terrain height at a map position, interpolated between the four nearest pixels.
+
+    pixel_x and pixel_y are the nearest pixel.
+    """
 
     world_x: float
     world_z: float
@@ -15,7 +18,7 @@ class HeightSample:
     pixel_x: int
     pixel_y: int
 
-    raw_value: int
+    raw_value: float
     normalized_value: float
     height: float
 
@@ -85,7 +88,7 @@ class Heightmap:
     def get_height_at(self, world_x, world_z, map_scale, clamp=False):
         heightmap_data = self._require_heightmap()
 
-        pixel_x, pixel_y = HeightmapTransform.world_to_pixel(
+        position_x, position_y = HeightmapTransform.world_to_pixel_position(
             world_x=world_x,
             world_z=world_z,
             image_width=heightmap_data.width,
@@ -94,7 +97,7 @@ class Heightmap:
             clamp=clamp,
         )
 
-        raw_value = self._get_raw_value(heightmap_data, pixel_x, pixel_y)
+        raw_value = self._interpolate_raw_value(heightmap_data, position_x, position_y)
 
         normalized_value = raw_value / self.MAX_16_BIT_VALUE
 
@@ -103,8 +106,8 @@ class Heightmap:
         return HeightSample(
             world_x=float(world_x),
             world_z=float(world_z),
-            pixel_x=pixel_x,
-            pixel_y=pixel_y,
+            pixel_x=round(position_x),
+            pixel_y=round(position_y),
             raw_value=raw_value,
             normalized_value=normalized_value,
             height=height,
@@ -129,6 +132,20 @@ class Heightmap:
             raise RuntimeError(tr("No heightmap has been loaded."))
 
         return self.heightmap_data
+
+    def _interpolate_raw_value(self, heightmap_data, position_x, position_y):
+        """Bilinear interpolation between the four pixels around the position."""
+        left = min(int(position_x), heightmap_data.width - 2)
+        top = min(int(position_y), heightmap_data.height - 2)
+        fraction_x = position_x - left
+        fraction_y = position_y - top
+
+        def raw(x, y):
+            return self._get_raw_value(heightmap_data, x, y)
+
+        upper = raw(left, top) * (1 - fraction_x) + raw(left + 1, top) * fraction_x
+        lower = raw(left, top + 1) * (1 - fraction_x) + raw(left + 1, top + 1) * fraction_x
+        return upper * (1 - fraction_y) + lower * fraction_y
 
     def _get_raw_value(self, heightmap_data, pixel_x, pixel_y):
         pixel_value = heightmap_data.image.getpixel((pixel_x, pixel_y))

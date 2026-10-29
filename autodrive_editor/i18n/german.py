@@ -537,7 +537,7 @@ TEXTS = {
     "Y from XML: {y:.3f}": "Y laut XML: {y:.3f}",
     "Y from heightmap: {y:.3f}": "Y laut Heightmap: {y:.3f}",
     "Difference: {difference:+.3f}": "Abweichung: {difference:+.3f}",
-    "Raw value: {value}": "Rohwert: {value}",
+    "Raw value: {value:.1f}": "Rohwert: {value:.1f}",
     "Marker": "Marker",
     "Heightmap lookup not possible:": "Heightmap-Auswertung nicht möglich:",
     "Spacing of the new nodes": "Abstand der neuen Nodes",
