@@ -58,6 +58,10 @@ The dialog opens on the tab you used last.
 
 Also available: Undo and Redo (`Ctrl+Z` / `Ctrl+Y`), Copy, Cut and Paste (`Ctrl+C/X/V`; `Ctrl+Shift+V` pastes at the original position), the grid with snapping (`G`), distance and angle measurement, and the `Markers` dock with all marker groups.
 
+## Planning mode
+
+The planning button at the right end of the toolbar (`Edit → Planning mode`, `Ctrl+P`) starts a plan. All tools work as usual, but the edits are collected in the plan: a blue bar above the map shows how many nodes the plan changed, and those nodes get a blue halo. Undo and Redo work inside the plan and stop at its start. `Apply plan` adds the whole plan to the history as one undo step; `Discard plan` reverts all of it. Clicking the planning button again, opening another file or closing the editor asks whether to apply or discard the plan. While a plan is open, saving is not possible and autosave pauses.
+
 ## Display
 
 `View → Show` switches nodes, node IDs, each connection type (Regular, Dual, Reverse), markers, marker names, the parking positions of vehicles and sheds on and off. The line color shows the connection type; arrows show the direction, dual connections get one pointing to each end. Subprio nodes are drawn orange. Node IDs appear only when zoomed in; parking positions (a "P" next to the marker) are read from a savegame's `vehicles.xml`. A route needs a linked savegame for this, see [Parking spots in sheds](#parking-spots-in-sheds), which also explains the sheds. Hidden nodes and connections cannot be clicked or selected unless `Hidden items can be selected` is on. Sizes and colors are set under `View → Display options`. All switches are remembered.

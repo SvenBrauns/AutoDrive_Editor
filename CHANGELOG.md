@@ -13,6 +13,7 @@
 - Measuring points on a node move with the node (e.g. on undo); if the node is deleted, the point stays as a free point
 - Drive-through parking spots can have several parking positions in a row per bay (`Positions per bay`, `Position spacing`), each with its own marker
 - While the parking spots dialog is open, the planned spots are drawn on the map, and the map can be moved, zoomed and rotated
+- Planning mode (`Edit → Planning mode`, `Ctrl+P`, button at the right of the toolbar): edit with all tools, then apply the plan as one undo step or discard it. Changed nodes get a blue halo; saving and autosave wait until the plan is applied or discarded
 
 ## 1.2.0 – 2026-10-29
 
