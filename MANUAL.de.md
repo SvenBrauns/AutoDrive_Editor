@@ -87,6 +87,8 @@ Beim Rückwärts-Einparken zeigt die Seitenansicht darunter die Linie eines Stel
 
 Einträge, die so in Ordnung sind, etwa Nodes auf einer Brücke, lassen sich mit `Ignorieren` ausblenden. Sie wandern in die Gruppe `Ignoriert` und werden von `Alle beheben` nicht verändert; `Nicht ignorieren` holt sie zurück. Ein ignorierter Eintrag erscheint auch wieder, wenn eine seiner Nodes verschoben wird. Mit den Kontrollkästchen lässt sich eine ganze Prüfung ausschalten. Ignorierte Einträge und ausgeschaltete Prüfungen werden für jede Route und jedes Savegame gespeichert.
 
+Beim Speichern läuft zuerst die Prüfung. Findet sie Probleme, die nicht ignoriert sind, zeigt das Fenster sie an und der Editor fragt, ob trotzdem gespeichert werden soll.
+
 ## Speichern
 
 `Datei → Speichern` (`Strg+S`) schreibt in dasselbe Format und dieselbe Datei, aus der geladen wurde. Vor dem ersten Überschreiben legt der Editor eine Sicherungskopie (`.bak`) an. Bei Savegames werden auch die Markerziele der Fahrzeuge in der `vehicles.xml` angepasst.

@@ -150,3 +150,47 @@ def test_ignored_entry_comes_back_after_moving_a_node(check_window):
     check_window.network_check.run()
 
     assert dock.group_item(1).childCount() == 1
+
+
+@pytest.mark.parametrize("answer", [True, False])
+def test_saving_with_problems_shows_them_and_asks(check_window, answer):
+    path = check_window.project_coordinator.config_source.path
+    before = path.read_text(encoding="utf-8")
+    counts = []
+    check_window.network_check._ask_save_anyway = lambda count: counts.append(count) or answer
+
+    assert check_window.files.save_xml() is answer
+
+    assert counts == [2]
+    assert check_window.check_dock.isVisible()
+    assert (path.read_text(encoding="utf-8") == before) is not answer
+
+
+def test_saving_without_problems_does_not_ask(check_window):
+    check_window.network_check.run()
+    check_window.check_dock.fix_all_button.click()
+    check_window.check_dock.hide()
+    check_window.network_check._ask_save_anyway = lambda count: pytest.fail("asked")
+
+    assert check_window.files.save_xml()
+
+    assert check_window.check_dock.isHidden()
+
+
+def test_ignored_problems_do_not_stop_saving(check_window):
+    dock = check_window.check_dock
+    check_window.network_check.run()
+    select(dock, 0)
+    dock.ignore_button.click()
+    select(dock, 1)
+    dock.ignore_button.click()
+    check_window.network_check._ask_save_anyway = lambda count: pytest.fail("asked")
+
+    assert check_window.files.save_xml()
+
+
+def test_cancelled_save_as_asks_for_no_name(check_window):
+    check_window.network_check._ask_save_anyway = lambda count: False
+    check_window.files._ask_save_path = lambda path: pytest.fail("asked for a path")
+
+    assert not check_window.files.save_xml_as()

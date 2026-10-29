@@ -489,6 +489,9 @@ TEXTS = {
     "Fix all": "Alle beheben",
     "No problems found": "Keine Probleme gefunden",
     "Problems found: {count}": "Gefundene Probleme: {count}",
+    "The network check found {count} problems. Save anyway?": (
+        "Die Netzprüfung hat {count} Probleme gefunden. Trotzdem speichern?"
+    ),
     "{check}: switched off": "{check}: ausgeschaltet",
     "Nodes {nodes}": "Nodes {nodes}",
     "Node {node}": "Node {node}",

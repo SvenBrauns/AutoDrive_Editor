@@ -878,6 +878,7 @@ class MainWindow(QMainWindow):
             ),
             parent=self,
         )
+        self.files.confirm_save = self.network_check.confirm_save
 
     def _create_debug_dock(self):
         self.debug_dock = DebugDock(self)
