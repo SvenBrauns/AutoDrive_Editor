@@ -295,7 +295,7 @@ class MainWindow(QMainWindow):
     def _ask_parking_settings(self, area, autodrive_data):
         taken_names = {(marker.name, marker.group) for marker in autodrive_data.markers.values()}
         dialog = ParkingSpotDialog(
-            area, autodrive_data.marker_group_names(), taken_names, parent=self
+            area, autodrive_data.marker_group_names(), taken_names, self.settings, parent=self
         )
 
         return dialog.settings if dialog.exec() else None

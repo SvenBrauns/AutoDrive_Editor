@@ -1,4 +1,5 @@
 import math
+from dataclasses import replace
 
 import pytest
 
@@ -14,8 +15,10 @@ from autodrive_editor.editing.parking_layout import (
     default_bay_line,
     default_open_side,
     drive_through_line,
+    from_template,
     plan_parking,
     side_angle,
+    template_values,
 )
 from autodrive_editor.file_io.savegame_sheds import IndoorArea
 from autodrive_editor.model.connections import ConnectionType
@@ -273,3 +276,36 @@ def test_drive_through_line_has_the_marker_before_the_exit_side():
 
     assert depths[0] == -10 and depths[-1] == 25
     assert depths[marker] == pytest.approx(14.0)
+
+
+def test_a_template_keeps_the_layout_but_not_directions_and_names():
+    line = default_bay_line(10.0).split(0)
+    original = settings(
+        mode=ParkingMode.DRIVE_THROUGH, open_side="left", gaps=(0.1, 0.2, 0.3), bay_line=line
+    )
+    original = replace(original, entry_left_to_right=False, back_offset=3.5)
+
+    restored = from_template(template_values(original))
+
+    assert restored == replace(
+        original, entry_left_to_right=True, marker_name="", start_number=1, group=""
+    )
+
+
+def test_a_template_without_edited_bay_line_keeps_it_fitted():
+    assert from_template(template_values(settings())).bay_line is None
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"mode": "fly"},
+        {"open_side": "top"},
+        {"gaps": [0.0]},
+        {"bays": None},
+        {"bay_line": {"segments": [1.0], "turn": [], "entry_node": 1, "exit_node": 3}},
+    ],
+)
+def test_unusable_templates_are_rejected(change):
+    with pytest.raises(ValueError):
+        from_template(template_values(settings()) | change)

@@ -230,3 +230,29 @@ def test_savegame_question_can_be_turned_off_per_route(tmp_path):
 
     reloaded.set_asks_for_savegame(tmp_path / "a.xml", True)
     assert AppSettings().asks_for_savegame(tmp_path / "a.xml")
+
+
+def test_parking_templates_are_kept_per_shed_type():
+    AppSettings().save_parking_template("a.xml", "Big", {"bays": 2})
+    AppSettings().save_parking_template("a.xml", "Small", {"bays": 5})
+    AppSettings().save_parking_template("b.xml", "Other", {"bays": 1})
+
+    settings = AppSettings()
+
+    assert settings.parking_templates("a.xml") == {"Big": {"bays": 2}, "Small": {"bays": 5}}
+    assert settings.last_parking_template("a.xml") == "Small"
+    assert settings.parking_templates("c.xml") == {}
+    assert settings.last_parking_template("c.xml") is None
+
+
+def test_last_parking_template_follows_loading_and_deleting():
+    settings = AppSettings()
+    settings.save_parking_template("a.xml", "Big", {})
+    settings.save_parking_template("a.xml", "Small", {})
+
+    settings.set_last_parking_template("a.xml", "Big")
+    assert settings.last_parking_template("a.xml") == "Big"
+
+    settings.delete_parking_template("a.xml", "Big")
+    assert settings.parking_templates("a.xml") == {"Small": {}}
+    assert settings.last_parking_template("a.xml") is None
