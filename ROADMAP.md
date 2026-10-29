@@ -8,7 +8,6 @@ The editor supports only Farming Simulator 25.
 
 Design: [docs/parking_spots.md](docs/parking_spots.md). Each step is its own branch.
 
-- [ ] 3c: templates per shed type
 - [ ] afterwards: turn docs/parking_spots.md into a manual section and delete it
 
 ## 2. Heightmap
