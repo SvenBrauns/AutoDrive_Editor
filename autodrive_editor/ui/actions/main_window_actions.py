@@ -322,7 +322,7 @@ class MainWindowActions:
 
         self.check_network_action = QAction(tr("Check network"), self.window)
         self.check_network_action.setStatusTip(
-            tr("Find overlapping nodes, nodes outside the map and wrong heights")
+            tr("Find overlapping nodes, nodes outside the map, wrong heights and bad connections")
         )
         self.check_network_action.triggered.connect(self.window.network_check.run)
 

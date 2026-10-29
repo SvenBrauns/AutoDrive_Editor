@@ -8,11 +8,16 @@ pytestmark = pytest.mark.usefixtures("isolated_user_data")
 
 @pytest.fixture
 def check_window(window, write_xml, qapp):
-    """Nodes 1 and 2 overlap (1 -> 2 -> 4), node 3 lies outside the
+    """Nodes 1 and 2 overlap (1 -> 2 -> 4), node 3 (reverse to 4) lies outside the
     2048 m map, node 4 is a normal node."""
 
     path = write_xml(
-        x="0;0.05;1500;10", y="0;0;0;0", z="0;0;0;0", out="2;4;;", incoming=";1;;2", flags="0;0;0;0"
+        x="0;0.05;1500;10",
+        y="0;0;0;0",
+        z="0;0;0;0",
+        out="2;4;4;",
+        incoming=";1;;2",
+        flags="0;0;0;0",
     )
     window.project_coordinator.load_xml_file(path)
     qapp.processEvents()
@@ -103,17 +108,17 @@ def test_ignored_entries_move_to_the_ignored_group(check_window):
 
     assert dock.summary.text() == "Problems found: 1"
     assert dock.group_item(1).childCount() == 0
-    assert dock.group_item(3).text(0) == "Ignored (1)"
+    assert dock.group_item(5).text(0) == "Ignored (1)"
 
     dock.fix_all_button.click()
 
     assert check_window.data.nodes[3].x == 1500  # ignored entries are not fixed
 
-    select(dock, 3)
+    select(dock, 5)
     dock.unignore_button.click()
 
     assert dock.group_item(1).childCount() == 1
-    assert dock.tree.topLevelItemCount() == 3
+    assert dock.tree.topLevelItemCount() == 5
 
 
 def test_ignores_are_kept_when_the_network_is_opened_again(check_window, qapp):
@@ -132,7 +137,7 @@ def test_ignores_are_kept_when_the_network_is_opened_again(check_window, qapp):
     assert not dock.check_boxes["outside"].isChecked()
     assert dock.group_item(0).childCount() == 0
     assert dock.group_item(1).text(0) == "Nodes outside the map: switched off"
-    assert dock.group_item(3).child(0).text(0) == "Nodes 1, 2"
+    assert dock.group_item(5).child(0).text(0) == "Nodes 1, 2"
 
 
 def test_ignored_entry_comes_back_after_moving_a_node(check_window):

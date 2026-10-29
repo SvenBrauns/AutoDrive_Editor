@@ -8,7 +8,7 @@ group.
 """
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from autodrive_editor.model.autodrive_data import AutoDriveData
@@ -72,7 +72,7 @@ def split_ignored(
     visible = CheckResults.from_entries(shown)
 
     if results.height_problems is None:
-        visible = CheckResults(visible.overlapping_groups, visible.outside_node_ids, None)
+        visible = replace(visible, height_problems=None)
 
     return visible, CheckResults.from_entries(hidden)
 

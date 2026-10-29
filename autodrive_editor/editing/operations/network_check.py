@@ -1,10 +1,13 @@
 from collections.abc import Callable
 
+from autodrive_editor.editing.commands.delete_nodes import DeleteNodesCommand
 from autodrive_editor.editing.commands.merge_nodes import MergeNodesCommand
 from autodrive_editor.editing.commands.move_nodes import MoveNodesCommand
+from autodrive_editor.editing.commands.remove_references import RemoveReferencesCommand
 from autodrive_editor.editing.edit_context import EditContext, EditOperation
 from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData
+from autodrive_editor.network_check.checks import invalid_references
 from autodrive_editor.terrain.heightmap_transform import HeightmapTransform
 
 
@@ -176,6 +179,78 @@ class NetworkCheckOperation(EditOperation):
         )
 
         return True
+
+    def remove_invalid_references(self, node_ids) -> bool:
+        """Removes the invalid connection entries of the nodes, as found by
+        the check at the time of the fix."""
+
+        autodrive_data = self._editable_data()
+
+        if autodrive_data is None:
+            return False
+
+        references = []
+
+        for node_id in node_ids:
+            node = autodrive_data.get_node(node_id)
+
+            if node is None:
+                continue
+
+            outgoing, incoming = invalid_references(autodrive_data, node)
+            references += [(node_id, "outgoing", target) for target in outgoing]
+            references += [(node_id, "incoming", source) for source in incoming]
+
+        if not references:
+            return False
+
+        self.edit_history.push(RemoveReferencesCommand(autodrive_data, references))
+
+        count = len(references)
+        self.status_changed.emit(
+            tr("Invalid connection reference removed")
+            if count == 1
+            else tr("{count} invalid connection references removed", count=count)
+        )
+
+        return True
+
+    def delete_unconnected(self, node_ids) -> bool:
+        """Deletes the nodes that still have no connections. Nodes with a
+        marker are kept."""
+
+        autodrive_data = self._editable_data()
+
+        if autodrive_data is None:
+            return False
+
+        unconnected = [
+            node.node_id
+            for node in map(autodrive_data.get_node, node_ids)
+            if node is not None and not node.incoming and not node.outgoing
+        ]
+        deleted = [node_id for node_id in unconnected if node_id not in autodrive_data.markers]
+        skipped_count = len(unconnected) - len(deleted)
+
+        if deleted:
+            self.edit_history.push(DeleteNodesCommand(autodrive_data, deleted))
+
+        messages = []
+
+        if deleted:
+            messages.append(
+                tr("Node without connections deleted")
+                if len(deleted) == 1
+                else tr("{count} nodes without connections deleted", count=len(deleted))
+            )
+
+        if skipped_count:
+            messages.append(tr("{count} skipped: the node has a marker", count=skipped_count))
+
+        if messages:
+            self.status_changed.emit(" – ".join(messages))
+
+        return bool(deleted)
 
     def _editable_data(self) -> AutoDriveData | None:
         if self.edit_history.history_locked:

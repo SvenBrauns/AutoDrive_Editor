@@ -1,9 +1,15 @@
 import pytest
 
-from autodrive_editor.network_check.checks import CheckResults, HeightProblem
+from autodrive_editor.network_check.checks import CheckResults, HeightProblem, ReferenceProblem
 from autodrive_editor.ui.panels.check_dock import CheckDock
 
-RESULTS = CheckResults([[1, 2], [5, 6, 7]], [9], [HeightProblem(4, 30.0, 10.0)])
+RESULTS = CheckResults(
+    [[1, 2], [5, 6, 7]],
+    [9],
+    [HeightProblem(4, 30.0, 10.0)],
+    [ReferenceProblem(3, (99,), (2, 42))],
+    [11],
+)
 IGNORED = CheckResults([], [8], [])
 
 
@@ -20,11 +26,15 @@ def texts(item):
 
 
 def test_shows_one_group_per_kind_of_problem(dock):
-    assert dock.summary.text() == "Problems found: 4"
+    assert dock.summary.text() == "Problems found: 6"
     assert dock.group_item(0).text(0) == "Overlapping nodes (2)"
     assert texts(dock.group_item(0)) == ["Nodes 1, 2", "Nodes 5, 6, 7"]
     assert texts(dock.group_item(1)) == ["Node 9"]
     assert texts(dock.group_item(2)) == ["Node 4: 30.0 m, terrain 10.0 m"]
+    assert dock.group_item(3).text(0) == "Invalid connection references (1)"
+    assert texts(dock.group_item(3)) == ["Node 3: invalid references to 2, 42, 99"]
+    assert dock.group_item(4).text(0) == "Nodes without connections (1)"
+    assert texts(dock.group_item(4)) == ["Node 11"]
 
 
 def test_without_heightmap_the_heights_are_marked_as_not_checked(dock):
@@ -46,11 +56,11 @@ def test_clicking_an_entry_activates_its_nodes(dock):
     activated = []
     dock.nodes_activated.connect(activated.append)
 
-    for group, child in ((0, 1), (1, 0), (2, 0)):
+    for group, child in ((0, 1), (1, 0), (2, 0), (3, 0), (4, 0)):
         item = dock.group_item(group).child(child)
         dock.tree.itemClicked.emit(item, 0)
 
-    assert activated == [[5, 6, 7], [9], [4]]
+    assert activated == [[5, 6, 7], [9], [4], [3], [11]]
 
 
 def test_fix_all_requests_every_problem(dock):
@@ -92,7 +102,7 @@ def test_ignored_entries_are_shown_collapsed_and_not_fixed(dock):
     dock.set_results(RESULTS, IGNORED)
     dock.fix_all_button.click()
 
-    ignored_group = dock.group_item(3)
+    ignored_group = dock.group_item(5)
     assert ignored_group.text(0) == "Ignored (1)"
     assert texts(ignored_group) == ["Node 8"]
     assert not ignored_group.isExpanded()
@@ -109,7 +119,7 @@ def test_ignore_and_unignore_request_only_their_kind_of_entry(dock):
     assert dock.ignore_button.isEnabled()
     assert not dock.unignore_button.isEnabled()
 
-    dock.group_item(3).setSelected(True)
+    dock.group_item(5).setSelected(True)
     dock.ignore_button.click()
     dock.unignore_button.click()
 
@@ -124,7 +134,7 @@ def test_switched_off_checks(dock):
     dock.check_boxes["height"].setChecked(False)
     dock.set_results(CheckResults([[1, 2]], [], []))
 
-    assert changes == [{"overlap", "outside"}]
+    assert changes == [{"overlap", "outside", "references", "unconnected"}]
     assert dock.group_item(2).text(0) == "Height differs from the terrain: switched off"
 
 

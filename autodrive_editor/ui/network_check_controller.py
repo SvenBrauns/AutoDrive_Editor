@@ -97,6 +97,14 @@ class NetworkCheckController(QObject):
                 [problem.node_id for problem in results.height_problems]
             )
 
+        if results.reference_problems:
+            self.operation.remove_invalid_references(
+                [problem.node_id for problem in results.reference_problems]
+            )
+
+        if results.unconnected_node_ids:
+            self.operation.delete_unconnected(results.unconnected_node_ids)
+
         self.run()
 
     def ignore(self, results: CheckResults):

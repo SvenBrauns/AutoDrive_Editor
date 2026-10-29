@@ -5,12 +5,17 @@ from autodrive_editor.network_check.checks import (
     HEIGHT,
     OUTSIDE,
     OVERLAP,
+    REFERENCES,
+    UNCONNECTED,
     CheckResults,
     HeightProblem,
+    ReferenceProblem,
     check_network,
     find_height_problems,
     find_nodes_outside_map,
     find_overlapping_nodes,
+    find_reference_problems,
+    find_unconnected_nodes,
     problem_node_ids,
 )
 
@@ -86,8 +91,8 @@ def test_check_network_without_heightmap_skips_heights():
 
     results = check_network(data, 1, None, 0.1, 5.0)
 
-    assert results == CheckResults([[1, 2]], [3], None)
-    assert results.problem_count == 2
+    assert results == CheckResults([[1, 2]], [3], None, [], [1, 2, 3])
+    assert results.problem_count == 5
 
 
 def test_switched_off_checks_report_nothing():
@@ -97,23 +102,69 @@ def test_switched_off_checks_report_nothing():
 
     assert results == CheckResults([], [3], [])
 
+    results = check_network(data, 1, None, 0.1, 5.0, checks={UNCONNECTED})
+
+    assert results == CheckResults([], [], None, [], [1, 2, 3])
+
 
 def test_entries_round_trip():
-    results = CheckResults([[1, 2]], [3], [HeightProblem(4, 1.0, 9.0)])
+    results = CheckResults(
+        [[1, 2]], [3], [HeightProblem(4, 1.0, 9.0)], [ReferenceProblem(5, (99,), ())], [6]
+    )
 
     assert results.entries() == [
         (OVERLAP, [1, 2]),
         (OUTSIDE, 3),
         (HEIGHT, HeightProblem(4, 1.0, 9.0)),
+        (REFERENCES, ReferenceProblem(5, (99,), ())),
+        (UNCONNECTED, 6),
     ]
     assert CheckResults.from_entries(results.entries() * 2) == results
-    assert [problem_node_ids(*entry) for entry in results.entries()] == [[1, 2], [3], [4]]
+    assert [problem_node_ids(*entry) for entry in results.entries()] == [[1, 2], [3], [4], [5], [6]]
 
 
 def test_check_network_with_heightmap():
     data = make_data((0, 50, 0))
 
-    results = check_network(data, 1, lambda x, z: 0.0, 0.1, 5.0)
+    results = check_network(data, 1, lambda x, z: 0.0, 0.1, 5.0, checks={HEIGHT})
 
     assert results.height_problems == [HeightProblem(1, 50, 0.0)]
     assert results.problem_count == 1
+
+
+def test_invalid_references():
+    """Node 1: unknown target 99 and itself as source. Node 3: incoming from
+    2 without 2's outgoing entry, and unknown source 42."""
+
+    data = make_data((0, 0, 0), (5, 0, 0), (10, 0, 0))
+    data.nodes[1].outgoing = {2, 99}
+    data.nodes[1].incoming = {1}
+    data.nodes[2].incoming = {1}
+    data.nodes[3].incoming = {2, 42}
+
+    assert find_reference_problems(data) == [
+        ReferenceProblem(1, (99,), (1,)),
+        ReferenceProblem(3, (), (2, 42)),
+    ]
+
+
+def test_valid_connections_are_no_reference_problems():
+    """Regular 1 -> 2, dual 2 <-> 3, reverse 3 -> 4."""
+
+    data = make_data((0, 0, 0), (5, 0, 0), (10, 0, 0), (15, 0, 0))
+    data.nodes[1].outgoing = {2}
+    data.nodes[2].incoming = {1, 3}
+    data.nodes[2].outgoing = {3}
+    data.nodes[3].incoming = {2}
+    data.nodes[3].outgoing = {2, 4}
+
+    assert find_reference_problems(data) == []
+
+
+def test_unconnected_nodes():
+    data = make_data((0, 0, 0), (5, 0, 0), (10, 0, 0), (15, 0, 0))
+    data.nodes[1].outgoing = {2}
+    data.nodes[2].incoming = {1}
+    data.nodes[3].incoming = {42}
+
+    assert find_unconnected_nodes(data) == [4]

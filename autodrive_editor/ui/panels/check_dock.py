@@ -20,6 +20,8 @@ from autodrive_editor.network_check.checks import (
     HEIGHT,
     OUTSIDE,
     OVERLAP,
+    REFERENCES,
+    UNCONNECTED,
     CheckResults,
     problem_node_ids,
 )
@@ -50,6 +52,8 @@ class CheckDock(QDockWidget):
         OVERLAP: tr("Overlapping nodes"),
         OUTSIDE: tr("Nodes outside the map"),
         HEIGHT: tr("Height differs from the terrain"),
+        REFERENCES: tr("Invalid connection references"),
+        UNCONNECTED: tr("Nodes without connections"),
     }
 
     def __init__(self, overlap_tolerance: float, max_height_difference: float, parent=None):
@@ -62,6 +66,8 @@ class CheckDock(QDockWidget):
             OVERLAP: QCheckBox(tr("Overlapping nodes within"), self),
             OUTSIDE: QCheckBox(tr("Nodes outside the map"), self),
             HEIGHT: QCheckBox(tr("Height differs by more than"), self),
+            REFERENCES: QCheckBox(tr("Invalid connection references"), self),
+            UNCONNECTED: QCheckBox(tr("Nodes without connections"), self),
         }
 
         for check_box in self.check_boxes.values():
@@ -95,6 +101,8 @@ class CheckDock(QDockWidget):
         options.addWidget(self.check_boxes[OUTSIDE], 1, 0)
         options.addWidget(self.check_boxes[HEIGHT], 2, 0)
         options.addWidget(self.height_box, 2, 1)
+        options.addWidget(self.check_boxes[REFERENCES], 3, 0)
+        options.addWidget(self.check_boxes[UNCONNECTED], 4, 0)
 
         self.check_button = QPushButton(tr("Check network"), self)
         self.check_button.clicked.connect(self.check_requested)
@@ -214,7 +222,8 @@ class CheckDock(QDockWidget):
 
     def group_item(self, index: int) -> QTreeWidgetItem:
         """The group of overlapping nodes (0), outside the map (1), height
-        differences (2) or ignored entries (3)."""
+        differences (2), invalid references (3), nodes without connections
+        (4) or ignored entries (5)."""
 
         return self.tree.topLevelItem(index)
 
@@ -236,8 +245,17 @@ class CheckDock(QDockWidget):
         if kind == OVERLAP:
             return tr("Nodes {nodes}", nodes=", ".join(map(str, problem)))
 
-        if kind == OUTSIDE:
+        if kind in (OUTSIDE, UNCONNECTED):
             return tr("Node {node}", node=problem)
+
+        if kind == REFERENCES:
+            node_ids = sorted({*problem.outgoing, *problem.incoming})
+
+            return tr(
+                "Node {node}: invalid references to {nodes}",
+                node=problem.node_id,
+                nodes=", ".join(map(str, node_ids)),
+            )
 
         return tr(
             "Node {node}: {height:.1f} m, terrain {terrain:.1f} m",

@@ -3,6 +3,8 @@ from autodrive_editor.network_check.checks import (
     HEIGHT,
     OUTSIDE,
     OVERLAP,
+    REFERENCES,
+    UNCONNECTED,
     CheckResults,
     HeightProblem,
 )
@@ -98,4 +100,4 @@ def test_damaged_store_counts_as_empty(tmp_path):
 
 
 def test_enabled_checks():
-    assert CheckIgnores({HEIGHT}).enabled_checks == {OVERLAP, OUTSIDE}
+    assert CheckIgnores({HEIGHT}).enabled_checks == {OVERLAP, OUTSIDE, REFERENCES, UNCONNECTED}

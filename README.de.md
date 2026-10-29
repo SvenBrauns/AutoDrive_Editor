@@ -18,7 +18,7 @@
 - **Deine Karten, automatisch gefunden.** Ein Scan importiert Kartenbild, Heightmap und Größe aus dem `mods`-Ordner und dem Grundspiel. Zu jeder Route öffnet sich die passende Karte.
 - **Routen, Savegames und XML-Dateien.** Routen aus dem RoutesManager von AutoDrive öffnen und im laufenden Spiel neu laden, ohne Neustart.
 - **Zeichenwerkzeuge.** Linien, Bézierkurven und Kreisbögen mit gleichmäßigem Node-Abstand. Drehen, ausrichten, Höhen aus dem Gelände setzen und ganze Abschnitte kopieren und einfügen.
-- **Netzprüfung.** Findet übereinanderliegende Nodes, Nodes außerhalb der Karte und falsche Höhen. Ein Klick springt zur Stelle; beheben mit einem Klick oder ignorieren.
+- **Netzprüfung.** Findet übereinanderliegende Nodes, Nodes außerhalb der Karte, falsche Höhen, ungültige Connection-Verweise und Nodes ohne Connections. Ein Klick springt zur Stelle; beheben mit einem Klick oder ignorieren.
 - **Für große Netze gebaut.** Kommt mit Netzen über 100.000 Wegpunkten zurecht, wie dem in den Screenshots.
 - **Sicher.** Rückgängig für jede Änderung, eine Sicherungskopie vor dem ersten Speichern und automatische Sicherung mit Wiederherstellung nach einem Absturz.
 - **Nach deinem Geschmack.** Deutsch oder Englisch, helles oder dunkles Design, eigene Tastenkürzel.

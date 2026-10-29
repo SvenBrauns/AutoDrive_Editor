@@ -2,15 +2,16 @@
 
 import math
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
-from autodrive_editor.model.autodrive_data import AutoDriveData
+from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
 from autodrive_editor.terrain.heightmap_transform import HeightmapTransform
 from autodrive_editor.terrain.terrain_follower import TerrainHeightProvider
 
 # The kinds of checks.
 OVERLAP, OUTSIDE, HEIGHT = "overlap", "outside", "height"
-ALL_CHECKS = (OVERLAP, OUTSIDE, HEIGHT)
+REFERENCES, UNCONNECTED = "references", "unconnected"
+ALL_CHECKS = (OVERLAP, OUTSIDE, HEIGHT, REFERENCES, UNCONNECTED)
 
 
 @dataclass(frozen=True)
@@ -23,6 +24,17 @@ class HeightProblem:
 
 
 @dataclass(frozen=True)
+class ReferenceProblem:
+    """The invalid connection entries of a node: entries pointing to an
+    unknown node or to the node itself, and incoming entries without the
+    matching outgoing entry on the other node."""
+
+    node_id: int
+    outgoing: tuple[int, ...]
+    incoming: tuple[int, ...]
+
+
+@dataclass(frozen=True)
 class CheckResults:
     """Problems found by the network check. height_problems is None when
     no heightmap was loaded, so the heights were not checked."""
@@ -30,6 +42,8 @@ class CheckResults:
     overlapping_groups: list[list[int]]
     outside_node_ids: list[int]
     height_problems: list[HeightProblem] | None
+    reference_problems: list[ReferenceProblem] = field(default_factory=list)
+    unconnected_node_ids: list[int] = field(default_factory=list)
 
     @property
     def problem_count(self) -> int:
@@ -37,16 +51,21 @@ class CheckResults:
             len(self.overlapping_groups)
             + len(self.outside_node_ids)
             + len(self.height_problems or [])
+            + len(self.reference_problems)
+            + len(self.unconnected_node_ids)
         )
 
     def entries(self) -> list[tuple[str, object]]:
         """(kind, problem) of every problem: the node id list of an
-        overlapping group, the node id outside the map or the HeightProblem."""
+        overlapping group, the node id outside the map or without
+        connections, the HeightProblem or the ReferenceProblem."""
 
         return (
             [(OVERLAP, group) for group in self.overlapping_groups]
             + [(OUTSIDE, node_id) for node_id in self.outside_node_ids]
             + [(HEIGHT, problem) for problem in self.height_problems or []]
+            + [(REFERENCES, problem) for problem in self.reference_problems]
+            + [(UNCONNECTED, node_id) for node_id in self.unconnected_node_ids]
         )
 
     @classmethod
@@ -59,7 +78,7 @@ class CheckResults:
             if problem not in problems[kind]:
                 problems[kind].append(problem)
 
-        return cls(problems[OVERLAP], problems[OUTSIDE], problems[HEIGHT])
+        return cls(*(problems[kind] for kind in ALL_CHECKS))
 
 
 def problem_node_ids(kind: str, problem) -> list[int]:
@@ -68,7 +87,7 @@ def problem_node_ids(kind: str, problem) -> list[int]:
     if kind == OVERLAP:
         return list(problem)
 
-    if kind == OUTSIDE:
+    if kind in (OUTSIDE, UNCONNECTED):
         return [problem]
 
     return [problem.node_id]
@@ -102,6 +121,12 @@ def check_network(
             find_nodes_outside_map(autodrive_data, map_scale) if OUTSIDE in checks else []
         ),
         height_problems=height_problems,
+        reference_problems=(
+            find_reference_problems(autodrive_data) if REFERENCES in checks else []
+        ),
+        unconnected_node_ids=(
+            find_unconnected_nodes(autodrive_data) if UNCONNECTED in checks else []
+        ),
     )
 
 
@@ -169,6 +194,51 @@ def find_height_problems(
             problems.append(HeightProblem(node.node_id, node.y, terrain_height))
 
     return problems
+
+
+def invalid_references(
+    autodrive_data: AutoDriveData, node: NodeData
+) -> tuple[tuple[int, ...], tuple[int, ...]]:
+    """The node's invalid outgoing and incoming entries, as in
+    ReferenceProblem. An outgoing entry without the matching incoming entry
+    is a reverse connection, so it is valid."""
+
+    nodes = autodrive_data.nodes
+
+    outgoing = tuple(
+        sorted(target for target in node.outgoing if target == node.node_id or target not in nodes)
+    )
+    incoming = tuple(
+        sorted(
+            source
+            for source in node.incoming
+            if source == node.node_id
+            or source not in nodes
+            or node.node_id not in nodes[source].outgoing
+        )
+    )
+
+    return outgoing, incoming
+
+
+def find_reference_problems(autodrive_data: AutoDriveData) -> list[ReferenceProblem]:
+    problems = []
+
+    for node in autodrive_data.get_sorted_nodes():
+        outgoing, incoming = invalid_references(autodrive_data, node)
+
+        if outgoing or incoming:
+            problems.append(ReferenceProblem(node.node_id, outgoing, incoming))
+
+    return problems
+
+
+def find_unconnected_nodes(autodrive_data: AutoDriveData) -> list[int]:
+    return sorted(
+        node.node_id
+        for node in autodrive_data.nodes.values()
+        if not node.incoming and not node.outgoing
+    )
 
 
 def _root(parents: dict[int, int], node_id: int) -> int:

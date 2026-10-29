@@ -134,4 +134,35 @@ def test_nothing_changes_while_the_history_is_locked(setup):
     assert not operation.merge_overlapping([[1, 2]])
     assert not operation.move_onto_map([5])
     assert not operation.set_heights_from_terrain([6])
+    assert not operation.delete_unconnected([3])
     assert len(data.nodes) == 6
+
+
+def test_remove_invalid_references(setup):
+    data, edits, operation, _, messages = setup
+    data.nodes[3].outgoing = {99}
+    data.nodes[4].incoming = {3}
+
+    assert operation.remove_invalid_references([3, 4, 77])
+
+    assert (data.nodes[3].outgoing, data.nodes[4].incoming) == (set(), set())
+    assert messages == ["2 invalid connection references removed"]
+
+    edits.undo()
+
+    assert (data.nodes[3].outgoing, data.nodes[4].incoming) == ({99}, {3})
+    assert not operation.remove_invalid_references([1, 2])  # valid connection
+
+
+def test_delete_unconnected_skips_markers_and_connected_nodes(setup):
+    data, edits, operation, _, messages = setup
+    data.add_marker(MarkerData(4, "Silo"))
+
+    assert operation.delete_unconnected([1, 3, 4, 5, 99])
+
+    assert set(data.nodes) == {1, 2, 4, 6}
+    assert messages == ["2 nodes without connections deleted – 1 skipped: the node has a marker"]
+
+    edits.undo()
+
+    assert set(data.nodes) == {1, 2, 3, 4, 5, 6}

@@ -18,7 +18,7 @@ Edit [AutoDrive](https://github.com/Stephan-S/FS25_AutoDrive) route networks for
 - **Your maps, found automatically.** One scan imports map image, heightmap and size from your `mods` folder and the base game. The right map opens with every route.
 - **Routes, savegames and XML files.** Open routes from AutoDrive's RoutesManager and reload them in the running game, no restart needed.
 - **Drawing tools.** Lines, Bézier curves and arcs with even node spacing. Rotate, align, set heights from the terrain, and copy and paste whole sections.
-- **Network check.** Finds overlapping nodes, nodes outside the map and wrong heights. Click an entry to jump to it, fix it with one click, or ignore it.
+- **Network check.** Finds overlapping nodes, nodes outside the map, wrong heights, invalid connection references and nodes without connections. Click an entry to jump to it, fix it with one click, or ignore it.
 - **Built for large networks.** Handles networks with more than 100,000 waypoints, like the one in the screenshots.
 - **Safe to use.** Undo for every change, a backup before the first save, and autosave with restore after a crash.
 - **Your way.** English or German, light or dark theme, your own keyboard shortcuts.
