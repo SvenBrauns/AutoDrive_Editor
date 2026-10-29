@@ -664,5 +664,8 @@ TEXTS = {
     "Please enter a marker name.": "Bitte einen Markernamen eingeben.",
     "The bays are narrower than {width} m.": "Die Stellplätze sind schmaler als {width} m.",
     "The marker must be inside the shed.": "Der Marker muss in der Halle liegen.",
+    "The entry line must be at least {distance} m outside the shed.": "Die Zufahrtslinie muss mindestens {distance} m außerhalb der Halle liegen.",
+    "Entry line": "Zufahrtslinie",
+    "Exit line": "Abfahrtslinie",
     "A marker in this group already has the name “{name}”.": "Ein Marker in dieser Gruppe heißt bereits „{name}“.",
 }

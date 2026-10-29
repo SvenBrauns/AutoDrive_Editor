@@ -4,12 +4,16 @@ import pytest
 
 from autodrive_editor.editing.parking_layout import (
     OUTSIDE_NODES,
+    TURN_STEPS,
+    BayLine,
     ParkingMode,
     ParkingSettings,
     ShedFrame,
     bay_centers,
     bay_width,
+    default_bay_line,
     default_open_side,
+    drive_through_line,
     plan_parking,
     side_angle,
 )
@@ -196,3 +200,76 @@ def test_plan_on_the_map_is_rotated_with_the_shed():
 def test_invalid_settings_are_refused(values):
     with pytest.raises(ValueError):
         plan_parking(ShedFrame.from_area(SHED, "front"), settings(**values))
+
+
+def test_default_bay_line_is_fitted_to_the_marker_depth():
+    line = default_bay_line(14.0)
+    distances = line.distances
+
+    assert distances[:4] == pytest.approx([0, 0.5, 1.5, 3.0])
+    assert distances[-len(OUTSIDE_NODES) :] == pytest.approx([14 + o for o in OUTSIDE_NODES])
+    assert distances[line.entry_node] == pytest.approx(16.3)
+    assert line.exit_node == len(distances) - 2
+    assert line.turn == TURN_STEPS
+    assert line.fits(14.0)
+
+
+def test_edited_bay_line_is_used_for_every_bay():
+    frame = ShedFrame.from_area(SHED, "front")
+    line = BayLine((1.0, 2.0, 14.0, 4.0), (2.0,), entry_node=3, exit_node=4)
+    network = plan_parking(frame, settings(bays=2, gaps=(0.0,), back_offset=1.0, bay_line=line))
+
+    marker = network.markers[0][0]
+    dual = sorted(t for s, t, kind in network.connections if kind == ConnectionType.DUAL)
+    depths = [network.points[i][1] for i in [marker, *dual[:4]]]
+
+    assert depths == pytest.approx([14.0, 13.0, 11.0, -3.0, -7.0])
+    assert len([1 for *_, kind in network.connections if kind == ConnectionType.REVERSE]) == 2
+
+
+def test_split_and_remove_keep_the_branches_on_their_nodes():
+    line = BayLine((1.0, 2.0, 3.0), (3.2, 1.2), entry_node=2, exit_node=3)
+
+    split = line.split(0)
+
+    assert split.segments == (0.5, 0.5, 2.0, 3.0)
+    assert (split.entry_node, split.exit_node) == (3, 4)
+    assert split.remove(1) == line
+    assert not split.can_remove(0)
+    assert not split.can_remove(3)
+    assert not split.can_remove(4)
+
+    with pytest.raises(ValueError):
+        split.remove(3)
+
+
+def test_segment_and_turn_lengths_can_be_changed():
+    line = BayLine((1.0, 2.0), (3.2, 1.2), entry_node=1, exit_node=2)
+
+    assert line.with_segment(1, 5.0).segments == (1.0, 5.0)
+    assert line.with_turn_step(0, 2.0).turn == (2.0, 1.2)
+
+
+def test_entry_line_stays_outside_the_shed_and_the_branch_before_the_exit_branch():
+    line = BayLine((2.0, 2.0, 2.0, 2.0), (1.0,), entry_node=3, exit_node=4)
+
+    # Marker 3 m inside: nodes at 1, -1, -3 and -5 m; the entry line runs 1.3 m inside them.
+    assert line.entry_nodes(3.0) == [3]
+    assert line.entry_line_depth(3.0) == pytest.approx(-1.7)
+    assert line.exit_nodes() == [4]
+    assert line.fits(3.0)
+    assert not line.fits(5.0)
+
+    with pytest.raises(ValueError):
+        plan_parking(
+            ShedFrame.from_area(SHED, "front"),
+            settings(bays=1, gaps=(), back_offset=9.0, bay_line=line),
+        )
+
+
+def test_drive_through_line_has_the_marker_before_the_exit_side():
+    frame = ShedFrame.from_area(SHED, "front")
+    depths, marker = drive_through_line(frame, settings(back_offset=1.0))
+
+    assert depths[0] == -10 and depths[-1] == 25
+    assert depths[marker] == pytest.approx(14.0)
