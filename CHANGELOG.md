@@ -12,6 +12,7 @@
 - The last opened file opens again at startup; can be turned off under `File → Settings`
 - Measuring points on a node move with the node (e.g. on undo); if the node is deleted, the point stays as a free point
 - Drive-through parking spots can have several parking positions in a row per bay (`Positions per bay`, `Position spacing`), each with its own marker
+- While the parking spots dialog is open, the planned spots are drawn on the map, and the map can be moved, zoomed and rotated
 
 ## 1.2.0 – 2026-10-29
 

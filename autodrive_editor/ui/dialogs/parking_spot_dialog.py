@@ -1,4 +1,4 @@
-from PySide6.QtCore import QPoint, Qt
+from PySide6.QtCore import QPoint, Qt, Signal
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
@@ -47,6 +47,9 @@ DEFAULTS = ParkingSettings()
 
 class ParkingSpotDialog(QDialog):
     """Asks how the parking spots of a shed are laid out and named, with a live top view."""
+
+    # The shed frame and the planned network (None while the settings don't fit).
+    plan_changed = Signal(object, object)
 
     EMPTY_NAME_TEXT = tr("Please enter a marker name.")
     EMPTY_GROUP_TEXT = tr("Please choose or enter a group.")
@@ -412,6 +415,8 @@ class ParkingSpotDialog(QDialog):
         network = plan_parking(frame, settings) if fits else None
 
         self.preview.show_plan(self.area, frame, settings, network)
+        self.plan = (frame, network)
+        self.plan_changed.emit(frame, network)
         self.create_button.setEnabled(problem is None)
 
         if not inside or not positions_inside:
