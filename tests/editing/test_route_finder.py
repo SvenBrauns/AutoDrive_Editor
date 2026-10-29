@@ -45,10 +45,11 @@ def test_route_goes_around_a_wall_and_keeps_its_distance():
     route = find(make_costmap(blocked=[wall]), RouteRequest((-30, 0), (30, 0), (0.0,), (0.0,)))
 
     assert route is not None
-    # Half the width plus the margin (2 m) away from the wall, less up to a cell.
+    # Half the width plus the margin (2 m) away from the wall, less up to about a cell, as the
+    # distance is kept per 1 m cell (most at the wall's corners).
     for x, z in route:
         distance = math.hypot(max(-5 - x, 0, x - 5), max(-60 - z, 0, z - 40))
-        assert distance > 1.0
+        assert distance > 0.9
 
 
 def test_route_turns_no_tighter_than_the_radius():
@@ -119,3 +120,18 @@ def test_cost_by_kind_of_ground():
     assert cell_cost(85) == 8.0
     assert cell_cost(119) == 4.0
     assert 4.0 < cell_cost(130) < 8.0
+
+
+def test_route_passes_a_gate_narrower_than_the_safety_distance():
+    # A fence across the map with a 3 m opening, like a 4 m gate on the map.
+    fence = [(-1, -100, 1, -1), (-1, 2, 1, 100)]
+    route = find(make_costmap(blocked=fence), RouteRequest((-30, 0), (30, 0), (0.0,), (0.0,)))
+
+    assert route is not None
+
+
+def test_without_headings_the_route_runs_straight():
+    route = find(make_costmap(), RouteRequest((0, 0), (30, 17)))
+
+    # On the line from start to goal.
+    assert all(abs(x * 17 - z * 30) / math.hypot(30, 17) < 0.3 for x, z in route)

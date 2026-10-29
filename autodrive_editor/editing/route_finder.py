@@ -6,7 +6,9 @@ Close to the goal it tries a Dubins path, which ends exactly at the goal heading
 guided by the cheapest way from each cell to the goal, found on the cells alone first; without one
 it stops at once.
 
-- Blocked cells are widened by half the vehicle width plus the safety margin.
+- Blocked cells cannot be driven on. Within half the vehicle width plus the safety margin of
+  them each metre costs extra, so routes keep their distance where there is room but can still
+  pass gates, which the map shows only about 3 m wide for a 4 m gate.
 - Each metre costs by the kind of ground (roads and yards 1, grass 4, fields 8, …), so routes
   keep to roads and yards.
 - Lanes already planned are cheap in their direction, so routes join them. Against their
@@ -41,8 +43,10 @@ AGAINST_LANE = 1.5
 ALONG_LANE = 0.7
 # Lanes are cheap only this close, so routes join them instead of running beside them.
 ON_LANE = 1.0
-# Cost factor of blocked cells near the start and goal.
+# Cost of blocked cells near the start and goal.
 FREE_ZONE_COST = 3.0
+# Extra cost per metre closer to a blocked cell than half the vehicle width plus the margin.
+NEAR_BLOCKED_COST = 20.0
 # Headings tried where any heading will do.
 ANY_HEADINGS = tuple(math.tau * index / 16 for index in range(16))
 # Dubins paths are tried this close to the goal, in turning radii plus metres.
@@ -244,7 +248,10 @@ class _Search:
         best: dict[tuple, float] = {}
         counter = 0
 
-        for heading in request.start_headings or ANY_HEADINGS:
+        # Without given headings, straight towards the goal is tried too.
+        towards_goal = math.atan2(goal_z - request.start[1], goal_x - request.start[0])
+
+        for heading in request.start_headings or (towards_goal, *ANY_HEADINGS):
             node = _Node((*request.start, heading), 0.0, None, [request.start])
             heapq.heappush(open_list, (self._estimate(node.pose), counter, node))
             counter += 1
@@ -370,10 +377,13 @@ class _Search:
         if x is None:
             x, z = grid.center(index)
 
-        if not self._in_free_zone(x, z):
+        if self._in_free_zone(x, z):
+            return FREE_ZONE_COST if value >= BLOCKED_VALUE else COST_TABLE[value]
+
+        if value >= BLOCKED_VALUE:
             return math.inf
 
-        return FREE_ZONE_COST if value >= BLOCKED_VALUE else COST_TABLE[value]
+        return COST_TABLE[value] + NEAR_BLOCKED_COST
 
     def _lane_factor(self, index: int, direction_x: float, direction_z: float) -> float:
         """Cheaper on a planned lane in its direction, dearer near one against it."""
