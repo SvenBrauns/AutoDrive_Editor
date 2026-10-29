@@ -197,3 +197,26 @@ def test_parking_sign_is_drawn_on_parking_markers_only(qapp, parking, expected):
 
     assert renderer.marker_layer.drawn_markers == 2
     assert renderer.marker_layer.drawn_parking == expected
+
+
+def test_plan_halo_is_drawn_around_changed_nodes_only(qapp):
+    renderer = render(NodeData(1, 0, 0, 0), NodeData(2, 20, 0, 0))
+    renderer.set_plan_node_ids({1})
+
+    painted = paint_scene(renderer.scene, (10, 0), scale=4.0)
+    beside_planned = QColor(painted.color_at(1.6, 0))
+
+    assert beside_planned.blue() > 200 and beside_planned.red() < 150
+    assert painted.color_at(21.6, 0) == "#ffffff"
+
+
+def test_plan_halo_follows_a_moved_node(qapp):
+    renderer = render(NodeData(1, 0, 0, 0))
+    renderer.set_plan_node_ids({1})
+
+    renderer.autodrive_data.nodes[1].x = 30
+    renderer.apply_changes(moved_node_ids={1})
+
+    painted = paint_scene(renderer.scene, (15, 0), scale=4.0)
+    assert QColor(painted.color_at(31.6, 0)).red() < 150
+    assert painted.color_at(1.6, 0) == "#ffffff"

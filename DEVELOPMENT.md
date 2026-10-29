@@ -38,7 +38,8 @@ autodrive_editor/
     commands/   undoable changes to the data model
     operations/ editing workflows of the tools (move, connect, …)
     edit_context.py  EditContext and the EditOperation base class
-    edit_history.py  shared undo/redo history
+    edit_history.py  shared undo/redo history, with plans as one undo step
+    plan_changes.py  nodes the open plan changed, for the highlight
   selection/    node selection
   measurement/  distance and angle measurement
   network_check/ checks that find problems in the network

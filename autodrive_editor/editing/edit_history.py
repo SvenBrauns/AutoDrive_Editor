@@ -81,6 +81,12 @@ class EditHistory(QObject):
         return self._plan_stack is not None
 
     @property
+    def has_plan_edits(self) -> bool:
+        """True if the open plan has edits that are not undone."""
+
+        return self._plan_stack is not None and self._plan_stack.index() > 0
+
+    @property
     def _active_stack(self) -> QUndoStack:
         return self._plan_stack or self.undo_stack
 

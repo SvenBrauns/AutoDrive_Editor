@@ -56,6 +56,9 @@ class FileController(QObject):
         # Asked before saving; False cancels the save.
         self.confirm_save: Callable[[], bool] = lambda: True
 
+        # Asked first before the data would be replaced or the editor closed; False cancels.
+        self.confirm_end_plan: Callable[[], bool] = lambda: True
+
         # Unsaved changes are backed up here regularly.
         self.autosave_store = autosave_store
         self.autosave_timer = QTimer(self)
@@ -355,7 +358,14 @@ class FileController(QObject):
     def autosave(self):
         """Backs up unsaved changes into the editor's data folder."""
 
-        if self.project_coordinator.config_source is None or self.edit_history.is_clean:
+        # Paused while a plan is open: only applied plans are backed up.
+        history = self.edit_history
+
+        if (
+            self.project_coordinator.config_source is None
+            or history.is_clean
+            or history.is_planning
+        ):
             return
 
         try:
@@ -427,7 +437,11 @@ class FileController(QObject):
 
     def confirm_discard_changes(self) -> bool:
         """Offers to save unsaved changes before they would be lost. Returns
-        whether to go on. Going on drops the autosave as well."""
+        whether to go on. Going on drops the autosave as well. An open plan is applied or
+        discarded first."""
+
+        if not self.confirm_end_plan():
+            return False
 
         if self.edit_history.is_clean:
             self.autosave_store.clear()

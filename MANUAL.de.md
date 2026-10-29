@@ -54,6 +54,10 @@ Kartenbilder werden nicht mit dem Editor ausgeliefert. Über `Karte → Karten s
 
 Außerdem: Rückgängig und Wiederholen (`Strg+Z` / `Strg+Y`), Kopieren, Ausschneiden und Einfügen (`Strg+C/X/V`; `Strg+Umschalt+V` fügt an der Originalposition ein), das Raster mit Einrasten (`G`), Abstands- und Winkelmessung sowie das Fenster `Marker` mit allen Markergruppen.
 
+## Planungsmodus
+
+Der Planungsknopf am rechten Ende der Werkzeugleiste (`Bearbeiten → Planungsmodus`, `Strg+P`) beginnt einen Plan. Alle Werkzeuge arbeiten wie gewohnt, die Änderungen werden aber im Plan gesammelt: Ein blauer Balken über der Karte zeigt, wie viele Nodes der Plan geändert hat, und diese Nodes bekommen einen blauen Hof. Rückgängig und Wiederholen arbeiten innerhalb des Plans und halten an seinem Anfang. `Plan übernehmen` fügt den ganzen Plan als einen Rückgängig-Schritt in den Verlauf ein; `Plan verwerfen` nimmt ihn vollständig zurück. Ein weiterer Klick auf den Planungsknopf, das Öffnen einer anderen Datei oder das Schließen des Editors fragt, ob der Plan übernommen oder verworfen werden soll. Solange ein Plan offen ist, kann nicht gespeichert werden und die automatische Sicherung pausiert.
+
 ## Darstellung
 
 `Ansicht → Anzeigen` blendet Nodes, Node-IDs, jede Connection-Art (Regular, Dual, Reverse), Marker, Markernamen, die Parkpositionen der Fahrzeuge und Hallen ein und aus. Die Linienfarbe zeigt die Connection-Art, Pfeile zeigen die Richtung; Dual-Connections bekommen zu jedem Ende einen. Subprio-Nodes sind orange. Node-IDs erscheinen erst beim Hineinzoomen; Parkpositionen (ein „P“ neben dem Marker) werden aus der `vehicles.xml` eines Spielstands gelesen. Eine Route braucht dafür ein verknüpftes Savegame, siehe [Parkplätze in Hallen](#parkplätze-in-hallen); dort sind auch die Hallen erklärt. Ausgeblendete Nodes und Connections lassen sich nur anklicken und auswählen, wenn `Ausgeblendete Elemente auswählbar` an ist. Größen und Farben stellt man unter `Ansicht → Darstellungsoptionen` ein. Alle Einstellungen bleiben gespeichert.

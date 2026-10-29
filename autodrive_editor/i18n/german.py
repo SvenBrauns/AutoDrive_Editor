@@ -193,6 +193,13 @@ TEXTS = {
     # ui/actions
     "Undo": "Rückgängig",
     "Plan applied": "Plan übernommen",
+    # ui/planning_controller
+    "Planning mode": "Planungsmodus",
+    "Edit the network as a plan, then apply it as one undo step or discard it": "Das Netz als Plan bearbeiten und ihn dann als einen Rückgängig-Schritt übernehmen oder verwerfen",
+    "Apply plan": "Plan übernehmen",
+    "Discard plan": "Plan verwerfen",
+    "The plan is not applied yet. Apply it?": "Der Plan ist noch nicht übernommen. Jetzt übernehmen?",
+    "Planning – {count} nodes changed": "Planung – {count} Nodes geändert",
     "Redo": "Wiederholen",
     "Original size": "Originalgröße",
     "4x map": "4x-Karte",

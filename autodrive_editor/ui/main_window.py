@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QMainWindow,
     QVBoxLayout,
+    QWidget,
 )
 
 from autodrive_editor.editing.commands.edit_command import DataChange
@@ -77,6 +78,7 @@ from autodrive_editor.ui.panels.node_info_formatter import NodeInfoFormatter
 from autodrive_editor.ui.panels.path_options import PathOptionsWidget
 from autodrive_editor.ui.panels.rotate_options import RotateOptionsWidget
 from autodrive_editor.ui.panels.welcome_panel import WelcomePanel
+from autodrive_editor.ui.planning_controller import PlanningController
 from autodrive_editor.ui.savegame_link_controller import SavegameLinkController
 from autodrive_editor.ui.theme import apply_theme
 from autodrive_editor.ui.tools.connect_nodes_tool import ConnectNodesTool
@@ -141,6 +143,7 @@ class MainWindow(QMainWindow):
         self._register_map_tools()
         self._create_project_coordinator()
         self._create_file_controllers()
+        self._create_planning()
 
         self._create_status_widgets()
         self._create_central_widget()
@@ -550,6 +553,12 @@ class MainWindow(QMainWindow):
 
         self.updates = UpdateController(self, self.settings)
 
+    def _create_planning(self):
+        self.planning = PlanningController(
+            self, self.edit_history, self.scene_renderer, self._get_autodrive_data
+        )
+        self.files.confirm_end_plan = self.planning.confirm_end_plan
+
     def _register_map_tools(self):
         self.view.register_tool(
             InteractionMode.SELECT, SelectTool(self.view, self.selection_coordinator)
@@ -858,7 +867,14 @@ class MainWindow(QMainWindow):
         self.statusBar().addWidget(self.status, 1)
 
     def _create_central_widget(self):
-        self.setCentralWidget(self.view)
+        # The planning bar sits above the map.
+        central = QWidget(self)
+        layout = QVBoxLayout(central)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        layout.addWidget(self.planning.bar)
+        layout.addWidget(self.view, 1)
+        self.setCentralWidget(central)
 
     def _create_welcome_panel(self):
         self.welcome_panel = WelcomePanel(
@@ -956,6 +972,8 @@ class MainWindow(QMainWindow):
 
         self.edit_history.data_changed.connect(self._handle_data_changed)
 
+        self.edit_history.planning_changed.connect(self._handle_planning_changed)
+
         self.files.status_changed.connect(self._set_status)
 
         self.files.saved.connect(self._update_window_title)
@@ -1017,6 +1035,7 @@ class MainWindow(QMainWindow):
         self.setWindowModified(False)
         self.actions.save_xml_action.setEnabled(True)
         self.actions.save_xml_as_action.setEnabled(True)
+        self.planning.action.setEnabled(True)
         source = self.project_coordinator.config_source
         self.actions.link_savegame_action.setEnabled(
             source is not None and source.format == ConfigFormat.ROUTE_EXPORT
@@ -1057,6 +1076,11 @@ class MainWindow(QMainWindow):
 
         # Node coordinates in the info panel may have changed.
         self.selection_coordinator.refresh_info()
+
+    def _handle_planning_changed(self, planning: bool):
+        # A plan is saved only once it is applied. Planning needs loaded data.
+        self.actions.save_xml_action.setEnabled(not planning)
+        self.actions.save_xml_as_action.setEnabled(not planning)
 
     def _handle_edit_clean_changed(self, clean: bool):
         self.setWindowModified(not clean)

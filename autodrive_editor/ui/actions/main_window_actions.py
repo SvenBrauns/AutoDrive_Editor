@@ -95,7 +95,7 @@ class MainWindowActions:
             (
                 tr("Edit"),
                 ("undo", "redo", "copy", "cut", "paste", "paste_at_original")
-                + ("delete_selection", "grid_snap"),
+                + ("delete_selection", "grid_snap", "planning_mode"),
             ),
             (
                 tr("View"),
@@ -340,6 +340,8 @@ class MainWindowActions:
 
         self._create_map_scale_actions()
 
+        self.planning_mode_action = self.window.planning.action
+
     def _create_map_scale_actions(self):
         self.map_scale_action_group = QActionGroup(self.window)
 
@@ -518,6 +520,10 @@ class MainWindowActions:
         edit_menu.addSeparator()
 
         edit_menu.addAction(self.grid_snap_action)
+
+        edit_menu.addSeparator()
+
+        edit_menu.addAction(self.planning_mode_action)
 
         view_menu = menu_bar.addMenu(tr("View"))
 
@@ -706,6 +712,11 @@ class MainWindowActions:
         self.quick_access_toolbar.addAction(self.angle_measurement_action)
 
         self.quick_access_toolbar.addAction(self.align_measurement_action)
+
+        # A mode, not a tool: at the far right, apart from the tools.
+        self.quick_access_toolbar.addSeparator()
+
+        self.quick_access_toolbar.addAction(self.planning_mode_action)
 
     def _add_toolbar_gap(self):
         """Separator with some free space on both sides, between button groups."""

@@ -225,3 +225,15 @@ def test_clear_ends_the_plan(coordinator, data):
 
     assert not coordinator.is_planning
     assert not coordinator.can_undo
+
+
+def test_plan_has_edits_until_they_are_undone(coordinator, data):
+    assert not coordinator.has_plan_edits
+    coordinator.start_plan()
+    assert not coordinator.has_plan_edits
+
+    coordinator.push(move(data, 0, 5))
+    assert coordinator.has_plan_edits
+
+    coordinator.undo()
+    assert not coordinator.has_plan_edits

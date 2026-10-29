@@ -8,7 +8,6 @@ The editor supports only Farming Simulator 25.
 
 Design: [docs/generators.md](docs/generators.md). Each step is its own branch.
 
-- [ ] planning mode: edit the network in place with all tools, then apply the plan as one undo step or discard it (toolbar button on the right)
 - [ ] readers and building groups: shared building loop, stations from the building XMLs, every building type in one group (sheds, stations, bunker silos), `Generate` menu with `Building types…`
 - [ ] drivability map from the savegame's `vehicleNavigationCostmap.dat`, route finder with turning radius, `Find route` in planning mode
 - [ ] join rules: fixed nodes, join points, reuse of separate pieces, replacement of pass-through stretches, regular and subprio for yards

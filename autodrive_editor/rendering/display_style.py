@@ -55,8 +55,13 @@ class DisplayStyle:
     shed_outline_px: float = 2.0
     shed_fill_alpha: int = 40
 
+    # Halo behind the nodes the open plan changed (RGBA).
+    plan_color: tuple[int, int, int, int] = (30, 144, 255, 150)
+    plan_halo_min_px: float = 10.0
+
     shed_z: float = -20.0
     connection_z: float = -10.0
+    plan_z: float = -5.0
     node_z: float = 0.0
     marker_z: float = 10.0
     selected_node_z: float = 110.0
