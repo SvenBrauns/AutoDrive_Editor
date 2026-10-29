@@ -160,6 +160,13 @@ class MeasurementCoordinator(QObject):
         else:
             self.set_mode(MeasurementMode.INACTIVE)
 
+    def follow_nodes(self, node_ids, nodes: dict[int, NodeData]):
+        """After an edit: points bound to moved nodes move along, points of deleted nodes
+        become free points."""
+
+        if self.state.follow_nodes(node_ids, nodes):
+            self._update_scene_items()
+
     def align_view_to_measurement(self):
         if not self.state.is_complete:
             self.alignment_available_changed.emit(False)

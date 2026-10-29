@@ -1,7 +1,9 @@
 import pytest
 from mouse_helpers import click, drag, press_escape, view_pos
-from PySide6.QtCore import QPoint
+from PySide6.QtCore import QPoint, QPointF
 
+from autodrive_editor.editing.commands.delete_nodes import DeleteNodesCommand
+from autodrive_editor.editing.commands.move_nodes import MoveNodesCommand
 from autodrive_editor.measurement.mode import MeasurementMode
 
 FREE = (5, 20)  # map position between the nodes, below the line
@@ -57,3 +59,26 @@ def test_measurement_stays_when_data_is_loaded_again(measuring, write_xml):
     coordinator = measuring.measurement_coordinator
     assert coordinator.is_complete
     assert all(item.scene() is measuring.scene for item in coordinator._items)
+
+
+def test_points_follow_moved_and_deleted_nodes(measuring):
+    click(measuring, view_pos(measuring, 0, 0))
+    click(measuring, view_pos(measuring, 20, 0))
+    data = measuring.project_coordinator.autodrive_data
+    coordinator = measuring.measurement_coordinator
+    state = coordinator.state
+
+    measuring.edit_history.push(MoveNodesCommand(data, {3: (20, 0, 0)}, {3: (20, 0, 15)}))
+
+    assert state.calculate_result().value == pytest.approx(25.0)
+    assert coordinator._end_handle.pos() == QPointF(20, 15)
+
+    measuring.edit_history.undo()
+    assert state.calculate_result().value == pytest.approx(20.0)
+
+    measuring.edit_history.push(DeleteNodesCommand(data, {1}))
+    measuring.edit_history.undo()
+
+    assert state.start_point.is_free_point
+    assert state.start_point.position == QPointF(0, 0)
+    assert coordinator.is_complete

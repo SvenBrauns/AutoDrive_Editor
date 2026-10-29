@@ -4,6 +4,7 @@ from PySide6.QtCore import QPointF
 from autodrive_editor.measurement.mode import MeasurementMode
 from autodrive_editor.measurement.point import MeasurementPoint
 from autodrive_editor.measurement.state import MeasurementState
+from autodrive_editor.model.autodrive_data import NodeData
 
 
 def free(x, z):
@@ -123,3 +124,17 @@ def test_deactivate_clears_points(distance_state):
 
     assert not distance_state.is_active
     assert distance_state.start_point is None
+
+
+def test_points_follow_their_nodes(distance_state):
+    distance_state.set_start_point(MeasurementPoint(QPointF(0, 0), 1))
+    distance_state.set_end_point(MeasurementPoint(QPointF(10, 0), 2))
+    nodes = {1: NodeData(1, 3, 0, 4, 0)}
+
+    assert distance_state.follow_nodes({1, 2}, nodes)
+
+    assert distance_state.start_point.position == QPointF(3, 4)
+    assert distance_state.start_point.node_id == 1
+    assert distance_state.end_point.position == QPointF(10, 0)
+    assert distance_state.end_point.is_free_point
+    assert not distance_state.follow_nodes({5}, nodes)
