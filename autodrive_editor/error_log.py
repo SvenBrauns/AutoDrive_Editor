@@ -33,6 +33,14 @@ def setup_logging(log_directory: Path) -> Path:
     return log_path
 
 
+def set_debug_logging(enabled: bool):
+    """Debug log: also writes the detailed entries meant for finding problems, e.g. each route
+    search."""
+
+    logging.getLogger().setLevel(logging.DEBUG if enabled else logging.INFO)
+    logger.info("Debug log %s", "on" if enabled else "off")
+
+
 def install_error_handler(show_error: Callable[[str], None]):
     """Logs every unhandled exception, also those raised in Qt slots, and
     passes its traceback to show_error. The editor keeps running."""

@@ -47,6 +47,7 @@ class AppSettings:
     SHORTCUTS_KEY = "app/shortcuts"
     CHECK_UPDATES_KEY = "app/check_updates"
     REOPEN_LAST_KEY = "app/reopen_last"
+    DEBUG_LOG_KEY = "app/debug_log"
     NO_SAVEGAME_QUESTION_KEY = "routes/no_savegame_question"
     LINKED_SAVEGAMES_KEY = "routes/linked_savegames"
     OPEN_TAB_KEY = "app/open_dialog_tab"
@@ -183,6 +184,16 @@ class AppSettings:
 
     def set_check_updates(self, enabled: bool):
         self._settings.setValue(self.CHECK_UPDATES_KEY, bool(enabled))
+        self._settings.sync()
+
+    @property
+    def debug_log(self) -> bool:
+        """Whether the log file also gets the detailed debug entries."""
+
+        return self._settings.value(self.DEBUG_LOG_KEY, False, type=bool)
+
+    def set_debug_log(self, enabled: bool):
+        self._settings.setValue(self.DEBUG_LOG_KEY, bool(enabled))
         self._settings.sync()
 
     @property

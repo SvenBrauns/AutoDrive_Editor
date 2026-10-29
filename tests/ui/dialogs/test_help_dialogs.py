@@ -50,6 +50,7 @@ def test_help_menu_has_the_entries(window):
         "Version history",
         "Check for updates",
         "Open log folder",
+        "Debug log",
         "About AutoDrive FS25 Editor",
     ]
 

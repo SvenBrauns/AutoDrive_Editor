@@ -135,3 +135,13 @@ def test_without_headings_the_route_runs_straight():
 
     # On the line from start to goal.
     assert all(abs(x * 17 - z * 30) / math.hypot(30, 17) < 0.3 for x, z in route)
+
+
+def test_debug_log_tells_why_there_is_no_route(caplog):
+    walls = [(20, -20, 22, 20), (40, -20, 42, 20), (20, -22, 42, -20), (20, 20, 42, 22)]
+
+    with caplog.at_level("DEBUG", logger="autodrive_editor.editing.route_finder"):
+        find(make_costmap(blocked=walls), RouteRequest((-40, 0), (31, 0)))
+
+    assert "Route search from (-40.0, 0.0)" in caplog.text
+    assert "no way over the cells from start to goal" in caplog.text

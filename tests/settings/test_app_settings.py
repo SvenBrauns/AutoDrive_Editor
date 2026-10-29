@@ -345,3 +345,12 @@ def test_invalid_vehicle_values_fall_back_to_the_defaults():
     settings.set_vehicle(Vehicle(0, 3, 0.5))
 
     assert settings.vehicle == Vehicle()
+
+
+def test_debug_log_is_off_until_turned_on():
+    settings = AppSettings()
+    assert not settings.debug_log
+
+    settings.set_debug_log(True)
+
+    assert AppSettings().debug_log

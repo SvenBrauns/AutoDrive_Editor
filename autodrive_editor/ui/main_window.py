@@ -30,6 +30,7 @@ from autodrive_editor.editing.operations.parking_spots import ParkingSpotOperati
 from autodrive_editor.editing.operations.reverse_direction import ReverseDirectionOperation
 from autodrive_editor.editing.operations.rotate_selection import RotateSelectionOperation
 from autodrive_editor.editing.path_shapes import PathShape
+from autodrive_editor.error_log import set_debug_logging
 from autodrive_editor.file_io.autodrive_xml import ConfigFormat
 from autodrive_editor.file_io.game_files import GameFiles
 from autodrive_editor.i18n import tr
@@ -129,6 +130,9 @@ class MainWindow(QMainWindow):
 
         # Detects the FS25 folder on first start and keeps it afterwards.
         self.settings = AppSettings()
+
+        if self.settings.debug_log:
+            set_debug_logging(True)
         self.settings.ensure_game_folder()
         self.settings.ensure_install_folder()
 
