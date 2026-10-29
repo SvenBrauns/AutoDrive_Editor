@@ -174,7 +174,8 @@ def placed_buildings(
 
 def read_definition(building_file: str, files: GameFiles) -> tuple | None:
     """(type, indoor areas, stops) of a building file, None if it has none of them and is no
-    bunker silo. Farmhouses are in Other. See savegame_sheds and savegame_stations."""
+    bunker silo. Farmhouses and weighing stations are in Other. See savegame_sheds and
+    savegame_stations."""
 
     mod, path = locate(building_file)
     definition = ET.fromstring(files.read(mod, path))
@@ -185,7 +186,10 @@ def read_definition(building_file: str, files: GameFiles) -> tuple | None:
 
     category = (definition.findtext("storeData/category") or "").strip()
 
-    if category.lower() in CHARACTER_CATEGORIES:
+    # Vehicles drive over a weighing station, they do not park in it.
+    is_scale = definition.find(".//weighingStation") is not None
+
+    if category.lower() in CHARACTER_CATEGORIES or is_scale:
         group = BuildingGroup.OTHER
 
     building_type = BuildingType(
