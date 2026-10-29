@@ -119,3 +119,109 @@ def test_push_rejects_plain_qundocommand(coordinator):
 
     with pytest.raises(TypeError):
         coordinator.push(QUndoCommand("Fremd"))
+
+
+def test_plan_edits_can_be_undone_inside_the_plan(coordinator, data):
+    coordinator.push(move(data, 0, 1))
+    coordinator.start_plan()
+    coordinator.push(move(data, 1, 5))
+
+    coordinator.undo()
+    assert node_x(data) == 1
+
+    # Undo stops at the start of the plan.
+    assert not coordinator.can_undo
+    coordinator.undo()
+    assert node_x(data) == 1
+
+
+def test_applied_plan_is_one_undo_step(coordinator, data):
+    coordinator.push(move(data, 0, 1))
+    coordinator.start_plan()
+    coordinator.push(move(data, 1, 5))
+    coordinator.push(move(data, 5, 9))
+
+    coordinator.apply_plan()
+
+    assert not coordinator.is_planning
+    assert node_x(data) == 9
+    assert coordinator.undo_stack.count() == 2
+
+    coordinator.undo()
+    assert node_x(data) == 1
+
+    coordinator.redo()
+    assert node_x(data) == 9
+
+
+def test_applied_plan_leaves_out_undone_edits(coordinator, data):
+    coordinator.start_plan()
+    coordinator.push(move(data, 0, 5))
+    coordinator.push(move(data, 5, 9))
+    coordinator.undo()
+
+    coordinator.apply_plan()
+    assert node_x(data) == 5
+
+    coordinator.undo()
+    coordinator.redo()
+    assert node_x(data) == 5
+
+
+def test_empty_plan_adds_no_undo_step(coordinator, data):
+    coordinator.start_plan()
+    coordinator.push(move(data, 0, 5))
+    coordinator.undo()
+
+    coordinator.apply_plan()
+
+    assert coordinator.undo_stack.count() == 0
+
+
+def test_discarded_plan_reverts_its_edits(coordinator, data):
+    coordinator.push(move(data, 0, 1))
+    coordinator.start_plan()
+    coordinator.push(move(data, 1, 5))
+    coordinator.push(move(data, 5, 9))
+
+    coordinator.discard_plan()
+
+    assert not coordinator.is_planning
+    assert node_x(data) == 1
+    assert coordinator.undo_stack.count() == 1
+    assert coordinator.can_undo
+
+
+def test_planning_changed_is_emitted(coordinator):
+    states = []
+    coordinator.planning_changed.connect(states.append)
+
+    coordinator.start_plan()
+    coordinator.start_plan()
+    coordinator.apply_plan()
+    coordinator.start_plan()
+    coordinator.discard_plan()
+
+    assert states == [True, False, True, False]
+
+
+def test_undo_signals_follow_the_plan(coordinator, data):
+    can_undo = []
+    coordinator.undo_group.canUndoChanged.connect(can_undo.append)
+    coordinator.push(move(data, 0, 1))
+
+    coordinator.start_plan()
+    assert can_undo[-1] is False
+
+    coordinator.discard_plan()
+    assert can_undo[-1] is True
+
+
+def test_clear_ends_the_plan(coordinator, data):
+    coordinator.start_plan()
+    coordinator.push(move(data, 0, 5))
+
+    coordinator.clear()
+
+    assert not coordinator.is_planning
+    assert not coordinator.can_undo

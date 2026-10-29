@@ -192,6 +192,7 @@ TEXTS = {
     "The Z coordinate {value} is outside the map.": "Die Z-Koordinate {value} liegt außerhalb der Karte.",
     # ui/actions
     "Undo": "Rückgängig",
+    "Plan applied": "Plan übernommen",
     "Redo": "Wiederholen",
     "Original size": "Originalgröße",
     "4x map": "4x-Karte",

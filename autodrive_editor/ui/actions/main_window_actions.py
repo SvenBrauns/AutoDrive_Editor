@@ -386,15 +386,15 @@ class MainWindowActions:
 
     def _create_undo_actions(self):
         edit_history = self.window.edit_history
-        undo_stack = edit_history.undo_stack
+        undo_group = edit_history.undo_group
 
         self.undo_action = self._create_history_action(
             icon="undo",
             base_text=self.UNDO_TEXT,
             shortcut=QKeySequence.Undo,
             trigger=edit_history.undo,
-            can_run_changed=undo_stack.canUndoChanged,
-            text_changed=undo_stack.undoTextChanged,
+            can_run_changed=undo_group.canUndoChanged,
+            text_changed=undo_group.undoTextChanged,
         )
 
         self.redo_action = self._create_history_action(
@@ -402,8 +402,8 @@ class MainWindowActions:
             base_text=self.REDO_TEXT,
             shortcut=QKeySequence.Redo,
             trigger=edit_history.redo,
-            can_run_changed=undo_stack.canRedoChanged,
-            text_changed=undo_stack.redoTextChanged,
+            can_run_changed=undo_group.canRedoChanged,
+            text_changed=undo_group.redoTextChanged,
         )
 
         style_hints = QGuiApplication.styleHints()
