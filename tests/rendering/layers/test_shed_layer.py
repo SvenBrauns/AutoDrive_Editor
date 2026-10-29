@@ -1,8 +1,15 @@
+from dataclasses import replace
+
 import pytest
 from drawing_helpers import paint_scene
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QGraphicsScene
 
+from autodrive_editor.file_io.savegame_buildings import (
+    BuildingGroup,
+    BuildingType,
+    SavegameBuildings,
+)
 from autodrive_editor.file_io.savegame_sheds import IndoorArea
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
 from autodrive_editor.paths import MARKER_ICON_PATH
@@ -11,6 +18,11 @@ from autodrive_editor.rendering.visibility import Visibility
 
 # Far away from the only node.
 AREA = IndoorArea("shed.xml", "a", ((500, 500), (530, 500), (530, 515), (500, 515)), 80.0)
+SHED = BuildingType("shed.xml", "Shed", "sheds", BuildingGroup.SHEDS, 1)
+
+
+def buildings(group=BuildingGroup.SHEDS):
+    return SavegameBuildings(types=[replace(SHED, group=group)], areas=[AREA])
 
 
 @pytest.fixture
@@ -19,7 +31,7 @@ def renderer(qapp):
     data.add_node(NodeData(1, 0, 0, 0))
     renderer = SceneRenderer(QGraphicsScene(), MARKER_ICON_PATH)
     renderer.render(data)
-    renderer.set_shed_areas([AREA])
+    renderer.set_buildings(buildings())
     return renderer
 
 
@@ -43,7 +55,7 @@ def test_outline_is_drawn_unless_hidden(renderer, sheds):
 def test_new_route_clears_the_sheds(renderer):
     renderer.render(AutoDriveData())
 
-    assert renderer.shed_areas == []
+    assert renderer.buildings.areas == []
     assert renderer.shed_layer.polygons == []
 
 
@@ -57,21 +69,34 @@ def test_shed_is_found_inside_its_outline_while_shown(renderer):
 
 
 def test_hidden_type_is_neither_drawn_nor_found(renderer):
-    renderer.set_hidden_shed_types({"shed.xml"})
+    renderer.set_building_types({}, {"shed.xml"})
 
     assert renderer.shed_layer.polygons == []
     assert renderer.get_shed_at(510, 505) is None
     # Kept, so the type can be shown again.
-    assert renderer.shed_areas == [AREA]
+    assert renderer.buildings.areas == [AREA]
 
-    renderer.set_hidden_shed_types(set())
+    renderer.set_building_types({}, set())
 
     assert renderer.get_shed_at(510, 505) == AREA
 
 
 def test_hidden_types_stay_hidden_for_the_next_route(renderer):
-    renderer.set_hidden_shed_types({"shed.xml"})
+    renderer.set_building_types({}, {"shed.xml"})
     renderer.render(AutoDriveData())
-    renderer.set_shed_areas([AREA])
+    renderer.set_buildings(buildings())
 
     assert renderer.shed_layer.polygons == []
+
+
+def test_only_types_of_the_sheds_group_are_sheds(renderer):
+    renderer.set_buildings(buildings(BuildingGroup.STATIONS))
+
+    assert renderer.shed_layer.polygons == []
+    assert renderer.group_of("shed.xml") == BuildingGroup.STATIONS
+
+    renderer.set_building_types({"shed.xml": BuildingGroup.SHEDS}, set())
+
+    assert renderer.get_shed_at(510, 505) == AREA
+    assert renderer.group_of("shed.xml") == BuildingGroup.SHEDS
+    assert renderer.group_of("unknown.xml") == BuildingGroup.OTHER

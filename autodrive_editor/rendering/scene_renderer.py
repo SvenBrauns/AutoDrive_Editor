@@ -4,7 +4,9 @@ from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QPainterPath, QPolygonF
 from PySide6.QtWidgets import QGraphicsScene
 
+from autodrive_editor.file_io.savegame_buildings import BuildingGroup, SavegameBuildings
 from autodrive_editor.file_io.savegame_sheds import IndoorArea
+from autodrive_editor.file_io.savegame_stations import Stop
 from autodrive_editor.model.autodrive_data import AutoDriveData, MarkerData, NodeData
 from autodrive_editor.rendering.connections.connection_data import ConnectionData
 from autodrive_editor.rendering.display_style import DisplayStyle
@@ -24,6 +26,7 @@ from autodrive_editor.rendering.layers.selection_layer import (
     selection_ring_px,
 )
 from autodrive_editor.rendering.layers.shed_layer import ShedLayerItem
+from autodrive_editor.rendering.layers.station_layer import StationLayerItem
 from autodrive_editor.rendering.spatial.connection_index import ConnectionSpatialIndex
 from autodrive_editor.rendering.spatial.node_index import NodeSpatialIndex
 from autodrive_editor.rendering.visibility import Visibility
@@ -57,10 +60,12 @@ class SceneRenderer:
         self.visibility = Visibility()
         # Markers vehicles park at (savegames).
         self.parking_markers: list[MarkerData] = []
-        # Indoor areas of the buildings in the savegame.
-        self.shed_areas: list[IndoorArea] = []
-        # Building files whose sheds are left out.
-        self.hidden_shed_types: set[str] = set()
+        # Building types, indoor areas and stops of the buildings in the savegame.
+        self.buildings = SavegameBuildings()
+        # Groups the user moved building types to, by building file.
+        self.building_groups: dict[str, BuildingGroup] = {}
+        # Building files that are not shown.
+        self.hidden_building_types: set[str] = set()
         self.selected_node_ids: set[int] = set()
         # Nodes the open plan changed.
         self.plan_node_ids: set[int] = set()
@@ -76,6 +81,7 @@ class SceneRenderer:
         self.selection_layer: SelectionLayerItem | None = None
         self.plan_layer: PlanLayerItem | None = None
         self.shed_layer: ShedLayerItem | None = None
+        self.station_layer: StationLayerItem | None = None
 
     @property
     def layers(self) -> list:
@@ -83,6 +89,7 @@ class SceneRenderer:
             layer
             for layer in (
                 self.shed_layer,
+                self.station_layer,
                 self.connection_layer,
                 self.plan_layer,
                 self.node_layer,
@@ -112,6 +119,7 @@ class SceneRenderer:
         self.selection_layer = SelectionLayerItem(style)
         self.plan_layer = PlanLayerItem(style)
         self.shed_layer = ShedLayerItem(style)
+        self.station_layer = StationLayerItem(style)
 
         self.network_bounds = _get_bounds(autodrive_data.nodes.values())
 
@@ -120,7 +128,7 @@ class SceneRenderer:
             layer.set_visibility(self.visibility)
             self.scene.addItem(layer)
 
-        self.shed_layer.set_areas(self.shown_shed_areas)
+        self._refresh_buildings()
 
         self._refresh_selection()
         self._refresh_plan()
@@ -137,9 +145,10 @@ class SceneRenderer:
         self.selection_layer = None
         self.plan_layer = None
         self.shed_layer = None
+        self.station_layer = None
 
         self.parking_markers = []
-        self.shed_areas = []
+        self.buildings = SavegameBuildings()
 
         self.node_spatial_index.clear()
         self.connection_spatial_index.clear()
@@ -371,23 +380,51 @@ class SceneRenderer:
         if self.marker_layer is not None:
             self.marker_layer.set_parking_markers(self.parking_markers)
 
+    def group_of(self, building_file: str) -> BuildingGroup:
+        """The group the user chose for a building type, else the one its definition gives."""
+
+        return self._groups().get(building_file, BuildingGroup.OTHER)
+
+    def _groups(self) -> dict[str, BuildingGroup]:
+        defaults = {item.building_file: item.group for item in self.buildings.types}
+
+        return defaults | self.building_groups
+
     @property
     def shown_shed_areas(self) -> list[IndoorArea]:
+        return self._shown(self.buildings.areas, BuildingGroup.SHEDS)
+
+    @property
+    def shown_stops(self) -> list[Stop]:
+        return self._shown(self.buildings.stops, BuildingGroup.STATIONS)
+
+    def _shown(self, items: list, group: BuildingGroup) -> list:
+        groups = self._groups()
+
         return [
-            area for area in self.shed_areas if area.building_file not in self.hidden_shed_types
+            item
+            for item in items
+            if item.building_file not in self.hidden_building_types
+            and groups.get(item.building_file) == group
         ]
 
-    def set_shed_areas(self, areas: list[IndoorArea]):
-        self.shed_areas = list(areas)
+    def set_buildings(self, buildings: SavegameBuildings):
+        self.buildings = buildings
+        self._refresh_buildings()
 
+    def set_building_types(self, groups: dict[str, BuildingGroup], hidden: set[str]):
+        """The groups the user moved building types to, and the hidden building files."""
+
+        self.building_groups = dict(groups)
+        self.hidden_building_types = set(hidden)
+        self._refresh_buildings()
+
+    def _refresh_buildings(self):
         if self.shed_layer is not None:
             self.shed_layer.set_areas(self.shown_shed_areas)
 
-    def set_hidden_shed_types(self, building_files: set[str]):
-        self.hidden_shed_types = set(building_files)
-
-        if self.shed_layer is not None:
-            self.shed_layer.set_areas(self.shown_shed_areas)
+        if self.station_layer is not None:
+            self.station_layer.set_stops(self.shown_stops)
 
     def set_display_style(self, display_style: DisplayStyle):
         if not isinstance(display_style, DisplayStyle):

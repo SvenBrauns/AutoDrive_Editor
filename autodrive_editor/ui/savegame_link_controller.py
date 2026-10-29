@@ -109,7 +109,7 @@ class SavegameLinkController(QObject):
         else:
             self.status_changed.emit(
                 tr("“{name}” linked", name=savegame.display_name)
-                + self.project_coordinator.sheds_note
+                + self.project_coordinator.buildings_note
             )
 
     def _route_source(self) -> ConfigSource | None:

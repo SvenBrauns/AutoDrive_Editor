@@ -2,8 +2,9 @@ import zipfile
 
 import pytest
 
+from autodrive_editor.file_io.building_definitions import category_label, read_preplaced
 from autodrive_editor.file_io.game_files import GameFiles
-from autodrive_editor.file_io.savegame_sheds import category_label, read_preplaced, read_sheds
+from autodrive_editor.file_io.savegame_buildings import read_savegame_buildings
 
 SHED_XML = """<placeable>
     <base><filename>$data/placeables/shed/shed.i3d</filename></base>
@@ -47,7 +48,8 @@ def sheds(game, *placeables):
         f"<placeables>{''.join(placeables)}</placeables>", encoding="utf-8"
     )
     with GameFiles(game / "game", game / "mods") as files:
-        return read_sheds(game / "savegame1", files)
+        buildings = read_savegame_buildings(game / "savegame1", files)
+    return buildings.areas, buildings.failed
 
 
 def placeable(rotation="0 0 0", file="data/placeables/shed/shed.xml", unique_id="a"):
@@ -103,7 +105,8 @@ def test_unreadable_buildings_are_reported_once(game):
 
 def test_savegame_without_placeables_has_no_sheds(tmp_path):
     with GameFiles(None, None) as files:
-        assert read_sheds(tmp_path, files) == ([], [])
+        buildings = read_savegame_buildings(tmp_path, files)
+    assert (buildings.areas, buildings.stops, buildings.failed) == ([], [], [])
 
 
 # The building node "m" lies in a group moved to (100 80 200); its ReferenceNode is turned by 90°.

@@ -56,13 +56,13 @@ from autodrive_editor.terrain.heightmap import Heightmap
 from autodrive_editor.terrain.map_cache import MapCache
 from autodrive_editor.ui.actions.main_window_actions import MainWindowActions
 from autodrive_editor.ui.controls.grid_coordinator import GridCoordinator
+from autodrive_editor.ui.dialogs.building_types_dialog import BuildingTypesDialog
 from autodrive_editor.ui.dialogs.marker_dialog import MarkerDialog
 from autodrive_editor.ui.dialogs.messages import APP_TITLE
 from autodrive_editor.ui.dialogs.node_position_dialog import NodePositionDialog
 from autodrive_editor.ui.dialogs.parking_map_overlay import ParkingMapOverlay
 from autodrive_editor.ui.dialogs.parking_spot_dialog import ParkingSpotDialog
 from autodrive_editor.ui.dialogs.settings_dialog import SettingsDialog
-from autodrive_editor.ui.dialogs.shed_types_dialog import ShedTypesDialog
 from autodrive_editor.ui.file_controller import FileController
 from autodrive_editor.ui.map_import_controller import MapImportController
 from autodrive_editor.ui.map_view.map_only_input import MapOnlyInput
@@ -154,7 +154,9 @@ class MainWindow(QMainWindow):
         self.scene_renderer.set_marker_names_visible(self.settings.marker_names_visible)
         self.background_map.set_ground_visible(self.settings.ground_map_visible)
         self.scene_renderer.set_visibility(self.settings.visibility)
-        self.scene_renderer.set_hidden_shed_types(self.settings.hidden_shed_types)
+        self.scene_renderer.set_building_types(
+            self.settings.building_groups, self.settings.hidden_building_types
+        )
 
         self.actions = MainWindowActions(self)
         self.actions.set_current_map_scale(self.background_map.map_scale)
@@ -358,14 +360,18 @@ class MainWindow(QMainWindow):
 
         dialog.exec()
 
-    def open_shed_types(self):
-        dialog = ShedTypesDialog(
-            self.scene_renderer.shed_areas, self.settings.hidden_shed_types, parent=self
+    def open_building_types(self):
+        dialog = BuildingTypesDialog(
+            self.scene_renderer.buildings.types,
+            self.settings.building_groups,
+            self.settings.hidden_building_types,
+            parent=self,
         )
 
         if self._run_dialog(dialog):
-            self.settings.set_hidden_shed_types(dialog.hidden_types)
-            self.scene_renderer.set_hidden_shed_types(dialog.hidden_types)
+            self.settings.set_building_groups(dialog.groups)
+            self.settings.set_hidden_building_types(dialog.hidden_types)
+            self.scene_renderer.set_building_types(dialog.groups, dialog.hidden_types)
 
     def _run_dialog(self, dialog) -> bool:
         return bool(dialog.exec())
@@ -598,7 +604,7 @@ class MainWindow(QMainWindow):
                 self.parking_spot_operation.create_at,
                 lambda: (
                     tr("Click a shed to create parking spots in it")
-                    if self.scene_renderer.shed_areas
+                    if self.scene_renderer.shown_shed_areas
                     else tr("No sheds shown: open a savegame or link one to the route")
                 ),
                 is_target=lambda view_position: self._get_shed_at(view_position) is not None,

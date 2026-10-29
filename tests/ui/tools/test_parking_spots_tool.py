@@ -6,6 +6,11 @@ from PySide6.QtCore import QEvent, QTimer
 from PySide6.QtWidgets import QApplication, QDialog, QLabel
 
 from autodrive_editor.editing.parking_layout import ParkingSettings
+from autodrive_editor.file_io.savegame_buildings import (
+    BuildingGroup,
+    BuildingType,
+    SavegameBuildings,
+)
 from autodrive_editor.file_io.savegame_sheds import IndoorArea
 from autodrive_editor.ui.dialogs.parking_map_overlay import ParkingMapOverlay
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
@@ -27,7 +32,8 @@ def parking_window(zoomed_window):
         return ParkingSettings(bays=2, gaps=(0.0,), marker_name="Shed", group="Farm")
 
     window._ask_parking_settings = ask
-    window.scene_renderer.set_shed_areas([SHED])
+    shed_type = BuildingType("shed.xml", "Farm barn", "sheds", BuildingGroup.SHEDS, 1)
+    window.scene_renderer.set_buildings(SavegameBuildings(types=[shed_type], areas=[SHED]))
     window.set_interaction_mode(InteractionMode.PARKING_SPOTS)
     return window
 

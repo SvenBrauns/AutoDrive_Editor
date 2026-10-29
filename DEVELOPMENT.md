@@ -46,7 +46,7 @@ autodrive_editor/
   project/      loading XML, map and heightmap
   rendering/    map drawing
     spatial/    spatial indexes for nodes and connections
-    layers/     the network layers (connections, nodes, markers, selection), their tile cache and the sheds
+    layers/     the network layers (connections, nodes, markers, selection), their tile cache, the sheds and the stations
     connections/ connection data
     items/      other graphics items (grid, measurement)
   ui/

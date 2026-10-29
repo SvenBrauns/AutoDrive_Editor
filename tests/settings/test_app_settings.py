@@ -3,6 +3,7 @@ from base_game_helpers import make_installation
 from game_folder_helpers import make_game_folder
 
 from autodrive_editor.editing.path_shapes import PathOptions
+from autodrive_editor.file_io.savegame_buildings import BuildingGroup
 from autodrive_editor.game.game_folder import GameFolder
 from autodrive_editor.game.game_installation import GameInstallation
 from autodrive_editor.model.autodrive_data import SUBPRIO_FLAG
@@ -288,12 +289,29 @@ def test_last_parking_template_follows_loading_and_deleting():
     assert settings.last_parking_template("a.xml") is None
 
 
-def test_hidden_shed_types_are_kept():
-    assert AppSettings().hidden_shed_types == set()
+def test_hidden_building_types_are_kept():
+    assert AppSettings().hidden_building_types == set()
 
-    AppSettings().set_hidden_shed_types({"b.xml", "a.xml"})
+    AppSettings().set_hidden_building_types({"b.xml", "a.xml"})
 
-    assert AppSettings().hidden_shed_types == {"a.xml", "b.xml"}
+    assert AppSettings().hidden_building_types == {"a.xml", "b.xml"}
+
+
+def test_building_groups_are_kept():
+    assert AppSettings().building_groups == {}
+
+    AppSettings().set_building_groups({"a.xml": BuildingGroup.SHEDS})
+
+    assert AppSettings().building_groups == {"a.xml": BuildingGroup.SHEDS}
+
+
+def test_unknown_building_groups_are_ignored():
+    settings = AppSettings()
+    settings._settings.setValue(
+        settings.BUILDING_GROUPS_KEY, '{"a.xml": "garages", "b.xml": "other"}'
+    )
+
+    assert settings.building_groups == {"b.xml": BuildingGroup.OTHER}
 
 
 def test_ground_map_switch_is_kept_between_sessions():

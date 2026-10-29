@@ -8,6 +8,7 @@ from pathlib import Path
 from PySide6.QtCore import QSettings
 
 from autodrive_editor.editing.path_shapes import PathOptions
+from autodrive_editor.file_io.savegame_buildings import BuildingGroup
 from autodrive_editor.game.game_folder import GameFolder
 from autodrive_editor.game.game_installation import GameInstallation
 from autodrive_editor.i18n import LANGUAGES, system_language
@@ -44,7 +45,9 @@ class AppSettings:
     LINKED_SAVEGAMES_KEY = "routes/linked_savegames"
     OPEN_TAB_KEY = "app/open_dialog_tab"
     PARKING_TEMPLATES_KEY = "parking/templates"
-    HIDDEN_SHED_TYPES_KEY = "view/hidden_shed_types"
+    # Named after the sheds, which were the first building types that could be hidden.
+    HIDDEN_BUILDING_TYPES_KEY = "view/hidden_shed_types"
+    BUILDING_GROUPS_KEY = "view/building_groups"
 
     THEMES = ("system", "light", "dark")
     DEFAULT_AUTOSAVE_MINUTES = 5
@@ -363,11 +366,11 @@ class AppSettings:
         )
 
     @property
-    def hidden_shed_types(self) -> set[str]:
-        """Building files whose sheds are not shown, on every map."""
+    def hidden_building_types(self) -> set[str]:
+        """Building files that are not shown, on every map."""
 
         try:
-            files = json.loads(self._settings.value(self.HIDDEN_SHED_TYPES_KEY, "[]"))
+            files = json.loads(self._settings.value(self.HIDDEN_BUILDING_TYPES_KEY, "[]"))
         except (TypeError, ValueError):
             return set()
 
@@ -375,8 +378,35 @@ class AppSettings:
             {file for file in files if isinstance(file, str)} if isinstance(files, list) else set()
         )
 
-    def set_hidden_shed_types(self, building_files: set[str]):
-        self._settings.setValue(self.HIDDEN_SHED_TYPES_KEY, json.dumps(sorted(building_files)))
+    def set_hidden_building_types(self, building_files: set[str]):
+        self._settings.setValue(self.HIDDEN_BUILDING_TYPES_KEY, json.dumps(sorted(building_files)))
+        self._settings.sync()
+
+    @property
+    def building_groups(self) -> dict[str, BuildingGroup]:
+        """Groups the user moved building types to, by building file, on every map."""
+
+        try:
+            groups = json.loads(self._settings.value(self.BUILDING_GROUPS_KEY, "{}"))
+        except (TypeError, ValueError):
+            return {}
+
+        if not isinstance(groups, dict):
+            return {}
+
+        values = set(BuildingGroup)
+
+        return {
+            file: BuildingGroup(group)
+            for file, group in groups.items()
+            if isinstance(file, str) and group in values
+        }
+
+    def set_building_groups(self, groups: dict[str, BuildingGroup]):
+        self._settings.setValue(
+            self.BUILDING_GROUPS_KEY,
+            json.dumps({file: str(group) for file, group in sorted(groups.items())}),
+        )
         self._settings.sync()
 
     def _parking_templates(self) -> dict:
