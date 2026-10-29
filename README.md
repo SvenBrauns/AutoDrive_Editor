@@ -56,6 +56,7 @@ This editor is a new FS25-only editor. Its first goal was everything the [AutoDr
 | Check results as a list: jump to each problem, ignore entries | | ✅ |
 | Freehand selection | | ✅ |
 | Distance and angle measurement | | ✅ |
+| Parking spots in sheds, with templates | | ✅ |
 | Rotate the map view | | ✅ |
 | Autosave, keyboard shortcuts, dark theme | ✅ | ✅ |
 | Experimental tools (road connection, scale, templates) | ✅ | |
