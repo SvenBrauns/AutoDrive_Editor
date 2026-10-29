@@ -98,6 +98,24 @@ def test_unticked_types_and_hidden_types_of_other_maps_are_hidden(qapp):
     assert dialog.hidden_types == {"$data/barn.xml", "$data/other.xml"}
 
 
+def test_reset_puts_the_types_back_in_their_own_group_and_shows_them(qapp):
+    groups = {"$data/silo.xml": BuildingGroup.SHEDS, "$data/other.xml": BuildingGroup.OTHER}
+    dialog = BuildingTypesDialog(TYPES, groups, {"$data/garage.xml", "$data/other.xml"})
+
+    dialog.reset()
+
+    assert rows(dialog) == [
+        ("Stations", "", "", "on"),
+        ("  Silo", "silo.xml", "1", "on", "Stations"),
+        ("Sheds", "", "", "on"),
+        ("  Barn", "barn.xml", "2", "on", "Sheds"),
+        ("  Garage", "garage.xml", "1", "on", "Sheds"),
+    ]
+    # Types of other maps keep their choices.
+    assert dialog.groups == {"$data/other.xml": BuildingGroup.OTHER}
+    assert dialog.hidden_types == {"$data/other.xml"}
+
+
 def test_show_all_and_hide_all(qapp):
     dialog = BuildingTypesDialog(TYPES, {}, {"$data/silo.xml"})
 
