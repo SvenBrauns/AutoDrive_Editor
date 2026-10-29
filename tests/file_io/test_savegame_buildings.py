@@ -18,6 +18,7 @@ DEFINITIONS = {
     "mill_with_hall": TRIGGER + AREAS,
     "bunker_with_trigger": "<bunkerSilo/>" + TRIGGER,
     "fence": "",
+    "house": AREAS,
 }
 
 
@@ -29,8 +30,9 @@ def buildings(tmp_path):
     placeables = []
 
     for name, content in DEFINITIONS.items():
+        category = "farmhouses" if name == "house" else "misc"
         definition = (
-            f"<placeable><storeData><name>{name}</name><category>misc</category></storeData>"
+            f"<placeable><storeData><name>{name}</name><category>{category}</category></storeData>"
             f"<base><filename>$data/placeables/building.i3d</filename></base>{content}</placeable>"
         )
         (folder / f"{name}.xml").write_text(definition, encoding="utf-8")
@@ -58,6 +60,8 @@ def test_each_type_with_sheds_stations_or_a_bunker_silo_is_in_one_group(building
         "bunker": BuildingGroup.BUNKER_SILOS,
         "mill_with_hall": BuildingGroup.STATIONS,
         "bunker_with_trigger": BuildingGroup.BUNKER_SILOS,
+        # Only for the player's character.
+        "house": BuildingGroup.OTHER,
     }
 
 
@@ -70,7 +74,7 @@ def test_types_are_counted_and_read_once(buildings):
 
 
 def test_areas_and_stops_are_read_whatever_the_group(buildings):
-    assert sorted(area.unique_id for area in buildings.areas) == ["hall", "mill_with_hall"]
+    assert sorted(area.unique_id for area in buildings.areas) == ["hall", "house", "mill_with_hall"]
     assert sorted(stop.unique_id for stop in buildings.stops) == [
         "bunker_with_trigger",
         "mill",
