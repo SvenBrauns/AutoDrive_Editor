@@ -1,6 +1,6 @@
 # Version history
 
-## Unreleased
+## 1.2.0 – 2026-10-29
 
 - Dual connections get an arrow pointing to each end
 - Connections are always colored by their type, also into subprio nodes; the separate subprio connection color and `View → Show → Subprio connections` are gone
