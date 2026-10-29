@@ -79,6 +79,8 @@ Per bay, copied from marker G1 in group "15.P&R Hörmannhof" of the example rout
 - Saved: mode, open/entry side, number of bays, all offsets, bay line layout.
 - Not saved (depend on the location): line directions, marker name, start number, group.
 - A shed type without a template starts with the G1 bay line layout.
+- Buttons "Load template…" and "Save as template…" next to Create. Load lists the shed type's templates (name, mode, bays); they can be deleted there. Saving under an existing name asks before replacing it.
+- The dialog opens with the template last saved or loaded for the shed type. "Reset shed settings" goes back to the defaults without a template.
 
 ## Later (roadmap)
 

@@ -179,6 +179,72 @@ class ParkingSettings:
     group: str = ""
 
 
+def template_values(settings: ParkingSettings) -> dict:
+    """The settings a template keeps, as plain values for storing: everything but the line
+    directions and the marker names, which depend on the location."""
+
+    line = settings.bay_line
+
+    return {
+        "mode": settings.mode.value,
+        "open_side": settings.open_side,
+        "bays": settings.bays,
+        "left_offset": settings.left_offset,
+        "right_offset": settings.right_offset,
+        "back_offset": settings.back_offset,
+        "gaps": list(settings.gaps),
+        "bay_line": None
+        if line is None
+        else {
+            "segments": list(line.segments),
+            "turn": list(line.turn),
+            "entry_node": line.entry_node,
+            "exit_node": line.exit_node,
+        },
+    }
+
+
+def from_template(values: dict) -> ParkingSettings:
+    """Settings from template_values; raises ValueError if they are not usable."""
+
+    try:
+        line = values["bay_line"]
+        settings = ParkingSettings(
+            mode=ParkingMode(values["mode"]),
+            open_side=values["open_side"],
+            bays=int(values["bays"]),
+            left_offset=float(values["left_offset"]),
+            right_offset=float(values["right_offset"]),
+            back_offset=float(values["back_offset"]),
+            gaps=tuple(float(gap) for gap in values["gaps"]),
+            bay_line=None
+            if line is None
+            else BayLine(
+                tuple(float(segment) for segment in line["segments"]),
+                tuple(float(step) for step in line["turn"]),
+                int(line["entry_node"]),
+                int(line["exit_node"]),
+            ),
+        )
+    except (KeyError, TypeError) as error:
+        raise ValueError(f"Invalid template: {error}") from error
+
+    line = settings.bay_line
+
+    if (
+        settings.open_side not in SIDE_CORNERS
+        or settings.bays < 1
+        or line is not None
+        and not 0 < line.entry_node < line.exit_node <= len(line.segments)
+    ):
+        raise ValueError("Invalid template.")
+
+    if len(settings.gaps) != settings.bays - 1:
+        raise ValueError("There must be one gap fewer than bays.")
+
+    return settings
+
+
 @dataclass
 class ParkingNetwork:
     """Nodes as (a, d) points, connections between their indices, markers as (index, name), and

@@ -39,6 +39,7 @@ class AppSettings:
     SHORTCUTS_KEY = "app/shortcuts"
     CHECK_UPDATES_KEY = "app/check_updates"
     NO_SAVEGAME_QUESTION_KEY = "routes/no_savegame_question"
+    PARKING_TEMPLATES_KEY = "parking/templates"
 
     THEMES = ("system", "light", "dark")
     DEFAULT_AUTOSAVE_MINUTES = 5
@@ -269,6 +270,59 @@ class AppSettings:
             if isinstance(routes, list)
             else []
         )
+
+    def parking_templates(self, building_file: str) -> dict[str, dict]:
+        """Parking spot templates of a shed type (its building file), by name."""
+
+        templates = self._parking_templates().get(building_file, {}).get("templates", {})
+
+        return dict(templates) if isinstance(templates, dict) else {}
+
+    def last_parking_template(self, building_file: str) -> str | None:
+        """Name of the template last saved or loaded for this shed type, if it still exists."""
+
+        name = self._parking_templates().get(building_file, {}).get("last")
+
+        return name if name in self.parking_templates(building_file) else None
+
+    def save_parking_template(self, building_file: str, name: str, values: dict):
+        """Saves or replaces a template; it becomes the last used one."""
+
+        templates = self.parking_templates(building_file)
+        templates[name] = values
+        self._set_parking_templates(building_file, templates, name)
+
+    def set_last_parking_template(self, building_file: str, name: str):
+        self._set_parking_templates(building_file, self.parking_templates(building_file), name)
+
+    def delete_parking_template(self, building_file: str, name: str):
+        templates = self.parking_templates(building_file)
+        templates.pop(name, None)
+        self._set_parking_templates(
+            building_file, templates, self.last_parking_template(building_file)
+        )
+
+    def _parking_templates(self) -> dict:
+        try:
+            values = json.loads(self._settings.value(self.PARKING_TEMPLATES_KEY, "{}"))
+        except (TypeError, ValueError):
+            return {}
+
+        if not isinstance(values, dict):
+            return {}
+
+        return {key: value for key, value in values.items() if isinstance(value, dict)}
+
+    def _set_parking_templates(self, building_file: str, templates: dict, last: str | None):
+        values = self._parking_templates()
+
+        if templates:
+            values[building_file] = {"last": last, "templates": templates}
+        else:
+            values.pop(building_file, None)
+
+        self._settings.setValue(self.PARKING_TEMPLATES_KEY, json.dumps(values))
+        self._settings.sync()
 
     @property
     def rotate_snap_angle(self) -> float:

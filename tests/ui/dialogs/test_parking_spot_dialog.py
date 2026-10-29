@@ -4,14 +4,17 @@ from PySide6.QtTest import QTest
 
 from autodrive_editor.editing.parking_layout import ParkingMode
 from autodrive_editor.file_io.savegame_sheds import IndoorArea
+from autodrive_editor.settings.app_settings import AppSettings
 from autodrive_editor.ui.dialogs.parking_spot_dialog import ParkingSpotDialog, compass_name
+
+pytestmark = pytest.mark.usefixtures("isolated_user_data")
 
 # 30 × 15 m; the front faces down (south) on the map.
 SHED = IndoorArea("shed.xml", "1", ((-15, -7.5), (15, -7.5), (15, 7.5), (-15, 7.5)), 90.0)
 
 
-def dialog(taken=()):
-    parking_dialog = ParkingSpotDialog(SHED, ["Farm", "All"], set(taken))
+def dialog(taken=(), shed=SHED):
+    parking_dialog = ParkingSpotDialog(shed, ["Farm", "All"], set(taken), AppSettings())
     parking_dialog.group_input.setCurrentText("Farm")
     return parking_dialog
 
@@ -286,3 +289,105 @@ def test_drive_through_side_view_is_read_only(qapp):
     click(side_view, side_view.node_points()[3])
     assert side_view.selected is None
     assert not side_view.grab().isNull()
+
+
+def test_without_templates_load_is_disabled(qapp):
+    assert not dialog().load_button.isEnabled()
+
+
+def test_a_saved_template_is_applied_when_the_dialog_opens_again(qapp):
+    parking_dialog = dialog()
+    parking_dialog.mode_input.setCurrentIndex(1)
+    parking_dialog.side_input.setCurrentIndex(parking_dialog.side_input.findData("back"))
+    parking_dialog.bays_input.setValue(3)
+    parking_dialog.left_input.setValue(1.0)
+    parking_dialog.gaps = [0.4, 0.6]
+    parking_dialog.entry_direction_input.setCurrentIndex(1)
+    parking_dialog.name_input.setText("Barn")
+    parking_dialog.save_template("Three")
+
+    reopened = dialog()
+    settings = reopened.settings
+
+    assert reopened.load_button.isEnabled()
+    assert settings.mode == ParkingMode.DRIVE_THROUGH
+    assert settings.open_side == "back"
+    assert (settings.bays, settings.left_offset, settings.gaps) == (3, 1.0, (0.4, 0.6))
+    # Line directions and names are not part of a template.
+    assert settings.entry_left_to_right
+    assert settings.marker_name == "Shed"
+
+
+def test_templates_belong_to_their_shed_type(qapp):
+    parking_dialog = dialog()
+    parking_dialog.bays_input.setValue(2)
+    parking_dialog.save_template("Two")
+
+    other = dialog(shed=IndoorArea("other.xml", "2", SHED.corners, 90.0))
+
+    assert other.templates == {}
+    assert other.settings.bays == 4
+
+
+def test_the_last_loaded_template_opens_next_time(qapp):
+    parking_dialog = dialog()
+    parking_dialog.bays_input.setValue(2)
+    parking_dialog.save_template("Two")
+    parking_dialog.bays_input.setValue(3)
+    parking_dialog.save_template("Three")
+
+    parking_dialog.load_template("Two")
+
+    assert parking_dialog.settings.bays == 2
+    assert dialog().settings.bays == 2
+
+
+def test_an_edited_bay_line_is_kept_in_the_template(qapp):
+    parking_dialog = dialog()
+    line = parking_dialog.side_view.line.split(0)
+    parking_dialog._set_bay_line(line)
+    parking_dialog.save_template("Edited")
+
+    assert dialog().settings.bay_line == line
+
+
+def test_reset_goes_back_to_the_defaults_but_keeps_the_template(qapp):
+    parking_dialog = dialog()
+    parking_dialog.bays_input.setValue(2)
+    parking_dialog.save_template("Two")
+
+    parking_dialog.reset_shed_settings()
+
+    assert parking_dialog.settings.bays == 4
+    assert parking_dialog.templates.keys() == {"Two"}
+
+
+def test_saving_under_an_existing_name_asks_before_replacing(qapp, monkeypatch):
+    parking_dialog = dialog()
+    parking_dialog.save_template("Mine")
+    parking_dialog.bays_input.setValue(2)
+    monkeypatch.setattr(parking_dialog, "_ask_template_name", lambda: "Mine")
+    monkeypatch.setattr(parking_dialog, "_confirm_replace", lambda name: False)
+
+    parking_dialog._save_clicked()
+    assert parking_dialog.templates["Mine"].bays == 4
+
+    monkeypatch.setattr(parking_dialog, "_confirm_replace", lambda name: True)
+    parking_dialog._save_clicked()
+    assert parking_dialog.templates["Mine"].bays == 2
+
+
+def test_deleting_the_last_template_disables_load(qapp):
+    parking_dialog = dialog()
+    parking_dialog.save_template("Mine")
+
+    parking_dialog.delete_template("Mine")
+
+    assert parking_dialog.templates == {}
+    assert not parking_dialog.load_button.isEnabled()
+
+
+def test_unreadable_templates_are_left_out(qapp):
+    AppSettings().save_parking_template("shed.xml", "Broken", {"mode": "fly"})
+
+    assert dialog().templates == {}

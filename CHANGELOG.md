@@ -9,6 +9,7 @@
 - The debug info shows the number of a selected marker
 - `View → Show → Sheds`: outlines of the indoor areas of the buildings placed in the loaded or linked savegame
 - Parking spots tool (`S`, next to Selection): click a shed to create its parking spots, backed in or driven through, with markers and shared entry and exit lines, in one undo step
+- Parking spot layouts can be saved as named templates per shed type; the last used one is applied when the dialog opens
 
 ## 1.1.0 – 2026-10-27
 

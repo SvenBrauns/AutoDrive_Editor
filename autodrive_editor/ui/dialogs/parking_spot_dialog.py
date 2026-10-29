@@ -10,8 +10,10 @@ from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QFormLayout,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QLineEdit,
+    QMessageBox,
     QSpinBox,
     QVBoxLayout,
     QWidget,
@@ -35,14 +37,18 @@ from autodrive_editor.editing.parking_layout import (
     bay_width,
     default_open_side,
     drive_through_line,
+    from_template,
     marker_depth,
     plan_parking,
     side_angle,
+    template_values,
 )
 from autodrive_editor.file_io.savegame_sheds import IndoorArea
 from autodrive_editor.i18n import tr
 from autodrive_editor.model.connections import ConnectionType
 from autodrive_editor.rendering.display_style import DisplayStyle
+from autodrive_editor.settings.app_settings import AppSettings
+from autodrive_editor.ui.dialogs.list_choice_dialog import ListChoiceDialog
 
 SIDE_NAMES = {"front": tr("Front"), "back": tr("Back"), "left": tr("Left"), "right": tr("Right")}
 
@@ -77,6 +83,7 @@ class ParkingSpotDialog(QDialog):
         area: IndoorArea,
         groups: list[str],
         taken_names: set[tuple[str, str]],
+        app_settings: AppSettings,
         parent=None,
     ):
         super().__init__(parent)
@@ -86,6 +93,7 @@ class ParkingSpotDialog(QDialog):
         self.area = area
         self.groups = list(groups)
         self.taken_names = set(taken_names)
+        self.app_settings = app_settings
 
         self.mode_input = QComboBox(self)
         self.mode_input.addItem(tr("Back in"), ParkingMode.BACK_IN)
@@ -147,9 +155,17 @@ class ParkingSpotDialog(QDialog):
         self.reset_button = self.buttons.addButton(
             tr("Reset shed settings"), QDialogButtonBox.ButtonRole.ResetRole
         )
+        self.load_button = self.buttons.addButton(
+            tr("Load template…"), QDialogButtonBox.ButtonRole.ActionRole
+        )
+        self.save_button = self.buttons.addButton(
+            tr("Save as template…"), QDialogButtonBox.ButtonRole.ActionRole
+        )
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
         self.reset_button.clicked.connect(self.reset_shed_settings)
+        self.load_button.clicked.connect(self._load_clicked)
+        self.save_button.clicked.connect(self._save_clicked)
 
         form = QFormLayout()
         form.addRow(tr("Mode:"), self.mode_input)
@@ -182,6 +198,12 @@ class ParkingSpotDialog(QDialog):
         layout.addWidget(self.buttons)
 
         self.reset_shed_settings()
+        last = self.app_settings.last_parking_template(area.building_file)
+
+        if last in self.templates:
+            self.apply_template(self.templates[last])
+
+        self._update_load_button()
 
         for widget in (self.mode_input, self.side_input) + self._direction_inputs():
             widget.currentIndexChanged.connect(self._update)
@@ -237,6 +259,116 @@ class ParkingSpotDialog(QDialog):
         self.gaps = [0.0] * (self.bays_input.value() - 1)
         self.bay_line = None
         self._update()
+
+    @property
+    def templates(self) -> dict[str, ParkingSettings]:
+        """The readable templates of this shed type, by name."""
+
+        templates = {}
+
+        for name, values in self.app_settings.parking_templates(self.area.building_file).items():
+            try:
+                templates[name] = from_template(values)
+            except ValueError:
+                continue
+
+        return templates
+
+    def apply_template(self, template: ParkingSettings):
+        self.mode_input.setCurrentIndex(self.mode_input.findData(template.mode))
+        self.side_input.setCurrentIndex(self.side_input.findData(template.open_side))
+        self.bays_input.setValue(template.bays)
+        self.left_input.setValue(template.left_offset)
+        self.right_input.setValue(template.right_offset)
+        self.back_input.setValue(template.back_offset)
+        self.gaps = list(template.gaps)
+        self.bay_line = template.bay_line
+        self._update()
+
+    def load_template(self, name: str):
+        self.apply_template(self.templates[name])
+        self.app_settings.set_last_parking_template(self.area.building_file, name)
+
+    def save_template(self, name: str):
+        values = template_values(self.settings)
+        self.app_settings.save_parking_template(self.area.building_file, name, values)
+        self._update_load_button()
+
+    def delete_template(self, name: str):
+        self.app_settings.delete_parking_template(self.area.building_file, name)
+        self._update_load_button()
+
+    def _update_load_button(self):
+        self.load_button.setEnabled(bool(self.templates))
+
+    def _load_clicked(self):
+        name = self._choose_template()
+
+        if name is not None:
+            self.load_template(name)
+
+    def _save_clicked(self):
+        name = self._ask_template_name()
+
+        if name is not None and (name not in self.templates or self._confirm_replace(name)):
+            self.save_template(name)
+
+    def _choose_template(self) -> str | None:
+        """Lists this shed type's templates; they can be deleted there."""
+
+        rows = [
+            ([name, self.mode_input.itemText(self.mode_input.findData(t.mode)), str(t.bays)], name)
+            for name, t in self.templates.items()
+        ]
+        dialog = ListChoiceDialog(
+            tr("Load template"),
+            tr("Templates of {building}:", building=self.area.building_file),
+            [tr("Name"), tr("Mode"), tr("Bays")],
+            rows,
+            ok_text=tr("Load"),
+            parent=self,
+        )
+        delete_button = dialog.buttons.addButton(
+            tr("Delete"), QDialogButtonBox.ButtonRole.ActionRole
+        )
+
+        def delete():
+            item = dialog.table.currentItem()
+
+            if item is not None and self._confirm_delete(dialog.chosen_value):
+                self.delete_template(dialog.chosen_value)
+                dialog.table.takeTopLevelItem(dialog.table.indexOfTopLevelItem(item))
+
+        delete_button.clicked.connect(delete)
+        dialog.table.itemSelectionChanged.connect(
+            lambda: delete_button.setEnabled(dialog.table.currentItem() is not None)
+        )
+
+        return dialog.chosen_value if dialog.exec() else None
+
+    def _ask_template_name(self) -> str | None:
+        last = self.app_settings.last_parking_template(self.area.building_file) or ""
+        name, accepted = QInputDialog.getText(
+            self, tr("Save as template"), tr("Template name:"), text=last
+        )
+
+        return name.strip() if accepted and name.strip() else None
+
+    def _confirm_replace(self, name: str) -> bool:
+        answer = QMessageBox.question(
+            self,
+            tr("Save as template"),
+            tr("A template named “{name}” already exists. Replace it?", name=name),
+        )
+
+        return answer == QMessageBox.StandardButton.Yes
+
+    def _confirm_delete(self, name: str) -> bool:
+        answer = QMessageBox.question(
+            self, tr("Delete template"), tr("Delete the template “{name}”?", name=name)
+        )
+
+        return answer == QMessageBox.StandardButton.Yes
 
     def _length_input(self) -> QDoubleSpinBox:
         spin_box = QDoubleSpinBox(self)
