@@ -3,6 +3,7 @@ from base_game_helpers import make_installation
 from game_folder_helpers import make_game_folder
 
 from autodrive_editor.editing.path_shapes import PathOptions
+from autodrive_editor.editing.route_finder import Vehicle
 from autodrive_editor.file_io.savegame_buildings import BuildingGroup
 from autodrive_editor.game.game_folder import GameFolder
 from autodrive_editor.game.game_installation import GameInstallation
@@ -328,3 +329,19 @@ def test_last_file_is_reopened_until_turned_off():
     AppSettings().set_reopen_last(False)
 
     assert not AppSettings().reopen_last
+
+
+def test_vehicle_for_the_route_finder_is_kept():
+    settings = AppSettings()
+    assert settings.vehicle == Vehicle()
+
+    settings.set_vehicle(Vehicle(12.5, 3.5, 1.0))
+
+    assert AppSettings().vehicle == Vehicle(12.5, 3.5, 1.0)
+
+
+def test_invalid_vehicle_values_fall_back_to_the_defaults():
+    settings = AppSettings()
+    settings.set_vehicle(Vehicle(0, 3, 0.5))
+
+    assert settings.vehicle == Vehicle()

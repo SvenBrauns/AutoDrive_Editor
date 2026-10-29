@@ -1,3 +1,4 @@
+import logging
 import shutil
 from collections.abc import Callable
 from dataclasses import replace
@@ -14,6 +15,7 @@ from autodrive_editor.file_io.autodrive_xml import (
 )
 from autodrive_editor.file_io.autodrive_xml_writer import save_config
 from autodrive_editor.file_io.game_files import GameFiles
+from autodrive_editor.file_io.navigation_costmap import CostmapError, costmap_path, read_costmap
 from autodrive_editor.file_io.routes_index import (
     add_route,
     find_route_entry,
@@ -36,6 +38,8 @@ from autodrive_editor.terrain.background_map import BackgroundMap
 from autodrive_editor.terrain.heightmap import Heightmap
 from autodrive_editor.terrain.map_cache import MapCache
 from autodrive_editor.ui.map_view.map_view import MapView
+
+logger = logging.getLogger(__name__)
 
 # Heightmap a savegame keeps next to its AutoDrive config.
 SAVEGAME_HEIGHTMAP_NAME = "terrain.heightmap.png"
@@ -110,6 +114,8 @@ class ProjectCoordinator(QObject):
 
         # Status bar note about buildings that could not be read.
         self.buildings_note = ""
+        # The savegame the drivability map was looked for in.
+        self.costmap_directory: Path | None = None
 
         # Files backed up as .bak in this session.
         self._backed_up_paths: set[Path] = set()
@@ -445,12 +451,27 @@ class ProjectCoordinator(QObject):
                 buildings = read_savegame_buildings(directory, files)
 
         self.scene_renderer.set_buildings(buildings)
+        self._show_costmap(directory)
         failed = buildings.failed
         self.buildings_note = (
             tr(" – {count} buildings could not be read (see log file)", count=len(failed))
             if failed
             else ""
         )
+
+    def _show_costmap(self, directory: Path | None):
+        """Reads the drivability map of the savegame, if it has one (see navigation_costmap)."""
+
+        self.costmap_directory = directory
+        costmap = None
+
+        if directory is not None and costmap_path(directory).is_file():
+            try:
+                costmap = read_costmap(costmap_path(directory))
+            except (OSError, CostmapError) as error:
+                logger.warning("The drivability map could not be read: %s", error)
+
+        self.scene_renderer.set_costmap(costmap)
 
     def _back_up(self, path: Path):
         if path in self._backed_up_paths:

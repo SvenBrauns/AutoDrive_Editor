@@ -8,6 +8,7 @@ from pathlib import Path
 from PySide6.QtCore import QSettings
 
 from autodrive_editor.editing.path_shapes import PathOptions
+from autodrive_editor.editing.route_finder import Vehicle
 from autodrive_editor.file_io.savegame_buildings import BuildingGroup
 from autodrive_editor.game.game_folder import GameFolder
 from autodrive_editor.game.game_installation import GameInstallation
@@ -32,6 +33,11 @@ class AppSettings:
     PATH_CONNECTION_KEY = "path/connection_type"
     PATH_FLAG_KEY = "path/flag"
     PATH_CONTROL_POINTS_KEY = "path/control_points"
+    VEHICLE_KEYS = {
+        "turning_radius": "route/turning_radius",
+        "width": "route/vehicle_width",
+        "margin": "route/safety_margin",
+    }
     ROTATE_SNAP_KEY = "rotate/snap_angle"
     RECENT_ITEMS_KEY = "app/recent_items"
     LANGUAGE_KEY = "app/language"
@@ -240,6 +246,24 @@ class AppSettings:
         self._settings.setValue(self.PATH_CONNECTION_KEY, options.connection_type.value)
         self._settings.setValue(self.PATH_FLAG_KEY, int(options.flag))
         self._settings.setValue(self.PATH_CONTROL_POINTS_KEY, int(options.control_points))
+        self._settings.sync()
+
+    @property
+    def vehicle(self) -> Vehicle:
+        """Size of the vehicle the route finder plans for."""
+
+        default = Vehicle()
+        values = {
+            name: self._settings.value(key, getattr(default, name), type=float)
+            for name, key in self.VEHICLE_KEYS.items()
+        }
+
+        return Vehicle(**values) if all(value > 0 for value in values.values()) else default
+
+    def set_vehicle(self, vehicle: Vehicle):
+        for name, key in self.VEHICLE_KEYS.items():
+            self._settings.setValue(key, float(getattr(vehicle, name)))
+
         self._settings.sync()
 
     @property

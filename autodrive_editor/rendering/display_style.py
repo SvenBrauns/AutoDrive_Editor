@@ -67,6 +67,7 @@ class DisplayStyle:
     plan_color: tuple[int, int, int, int] = (30, 144, 255, 150)
     plan_halo_min_px: float = 10.0
 
+    drivability_z: float = -30.0
     shed_z: float = -20.0
     station_z: float = -15.0
     connection_z: float = -10.0

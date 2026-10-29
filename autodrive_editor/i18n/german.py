@@ -404,6 +404,7 @@ TEXTS = {
     "Put every listed type back in its own group and show it": "Jeden aufgeführten Typ in seine eigene Gruppe zurücksetzen und anzeigen",
     # file_io/savegame_buildings
     "Stations": "Stationen",
+    "Drivability map": "Befahrbarkeitskarte",
     "Bunker silos": "Fahrsilos",
     # file_io/savegame_stations
     "Selling point": "Verkaufsstelle",
@@ -718,4 +719,19 @@ TEXTS = {
     "Entry line": "Zufahrtslinie",
     "Exit line": "Abfahrtslinie",
     "A marker in this group already has the name “{name}”.": "Ein Marker in dieser Gruppe heißt bereits „{name}“.",
+    "Builds a drivable route from one selected node to the other, the one clicked last": "Baut eine befahrbare Route von einem ausgewählten Node zum anderen, dem zuletzt angeklickten",
+    "Find route": "Route finden",
+    "Find route needs the drivability map of a savegame. Link a savegame first": "Route finden braucht die Befahrbarkeitskarte eines Spielstands. Zuerst einen Spielstand verknüpfen",
+    "Find route plans for a vehicle of this size: it turns no tighter than the turning radius and keeps half its width plus the safety margin away from buildings, fences and trees.": "Route finden plant für ein Fahrzeug dieser Größe: Es fährt keine engeren Kurven als den Wendekreis und hält die halbe Breite plus den Sicherheitsabstand von Gebäuden, Zäunen und Bäumen fern.",
+    "Find route works in planning mode": "Route finden geht nur im Planungsmodus",
+    "Finding a route from node {start} to node {goal}…": "Suche Route von Node {start} zu Node {goal} …",
+    "Minimum turning radius:": "Kleinster Wenderadius:",
+    "No drivable route found from node {start} to node {goal}": "Keine befahrbare Route von Node {start} zu Node {goal} gefunden",
+    "Route finder": "Routensuche",
+    "Route search stopped, because the network or the plan changed": "Routensuche abgebrochen, weil sich das Netz oder der Plan geändert hat",
+    "Route with {count} new nodes found": "Route mit {count} neuen Nodes gefunden",
+    "Safety margin:": "Sicherheitsabstand:",
+    "Select the two nodes the route should connect": "Die zwei Nodes auswählen, die die Route verbinden soll",
+    "The savegame has no drivability map yet. Save the game in Farming Simulator first (again after placing buildings)": "Der Spielstand hat noch keine Befahrbarkeitskarte. Zuerst im Landwirtschafts-Simulator speichern (auch wieder nach dem Platzieren von Gebäuden)",
+    "Vehicle width:": "Fahrzeugbreite:",
 }

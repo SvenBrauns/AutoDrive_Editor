@@ -44,6 +44,7 @@ SHOW_GROUPS = (
         ("parking", tr("Parking positions")),
         ("sheds", tr("Sheds")),
         ("stations", tr("Stations")),
+        ("drivability", tr("Drivability map")),
     ),
     (("hidden_selectable", tr("Hidden items can be selected")),),
 )
@@ -96,7 +97,7 @@ class MainWindowActions:
             (
                 tr("Edit"),
                 ("undo", "redo", "copy", "cut", "paste", "paste_at_original")
-                + ("delete_selection", "grid_snap", "planning_mode"),
+                + ("delete_selection", "grid_snap", "planning_mode", "find_route"),
             ),
             (
                 tr("View"),
@@ -344,6 +345,7 @@ class MainWindowActions:
         self._create_map_scale_actions()
 
         self.planning_mode_action = self.window.planning.action
+        self.find_route_action = self.window.planning.find_route_action
 
     def _create_map_scale_actions(self):
         self.map_scale_action_group = QActionGroup(self.window)
@@ -527,6 +529,7 @@ class MainWindowActions:
         edit_menu.addSeparator()
 
         edit_menu.addAction(self.planning_mode_action)
+        edit_menu.addAction(self.find_route_action)
 
         view_menu = menu_bar.addMenu(tr("View"))
 

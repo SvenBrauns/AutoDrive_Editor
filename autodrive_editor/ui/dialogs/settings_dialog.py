@@ -3,6 +3,7 @@ from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
+    QDoubleSpinBox,
     QFormLayout,
     QLabel,
     QSpinBox,
@@ -11,6 +12,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from autodrive_editor.editing.route_finder import Vehicle
 from autodrive_editor.i18n import LANGUAGES, tr
 from autodrive_editor.settings.app_settings import AppSettings
 from autodrive_editor.ui.actions.shortcuts import ShortcutRegistry
@@ -23,7 +25,8 @@ UPDATE_CHECK_TEXT = tr("Check for a new version at startup (contacts github.com)
 
 class SettingsDialog(QDialog):
     """Editor settings: the FS25 user folder and install folder, the
-    autosave interval, the language, the theme and the keyboard shortcuts."""
+    autosave interval, the language, the theme, the vehicle size for the
+    route finder and the keyboard shortcuts."""
 
     MAX_AUTOSAVE_MINUTES = 60
 
@@ -87,6 +90,7 @@ class SettingsDialog(QDialog):
 
         self.tabs = QTabWidget(self)
         self.tabs.addTab(general, tr("General"))
+        self.tabs.addTab(self._create_route_tab(), tr("Route finder"))
         self.tabs.addTab(self.shortcuts, tr("Shortcuts"))
 
         buttons = QDialogButtonBox(
@@ -99,8 +103,51 @@ class SettingsDialog(QDialog):
         layout.addWidget(self.tabs)
         layout.addWidget(buttons)
 
+    def _create_route_tab(self) -> QWidget:
+        tab = QWidget(self)
+        vehicle = self.settings.vehicle
+
+        def metres_input(value: float, minimum: float, maximum: float) -> QDoubleSpinBox:
+            spin_box = QDoubleSpinBox(tab)
+            spin_box.setRange(minimum, maximum)
+            spin_box.setDecimals(1)
+            spin_box.setSingleStep(0.5)
+            spin_box.setSuffix(" m")
+            spin_box.setValue(value)
+
+            return spin_box
+
+        self.turning_radius_input = metres_input(vehicle.turning_radius, 3.0, 50.0)
+        self.vehicle_width_input = metres_input(vehicle.width, 1.0, 10.0)
+        self.safety_margin_input = metres_input(vehicle.margin, 0.1, 5.0)
+
+        note = QLabel(
+            tr(
+                "Find route plans for a vehicle of this size: it turns no tighter than the "
+                "turning radius and keeps half its width plus the safety margin away from "
+                "buildings, fences and trees."
+            ),
+            tab,
+        )
+        note.setWordWrap(True)
+
+        form = QFormLayout(tab)
+        form.addRow(note)
+        form.addRow(tr("Minimum turning radius:"), self.turning_radius_input)
+        form.addRow(tr("Vehicle width:"), self.vehicle_width_input)
+        form.addRow(tr("Safety margin:"), self.safety_margin_input)
+
+        return tab
+
     def accept(self):
         self.folders.store()
+        self.settings.set_vehicle(
+            Vehicle(
+                self.turning_radius_input.value(),
+                self.vehicle_width_input.value(),
+                self.safety_margin_input.value(),
+            )
+        )
         self.settings.set_autosave_minutes(self.autosave_input.value())
         self.settings.set_theme(self.theme_input.currentData())
         self.settings.set_check_updates(self.check_updates_input.isChecked())

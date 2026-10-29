@@ -20,6 +20,7 @@ from autodrive_editor.editing.operations.connect_nodes import ConnectNodesOperat
 from autodrive_editor.editing.operations.create_nodes import CreateNodesOperation
 from autodrive_editor.editing.operations.create_path import CreatePathOperation
 from autodrive_editor.editing.operations.delete_nodes import DeleteNodesOperation
+from autodrive_editor.editing.operations.find_route import FindRouteOperation
 from autodrive_editor.editing.operations.markers import MarkerOperation
 from autodrive_editor.editing.operations.move_nodes import MoveNodesOperation
 from autodrive_editor.editing.operations.network_check import NetworkCheckOperation
@@ -501,6 +502,17 @@ class MainWindow(QMainWindow):
             context, map_scale=lambda: self.background_map.map_scale, parent=self
         )
 
+        self.find_route_operation = FindRouteOperation(
+            context,
+            costmap_provider=lambda: self.scene_renderer.costmap,
+            savegame_provider=lambda: self.project_coordinator.costmap_directory,
+            vehicle_provider=lambda: self.settings.vehicle,
+            spacing_provider=lambda: self.create_path_operation.options.spacing,
+            plan_node_ids_provider=self._plan_node_ids,
+            height_for_new_node=self.create_nodes_operation.height_for_new_node,
+            parent=self,
+        )
+
         self.edit_operations = [
             self.move_nodes_operation,
             self.delete_nodes_operation,
@@ -516,6 +528,7 @@ class MainWindow(QMainWindow):
             self.reverse_direction_operation,
             self.marker_operation,
             self.network_check_operation,
+            self.find_route_operation,
         ]
 
     def _create_project_coordinator(self):
@@ -531,6 +544,11 @@ class MainWindow(QMainWindow):
             game_files=self._game_files,
             parent=self,
         )
+
+    def _plan_node_ids(self) -> set[int]:
+        changes = self.planning.changes
+
+        return set(changes.changed_node_ids) if changes is not None else set()
 
     def _game_files(self) -> GameFiles:
         installation = self.settings.install_folder
@@ -561,7 +579,11 @@ class MainWindow(QMainWindow):
 
     def _create_planning(self):
         self.planning = PlanningController(
-            self, self.edit_history, self.scene_renderer, self._get_autodrive_data
+            self,
+            self.edit_history,
+            self.scene_renderer,
+            self._get_autodrive_data,
+            self.find_route_operation,
         )
         self.files.confirm_end_plan = self.planning.confirm_end_plan
 
