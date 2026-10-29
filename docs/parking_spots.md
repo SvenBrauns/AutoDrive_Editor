@@ -44,6 +44,11 @@ Opened with the "Parking spots" tool (toolbar, next to Selection; shortcut S): l
 
 - Top view of the shed, rotated so the open side is at the bottom, with an arrow to map north; updates live. Walls and gaps can be clicked to edit their offset; sides can be clicked to make them the open side.
 - Side view of one bay line: click a segment to edit its length, "+" inserts a node, Delete removes the selected node; the entry and exit branch points can be moved to other nodes. All bays use this layout.
+- Clicking a wall, gap or segment opens a small spin box at the click spot (Enter applies, Esc cancels). Each side has a label outside it with its compass direction; clicking the label makes that side the open side.
+- Edited single gaps are kept when the number of bays changes; new gaps get the "All gaps" value. "All gaps" is blank while the gaps differ; changing it sets every gap.
+- Side view: "+" buttons above the segments split them in half; clicking a node selects it. The branch points are dragged along the line and snap to a node. The marker, the line's end and the branch nodes can't be deleted. The two turn segments can be edited too.
+- Once edited, the bay line keeps its lengths from the marker and is no longer fitted to the shed depth. "Reset shed settings" brings back the fitted default.
+- Drive through: the side view only shows the line (read-only).
 
 ### Generated network (back in)
 
@@ -51,7 +56,7 @@ Per bay, copied from marker G1 in group "15.P&R Hörmannhof" of the example rout
 
 - Marker: the last node before the back wall (at the back wall offset).
 - Default bay line, fitted to the shed depth: dual line from the marker 0.5 m, then 1.5 m steps up to 1 m before the entry branch. Outside the open side G1's spacing: nodes at 2.3, 3.3, 4.8, 6.3, 7.8, 11.2, 14.8 and 19.7 m.
-- Entry line 1 m outside the open side. Its branch starts 1.2 m before the bay (against the travel direction) and joins the dual line 2.3 m outside, pointing away from the shed (so the vehicle can't turn straight into the bay).
+- Entry line 1 m outside the open side (1.3 m inside the node its branch joins; dragging the branch to another node moves the line with it, but never closer than 1 m to the shed). Its branch starts 1.2 m before the bay (against the travel direction) and joins the dual line 2.3 m outside, pointing away from the shed (so the vehicle can't turn straight into the bay).
 - Exit branch from the second-to-last node of the dual line (14.8 m outside) to the exit line, 1.6 m further out and 1.7 m along the line.
 - Turn: from the dual line's end two forward connections (+3.2 m, +1.2 m); the last node has a reverse connection back to the dual line's end. The vehicle reverses straight to the marker.
 - Shared by all bays: the entry line and the exit line, straight and parallel to the open side, one node per bay plus an end 5 m beyond the outer bays. Their four open ends are selected after creation so the user can connect them to the road network.
