@@ -272,10 +272,36 @@ def test_entry_line_stays_outside_the_shed_and_the_branch_before_the_exit_branch
 
 def test_drive_through_line_has_the_marker_before_the_exit_side():
     frame = ShedFrame.from_area(SHED, "front")
-    depths, marker = drive_through_line(frame, settings(back_offset=1.0))
+    depths, markers = drive_through_line(frame, settings(back_offset=1.0))
 
     assert depths[0] == -10 and depths[-1] == 25
-    assert depths[marker] == pytest.approx(14.0)
+    assert [depths[marker] for marker in markers] == pytest.approx([14.0])
+
+
+def test_drive_through_positions_lie_in_a_row_numbered_from_the_exit():
+    frame = ShedFrame.from_area(SHED, "front")
+    values = settings(mode=ParkingMode.DRIVE_THROUGH, back_offset=1.0, positions=3)
+    network = plan_parking(frame, replace(values, position_spacing=6.0))
+
+    assert [name for _, name in network.markers][:4] == ["Shed 3", "Shed 4", "Shed 5", "Shed 6"]
+    first_bay = [network.points[index] for index, _ in network.markers[:3]]
+    assert [d for _, d in first_bay] == pytest.approx([14.0, 8.0, 2.0])
+    assert len({a for a, _ in first_bay}) == 1
+    assert len(network.markers) == 12
+
+
+def test_drive_through_positions_must_fit_in_the_shed():
+    frame = ShedFrame.from_area(SHED, "front")
+    values = settings(mode=ParkingMode.DRIVE_THROUGH, back_offset=1.0, positions=3)
+
+    with pytest.raises(ValueError):
+        plan_parking(frame, replace(values, position_spacing=7.0))
+
+
+def test_back_in_ignores_the_positions():
+    frame = ShedFrame.from_area(SHED, "front")
+
+    assert len(plan_parking(frame, settings(positions=3)).markers) == 4
 
 
 def test_a_template_keeps_the_layout_but_not_directions_and_names():
@@ -283,13 +309,22 @@ def test_a_template_keeps_the_layout_but_not_directions_and_names():
     original = settings(
         mode=ParkingMode.DRIVE_THROUGH, open_side="left", gaps=(0.1, 0.2, 0.3), bay_line=line
     )
-    original = replace(original, entry_left_to_right=False, back_offset=3.5)
+    original = replace(
+        original, entry_left_to_right=False, back_offset=3.5, positions=2, position_spacing=9.0
+    )
 
     restored = from_template(template_values(original))
 
     assert restored == replace(
         original, entry_left_to_right=True, marker_name="", start_number=1, group=""
     )
+
+
+def test_an_older_template_has_one_position():
+    values = template_values(settings(positions=3))
+    del values["positions"], values["position_spacing"]
+
+    assert from_template(values).positions == 1
 
 
 def test_a_template_without_edited_bay_line_keeps_it_fitted():
@@ -303,6 +338,7 @@ def test_a_template_without_edited_bay_line_keeps_it_fitted():
         {"open_side": "top"},
         {"gaps": [0.0]},
         {"bays": None},
+        {"positions": 0},
         {"bay_line": {"segments": [1.0], "turn": [], "entry_node": 1, "exit_node": 3}},
     ],
 )

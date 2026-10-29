@@ -392,3 +392,43 @@ def test_unreadable_templates_are_left_out(qapp):
     AppSettings().save_parking_template("shed.xml", "Broken", {"mode": "fly"})
 
     assert dialog().templates == {}
+
+
+def test_positions_are_offered_only_for_drive_through(qapp):
+    parking_dialog = dialog()
+    parking_dialog.show()
+
+    assert not parking_dialog.positions_input.isVisible()
+
+    parking_dialog.mode_input.setCurrentIndex(1)
+
+    assert parking_dialog.positions_input.isVisible()
+    assert not parking_dialog.spacing_input.isEnabled()
+
+    parking_dialog.positions_input.setValue(2)
+
+    assert parking_dialog.spacing_input.isEnabled()
+    assert len(parking_dialog.side_view.markers) == 2
+
+
+def test_positions_that_do_not_fit_disable_create(qapp):
+    parking_dialog = dialog()
+    parking_dialog.mode_input.setCurrentIndex(1)
+    parking_dialog.positions_input.setValue(3)
+    parking_dialog.spacing_input.setValue(7.0)
+
+    assert not parking_dialog.is_valid
+    assert parking_dialog.hint_label.text() == "The parking positions don't fit in the shed."
+
+
+def test_taken_names_of_every_position_are_refused(qapp):
+    parking_dialog = dialog(taken={("Shed 6", "Farm")})
+    bays = parking_dialog.bays_input.value()
+    parking_dialog.start_input.setValue(6 - bays)
+
+    assert parking_dialog.is_valid
+
+    parking_dialog.mode_input.setCurrentIndex(1)
+    parking_dialog.positions_input.setValue(2)
+
+    assert not parking_dialog.is_valid

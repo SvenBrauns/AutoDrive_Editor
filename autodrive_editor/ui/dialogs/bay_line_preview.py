@@ -55,9 +55,9 @@ class BayLinePreview(QWidget):
         self.frame: ShedFrame | None = None
         self.settings: ParkingSettings | None = None
         self.line: BayLine | None = None
-        # Drive through: the depths of the nodes and the index of the marker.
+        # The depths of the nodes and the indices of the markers.
         self.depths: list[float] = []
-        self.marker = 0
+        self.markers = [0]
         self.selected: int | None = None
         # "entry" or "exit" while a branch is dragged.
         self.dragging: str | None = None
@@ -70,16 +70,16 @@ class BayLinePreview(QWidget):
         self.frame, self.settings, self.line = frame, settings, line
         marker_d = marker_depth(frame, settings)
         self.depths = [marker_d - distance for distance in line.distances]
-        self.marker = 0
+        self.markers = [0]
 
         if self.selected is not None and self.selected > len(line.segments):
             self.selected = None
 
         self.update()
 
-    def show_drive_through(self, frame, settings, depths: list[float], marker: int):
+    def show_drive_through(self, frame, settings, depths: list[float], markers: list[int]):
         self.frame, self.settings, self.line = frame, settings, None
-        self.depths, self.marker = depths, marker
+        self.depths, self.markers = depths, markers
         self.selected = self.dragging = None
         self.update()
 
@@ -258,7 +258,8 @@ class BayLinePreview(QWidget):
             painter.drawEllipse(point, self.NODE_PX / 2, self.NODE_PX / 2)
 
         painter.setBrush(MARKER_COLOR)
-        painter.drawEllipse(nodes[self.marker], self.MARKER_PX / 2, self.MARKER_PX / 2)
+        for marker in self.markers:
+            painter.drawEllipse(nodes[marker], self.MARKER_PX / 2, self.MARKER_PX / 2)
 
         if self.selected is not None:
             painter.setPen(QPen(self.palette().highlight().color(), 2))

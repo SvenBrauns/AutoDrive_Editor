@@ -46,6 +46,7 @@ TURN_STEPS = (3.2, 1.2)
 
 # Drive through: distance of the lines from the shed and the node spacing of the bay lines.
 DRIVE_THROUGH_LINE_OUTSIDE = 10.0
+DEFAULT_POSITION_SPACING = 8.0
 
 # The entry and exit lines reach this far beyond the outer bays.
 LINE_EXTENSION = 5.0
@@ -174,6 +175,9 @@ class ParkingSettings:
     exit_left_to_right: bool = True
     # Back in only; None fits the default bay line to the shed depth.
     bay_line: BayLine | None = None
+    # Drive through only: parking positions in a row per bay, from the marker toward the entry.
+    positions: int = 1
+    position_spacing: float = DEFAULT_POSITION_SPACING
     marker_name: str = ""
     start_number: int = 1
     group: str = ""
@@ -193,6 +197,8 @@ def template_values(settings: ParkingSettings) -> dict:
         "right_offset": settings.right_offset,
         "back_offset": settings.back_offset,
         "gaps": list(settings.gaps),
+        "positions": settings.positions,
+        "position_spacing": settings.position_spacing,
         "bay_line": None
         if line is None
         else {
@@ -217,6 +223,8 @@ def from_template(values: dict) -> ParkingSettings:
             right_offset=float(values["right_offset"]),
             back_offset=float(values["back_offset"]),
             gaps=tuple(float(gap) for gap in values["gaps"]),
+            positions=int(values.get("positions", 1)),
+            position_spacing=float(values.get("position_spacing", DEFAULT_POSITION_SPACING)),
             bay_line=None
             if line is None
             else BayLine(
@@ -234,6 +242,7 @@ def from_template(values: dict) -> ParkingSettings:
     if (
         settings.open_side not in SIDE_CORNERS
         or settings.bays < 1
+        or settings.positions < 1
         or line is not None
         and not 0 < line.entry_node < line.exit_node <= len(line.segments)
     ):
@@ -354,6 +363,9 @@ def plan_parking(frame: ShedFrame, settings: ParkingSettings) -> ParkingNetwork:
     if not 0 <= settings.back_offset < frame.depth:
         raise ValueError("The marker must be inside the shed.")
 
+    if not positions_fit(frame, settings):
+        raise ValueError("The parking positions don't fit in the shed.")
+
     back_in = settings.mode == ParkingMode.BACK_IN
 
     if back_in and not bay_line(frame, settings).fits(marker_depth(frame, settings)):
@@ -361,14 +373,19 @@ def plan_parking(frame: ShedFrame, settings: ParkingSettings) -> ParkingNetwork:
 
     network = ParkingNetwork()
     entry_nodes, exit_nodes = [], []
+    number = settings.start_number
 
-    for number, a in enumerate(bay_centers(frame, settings), start=settings.start_number):
+    for a in bay_centers(frame, settings):
         if settings.mode == ParkingMode.BACK_IN:
             marker, entry, exit_ = _back_in_bay(network, frame, settings, a)
+            markers = [marker]
         else:
-            marker, entry, exit_ = _drive_through_bay(network, frame, settings, a)
+            markers, entry, exit_ = _drive_through_bay(network, frame, settings, a)
 
-        network.markers.append((marker, f"{settings.marker_name} {number}"))
+        for marker in markers:
+            network.markers.append((marker, f"{settings.marker_name} {number}"))
+            number += 1
+
         entry_nodes.append(entry)
         exit_nodes.append(exit_)
 
@@ -386,6 +403,26 @@ def bay_line(frame: ShedFrame, settings: ParkingSettings) -> BayLine:
 
 def marker_depth(frame: ShedFrame, settings: ParkingSettings) -> float:
     return frame.depth - settings.back_offset
+
+
+def marker_count(settings: ParkingSettings) -> int:
+    positions = settings.positions if settings.mode == ParkingMode.DRIVE_THROUGH else 1
+
+    return settings.bays * positions
+
+
+def position_depths(frame: ShedFrame, settings: ParkingSettings) -> list[float]:
+    """Drive through: depths of the parking positions of a bay, from the exit side."""
+
+    marker_d = marker_depth(frame, settings)
+
+    return [marker_d - index * settings.position_spacing for index in range(settings.positions)]
+
+
+def positions_fit(frame: ShedFrame, settings: ParkingSettings) -> bool:
+    """Whether every drive through parking position is inside the shed."""
+
+    return settings.mode == ParkingMode.BACK_IN or position_depths(frame, settings)[-1] > 0
 
 
 def _back_in_bay(network, frame, settings, a) -> tuple[int, int, int]:
@@ -421,13 +458,20 @@ def _back_in_bay(network, frame, settings, a) -> tuple[int, int, int]:
     return line[0], entry, exit_
 
 
-def drive_through_line(frame: ShedFrame, settings: ParkingSettings) -> tuple[list[float], int]:
-    """Depths of the nodes of a drive through bay line, and the index of the marker."""
+def drive_through_line(
+    frame: ShedFrame, settings: ParkingSettings
+) -> tuple[list[float], list[int]]:
+    """Depths of the nodes of a drive through bay line, and the indices of the markers from the
+    exit side."""
 
-    marker_d = marker_depth(frame, settings)
-    stops = (-DRIVE_THROUGH_LINE_OUTSIDE, marker_d, frame.depth + DRIVE_THROUGH_LINE_OUTSIDE)
+    positions = position_depths(frame, settings)
+    stops = (
+        -DRIVE_THROUGH_LINE_OUTSIDE,
+        *reversed(positions),
+        frame.depth + DRIVE_THROUGH_LINE_OUTSIDE,
+    )
     depths = [stops[0]]
-    marker = None
+    markers = []
 
     for start, end in zip(stops, stops[1:], strict=False):
         steps = max(1, round((end - start) / STEP))
@@ -435,20 +479,20 @@ def drive_through_line(frame: ShedFrame, settings: ParkingSettings) -> tuple[lis
         for index in range(1, steps + 1):
             depths.append(start + (end - start) * index / steps)
 
-        marker = len(depths) - 1 if marker is None else marker
+        markers.append(len(depths) - 1)
 
-    return depths, marker
+    return depths, markers[-2::-1]
 
 
-def _drive_through_bay(network, frame, settings, a) -> tuple[int, int, int]:
-    """Straight line from the entry line through the shed to the marker and on to the exit
+def _drive_through_bay(network, frame, settings, a) -> tuple[list[int], int, int]:
+    """Straight line from the entry line through the shed past the markers and on to the exit
     line."""
 
-    depths, marker = drive_through_line(frame, settings)
+    depths, markers = drive_through_line(frame, settings)
     line = [network.add(a, d) for d in depths]
     network.chain(line)
 
-    return line[marker], line[0], line[-1]
+    return [line[marker] for marker in markers], line[0], line[-1]
 
 
 def _line(network: ParkingNetwork, nodes: list[int], left_to_right: bool):
