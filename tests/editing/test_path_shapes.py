@@ -29,7 +29,8 @@ def test_ends_are_kept_and_short_paths_have_one_segment():
 def test_spacing_follows_a_bent_polyline():
     points = spaced_points([(0, 0), (4, 0), (4, 4)], 2)
 
-    assert points == pytest.approx([(0, 0), (2, 0), (4, 0), (4, 2), (4, 4)])
+    expected = [(0, 0), (2, 0), (4, 0), (4, 2), (4, 4)]
+    assert [c for p in points for c in p] == pytest.approx([c for p in expected for c in p])
 
 
 @pytest.mark.parametrize("spacing", [0, -1])
