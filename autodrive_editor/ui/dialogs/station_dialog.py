@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QHeaderView,
     QLabel,
+    QSpinBox,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -17,6 +18,7 @@ from autodrive_editor.editing.station_layout import (
     StopChoice,
     default_group,
     default_marker_name,
+    direction,
     lane_points,
     occupied,
     plan_stations,
@@ -28,14 +30,17 @@ from autodrive_editor.model.autodrive_data import NodeData
 from autodrive_editor.model.connections import ConnectionType
 from autodrive_editor.settings.app_settings import AppSettings
 
-STOP, KIND, FILL_TYPES, NAME, GROUP, TURN, NOTE = range(7)
+STOP, KIND, FILL_TYPES, NAME, GROUP, ANGLE, NOTE = range(7)
 # Fill types listed in the table before "…".
 SHOWN_FILL_TYPES = 3
+# Least distance of a lane's handle on the map from its stop, in metres.
+HANDLE_DISTANCE = 5.0
 
 
 class StationDialog(QDialog):
-    """The picked stops with a check box each, their markers and the lane settings. The planned
-    lanes are sent with plan_changed, as for the parking spots, so the map can show them."""
+    """The picked stops with a check box each, their markers, lane angles and the lane settings.
+    The planned lanes are sent with plan_changed, as for the parking spots, so the map can show
+    them; the angles can also be set by dragging the lane ends on the map (handles)."""
 
     # (ParkingNetwork or None, map points (x, z) of its nodes)
     plan_changed = Signal(object, object)
@@ -43,6 +48,7 @@ class StationDialog(QDialog):
     def __init__(
         self,
         stops: list[Stop],
+        headings: list[float],
         taken_names: set[tuple[str, str]],
         nodes: list[NodeData],
         app_settings: AppSettings,
@@ -65,13 +71,14 @@ class StationDialog(QDialog):
                 tr("Fill types"),
                 tr("Marker"),
                 tr("Group"),
-                tr("Turn"),
+                tr("Angle"),
                 tr("Note"),
             ]
         )
         self.table.verticalHeader().hide()
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
         self.table.horizontalHeader().setStretchLastSection(True)
+        self.angle_inputs: list[QSpinBox] = []
 
         names = set(self.taken_names)
 
@@ -87,8 +94,11 @@ class StationDialog(QDialog):
             self._set_item(row, FILL_TYPES, fill_types + more)
             self._set_item(row, NAME, name, editable=True)
             self._set_item(row, GROUP, group, editable=True)
-            self._set_item(row, TURN, "", checked=False)
             self._set_item(row, NOTE, "")
+            self.angle_inputs.append(self._angle_input(headings[row]))
+            self.table.setCellWidget(row, ANGLE, self.angle_inputs[-1])
+
+        self.table.resizeColumnsToContents()
 
         defaults = app_settings.station_settings
         self.before_input = self._length_input(defaults.before, 0.0)
@@ -113,7 +123,8 @@ class StationDialog(QDialog):
         layout.addLayout(form)
         layout.addWidget(self.problem_label)
         layout.addWidget(buttons)
-        self.resize(820, 420)
+        self.setSizeGripEnabled(True)
+        self.resize(860, 420)
 
         self.table.itemChanged.connect(self._update)
         self._update()
@@ -131,7 +142,7 @@ class StationDialog(QDialog):
                 stop,
                 self.table.item(row, NAME).text().strip(),
                 self.table.item(row, GROUP).text().strip(),
-                self.table.item(row, TURN).checkState() == Qt.Checked,
+                self.angle_inputs[row].value(),
             )
             for row, stop in enumerate(self.stops)
             if self.table.item(row, STOP).checkState() == Qt.Checked
@@ -140,6 +151,26 @@ class StationDialog(QDialog):
     @property
     def is_valid(self) -> bool:
         return self.create_button.isEnabled()
+
+    def set_heading(self, row: int, heading: float):
+        self.angle_inputs[row].setValue(round(heading) % 360)
+
+    def handles(self) -> list[tuple[int, float, float, float, float]]:
+        """(row, handle x, z, stop x, z) of each chosen stop: the handle sits at the front end
+        of its lane, at least HANDLE_DISTANCE from the stop, and turns the lane around the stop."""
+
+        result = []
+        length = max(self.after_input.value(), HANDLE_DISTANCE)
+
+        for row, stop in enumerate(self.stops):
+            if self.table.item(row, STOP).checkState() != Qt.Checked:
+                continue
+
+            dx, dz = direction(self.angle_inputs[row].value())
+            x, _, z = stop.position
+            result.append((row, x + dx * length, z + dz * length, x, z))
+
+        return result
 
     def accept(self):
         self.app_settings.set_station_settings(self.settings)
@@ -168,22 +199,32 @@ class StationDialog(QDialog):
         spin_box.valueChanged.connect(self._update)
         return spin_box
 
+    def _angle_input(self, heading: float) -> QSpinBox:
+        spin_box = QSpinBox(self)
+        spin_box.setRange(0, 359)
+        spin_box.setWrapping(True)
+        spin_box.setSuffix("°")
+        spin_box.setValue(round(heading) % 360)
+        spin_box.valueChanged.connect(self._update)
+        return spin_box
+
     def _update(self):
         settings = self.settings
         self.table.blockSignals(True)
 
         for row, stop in enumerate(self.stops):
-            turned = self.table.item(row, TURN).checkState() == Qt.Checked
-            points, _ = lane_points(stop, settings, turned)
+            points, _ = lane_points(stop, settings, self.angle_inputs[row].value())
             notes = []
 
             if not stop.from_ai_node:
-                notes.append(tr("no AI node, direction from the building"))
+                notes.append(tr("no AI node"))
 
             if occupied(points, self.nodes):
                 notes.append(tr("existing node on the lane"))
 
-            self.table.item(row, NOTE).setText(", ".join(notes))
+            note = self.table.item(row, NOTE)
+            note.setText(", ".join(notes))
+            note.setToolTip(note.text())
 
         self.table.blockSignals(False)
 

@@ -24,7 +24,7 @@ def setup():
     def ask(stops, autodrive_data):
         asked.append(stops)
         return [
-            StopChoice(stop, "Store (Selling point)", "Selling points") for stop in stops
+            StopChoice(stop, "Store (Selling point)", "Selling points", 90) for stop in stops
         ], SETTINGS
 
     operation = StationOperation(EditContext(edits, lambda: data, node_selection=selection), ask)

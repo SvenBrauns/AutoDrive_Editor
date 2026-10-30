@@ -26,7 +26,7 @@ def station_window(zoomed_window):
 
     def ask(stops, autodrive_data):
         window.asked.append(stops)
-        return [StopChoice(stop, stop.name, "Stations") for stop in stops[:1]], StationSettings(
+        return [StopChoice(stop, stop.name, "Stations", 90) for stop in stops[:1]], StationSettings(
             5, 5, 5
         )
 

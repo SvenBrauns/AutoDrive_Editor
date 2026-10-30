@@ -34,6 +34,7 @@ from autodrive_editor.editing.operations.reverse_direction import ReverseDirecti
 from autodrive_editor.editing.operations.rotate_selection import RotateSelectionOperation
 from autodrive_editor.editing.operations.stations import StationOperation
 from autodrive_editor.editing.path_shapes import PathShape
+from autodrive_editor.editing.station_layout import default_heading
 from autodrive_editor.error_log import set_debug_logging
 from autodrive_editor.file_io.autodrive_xml import ConfigFormat
 from autodrive_editor.file_io.game_files import GameFiles
@@ -95,6 +96,8 @@ from autodrive_editor.ui.tools.delete_nodes_tool import DeleteNodesTool
 from autodrive_editor.ui.tools.find_route_tool import FindRouteTool
 from autodrive_editor.ui.tools.generate_tool import GenerateTask, GenerateTool
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
+from autodrive_editor.ui.tools.lane_handle_tool import LaneHandleTool
+from autodrive_editor.ui.tools.map_tool import MapTool
 from autodrive_editor.ui.tools.measure_tool import MeasureTool
 from autodrive_editor.ui.tools.move_nodes_tool import MoveNodesTool
 from autodrive_editor.ui.tools.navigate_tool import NavigateTool
@@ -340,30 +343,41 @@ class MainWindow(QMainWindow):
 
     def _ask_station_choices(self, stops, autodrive_data):
         taken_names = {(marker.name, marker.group) for marker in autodrive_data.markers.values()}
+        costmap = self.scene_renderer.costmap
         dialog = StationDialog(
-            stops, taken_names, list(autodrive_data.nodes.values()), self.settings, parent=self
+            stops,
+            [default_heading(stop, costmap) for stop in stops],
+            taken_names,
+            list(autodrive_data.nodes.values()),
+            self.settings,
+            parent=self,
         )
         overlay = ParkingMapOverlay(self.scene_renderer.display_style)
         dialog.plan_changed.connect(overlay.set_network)
+        dialog.plan_changed.connect(
+            lambda *_: overlay.set_handles([(x, z) for _, x, z, _, _ in dialog.handles()])
+        )
         dialog._update()
         self.scene.addItem(overlay)
+        handle_tool = LaneHandleTool(self.view, dialog.handles, dialog.set_heading)
 
         try:
-            accepted = self._run_beside_map(dialog)
+            accepted = self._run_beside_map(dialog, handle_tool)
         finally:
             self.scene.removeItem(overlay)
 
         return (dialog.choices, dialog.settings) if accepted else None
 
-    def _run_beside_map(self, dialog: QDialog) -> bool:
+    def _run_beside_map(self, dialog: QDialog, tool: MapTool | None = None) -> bool:
         """Runs the dialog without blocking the map: it can be moved, zoomed and rotated, but
-        nothing else in the window reacts until the dialog is closed."""
+        nothing else in the window reacts until the dialog is closed. tool, if given, handles
+        the mouse on the map instead of plain navigation."""
 
         loop = QEventLoop()
         dialog.finished.connect(loop.quit)
         input_filter = MapOnlyInput(self, self.view)
         QApplication.instance().installEventFilter(input_filter)
-        self.view.set_override_tool(NavigateTool(self.view))
+        self.view.set_override_tool(tool or NavigateTool(self.view))
 
         try:
             dialog.show()
