@@ -7,7 +7,6 @@ from PySide6.QtWidgets import (
 from autodrive_editor.editing.parking_layout import (
     SIDE_CORNERS,
     ParkingMode,
-    ParkingNetwork,
     ParkingSettings,
     ShedFrame,
     bay_centers,
@@ -15,6 +14,7 @@ from autodrive_editor.editing.parking_layout import (
     marker_depth,
     side_angle,
 )
+from autodrive_editor.editing.planned_piece import PlannedPiece
 from autodrive_editor.file_io.savegame_sheds import IndoorArea
 from autodrive_editor.i18n import tr
 from autodrive_editor.rendering.display_style import DisplayStyle
@@ -66,7 +66,7 @@ class ParkingPreview(QWidget):
         self.area: IndoorArea | None = None
         self.frame: ShedFrame | None = None
         self.settings: ParkingSettings | None = None
-        self.network: ParkingNetwork | None = None
+        self.network: PlannedPiece | None = None
 
     def show_plan(self, area: IndoorArea, frame: ShedFrame, settings: ParkingSettings, network):
         self.area, self.frame, self.settings, self.network = area, frame, settings, network
@@ -206,7 +206,7 @@ class ParkingPreview(QWidget):
 
         painter.setBrush(MARKER_COLOR)
 
-        for index, _ in network.markers:
+        for index, *_ in network.markers:
             painter.drawEllipse(points[index], self.MARKER_PX / 2, self.MARKER_PX / 2)
 
     def _paint_side_labels(self, painter):

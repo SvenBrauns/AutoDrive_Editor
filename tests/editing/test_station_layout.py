@@ -15,7 +15,8 @@ from autodrive_editor.editing.station_layout import (
     unique_name,
 )
 from autodrive_editor.file_io.savegame_stations import Stop, StopKind
-from autodrive_editor.model.autodrive_data import NodeData
+from autodrive_editor.model.autodrive_data import SUBPRIO_FLAG, NodeData
+from autodrive_editor.model.connections import ConnectionType
 
 
 def stop(
@@ -76,7 +77,10 @@ def test_plan_has_one_way_lanes_markers_and_open_ends():
     network = plan_stations(choices, StationSettings(5, 5, 5))
 
     assert len(network.points) == 6
-    assert network.connections == [(0, 1), (1, 2), (3, 4), (4, 5)]
+    assert network.connections == [
+        (s, t, ConnectionType.REGULAR) for s, t in [(0, 1), (1, 2), (3, 4), (4, 5)]
+    ]
+    assert network.flags == [SUBPRIO_FLAG] * 6
     assert network.markers == [(1, "A", "Selling points"), (4, "B", "Productions")]
     assert network.open_ends == [0, 2, 3, 5]
 

@@ -9,13 +9,14 @@ destination. Connecting the lane ends to the network comes later.
 """
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from autodrive_editor.editing.path_shapes import spaced_points
+from autodrive_editor.editing.planned_piece import PlannedPiece
 from autodrive_editor.file_io.navigation_costmap import BLOCKED_VALUE, NavigationCostmap
 from autodrive_editor.file_io.savegame_stations import Stop, StopKind
 from autodrive_editor.i18n import tr
-from autodrive_editor.model.autodrive_data import NodeData
+from autodrive_editor.model.autodrive_data import SUBPRIO_FLAG, NodeData
 
 Point = tuple[float, float, float]
 
@@ -53,17 +54,6 @@ class StopChoice:
     name: str
     group: str
     heading: float
-
-
-@dataclass
-class StationNetwork:
-    """Nodes as (x, y, z), one-way connections between their indices, markers as
-    (index, name, group), and the lane ends that still need a connection to the network."""
-
-    points: list[Point] = field(default_factory=list)
-    connections: list[tuple[int, int]] = field(default_factory=list)
-    markers: list[tuple[int, str, str]] = field(default_factory=list)
-    open_ends: list[int] = field(default_factory=list)
 
 
 def default_marker_name(stop: Stop) -> str:
@@ -112,18 +102,17 @@ def lane_points(stop: Stop, settings: StationSettings, heading: float) -> tuple[
     return points, len(before) - 1
 
 
-def plan_stations(choices: list[StopChoice], settings: StationSettings) -> StationNetwork:
-    network = StationNetwork()
+def plan_stations(choices: list[StopChoice], settings: StationSettings) -> PlannedPiece:
+    piece = PlannedPiece()
 
     for choice in choices:
         points, stop_index = lane_points(choice.stop, settings, choice.heading)
-        first = len(network.points)
-        network.points += points
-        network.connections += [(first + i, first + i + 1) for i in range(len(points) - 1)]
-        network.markers.append((first + stop_index, choice.name, choice.group))
-        network.open_ends += [first, first + len(points) - 1]
+        lane = [piece.add(*point, flag=SUBPRIO_FLAG) for point in points]
+        piece.chain(lane)
+        piece.markers.append((lane[stop_index], choice.name, choice.group))
+        piece.open_ends += [lane[0], lane[-1]]
 
-    return network
+    return piece
 
 
 def occupied(points: list[Point], nodes: list[NodeData], distance=OCCUPIED_DISTANCE) -> bool:

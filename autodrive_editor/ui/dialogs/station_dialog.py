@@ -12,7 +12,6 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from autodrive_editor.editing.parking_layout import ParkingNetwork
 from autodrive_editor.editing.station_layout import (
     StationSettings,
     StopChoice,
@@ -27,7 +26,6 @@ from autodrive_editor.editing.station_layout import (
 from autodrive_editor.file_io.savegame_stations import Stop
 from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import NodeData
-from autodrive_editor.model.connections import ConnectionType
 from autodrive_editor.settings.app_settings import AppSettings
 
 STOP, KIND, FILL_TYPES, NAME, GROUP, ANGLE, NOTE = range(7)
@@ -42,7 +40,7 @@ class StationDialog(QDialog):
     The planned lanes are sent with plan_changed, as for the parking spots, so the map can show
     them; the angles can also be set by dragging the lane ends on the map (handles)."""
 
-    # (ParkingNetwork or None, map points (x, z) of its nodes)
+    # (PlannedPiece or None, map points (x, z) of its nodes)
     plan_changed = Signal(object, object)
 
     def __init__(
@@ -233,14 +231,8 @@ class StationDialog(QDialog):
         self.problem_label.setText(problem or "")
         self.create_button.setEnabled(problem is None)
 
-        network = plan_stations(choices, settings)
-        overlay = ParkingNetwork(
-            connections=[
-                (source, target, ConnectionType.REGULAR) for source, target in network.connections
-            ],
-            markers=[(index, name) for index, name, _ in network.markers],
-        )
-        self.plan_changed.emit(overlay, [(x, z) for x, _, z in network.points])
+        piece = plan_stations(choices, settings)
+        self.plan_changed.emit(piece, [(x, z) for x, _, z in piece.points])
 
     def _problem(self, choices: list[StopChoice]) -> str | None:
         if not choices:

@@ -92,7 +92,7 @@ def test_preview_follows_the_choices_and_settings_are_kept(qapp):
 
     network, points = plans[-1]
     assert len(points) == 6
-    assert [index for index, _ in network.markers] == [1, 4]
+    assert [index for index, *_ in network.markers] == [1, 4]
 
     station_dialog.set_heading(0, 180)
     assert plans[-1][1][0] == pytest.approx((0, -5))
