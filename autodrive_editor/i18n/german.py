@@ -769,4 +769,9 @@ TEXTS = {
     "No stop is chosen.": "Kein Halt gewählt.",
     "Every chosen stop needs a marker name and a group.": "Jeder gewählte Halt braucht einen Markernamen und eine Gruppe.",
     "The marker “{name}” is already in the group “{group}”.": "Der Marker „{name}“ ist schon in der Gruppe „{group}“.",
+    "Junction": "Einmündung",
+    "No right turn in from the {direction}": "Kein Rechtsabbiegen in den Hof aus Richtung {direction}",
+    "No left turn in from the {direction}": "Kein Linksabbiegen in den Hof aus Richtung {direction}",
+    "No right turn out to the {direction}": "Kein Rechtsabbiegen aus dem Hof nach {direction}",
+    "No left turn out to the {direction}": "Kein Linksabbiegen aus dem Hof nach {direction}",
 }
