@@ -144,3 +144,13 @@ def test_only_the_map_can_be_used_while_the_dialog_is_open(zoomed_window):
     assert isinstance(seen["tool"], NavigateTool) and seen["tool"] is not before
     assert seen["visible"]
     assert window.view.active_tool is before
+
+
+def test_click_after_discarded_plan_starts_planning_again(parking_window):
+    parking_window.planning.discard_button.click()
+    assert not parking_window.edit_history.is_planning
+
+    click(parking_window, view_pos(parking_window, 10, 15))
+
+    assert parking_window.edit_history.is_planning
+    assert parking_window.edit_history.has_plan_edits

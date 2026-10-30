@@ -89,6 +89,34 @@ def test_selecting_generate_starts_planning_mode(window):
     assert window.actions.generate_action.shortcut().toString() == "G"
 
 
+def test_confirm_after_applied_plan_adds_the_route_to_a_new_plan(window):
+    window.planning.apply_button.click()
+    click(window, view_pos(window, 0, 20))
+    window.planning.apply_button.click()
+    click(window, view_pos(window, 20, 0))
+    window.planning.apply_button.click()
+    wait(window)
+
+    assert window.generate_tool.confirm()
+    assert window.edit_history.is_planning and window.edit_history.has_plan_edits
+
+
+def test_discarding_the_plan_removes_routes_and_waypoints(window):
+    data = window.project_coordinator.autodrive_data
+    click(window, view_pos(window, 0, 20))
+    click(window, view_pos(window, 20, 0))
+    wait(window)
+    window.generate_tool.confirm()
+    click(window, view_pos(window, 0, -20))
+
+    window.planning.discard_button.click()
+    wait(window)
+
+    assert list(data.nodes) == [1, 2, 3]
+    assert waypoint_ids(window) == []
+    assert window.find_route_operation.shown_route is None
+
+
 def test_the_options_pick_what_generate_creates(window):
     window.set_interaction_mode(InteractionMode.SELECT)
 

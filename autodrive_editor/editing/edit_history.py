@@ -31,6 +31,7 @@ class EditHistory(QObject):
     clean_changed = Signal(bool)
 
     planning_changed = Signal(bool)
+    plan_discarded = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -139,6 +140,7 @@ class EditHistory(QObject):
 
         if plan_stack is not None:
             plan_stack.setIndex(0)
+            self.plan_discarded.emit()
 
     def _end_plan(self) -> QUndoStack | None:
         plan_stack = self._plan_stack

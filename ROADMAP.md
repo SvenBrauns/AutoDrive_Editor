@@ -9,7 +9,6 @@ The editor supports only Farming Simulator 25.
 Design: [docs/generators.md](docs/generators.md). Each step is its own branch.
 
 - [ ] stations generator: pick buildings on the map, lanes over the triggers, markers, entry and exit routes; with the rest of the join rules (fixed nodes, "part of another layout" for join points, reuse of separate pieces, replacement of pass-through stretches, regular and subprio for yards)
-- [ ] bug: after reverting the plan while the Generate tool is selected, routes can still be added although planning mode is off
 - [ ] shed generator: connect the parking layout to the network
 - [ ] bunker silos generator (designed separately)
 - [ ] afterwards: turn docs/generators.md into manual sections and delete it

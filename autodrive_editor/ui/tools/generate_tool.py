@@ -21,7 +21,8 @@ class GenerateTask(Enum):
 
 class GenerateTool(MapTool):
     """One tool for all generators: the mouse goes to the tool of the chosen task. Selecting it
-    starts planning mode, as everything generated goes into a plan first."""
+    starts planning mode, as everything generated goes into a plan first. A click or confirm
+    starts it again if the plan was applied or discarded meanwhile."""
 
     def __init__(
         self, view, tools: dict[GenerateTask, MapTool], start_planning: Callable[[], None]
@@ -63,6 +64,7 @@ class GenerateTool(MapTool):
         self.current.deactivate()
 
     def mouse_press(self, event: QMouseEvent) -> bool:
+        self._start_planning()
         return self.current.mouse_press(event)
 
     def mouse_move(self, event: QMouseEvent) -> bool:
@@ -78,6 +80,7 @@ class GenerateTool(MapTool):
         return self.current.cancel()
 
     def confirm(self) -> bool:
+        self._start_planning()
         return self.current.confirm()
 
     def remove_last(self) -> bool:
