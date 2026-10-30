@@ -272,3 +272,13 @@ def test_shortcut_does_not_move_onto_worse_ground():
 
     assert shortcut(make_costmap()) is not None
     assert shortcut(NavigationCostmap(200, 200, bytes(grass))) is None
+
+
+def test_route_keeps_to_the_line_between_waypoints_after_a_corner():
+    waypoints = ((-50, 0), (0, 0), (0, 60))
+    route = RouteFinder(make_costmap(), VEHICLE).find(RouteRequest(waypoints))
+    corner, goal = route.waypoint_indices[1:]
+    after_curve = [x for x, z in route.points[corner:goal] if z > 3 * VEHICLE.turning_radius]
+
+    assert after_curve
+    assert max(abs(x) for x in after_curve) < 1.0
