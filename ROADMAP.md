@@ -13,7 +13,7 @@ Design: [docs/generators.md](docs/generators.md). Each step is its own branch.
 - [ ] shed generator: connect the parking layout to the network
 - [ ] bunker silos generator (designed separately)
 - [ ] afterwards: turn docs/generators.md into manual sections and delete it
-- [ ] afterwards: optimize Find route. Searches block the map while dragging (thread holds the GIL; try a separate process); setup grows with each waypoint (one cost map per leg, ~2 s for 15 waypoints); cancelling takes up to 2 s; waypoints closer than the turning radius get the search stuck, and the direct curves of the fallback then loop
+- [ ] afterwards: optimize Find route. Searches block the map while dragging (thread holds the GIL; try a separate process); setup grows with each waypoint (one cost map per leg, ~2 s for 15 waypoints); cancelling takes up to 2 s; waypoints closer than the turning radius get the search stuck, and the direct curves of the fallback then loop. Also: measure the turning radii used in the biggest Thüringen route (`modSettings/FS25_AutoDrive/routesManager/routes/FdwBaSDQopZtIWyv.xml`, "Thueringen_2.0") to pick the default radius, and make routes straight where possible instead of wavy (e.g. a higher turn cost or smoothing the found path)
 
 ## 2. Tool options
 
