@@ -8,12 +8,12 @@ The editor supports only Farming Simulator 25.
 
 Design: [docs/generators.md](docs/generators.md). Each step is its own branch.
 
-- [ ] drivability map from the savegame's `vehicleNavigationCostmap.dat`, route finder with turning radius, `Generate` tool (routes through waypoints, parking spots) that starts planning mode
 - [ ] join rules: fixed nodes, join points, reuse of separate pieces, replacement of pass-through stretches, regular and subprio for yards
 - [ ] stations generator: pick buildings on the map, lanes over the triggers, markers, entry and exit routes
 - [ ] shed generator: connect the parking layout to the network
 - [ ] bunker silos generator (designed separately)
 - [ ] afterwards: turn docs/generators.md into manual sections and delete it
+- [ ] afterwards: optimize Find route. Searches block the map while dragging (thread holds the GIL; try a separate process); setup grows with each waypoint (one cost map per leg, ~2 s for 15 waypoints); cancelling takes up to 2 s; waypoints closer than the turning radius get the search stuck, and the direct curves of the fallback then loop
 
 ## 2. Tool options
 
