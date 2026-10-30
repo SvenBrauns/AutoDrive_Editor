@@ -150,11 +150,13 @@ def road_lanes(autodrive_data: AutoDriveData, source_id: int, target_id: int) ->
 
 
 def junction_distance(lanes: list[RoadLane], foot: Point, heading: float, radius: float) -> float:
-    """How far from `foot` along the heading the curves of a junction meet: one radius beyond
-    the farthest lane that line crosses."""
+    """How far from `foot` along the heading the curves of a junction meet: far enough past each
+    lane the line crosses that both the curve in from it and the one out to it fit as an arc of
+    the radius, turning the angle φ between lane and stem or its supplement: r (1 + |cos φ|)
+    / sin φ past the lane, one radius where the stem leaves the road square."""
 
     dx, dz = math.cos(heading), math.sin(heading)
-    farthest = 0.0
+    distance = radius
 
     for lane in lanes:
         for (ax, az), (bx, bz) in pairwise(lane.points):
@@ -169,9 +171,12 @@ def junction_distance(lanes: list[RoadLane], foot: Point, heading: float, radius
             u = ((ax - foot[0]) * dz - (az - foot[1]) * dx) / denominator
 
             if 0 <= u <= 1:
-                farthest = max(farthest, t)
+                length = math.hypot(ex, ez)
+                sine = abs(denominator) / length
+                cosine = abs(dx * ex + dz * ez) / length
+                distance = max(distance, t + radius * (1 + cosine) / sine)
 
-    return farthest + radius
+    return distance
 
 
 def plan_junction(

@@ -341,3 +341,28 @@ def test_a_two_way_stem_continues_from_the_junction():
     assert [round(n.z) for n in stem] == [6, 10, 14, 18]
     for a, b in pairwise(stem):
         assert get_connection_type(a, b) == ConnectionType.DUAL
+
+
+def test_junction_distance_leaves_room_for_the_sharper_turn_of_an_oblique_stem():
+    lanes = road_lanes(two_lane_road(), 7, 8)
+    heading = math.radians(60)
+
+    # The west-bound lane at z = -4 is not crossed going south-east from the foot.
+    expected = 6.0 * (1 + math.cos(heading)) / math.sin(heading)
+
+    assert junction_distance(lanes, (0.0, 0.0), heading, 6.0) == pytest.approx(expected)
+
+
+def test_curves_of_an_oblique_junction_are_arcs_without_detours():
+    data = two_lane_road()
+    lanes = road_lanes(data, 7, 8)
+    heading = math.radians(60)
+    distance = junction_distance(lanes, (0.0, 0.0), heading, 6.0)
+    junction = (distance * math.cos(heading), distance * math.sin(heading), heading)
+
+    plan = plan_junction(lanes[:1], junction, BOTH, 6.0, None, VEHICLE)
+
+    # Each curve is no longer than its arc plus the straight part along the stem.
+    for curve in plan.curves:
+        length = sum(math.dist(a, b) for a, b in pairwise(curve.points))
+        assert length < 6.0 * math.radians(120) + distance + 1
