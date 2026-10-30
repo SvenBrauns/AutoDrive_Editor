@@ -130,3 +130,28 @@ def test_autosave_pauses_while_planning(loaded_window):
     window.planning.apply_button.click()
     window.files.autosave()
     assert store.read() is not None
+
+
+def test_the_map_stays_still_when_the_bar_shows_and_hides(loaded_window, qapp):
+    window = loaded_window
+    view = window.view
+    # A map image makes the scene this large; the view is not held at its edge.
+    window.scene.setSceneRect(-1000, -1000, 2000, 2000)
+    view.set_zoom_level(4.0)
+    view.centerOn(10, 0)
+    qapp.processEvents()
+
+    def window_position_of(x, z):
+        return view.viewport().mapTo(window, view.mapFromScene(x, z))
+
+    before = window_position_of(10, 0)
+    window.planning.start_plan()
+    qapp.processEvents()
+
+    assert window.planning.bar.isVisible()
+    assert (window_position_of(10, 0) - before).manhattanLength() <= 1
+
+    window.edit_history.discard_plan()
+    qapp.processEvents()
+
+    assert (window_position_of(10, 0) - before).manhattanLength() <= 1
