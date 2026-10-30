@@ -27,6 +27,7 @@ class InteractionMode(Enum):
     DRAW_LINE = auto()
     DRAW_BEZIER = auto()
     DRAW_ARC = auto()
+    FIND_ROUTE = auto()
     ADD_MARKER = auto()
     EDIT_MARKER = auto()
     MOVE_MARKER = auto()
@@ -56,6 +57,7 @@ class InteractionMode(Enum):
             InteractionMode.DRAW_LINE: tr("Line"),
             InteractionMode.DRAW_BEZIER: tr("Bézier curve"),
             InteractionMode.DRAW_ARC: tr("Arc"),
+            InteractionMode.FIND_ROUTE: tr("Find route"),
             InteractionMode.ADD_MARKER: tr("Add marker"),
             InteractionMode.EDIT_MARKER: tr("Edit marker"),
             InteractionMode.MOVE_MARKER: tr("Move marker"),

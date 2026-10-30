@@ -15,7 +15,7 @@
 - Drive-through parking spots can have several parking positions in a row per bay (`Positions per bay`, `Position spacing`), each with its own marker
 - While the parking spots dialog is open, the planned spots are drawn on the map, and the map can be moved, zoomed and rotated
 - Planning mode (`Edit → Planning mode`, `Ctrl+P`, button at the right of the toolbar): edit with all tools, then apply the plan as one undo step or discard it. Changed nodes get a blue halo; saving and autosave wait until the plan is applied or discarded
-- `Find route` in planning mode (`Edit → Find route`, `Ctrl+R`, button on the planning bar): a drivable one-way route between two selected nodes over the savegame's drivability map, with turning radius, vehicle width and safety margin from `File → Settings → Route finder`. It keeps to roads and yards and reuses routes already in the plan; a way back without room for its own lane makes the shared lane dual
+- `Find route` tool (`F`): click nodes or free ground as waypoints and get a drivable one-way route through them over the savegame's drivability map, with turning radius, vehicle width and safety margin from `File → Settings → Route finder`. The route is shown and searched again while waypoints or nodes are dragged; parts crossing obstacles are red. `Enter` adds it to the plan in planning mode. It keeps to roads and yards and reuses routes already in the plan; a way back without room for its own lane makes the shared lane dual
 - `Help → Debug log`: detailed log entries for finding problems, e.g. for each route search
 - `View → Show → Drivability map`: the game's drivability map of the savegame (blocked ground, grass, fields, roads)
 

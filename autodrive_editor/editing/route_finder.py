@@ -2,19 +2,22 @@
 
 Hybrid A*: the search moves in short arcs and straight pieces over position and heading, forward
 only and no tighter than the turning radius, so a vehicle with a trailer can drive the route.
-Close to the goal it tries a Dubins path, which ends exactly at the goal heading. The search is
-guided by the cheapest way from each cell to the goal, found on the cells alone first; without one
-it stops at once.
+Close to each waypoint it tries a Dubins path, which ends exactly at the waypoint, and at the goal
+heading at the last one. All waypoints are passed in one search, so the heading at a waypoint is
+the one that suits the next leg too. The search is guided by the cheapest way from each cell to the
+next waypoint, found on the cells alone first.
 
-- Blocked cells cannot be driven on. Within half the vehicle width plus the safety margin of
-  them each metre costs extra, so routes keep their distance where there is room but can still
-  pass gates, which the map shows only about 3 m wide for a 4 m gate.
+- Blocked cells cost so much that routes go a long way round them. Where there is no way round,
+  the route crosses them and the crossing points are marked, so the editor can show where nodes
+  have to move. Within half the vehicle width plus the safety margin of blocked cells each metre
+  costs extra, so routes keep their distance where there is room but can still pass gates, which
+  the map shows only about 3 m wide for a 4 m gate.
 - Each metre costs by the kind of ground (roads and yards 1, grass 4, fields 8, …), so routes
   keep to roads and yards.
 - Lanes already planned are cheap in their direction, so routes join them. Against their
   direction they cost more, so a way back gets its own lane where there is room and only shares
   the lane where there is not.
-- Around the start and the goal and along their headings, blocked cells can be driven on, as
+- Around the waypoints and along the start and goal headings, blocked cells can be driven on, as
   nodes may sit under a roof or in a hall.
 """
 
@@ -23,6 +26,7 @@ import logging
 import math
 import time
 from dataclasses import dataclass, field
+from itertools import pairwise
 
 from autodrive_editor.editing.dubins import Pose, advance, shortest_path
 from autodrive_editor.file_io.navigation_costmap import BLOCKED_VALUE, ROAD_VALUE, NavigationCostmap
@@ -47,19 +51,23 @@ AGAINST_LANE = 1.5
 ALONG_LANE = 0.7
 # Lanes are cheap only this close, so routes join them instead of running beside them.
 ON_LANE = 1.0
-# Cost of blocked cells near the start and goal.
+# Cost of blocked cells near the waypoints.
 FREE_ZONE_COST = 3.0
+# Cost per metre of crossing blocked cells elsewhere.
+OBSTACLE_COST = 100.0
 # Extra cost per metre closer to a blocked cell than half the vehicle width plus the margin.
 NEAR_BLOCKED_COST = 20.0
 # Headings tried where any heading will do.
 ANY_HEADINGS = tuple(math.tau * index / 16 for index in range(16))
-# Dubins paths are tried this close to the goal, in turning radii plus metres.
+# Dubins paths are tried this close to a waypoint, in turning radii plus metres.
 DUBINS_RADII = 4
 DUBINS_EXTRA = 20.0
-# Area around start and goal that is searched first, and how often it grows.
+# Area around the waypoints that is searched first, and how often it grows.
 WINDOW_MARGIN = 60.0
 WINDOW_GROWTH = (1, 3, 6)
-MAX_EXPANSIONS = 150_000
+# Search steps per leg. Then the cheapest route found so far is taken, which may cross blocked
+# cells where a clear route would need more steps.
+MAX_EXPANSIONS = 20_000
 
 
 @dataclass(frozen=True)
@@ -71,17 +79,38 @@ class Vehicle:
 
 @dataclass(frozen=True)
 class RouteRequest:
-    start: Point
-    goal: Point
+    # Points the route passes in order, at least start and goal.
+    waypoints: tuple[Point, ...]
     # Headings the route may start and end with, in radians; None for any heading.
     start_headings: tuple[float, ...] | None = None
     goal_headings: tuple[float, ...] | None = None
     # Planned lanes, each from its first to its second point.
     lanes: tuple[Lane, ...] = ()
-    # Around start and goal, and from the start forward and to the goal along their headings,
+    # Around the waypoints, and from the start forward and to the goal along their headings,
     # blocked cells can be driven on.
     free_radius: float = 3.0
     free_length: float = 20.0
+
+    @property
+    def start(self) -> Point:
+        return self.waypoints[0]
+
+    @property
+    def goal(self) -> Point:
+        return self.waypoints[-1]
+
+
+@dataclass
+class Route:
+    points: list[Point]
+    # Index in `points` of each waypoint.
+    waypoint_indices: list[int]
+    # For each point, whether it lies on a blocked cell outside the free zones.
+    blocked: list[bool]
+
+    @property
+    def is_clear(self) -> bool:
+        return not any(self.blocked)
 
 
 class Grid:
@@ -195,6 +224,10 @@ class _Node:
     # Points driven from the parent to this pose, without the parent's.
     points: list[Point] = field(default_factory=list)
     curvature: float = 0.0
+    # Index of the leg the node is on: leg k leads to waypoint k + 1.
+    leg: int = 0
+    # Whether the node is a waypoint reached by the route.
+    at_waypoint: bool = False
 
 
 class RouteFinder:
@@ -202,11 +235,13 @@ class RouteFinder:
         self.costmap = costmap
         self.vehicle = vehicle
 
-    def find(self, request: RouteRequest, cancelled=lambda: False) -> list[Point] | None:
-        """Points of the route from start to goal about SAMPLE apart, or None if there is no
-        drivable route. The search area grows if nothing is found near start and goal."""
+    def find(self, request: RouteRequest, cancelled=lambda: False) -> Route | None:
+        """The route through the waypoints with points about SAMPLE apart, or None if the search
+        found none or was cancelled. The search area grows only while nothing is found; a detour
+        further out can be forced with a waypoint."""
 
         self._log_request(request)
+        route = None
 
         for growth in WINDOW_GROWTH:
             started = time.perf_counter()
@@ -222,9 +257,9 @@ class RouteFinder:
             )
 
             if route is not None or cancelled() or search.covers_map:
-                return route
+                break
 
-        return None
+        return None if cancelled() else route
 
     def _log_request(self, request: RouteRequest):
         if not logger.isEnabledFor(logging.DEBUG):
@@ -237,13 +272,11 @@ class RouteFinder:
             return ", ".join(f"{math.degrees(heading) % 360:.0f}°" for heading in headings)
 
         logger.debug(
-            "Route search from %s (cell value %d, headings %s) to %s (cell value %d, headings %s), "
+            "Route search through %s (cell values %s), start headings %s, goal headings %s, "
             "%d planned lanes, %s",
-            _rounded(request.start),
-            self.costmap.value_at(*request.start),
+            ", ".join(_rounded(point) for point in request.waypoints),
+            ", ".join(str(self.costmap.value_at(*point)) for point in request.waypoints),
             degrees(request.start_headings),
-            _rounded(request.goal),
-            self.costmap.value_at(*request.goal),
             degrees(request.goal_headings),
             len(request.lanes),
             self.vehicle,
@@ -256,14 +289,15 @@ class _Search:
         self.request = request
         self.radius = vehicle.turning_radius
 
-        (start_x, start_z), (goal_x, goal_z) = request.start, request.goal
+        xs = [x for x, _ in request.waypoints]
+        zs = [z for _, z in request.waypoints]
         margin = max(margin, 2 * self.radius + 10)
         half_width, half_height = costmap.width / 2, costmap.height / 2
         bounds = (
-            max(0, math.floor(min(start_x, goal_x) - margin + half_width)),
-            max(0, math.floor(min(start_z, goal_z) - margin + half_height)),
-            min(costmap.width, math.ceil(max(start_x, goal_x) + margin + half_width)),
-            min(costmap.height, math.ceil(max(start_z, goal_z) + margin + half_height)),
+            max(0, math.floor(min(xs) - margin + half_width)),
+            max(0, math.floor(min(zs) - margin + half_height)),
+            min(costmap.width, math.ceil(max(xs) + margin + half_width)),
+            min(costmap.height, math.ceil(max(zs) + margin + half_height)),
         )
         self.covers_map = bounds == (0, 0, costmap.width, costmap.height)
         self.grid = Grid(costmap, bounds, vehicle.width / 2 + vehicle.margin)
@@ -275,39 +309,45 @@ class _Search:
         # How the search ended and how many states it looked at, for the debug log.
         self.outcome = "not run"
         self.expansions = 0
+        self._cell_costs: list[float] | None = None
 
-    def run(self, cancelled) -> list[Point] | None:
+    def run(self, cancelled) -> Route | None:
         request = self.request
-        goal_x, goal_z = request.goal
-        self.to_goal = self._costs_to_goal()
-        start_index = self.grid.index(*request.start)
+        waypoints = request.waypoints
+        legs = len(waypoints) - 1
+        self.to_goal = [self._costs_to(waypoint) for waypoint in waypoints[1:]]
+        # Cheapest cost over the cells from the end of each leg to the goal.
+        self.remaining = [0.0] * legs
 
-        if start_index is None or self.to_goal[start_index] == math.inf:
-            reachable = sum(1 for cost in self.to_goal if cost < math.inf)
-            self.outcome = (
-                f"no way over the cells from start to goal; {reachable} m² can reach the goal "
-                f"of {len(self.to_goal)} m² in the window"
-            )
+        for leg in range(legs - 2, -1, -1):
+            self.remaining[leg] = self._estimate(waypoints[leg + 1], leg + 1)
+
+        if self._estimate(request.start, 0) == math.inf:
+            self.outcome = "no way over the cells through the waypoints"
             return None
 
         open_list = []
         best: dict[tuple, float] = {}
         counter = 0
 
-        # Without given headings, straight towards the goal is tried too.
-        towards_goal = math.atan2(goal_z - request.start[1], goal_x - request.start[0])
+        # Without given headings, straight towards the next waypoint is tried too.
+        next_x, next_z = waypoints[1]
+        towards = math.atan2(next_z - request.start[1], next_x - request.start[0])
 
-        for heading in request.start_headings or (towards_goal, *ANY_HEADINGS):
-            node = _Node((*request.start, heading), 0.0, None, [request.start])
-            heapq.heappush(open_list, (self._estimate(node.pose), counter, node))
+        for heading in request.start_headings or (towards, *ANY_HEADINGS):
+            node = _Node((*request.start, heading), 0.0, None, [request.start], at_waypoint=True)
+            heapq.heappush(open_list, (self._estimate(request.start, 0), counter, node))
             counter += 1
 
         dubins_distance = DUBINS_RADII * self.radius + DUBINS_EXTRA
         expansions = 0
+        max_expansions = MAX_EXPANSIONS * legs
+        # Cheapest end at the goal seen so far, used when the steps run out.
+        best_end: _Node | None = None
 
-        while open_list and expansions < MAX_EXPANSIONS:
+        while open_list and expansions < max_expansions:
             _, _, node = heapq.heappop(open_list)
-            key = self._key(node.pose)
+            key = self._key(node.pose, node.leg)
 
             if best.get(key, math.inf) < node.cost:
                 continue
@@ -319,61 +359,105 @@ class _Search:
                 self.outcome = "cancelled"
                 return None
 
+            if node.leg == legs:
+                return self._found(node, "route found")
+
             x, z, _ = node.pose
+            target_x, target_z = waypoints[node.leg + 1]
+            children = [self._step(node, curvature) for curvature in self.curvatures]
 
-            if math.hypot(goal_x - x, goal_z - z) < dubins_distance:
-                end = self._dubins_end(node)
+            if math.hypot(target_x - x, target_z - z) < dubins_distance:
+                children.append(self._dubins_end(node))
 
-                if end is not None:
-                    points = _route_points(end)
-                    length = sum(math.dist(a, b) for a, b in zip(points, points[1:], strict=False))
-                    self.outcome = f"route found, {length:.0f} m, cost {end.cost:.0f}"
-                    return points
-
-            for curvature in self.curvatures:
-                child = self._step(node, curvature)
-
+            for child in children:
                 if child is None:
                     continue
 
-                child_key = self._key(child.pose)
+                child_key = self._key(child.pose, child.leg)
+
+                if child.leg == legs and (best_end is None or child.cost < best_end.cost):
+                    best_end = child
 
                 if child.cost < best.get(child_key, math.inf):
                     best[child_key] = child.cost
-                    heapq.heappush(
-                        open_list, (child.cost + self._estimate(child.pose), counter, child)
-                    )
+                    estimate = self._estimate(child.pose, child.leg)
+                    heapq.heappush(open_list, (child.cost + estimate, counter, child))
                     counter += 1
 
+        if best_end is not None:
+            return self._found(best_end, f"cheapest route after {max_expansions} steps")
+
         self.outcome = (
-            f"gave up after {MAX_EXPANSIONS} steps"
+            f"gave up after {max_expansions} steps"
             if open_list
             else "every drivable pose tried (turning radius or safety distance too large?)"
         )
         return None
 
-    def _key(self, pose: Pose) -> tuple[int, int, int]:
+    def _found(self, end: _Node, outcome: str) -> Route:
+        route = self._route(end)
+        length = sum(math.dist(a, b) for a, b in pairwise(route.points))
+        crossing = "" if route.is_clear else ", crosses blocked cells"
+        self.outcome = f"{outcome}, {length:.0f} m, cost {end.cost:.0f}{crossing}"
+
+        return route
+
+    def _route(self, end: _Node) -> Route:
+        nodes = []
+        node = end
+
+        while node is not None:
+            nodes.append(node)
+            node = node.parent
+
+        points: list[Point] = []
+        waypoint_indices = []
+
+        for node in reversed(nodes):
+            points += node.points
+
+            if node.at_waypoint:
+                waypoint_indices.append(len(points) - 1)
+
+        return Route(points, waypoint_indices, [self._is_blocked(point) for point in points])
+
+    def _is_blocked(self, point: Point) -> bool:
+        index = self.grid.index(*point)
+
+        return (
+            index is not None
+            and self.grid.cells[index] >= BLOCKED_VALUE
+            and not self._in_free_zone(*point)
+        )
+
+    def _key(self, pose: Pose, leg: int) -> tuple[int, int, int, int]:
         x, z, heading = pose
         heading_bin = round(heading / math.tau * HEADING_BINS) % HEADING_BINS
 
-        return math.floor(x / STATE_CELL), math.floor(z / STATE_CELL), heading_bin
+        return math.floor(x / STATE_CELL), math.floor(z / STATE_CELL), heading_bin, leg
 
-    def _estimate(self, pose: Pose) -> float:
-        index = self.grid.index(pose[0], pose[1])
+    def _estimate(self, position, leg: int) -> float:
+        if leg == len(self.to_goal):
+            return 0.0
 
-        return math.inf if index is None else self.to_goal[index]
+        index = self.grid.index(position[0], position[1])
 
-    def _costs_to_goal(self) -> list[float]:
-        """Cheapest cost from each cell to the goal over the cells, ignoring the turning radius.
+        return math.inf if index is None else self.to_goal[leg][index] + self.remaining[leg]
+
+    def _costs_to(self, target: Point) -> list[float]:
+        """Cheapest cost from each cell to the target over the cells, ignoring the turning radius.
         Dijkstra over the 8 neighbours of each cell; planned lanes count in the driving direction
         of each step."""
 
         grid = self.grid
         columns = grid.columns
         lanes = self.lanes
-        cell_costs = [self._ground_cost(index) for index in range(len(grid.cells))]
+        if self._cell_costs is None:
+            self._cell_costs = [self._ground_cost(index) for index in range(len(grid.cells))]
+
+        cell_costs = self._cell_costs
         costs = [math.inf] * len(cell_costs)
-        goal = grid.index(*self.request.goal)
+        goal = grid.index(*target)
 
         if goal is None:
             return costs
@@ -437,7 +521,7 @@ class _Search:
             return FREE_ZONE_COST if value >= BLOCKED_VALUE else COST_TABLE[value]
 
         if value >= BLOCKED_VALUE:
-            return math.inf
+            return OBSTACLE_COST
 
         return COST_TABLE[value] + NEAR_BLOCKED_COST
 
@@ -481,7 +565,7 @@ class _Search:
         if curvature:
             cost += TURN_COST * STEP
 
-        return _Node(pose, cost, node, points, curvature)
+        return _Node(pose, cost, node, points, curvature, node.leg)
 
     def _piece_cost(self, pose: Pose) -> float | None:
         """Cost per metre at the pose, None if it cannot be driven on."""
@@ -505,10 +589,7 @@ class _Search:
     def _in_free_zone(self, x: float, z: float) -> bool:
         radius = self.request.free_radius
 
-        if any(
-            math.hypot(x - px, z - pz) <= radius
-            for px, pz in (self.request.start, self.request.goal)
-        ):
+        if any(math.hypot(x - px, z - pz) <= radius for px, pz in self.request.waypoints):
             return True
 
         return any(
@@ -517,11 +598,18 @@ class _Search:
         )
 
     def _dubins_end(self, node: _Node) -> _Node | None:
-        """The goal reached from the node by a Dubins path that can be driven, if there is one."""
+        """The next waypoint reached from the node by a Dubins path, if there is one. The given
+        goal headings count only at the goal."""
 
-        goal_x, goal_z = self.request.goal
+        leg = node.leg + 1
+        goal_x, goal_z = self.request.waypoints[leg]
         x, z, _ = node.pose
-        headings = self.request.goal_headings or (math.atan2(goal_z - z, goal_x - x),)
+        headings = None
+
+        if leg == len(self.request.waypoints) - 1:
+            headings = self.request.goal_headings
+
+        headings = headings or (math.atan2(goal_z - z, goal_x - x),)
         best = None
 
         for heading in headings:
@@ -550,7 +638,7 @@ class _Search:
 
         _, cost, points, heading = best
 
-        return _Node((goal_x, goal_z, heading), cost, node, points)
+        return _Node((goal_x, goal_z, heading), cost, node, points, leg=leg, at_waypoint=True)
 
 
 def _free_corridors(request: RouteRequest) -> list[Lane]:
@@ -612,17 +700,6 @@ def _distance_to_segment(point: Point, a: Point, b: Point) -> float:
         t = min(max(t, 0.0), 1.0)
 
     return math.hypot(point[0] - a[0] - t * abx, point[1] - a[1] - t * abz)
-
-
-def _route_points(end: _Node) -> list[Point]:
-    pieces = []
-    node = end
-
-    while node is not None:
-        pieces.append(node.points)
-        node = node.parent
-
-    return [point for piece in reversed(pieces) for point in piece]
 
 
 def _rounded(point: Point) -> str:

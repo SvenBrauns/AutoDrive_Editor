@@ -6,7 +6,6 @@ from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QMessageBox, QPushBut
 
 from autodrive_editor.editing.commands.edit_command import DataChange
 from autodrive_editor.editing.edit_history import EditHistory
-from autodrive_editor.editing.operations.find_route import FindRouteOperation
 from autodrive_editor.editing.plan_changes import PlanChanges
 from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData
@@ -22,8 +21,7 @@ BAR_STYLE = (
 
 class PlanningController(QObject):
     """Planning mode: edits go into a plan that is applied as one undo step or discarded.
-    Shows a bar above the map while planning and highlights the nodes the plan changed. Find
-    route works only while planning."""
+    Shows a bar above the map while planning and highlights the nodes the plan changed."""
 
     def __init__(
         self,
@@ -31,7 +29,6 @@ class PlanningController(QObject):
         edit_history: EditHistory,
         scene_renderer: SceneRenderer,
         autodrive_data_provider: Callable[[], AutoDriveData | None],
-        find_route_operation: FindRouteOperation,
     ):
         super().__init__(window)
 
@@ -51,16 +48,6 @@ class PlanningController(QObject):
         self.action.setEnabled(False)
         self.action.triggered.connect(self.toggle)
 
-        self.find_route_operation = find_route_operation
-        self.find_route_action = QAction(tr("Find route"), window)
-        self.find_route_action.setShortcut(QKeySequence("Ctrl+R"))
-        self.find_route_action.setStatusTip(
-            tr("Builds a drivable route from one selected node to the other, the one clicked last")
-        )
-        self.find_route_action.setEnabled(False)
-        self.find_route_action.triggered.connect(find_route_operation.find_route)
-        find_route_operation.searching_changed.connect(self._update_find_route)
-
         self._create_bar()
 
         edit_history.planning_changed.connect(self._handle_planning_changed)
@@ -72,8 +59,6 @@ class PlanningController(QObject):
         self.bar.setStyleSheet(BAR_STYLE)
 
         self.bar_label = QLabel(self.bar)
-        self.find_route_button = QPushButton(tr("Find route"), self.bar)
-        self.find_route_button.clicked.connect(self.find_route_action.trigger)
         self.apply_button = QPushButton(tr("Apply plan"), self.bar)
         self.apply_button.clicked.connect(self.edit_history.apply_plan)
         self.discard_button = QPushButton(tr("Discard plan"), self.bar)
@@ -82,7 +67,6 @@ class PlanningController(QObject):
         layout = QHBoxLayout(self.bar)
         layout.setContentsMargins(8, 4, 8, 4)
         layout.addWidget(self.bar_label, 1)
-        layout.addWidget(self.find_route_button)
         layout.addWidget(self.apply_button)
         layout.addWidget(self.discard_button)
 
@@ -151,12 +135,6 @@ class PlanningController(QObject):
             self.scene_renderer.set_plan_node_ids(())
 
         self._update_bar()
-        self._update_find_route()
-
-    def _update_find_route(self, _searching=None):
-        enabled = self.edit_history.is_planning and not self.find_route_operation.is_searching
-        self.find_route_action.setEnabled(enabled)
-        self.find_route_button.setEnabled(enabled)
 
     def _handle_data_changed(self, data_change: DataChange):
         if self.changes is None:

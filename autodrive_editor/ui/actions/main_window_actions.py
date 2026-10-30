@@ -98,7 +98,7 @@ class MainWindowActions:
             (
                 tr("Edit"),
                 ("undo", "redo", "copy", "cut", "paste", "paste_at_original")
-                + ("delete_selection", "grid_snap", "planning_mode", "find_route"),
+                + ("delete_selection", "grid_snap", "planning_mode"),
             ),
             (
                 tr("View"),
@@ -354,7 +354,6 @@ class MainWindowActions:
         self._create_map_scale_actions()
 
         self.planning_mode_action = self.window.planning.action
-        self.find_route_action = self.window.planning.find_route_action
 
     def _set_debug_log(self, enabled: bool):
         self.window.settings.set_debug_log(enabled)
@@ -542,7 +541,6 @@ class MainWindowActions:
         edit_menu.addSeparator()
 
         edit_menu.addAction(self.planning_mode_action)
-        edit_menu.addAction(self.find_route_action)
 
         view_menu = menu_bar.addMenu(tr("View"))
 

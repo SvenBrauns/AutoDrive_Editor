@@ -86,6 +86,7 @@ from autodrive_editor.ui.theme import apply_theme
 from autodrive_editor.ui.tools.connect_nodes_tool import ConnectNodesTool
 from autodrive_editor.ui.tools.create_node_tool import CreateNodeTool
 from autodrive_editor.ui.tools.delete_nodes_tool import DeleteNodesTool
+from autodrive_editor.ui.tools.find_route_tool import FindRouteTool
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 from autodrive_editor.ui.tools.measure_tool import MeasureTool
 from autodrive_editor.ui.tools.move_nodes_tool import MoveNodesTool
@@ -587,7 +588,6 @@ class MainWindow(QMainWindow):
             self.edit_history,
             self.scene_renderer,
             self._get_autodrive_data,
-            self.find_route_operation,
         )
         self.files.confirm_end_plan = self.planning.confirm_end_plan
 
@@ -730,6 +730,18 @@ class MainWindow(QMainWindow):
                     z_value=display_style.selected_node_z + 1,
                 ),
             )
+
+        self.view.register_tool(
+            InteractionMode.FIND_ROUTE,
+            FindRouteTool(
+                self.view,
+                self.find_route_operation,
+                self.move_nodes_operation,
+                node_at=self.selection_coordinator.get_node_at,
+                color_provider=lambda: self.scene_renderer.display_style.regular_connection_color,
+                z_value=display_style.selected_node_z + 1,
+            ),
+        )
 
     def _create_tool_options(self):
         """The options behind the arrows of the Rotate and path tool buttons."""

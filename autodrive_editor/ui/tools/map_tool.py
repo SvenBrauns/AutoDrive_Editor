@@ -73,8 +73,8 @@ class DragGesture:
 class MapTool:
     """Mouse handling of one map tool.
 
-    MapView forwards left and right mouse buttons, hover moves and Esc
-    to the active tool. Zooming with the wheel and rotating with the
+    MapView forwards left and right mouse buttons, hover moves, Esc, Enter
+    and Backspace to the active tool. Zooming with the wheel and rotating with the
     middle button work the same for every tool and stay in MapView.
 
     The default behaviour pans the map by left dragging. Tools override
@@ -128,6 +128,11 @@ class MapTool:
 
     def confirm(self) -> bool:
         """Called on Enter. Returns True if something was confirmed."""
+
+        return False
+
+    def remove_last(self) -> bool:
+        """Called on Backspace. Returns True if something was removed."""
 
         return False
 

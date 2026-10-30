@@ -16,7 +16,9 @@ VEHICLE = Vehicle(turning_radius=8, width=3, margin=0.5)
 
 
 def find(costmap, request):
-    return RouteFinder(costmap, VEHICLE).find(request)
+    route = RouteFinder(costmap, VEHICLE).find(request)
+
+    return None if route is None else route.points
 
 
 def max_turn(points):
@@ -33,7 +35,7 @@ def max_turn(points):
 
 
 def test_straight_route_on_open_ground():
-    route = find(make_costmap(), RouteRequest((-40, 0), (40, 0), (0.0,), (0.0,)))
+    route = find(make_costmap(), RouteRequest(((-40, 0), (40, 0)), (0.0,), (0.0,)))
 
     assert route[0] == (-40, 0)
     assert route[-1] == pytest.approx((40, 0))
@@ -42,7 +44,7 @@ def test_straight_route_on_open_ground():
 
 def test_route_goes_around_a_wall_and_keeps_its_distance():
     wall = (-5, -60, 5, 40)
-    route = find(make_costmap(blocked=[wall]), RouteRequest((-30, 0), (30, 0), (0.0,), (0.0,)))
+    route = find(make_costmap(blocked=[wall]), RouteRequest(((-30, 0), (30, 0)), (0.0,), (0.0,)))
 
     assert route is not None
     # Half the width plus the margin (2 m) away from the wall, less up to about a cell, as the
@@ -53,22 +55,58 @@ def test_route_goes_around_a_wall_and_keeps_its_distance():
 
 
 def test_route_turns_no_tighter_than_the_radius():
-    route = find(make_costmap(), RouteRequest((0, 0), (0, 20), (0.0,), (math.pi,)))
+    route = find(make_costmap(), RouteRequest(((0, 0), (0, 20)), (0.0,), (math.pi,)))
 
     assert route[-1] == pytest.approx((0, 20))
     assert max_turn(route) <= 1 / VEHICLE.turning_radius + 0.02
 
 
-def test_no_route_into_a_closed_area():
-    walls = [(20, -20, 22, 20), (40, -20, 42, 20), (20, -22, 42, -20), (20, 20, 42, 22)]
-    request = RouteRequest((-40, 0), (31, 0))
+CLOSED_AREA = [(20, -20, 22, 20), (40, -20, 42, 20), (20, -22, 42, -20), (20, 20, 42, 22)]
 
-    assert find(make_costmap(blocked=walls), request) is None
+
+def test_route_into_a_closed_area_crosses_the_wall_and_marks_it():
+    request = RouteRequest(((-40, 0), (31, 0)))
+    route = RouteFinder(make_costmap(blocked=CLOSED_AREA), VEHICLE).find(request)
+
+    assert not route.is_clear
+    crossing = [
+        point for point, blocked in zip(route.points, route.blocked, strict=True) if blocked
+    ]
+    assert crossing
+    assert all(20 <= x < 22 for x, _ in crossing)
+
+
+def test_route_around_an_obstacle_is_clear():
+    wall = (-5, -60, 5, 40)
+    request = RouteRequest(((-30, 0), (30, 0)), (0.0,), (0.0,))
+
+    assert RouteFinder(make_costmap(blocked=[wall]), VEHICLE).find(request).is_clear
+
+
+def test_route_passes_the_waypoints_in_order():
+    waypoints = ((-40, 0), (0, 30), (40, 0))
+    route = RouteFinder(make_costmap(), VEHICLE).find(RouteRequest(waypoints, (0.0,)))
+
+    for index, waypoint in zip(route.waypoint_indices, waypoints, strict=True):
+        assert route.points[index] == pytest.approx(waypoint)
+    assert route.waypoint_indices == sorted(route.waypoint_indices)
+    assert max_turn(route.points) <= 1 / VEHICLE.turning_radius + 0.02
+
+
+def test_heading_at_a_waypoint_suits_the_next_leg():
+    # A dead-end pocket open to the east with room for one turn: the route has to turn while
+    # passing the waypoint to get out again.
+    pocket = [(-20, -27, 30, -25), (-20, 25, 30, 27), (-22, -27, -20, 27)]
+    waypoints = ((60, 0), (0, 0), (60, 40))
+    request = RouteRequest(waypoints, (math.pi,))
+    route = RouteFinder(make_costmap(blocked=pocket), VEHICLE).find(request)
+
+    assert route.is_clear
 
 
 def test_start_under_a_roof_can_be_left():
     roof = (-50, -5, -30, 5)
-    route = find(make_costmap(blocked=[roof]), RouteRequest((-36, 0), (30, 0), (0.0,), (0.0,)))
+    route = find(make_costmap(blocked=[roof]), RouteRequest(((-36, 0), (30, 0)), (0.0,), (0.0,)))
 
     assert route is not None
 
@@ -82,14 +120,14 @@ def test_roads_are_preferred_over_grass():
             cells[(z + 100) * 200 + x + 100] = 51
     costmap = type(costmap)(200, 200, bytes(cells))
 
-    route = find(costmap, RouteRequest((-60, 0), (60, 0), (0.0,), (0.0,)))
+    route = find(costmap, RouteRequest(((-60, 0), (60, 0)), (0.0,), (0.0,)))
 
     assert max(z for _, z in route) > 17
 
 
 def test_planned_lanes_against_the_direction_are_avoided_where_there_is_room():
     lane = ((60.0, 0.0), (-60.0, 0.0))
-    request = RouteRequest((-60, 0), (60, 0), (0.0,), (0.0,), lanes=(lane,))
+    request = RouteRequest(((-60, 0), (60, 0)), (0.0,), (0.0,), lanes=(lane,))
     route = find(make_costmap(), request)
 
     # The way back keeps beside the lane in the middle part.
@@ -98,7 +136,7 @@ def test_planned_lanes_against_the_direction_are_avoided_where_there_is_room():
 
 def test_planned_lanes_in_the_direction_are_followed():
     lane = ((-60.0, 5.0), (60.0, 5.0))
-    request = RouteRequest((-60, 0), (60, 0), (0.0,), (0.0,), lanes=(lane,))
+    request = RouteRequest(((-60, 0), (60, 0)), (0.0,), (0.0,), lanes=(lane,))
     route = find(make_costmap(), request)
 
     on_lane = [point for point in route if abs(point[1] - 5) < 1]
@@ -125,23 +163,21 @@ def test_cost_by_kind_of_ground():
 def test_route_passes_a_gate_narrower_than_the_safety_distance():
     # A fence across the map with a 3 m opening, like a 4 m gate on the map.
     fence = [(-1, -100, 1, -1), (-1, 2, 1, 100)]
-    route = find(make_costmap(blocked=fence), RouteRequest((-30, 0), (30, 0), (0.0,), (0.0,)))
+    route = find(make_costmap(blocked=fence), RouteRequest(((-30, 0), (30, 0)), (0.0,), (0.0,)))
 
     assert route is not None
 
 
 def test_without_headings_the_route_runs_straight():
-    route = find(make_costmap(), RouteRequest((0, 0), (30, 17)))
+    route = find(make_costmap(), RouteRequest(((0, 0), (30, 17))))
 
     # On the line from start to goal.
     assert all(abs(x * 17 - z * 30) / math.hypot(30, 17) < 0.3 for x, z in route)
 
 
-def test_debug_log_tells_why_there_is_no_route(caplog):
-    walls = [(20, -20, 22, 20), (40, -20, 42, 20), (20, -22, 42, -20), (20, 20, 42, 22)]
-
+def test_debug_log_tells_that_the_route_crosses_blocked_cells(caplog):
     with caplog.at_level("DEBUG", logger="autodrive_editor.editing.route_finder"):
-        find(make_costmap(blocked=walls), RouteRequest((-40, 0), (31, 0)))
+        find(make_costmap(blocked=CLOSED_AREA), RouteRequest(((-40, 0), (31, 0))))
 
-    assert "Route search from (-40.0, 0.0)" in caplog.text
-    assert "no way over the cells from start to goal" in caplog.text
+    assert "Route search through (-40.0, 0.0), (31.0, 0.0)" in caplog.text
+    assert "crosses blocked cells" in caplog.text

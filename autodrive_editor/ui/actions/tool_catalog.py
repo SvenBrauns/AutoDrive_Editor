@@ -240,6 +240,17 @@ ARC_TOOL = ToolDefinition(
     "K",
 )
 
+FIND_ROUTE_TOOL = ToolDefinition(
+    InteractionMode.FIND_ROUTE,
+    tr("Find route"),
+    tr(
+        "Click nodes or free ground as waypoints: a drivable route through them is shown, "
+        "red where it crosses obstacles. Enter adds it to the plan"
+    ),
+    "find_route",
+    "F",
+)
+
 ADD_MARKER_TOOL = ToolDefinition(
     InteractionMode.ADD_MARKER,
     tr("Add marker"),
@@ -302,7 +313,7 @@ TOOL_GROUPS = (
         LINES_GROUP,
         (
             (LINE_TOOL, BEZIER_TOOL),
-            (ARC_TOOL, None),
+            (ARC_TOOL, FIND_ROUTE_TOOL),
         ),
     ),
     (

@@ -290,6 +290,10 @@ class MapView(QGraphicsView):
             event.accept()
             return
 
+        if event.key() == Qt.Key_Backspace and self.active_tool.remove_last():
+            event.accept()
+            return
+
         super().keyPressEvent(event)
 
     def _switch_tool(self, change_state):
