@@ -52,6 +52,7 @@ def test_stop_at_the_ai_node_heads_along_its_z_axis(tmp_path):
     assert stop.position == pytest.approx((103, 80, 207))
     # +x is right on the map.
     assert stop.heading == pytest.approx(90)
+    assert stop.building_position == pytest.approx((100, 200))
     assert stop.from_ai_node
     assert (stop.kind, stop.fill_types) == (StopKind.SELL, ("WHEAT", "BARLEY"))
     assert (stop.name, stop.unique_id) == ("Mill", "u")

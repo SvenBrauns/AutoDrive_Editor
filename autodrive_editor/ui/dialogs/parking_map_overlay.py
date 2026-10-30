@@ -1,11 +1,15 @@
 from PySide6.QtCore import QPointF, QRectF, Qt
-from PySide6.QtGui import QColor, QPainter, QPolygonF
+from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
 from PySide6.QtWidgets import QGraphicsItem
 
 from autodrive_editor.editing.parking_layout import ParkingNetwork, ShedFrame
 from autodrive_editor.rendering.display_style import DisplayStyle
 from autodrive_editor.ui.dialogs.parking_painting import MARKER_COLOR, paint_connection
 from autodrive_editor.ui.dialogs.parking_preview import ParkingPreview
+
+# Size of a handle ring and its line, in pixels.
+HANDLE_PX = 14.0
+HANDLE_PEN_PX = 2.0
 
 
 class ParkingMapOverlay(QGraphicsItem):
@@ -23,6 +27,8 @@ class ParkingMapOverlay(QGraphicsItem):
         self.display_style = display_style
         self.network: ParkingNetwork | None = None
         self.points: list[QPointF] = []
+        # Grab points drawn as rings, e.g. to turn station lanes.
+        self.handles: list[QPointF] = []
 
         self.setZValue(self.Z_VALUE)
         self.setAcceptedMouseButtons(Qt.NoButton)
@@ -30,18 +36,27 @@ class ParkingMapOverlay(QGraphicsItem):
     def set_plan(self, frame: ShedFrame, network: ParkingNetwork | None):
         """Shows the network in the frame's shed; None hides it."""
 
+        points = [] if network is None else [frame.to_map(*p) for p in network.points]
+        self.set_network(network, points)
+
+    def set_network(self, network: ParkingNetwork | None, points: list[tuple[float, float]]):
+        """Shows the network with its nodes at the map points (x, z); None hides it."""
+
         self.prepareGeometryChange()
         self.network = network
-        self.points = (
-            [] if network is None else [QPointF(*frame.to_map(*p)) for p in network.points]
-        )
+        self.points = [QPointF(*point) for point in points] if network is not None else []
+        self.update()
+
+    def set_handles(self, points: list[tuple[float, float]]):
+        self.prepareGeometryChange()
+        self.handles = [QPointF(*point) for point in points]
         self.update()
 
     def boundingRect(self) -> QRectF:
-        if not self.points:
+        if not self.points and not self.handles:
             return QRectF()
 
-        bounds = QPolygonF(self.points).boundingRect()
+        bounds = QPolygonF(self.points + self.handles).boundingRect()
 
         return bounds.adjusted(-self.MARGIN, -self.MARGIN, self.MARGIN, self.MARGIN)
 
@@ -73,5 +88,11 @@ class ParkingMapOverlay(QGraphicsItem):
         for index, _ in self.network.markers:
             size = ParkingPreview.MARKER_PX / 2
             painter.drawEllipse(points[index], size, size)
+
+        painter.setBrush(Qt.NoBrush)
+        painter.setPen(QPen(MARKER_COLOR, HANDLE_PEN_PX))
+
+        for handle in self.handles:
+            painter.drawEllipse(to_screen.map(handle), HANDLE_PX / 2, HANDLE_PX / 2)
 
         painter.restore()

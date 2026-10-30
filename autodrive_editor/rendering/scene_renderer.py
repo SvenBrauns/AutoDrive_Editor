@@ -4,6 +4,7 @@ from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QPainterPath, QPolygonF
 from PySide6.QtWidgets import QGraphicsScene
 
+from autodrive_editor.editing.station_layout import building_stops_at, default_heading
 from autodrive_editor.file_io.navigation_costmap import NavigationCostmap
 from autodrive_editor.file_io.savegame_buildings import BuildingGroup, SavegameBuildings
 from autodrive_editor.file_io.savegame_sheds import IndoorArea
@@ -66,6 +67,8 @@ class SceneRenderer:
         self.buildings = SavegameBuildings()
         # The drivability map of the savegame.
         self.costmap: NavigationCostmap | None = None
+        # Default lane heading of each stop, from the drivability map (see station_layout).
+        self.stop_headings: dict[Stop, float] = {}
         # Groups the user moved building types to, by building file.
         self.building_groups: dict[str, BuildingGroup] = {}
         # Building files that are not shown.
@@ -336,6 +339,23 @@ class SceneRenderer:
 
         return None
 
+    def get_station_stops_at(self, x: float, z: float, tolerance: float) -> list[Stop]:
+        """All stops of the station building picked at the scene point, while stations are
+        shown."""
+
+        if not self.visibility.stations:
+            return []
+
+        return building_stops_at(self.shown_stops, x, z, tolerance)
+
+    def get_stops_in_path(self, path: QPainterPath) -> list[Stop]:
+        """The shown stops inside the scene path, while stations are shown."""
+
+        if not self.visibility.stations:
+            return []
+
+        return [stop for stop in self.shown_stops if path.contains(QPointF(*stop.position[::2]))]
+
     def get_connection_at(self, x: float, z: float, tolerance: float) -> ConnectionData | None:
         """The connection closest to the scene point, if it is within
         tolerance (in scene units). Hidden types count only when hidden items are selectable."""
@@ -420,10 +440,13 @@ class SceneRenderer:
 
     def set_buildings(self, buildings: SavegameBuildings):
         self.buildings = buildings
+        self._update_stop_headings()
         self._refresh_buildings()
 
     def set_costmap(self, costmap: NavigationCostmap | None):
         self.costmap = costmap
+        self._update_stop_headings()
+        self._refresh_buildings()
 
         if self.drivability_layer is not None:
             self.drivability_layer.set_costmap(costmap)
@@ -435,12 +458,17 @@ class SceneRenderer:
         self.hidden_building_types = set(hidden)
         self._refresh_buildings()
 
+    def _update_stop_headings(self):
+        self.stop_headings = {
+            stop: default_heading(stop, self.costmap) for stop in self.buildings.stops
+        }
+
     def _refresh_buildings(self):
         if self.shed_layer is not None:
             self.shed_layer.set_areas(self.shown_shed_areas)
 
         if self.station_layer is not None:
-            self.station_layer.set_stops(self.shown_stops)
+            self.station_layer.set_stops(self.shown_stops, self.stop_headings)
 
     def set_display_style(self, display_style: DisplayStyle):
         if not isinstance(display_style, DisplayStyle):

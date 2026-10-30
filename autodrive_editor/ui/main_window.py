@@ -32,6 +32,7 @@ from autodrive_editor.editing.operations.node_types import NodeTypeOperation
 from autodrive_editor.editing.operations.parking_spots import ParkingSpotOperation
 from autodrive_editor.editing.operations.reverse_direction import ReverseDirectionOperation
 from autodrive_editor.editing.operations.rotate_selection import RotateSelectionOperation
+from autodrive_editor.editing.operations.stations import StationOperation
 from autodrive_editor.editing.path_shapes import PathShape
 from autodrive_editor.error_log import set_debug_logging
 from autodrive_editor.file_io.autodrive_xml import ConfigFormat
@@ -68,6 +69,7 @@ from autodrive_editor.ui.dialogs.node_position_dialog import NodePositionDialog
 from autodrive_editor.ui.dialogs.parking_map_overlay import ParkingMapOverlay
 from autodrive_editor.ui.dialogs.parking_spot_dialog import ParkingSpotDialog
 from autodrive_editor.ui.dialogs.settings_dialog import SettingsDialog
+from autodrive_editor.ui.dialogs.station_dialog import StationDialog
 from autodrive_editor.ui.file_controller import FileController
 from autodrive_editor.ui.map_import_controller import MapImportController
 from autodrive_editor.ui.map_view.map_only_input import MapOnlyInput
@@ -93,6 +95,8 @@ from autodrive_editor.ui.tools.delete_nodes_tool import DeleteNodesTool
 from autodrive_editor.ui.tools.find_route_tool import FindRouteTool
 from autodrive_editor.ui.tools.generate_tool import GenerateTask, GenerateTool
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
+from autodrive_editor.ui.tools.lane_handle_tool import LaneHandleTool
+from autodrive_editor.ui.tools.map_tool import MapTool
 from autodrive_editor.ui.tools.measure_tool import MeasureTool
 from autodrive_editor.ui.tools.move_nodes_tool import MoveNodesTool
 from autodrive_editor.ui.tools.navigate_tool import NavigateTool
@@ -100,6 +104,7 @@ from autodrive_editor.ui.tools.node_click_tool import NodeClickTool
 from autodrive_editor.ui.tools.path_tool import PathTool
 from autodrive_editor.ui.tools.rotate_selection_tool import RotateSelectionTool
 from autodrive_editor.ui.tools.select_tool import SelectTool
+from autodrive_editor.ui.tools.station_pick_tool import StationPickTool
 from autodrive_editor.ui.tools.toggle_node_type_tool import ToggleNodeTypeTool
 from autodrive_editor.ui.update_controller import UpdateController
 
@@ -127,6 +132,8 @@ class MainWindow(QMainWindow):
 
     # How far from a connection line a click still hits it, in pixels.
     CONNECTION_CLICK_TOLERANCE = 6.0
+    # How close to a stop arrow a click picks its station, in pixels.
+    STOP_CLICK_TOLERANCE = 12.0
 
     # Zoom used when jumping to a marker from the marker list.
     FOCUS_MARKER_ZOOM = 2.0
@@ -333,15 +340,43 @@ class MainWindow(QMainWindow):
 
         return dialog.settings if accepted else None
 
-    def _run_beside_map(self, dialog: QDialog) -> bool:
+    def _ask_station_choices(self, stops, autodrive_data):
+        taken_names = {(marker.name, marker.group) for marker in autodrive_data.markers.values()}
+        headings = self.scene_renderer.stop_headings
+        dialog = StationDialog(
+            stops,
+            [headings.get(stop, stop.heading) for stop in stops],
+            taken_names,
+            list(autodrive_data.nodes.values()),
+            self.settings,
+            parent=self,
+        )
+        overlay = ParkingMapOverlay(self.scene_renderer.display_style)
+        dialog.plan_changed.connect(overlay.set_network)
+        dialog.plan_changed.connect(
+            lambda *_: overlay.set_handles([(x, z) for _, x, z, _, _ in dialog.handles()])
+        )
+        dialog._update()
+        self.scene.addItem(overlay)
+        handle_tool = LaneHandleTool(self.view, dialog.handles, dialog.set_heading)
+
+        try:
+            accepted = self._run_beside_map(dialog, handle_tool)
+        finally:
+            self.scene.removeItem(overlay)
+
+        return (dialog.choices, dialog.settings) if accepted else None
+
+    def _run_beside_map(self, dialog: QDialog, tool: MapTool | None = None) -> bool:
         """Runs the dialog without blocking the map: it can be moved, zoomed and rotated, but
-        nothing else in the window reacts until the dialog is closed."""
+        nothing else in the window reacts until the dialog is closed. tool, if given, handles
+        the mouse on the map instead of plain navigation."""
 
         loop = QEventLoop()
         dialog.finished.connect(loop.quit)
         input_filter = MapOnlyInput(self, self.view)
         QApplication.instance().installEventFilter(input_filter)
-        self.view.set_override_tool(NavigateTool(self.view))
+        self.view.set_override_tool(tool or NavigateTool(self.view))
 
         try:
             dialog.show()
@@ -497,6 +532,13 @@ class MainWindow(QMainWindow):
             parent=self,
         )
 
+        self.station_operation = StationOperation(
+            context,
+            # Looked up on each call, so tests can replace _ask_station_choices.
+            ask_choices=lambda stops, data: self._ask_station_choices(stops, data),
+            parent=self,
+        )
+
         self.reverse_direction_operation = ReverseDirectionOperation(
             context, connection_at=self._get_connection_at, parent=self
         )
@@ -535,6 +577,7 @@ class MainWindow(QMainWindow):
             self.clipboard_operation,
             self.node_position_operation,
             self.parking_spot_operation,
+            self.station_operation,
             self.reverse_direction_operation,
             self.marker_operation,
             self.network_check_operation,
@@ -745,9 +788,29 @@ class MainWindow(QMainWindow):
             is_target=lambda view_position: self._get_shed_at(view_position) is not None,
             hover_text=self._get_shed_name_at,
         )
+        station_tool = StationPickTool(
+            self.view,
+            lambda view_position: self.station_operation.create_for(
+                self._get_station_stops_at(view_position)
+            ),
+            lambda path: self.station_operation.create_for(
+                self.scene_renderer.get_stops_in_path(path)
+            ),
+            lambda: (
+                tr("Click a station or right-drag a box around several to create their lanes")
+                if self.scene_renderer.shown_stops
+                else tr("No stations shown: open a savegame or link one to the route")
+            ),
+            is_target=lambda view_position: bool(self._get_station_stops_at(view_position)),
+            hover_text=self._get_station_name_at,
+        )
         self.generate_tool = GenerateTool(
             self.view,
-            {GenerateTask.ROUTE: route_tool, GenerateTask.PARKING_SPOTS: parking_tool},
+            {
+                GenerateTask.ROUTE: route_tool,
+                GenerateTask.PARKING_SPOTS: parking_tool,
+                GenerateTask.STATIONS: station_tool,
+            },
             start_planning=lambda: self.planning.start_plan(),
         )
         self.view.register_tool(InteractionMode.GENERATE, self.generate_tool)
@@ -919,6 +982,19 @@ class MainWindow(QMainWindow):
         area = self._get_shed_at(view_position)
 
         return f"{area.name} – {area.category_label}" if area is not None else ""
+
+    def _get_station_stops_at(self, view_position):
+        scene_position = self.view.mapToScene(view_position)
+        tolerance = self.STOP_CLICK_TOLERANCE / self.view.zoom_level
+
+        return self.scene_renderer.get_station_stops_at(
+            scene_position.x(), scene_position.y(), tolerance
+        )
+
+    def _get_station_name_at(self, view_position) -> str:
+        stops = self._get_station_stops_at(view_position)
+
+        return stops[0].name.strip() if stops else ""
 
     def _get_connection_at(self, view_position):
         scene_position = self.view.mapToScene(view_position)

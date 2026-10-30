@@ -4,6 +4,7 @@ from game_folder_helpers import make_game_folder
 
 from autodrive_editor.editing.path_shapes import PathOptions
 from autodrive_editor.editing.route_finder import Vehicle
+from autodrive_editor.editing.station_layout import StationSettings
 from autodrive_editor.file_io.savegame_buildings import BuildingGroup
 from autodrive_editor.game.game_folder import GameFolder
 from autodrive_editor.game.game_installation import GameInstallation
@@ -345,6 +346,15 @@ def test_invalid_vehicle_values_fall_back_to_the_defaults():
     settings.set_vehicle(Vehicle(0, 3, 0.5))
 
     assert settings.vehicle == Vehicle()
+
+
+def test_station_settings_are_kept():
+    settings = AppSettings()
+    assert settings.station_settings == StationSettings()
+
+    settings.set_station_settings(StationSettings(8.0, 12.0, 4.0))
+
+    assert AppSettings().station_settings == StationSettings(8.0, 12.0, 4.0)
 
 
 def test_debug_log_is_off_until_turned_on():

@@ -95,6 +95,8 @@ class Stop:
     heading: float
     # False if the building has no AI node here and heading is the building's orientation.
     from_ai_node: bool
+    # Map position (x, z) of the building's origin.
+    building_position: tuple[float, float] = (0.0, 0.0)
 
 
 def local_stops(definition, scene: BuildingScene) -> list[LocalStop]:
@@ -147,6 +149,7 @@ def placed_stop(
     stop: LocalStop, placement: Transform, building_file: str, unique_id: str, name: str
 ) -> Stop:
     dx, _, dz = rotate(placement, stop.direction)
+    origin_x, _, origin_z = apply_transform(placement, (0.0, 0.0, 0.0))
 
     return Stop(
         building_file=building_file,
@@ -157,6 +160,7 @@ def placed_stop(
         position=apply_transform(placement, stop.position),
         heading=math.degrees(math.atan2(dx, -dz)) % 360,
         from_ai_node=stop.from_ai_node,
+        building_position=(origin_x, origin_z),
     )
 
 

@@ -17,11 +17,15 @@ class StationLayerItem(MapLayerItem):
         super().__init__(display_style, display_style.station_z)
 
         self.stops: list[Stop] = []
+        self.headings: dict[Stop, float] = {}
 
-    def set_stops(self, stops: list[Stop]):
+    def set_stops(self, stops: list[Stop], headings: dict[Stop, float] | None = None):
+        """headings: the arrow angle by stop, if not the stop's own heading."""
+
         self.prepareGeometryChange()
 
         self.stops = list(stops)
+        self.headings = dict(headings or {})
         self.bounds = QRectF()
 
         if self.stops:
@@ -66,5 +70,10 @@ class StationLayerItem(MapLayerItem):
             if not exposed.contains(x, z):
                 continue
 
-            transform = QTransform().translate(x, z).rotate(stop.heading).scale(length, length)
+            transform = (
+                QTransform()
+                .translate(x, z)
+                .rotate(self.headings.get(stop, stop.heading))
+                .scale(length, length)
+            )
             painter.drawPolygon(transform.map(ARROW))
