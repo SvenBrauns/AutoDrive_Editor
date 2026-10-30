@@ -2,15 +2,19 @@ import math
 from itertools import pairwise
 
 import pytest
-from costmap_helpers import GRASS, make_costmap
+from costmap_helpers import GRASS, ROAD, make_costmap
 
 from autodrive_editor.editing.route_finder import (
+    SWERVE_COST,
     Grid,
     RouteFinder,
     RouteRequest,
     Vehicle,
+    _Node,
+    _Search,
     cell_cost,
 )
+from autodrive_editor.file_io.navigation_costmap import NavigationCostmap
 
 VEHICLE = Vehicle(turning_radius=8, width=3, margin=0.5)
 
@@ -202,3 +206,69 @@ def test_a_waypoint_in_a_closed_area_is_still_passed_and_the_crossing_marked(mon
     for index, waypoint in zip(route.waypoint_indices, waypoints, strict=True):
         assert route.points[index] == pytest.approx(waypoint)
     assert not route.is_clear
+
+
+def swerves(points):
+    """Number of changes from a left to a right turn or back along the points."""
+
+    headings = [math.atan2(b[1] - a[1], b[0] - a[0]) for a, b in pairwise(points)]
+    turns = [math.remainder(h2 - h1, math.tau) for h1, h2 in pairwise(headings)]
+    signs = [turn > 0 for turn in turns if abs(turn) > 0.004]
+
+    return sum(1 for a, b in pairwise(signs) if a != b)
+
+
+def test_changing_from_a_left_to_a_right_turn_costs_extra():
+    search = _Search(RouteFinder(make_costmap(), VEHICLE), RouteRequest(((0, 0), (40, 0))), 60)
+    left = 1 / VEHICLE.turning_radius
+    node = _Node((0.0, 0.0, 0.0), 0.0, None, curvature=left)
+
+    swerved = search._step(node, -left).cost
+    kept = search._step(node, left).cost
+
+    assert swerved == pytest.approx(kept + SWERVE_COST)
+
+
+def test_diagonal_route_is_straightened():
+    request = RouteRequest(((-60, -40), (60, 40)), (0.0,), (0.0,))
+    route = find(make_costmap(), request)
+
+    # One turn left towards the goal, one right onto the goal heading, straight between.
+    assert swerves(route) <= 1
+    assert route[-1] == pytest.approx((60, 40))
+    assert max_turn(route) <= 1 / VEHICLE.turning_radius + 0.02
+
+
+def test_straightened_route_does_not_cut_a_road_corner_across_grass():
+    # An L-shaped road, 11 m wide, on grass.
+    cells = bytearray(make_costmap(value=GRASS).cells)
+    for x1, z1, x2, z2 in ((-80, -5, 6, 6), (-5, -5, 6, 80)):
+        for z in range(z1, z2):
+            for x in range(x1, x2):
+                cells[(z + 100) * 200 + x + 100] = ROAD
+    costmap = NavigationCostmap(200, 200, bytes(cells))
+
+    route = find(costmap, RouteRequest(((-70, 0), (0, 70)), (0.0,), (math.pi / 2,)))
+
+    assert all(costmap.value_at(x, z) == ROAD for x, z in route)
+
+
+def test_shortcut_does_not_move_onto_worse_ground():
+    # A detour on the road at z = 10 around a grass patch at z = 0, given a high cost so only
+    # the kind of ground can refuse the straight shortcut.
+    def shortcut(costmap):
+        search = _Search(RouteFinder(costmap, VEHICLE), RouteRequest(((-20, 0), (20, 0))), 60)
+        start = _Node((-20.0, 0.0, 0.0), 0.0, None, [(-20.0, 0.0)])
+        detour = [(-20.0, 10.0), (20.0, 10.0), (20.0, 0.0)]
+        end = _Node((20.0, 0.0, 0.0), 1000.0, start, detour)
+        worst = [search._worst_ground(node.points) for node in (start, end)]
+
+        return search._shortcut([start, end], [0.0, 60.0], worst, 0, 1)
+
+    grass = bytearray(make_costmap().cells)
+    for z in range(-2, 2):
+        for x in range(-2, 2):
+            grass[(z + 100) * 200 + x + 100] = GRASS
+
+    assert shortcut(make_costmap()) is not None
+    assert shortcut(NavigationCostmap(200, 200, bytes(grass))) is None

@@ -5,7 +5,10 @@ only and no tighter than the turning radius, so a vehicle with a trailer can dri
 Close to each waypoint it tries a Dubins path, which ends exactly at the waypoint, and at the goal
 heading at the last one. All waypoints are passed in one search, so the heading at a waypoint is
 the one that suits the next leg too. The search is guided by the cheapest way from each cell to the
-next waypoint, found on the cells alone first.
+next waypoint, found on the cells alone first. Changing from a left to a right turn costs extra,
+and afterwards stretches of the route are replaced by Dubins paths (straight where the poses line
+up) where these are no longer and no dearer, and lie on no worse ground and no closer to blocked
+cells, so routes do not swerve.
 
 - Blocked cells cost so much that routes go a long way round them. Where there is no way round,
   the route crosses them and the crossing points are marked, so the editor can show where nodes
@@ -28,7 +31,7 @@ import time
 from dataclasses import dataclass, field
 from itertools import pairwise
 
-from autodrive_editor.editing.dubins import Pose, advance, shortest_path
+from autodrive_editor.editing.dubins import TURNS, DubinsPath, Pose, advance, shortest_path
 from autodrive_editor.file_io.navigation_costmap import BLOCKED_VALUE, ROAD_VALUE, NavigationCostmap
 
 logger = logging.getLogger(__name__)
@@ -44,6 +47,9 @@ HEADING_BINS = 72
 STATE_CELL = 1.0
 # Extra cost per metre of turning, so straight pieces are preferred.
 TURN_COST = 0.1
+# Extra cost of changing from a left to a right turn or back, so routes do not swerve from side
+# to side.
+SWERVE_COST = 1.0
 # Cost factor of planned lanes driven in their direction and against it.
 SAME_LANE = 0.5
 AGAINST_LANE = 1.5
@@ -440,6 +446,9 @@ class _Search:
         return node, start_index
 
     def _found(self, end: _Node, outcome: str, direct_from: int | None = None) -> Route:
+        if direct_from is None:
+            end = self._straighten(end)
+
         route = self._route(end, direct_from)
         length = sum(math.dist(a, b) for a, b in pairwise(route.points))
         crossing = "" if route.is_clear else ", crosses blocked cells"
@@ -451,17 +460,10 @@ class _Search:
         """The route to the node. Points from `direct_from` on were not searched, so there the
         safety distance to blocked cells counts as blocked too."""
 
-        nodes = []
-        node = end
-
-        while node is not None:
-            nodes.append(node)
-            node = node.parent
-
         points: list[Point] = []
         waypoint_indices = []
 
-        for node in reversed(nodes):
+        for node in _chain(end):
             points += node.points
 
             if node.at_waypoint:
@@ -471,6 +473,142 @@ class _Search:
         blocked = [self._is_blocked(point, index >= searched) for index, point in enumerate(points)]
 
         return Route(points, waypoint_indices, blocked)
+
+    def _straighten(self, end: _Node) -> _Node:
+        """The route to the node with stretches replaced by Dubins paths, which run straight
+        where the poses line up. A replacement is no longer and costs no more than the stretch,
+        lies on no worse ground and no closer to blocked cells, and passes no waypoint."""
+
+        nodes = _chain(end)
+        lengths = [0.0]
+
+        for previous, node in pairwise(nodes):
+            points = [previous.pose[:2], *node.points]
+            lengths.append(lengths[-1] + sum(math.dist(a, b) for a, b in pairwise(points)))
+
+        worst = [self._worst_ground(node.points) for node in nodes]
+        result = nodes[0]
+        index = 0
+
+        while index < len(nodes) - 1:
+            limit = index + 1
+
+            while limit < len(nodes) - 1 and not nodes[limit].at_waypoint:
+                limit += 1
+
+            # The furthest good shortcut: doubling the reach until one fails, then halving.
+            found, good, bad, span = None, index, limit + 1, 1
+
+            while good < limit:
+                target = min(index + span, limit)
+                candidate = self._shortcut(nodes, lengths, worst, index, target)
+
+                if candidate is None:
+                    bad = target
+                    break
+
+                found, good, span = candidate, target, span * 2
+
+            while bad - good > 1:
+                target = (good + bad) // 2
+                candidate = self._shortcut(nodes, lengths, worst, index, target)
+
+                if candidate is None:
+                    bad = target
+                else:
+                    found, good = candidate, target
+
+            if found is None:
+                good = index + 1
+                node = nodes[good]
+                cost = result.cost + node.cost - nodes[index].cost
+                points, curvature = node.points, node.curvature
+            else:
+                cost, points, curvature = result.cost + found[0], found[1], found[2]
+                node = nodes[good]
+
+            result = _Node(node.pose, cost, result, points, curvature, node.leg, node.at_waypoint)
+            index = good
+
+        return result
+
+    def _shortcut(
+        self,
+        nodes: list[_Node],
+        lengths: list[float],
+        worst: list[tuple[int, float]],
+        first: int,
+        last: int,
+    ) -> tuple[float, list[Point], float] | None:
+        """Cost, points and last curvature of the Dubins path from node `first` to node `last` if
+        it may replace the stretch between them (see _straighten), else None. `lengths` holds
+        the route length up to each node, `worst` its worst ground (see _worst_ground)."""
+
+        start, end = nodes[first], nodes[last]
+        length = lengths[last] - lengths[first]
+        worst = worst[first + 1 : last + 1]
+        path = shortest_path(start.pose, end.pose, self.radius)
+
+        if path is None or path.length > length + 1e-6:
+            return None
+
+        most_blocked = max(blocked for blocked, _ in worst)
+        worst_ground = max(ground for _, ground in worst)
+        limit = end.cost - start.cost + 1e-6
+        cost = _turning_cost(path, start.curvature, self.radius)
+        points = []
+        previous = start.pose
+
+        for pose in path.sample(SAMPLE)[1:]:
+            blocked, ground = self._ground_class(pose)
+            piece = self._piece_cost(pose)
+
+            if piece is None or blocked > most_blocked or ground > worst_ground:
+                return None
+
+            cost += piece * math.dist(previous[:2], pose[:2])
+
+            if cost > limit:
+                return None
+
+            points.append(pose[:2])
+            previous = pose
+
+        curvature = next(
+            (
+                TURNS[letter] / self.radius
+                for letter, part in zip(reversed(path.word), reversed(path.lengths), strict=True)
+                if part > 1e-9
+            ),
+            0.0,
+        )
+
+        return cost, points, curvature
+
+    def _worst_ground(self, points: list[Point]) -> tuple[int, float]:
+        """Highest blocked class and ground class of the points (see _ground_class)."""
+
+        classes = [self._ground_class(point) for point in points] or [(0, 0.0)]
+
+        return max(blocked for blocked, _ in classes), max(ground for _, ground in classes)
+
+    def _ground_class(self, position) -> tuple[int, float]:
+        """How blocked the cell is (0 free, 1 within the safety distance, 2 blocked; free zones
+        count as free) and the base cost of its kind of ground, without the slope."""
+
+        index = self.grid.index(position[0], position[1])
+
+        if index is None:
+            return 2, math.inf
+
+        value = self.grid.cells[index]
+        band = min(max(0, value - ROAD_VALUE) // BAND_WIDTH, len(BAND_COSTS) - 1)
+        blocked = 0
+
+        if self.grid.blocked[index] and not self._in_free_zone(position[0], position[1]):
+            blocked = 2 if value >= BLOCKED_VALUE else 1
+
+        return blocked, BAND_COSTS[band]
 
     def _is_blocked(self, point: Point, with_safety_distance: bool = False) -> bool:
         index = self.grid.index(*point)
@@ -620,6 +758,9 @@ class _Search:
         if curvature:
             cost += TURN_COST * STEP
 
+        if curvature * node.curvature < 0:
+            cost += SWERVE_COST
+
         return _Node(pose, cost, node, points, curvature, node.leg)
 
     def _piece_cost(self, pose: Pose) -> float | None:
@@ -694,6 +835,39 @@ class _Search:
         _, cost, points, heading = best
 
         return _Node((goal_x, goal_z, heading), cost, node, points, leg=leg, at_waypoint=True)
+
+
+def _chain(end: _Node) -> list[_Node]:
+    """The nodes from the start to the node."""
+
+    nodes = []
+
+    while end is not None:
+        nodes.append(end)
+        end = end.parent
+
+    return nodes[::-1]
+
+
+def _turning_cost(path: DubinsPath, curvature: float, radius: float) -> float:
+    """Turning and swerving costs of the path as the search counts them, coming from a piece
+    with the given curvature."""
+
+    cost = 0.0
+
+    for letter, length in zip(path.word, path.lengths, strict=True):
+        if length <= 1e-9:
+            continue
+
+        part = TURNS[letter] / radius
+        if part * curvature < 0:
+            cost += SWERVE_COST
+
+        if part:
+            cost += TURN_COST * length
+            curvature = part
+
+    return cost
 
 
 def _free_corridors(request: RouteRequest) -> list[Lane]:
