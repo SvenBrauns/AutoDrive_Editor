@@ -61,6 +61,16 @@ def test_route_turns_no_tighter_than_the_radius():
     assert max_turn(route) <= 1 / VEHICLE.turning_radius + 0.02
 
 
+def test_turning_radius_of_the_request_replaces_the_vehicles():
+    request = RouteRequest(((0, 0), (0, 14)), (0.0,), (math.pi,), turning_radius=5)
+    route = find(make_costmap(), request)
+
+    assert route[-1] == pytest.approx((0, 14))
+    assert max_turn(route) <= 1 / 5 + 0.02
+    # The U-turn is narrower than the vehicle's radius would allow.
+    assert max(x for x, _ in route) < VEHICLE.turning_radius
+
+
 CLOSED_AREA = [(20, -20, 22, 20), (40, -20, 42, 20), (20, -22, 42, -20), (20, 20, 42, 22)]
 
 

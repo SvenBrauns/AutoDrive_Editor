@@ -94,6 +94,8 @@ class RouteRequest:
     # blocked cells can be driven on.
     free_radius: float = 3.0
     free_length: float = 20.0
+    # Tightest turn of this search, e.g. the yard radius; None for the vehicle's.
+    turning_radius: float | None = None
 
     @property
     def start(self) -> Point:
@@ -277,12 +279,13 @@ class RouteFinder:
 
         logger.debug(
             "Route search through %s (cell values %s), start headings %s, goal headings %s, "
-            "%d planned lanes, %s",
+            "%d planned lanes, turning radius %s, %s",
             ", ".join(_rounded(point) for point in request.waypoints),
             ", ".join(str(self.costmap.value_at(*point)) for point in request.waypoints),
             degrees(request.start_headings),
             degrees(request.goal_headings),
             len(request.lanes),
+            request.turning_radius or "of the vehicle",
             self.vehicle,
         )
 
@@ -291,7 +294,7 @@ class _Search:
     def __init__(self, finder: RouteFinder, request: RouteRequest, margin: float):
         costmap, vehicle = finder.costmap, finder.vehicle
         self.request = request
-        self.radius = vehicle.turning_radius
+        self.radius = request.turning_radius or vehicle.turning_radius
 
         xs = [x for x, _ in request.waypoints]
         zs = [z for _, z in request.waypoints]
