@@ -1,3 +1,4 @@
+import logging
 import threading
 from collections.abc import Callable
 from pathlib import Path
@@ -16,6 +17,9 @@ from autodrive_editor.editing.route_nodes import (
 from autodrive_editor.file_io.navigation_costmap import NavigationCostmap
 from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
+from autodrive_editor.model.connections import CONNECTION_STATES, ConnectionType
+
+logger = logging.getLogger(__name__)
 
 
 class FindRouteOperation(EditOperation):
@@ -101,6 +105,12 @@ class FindRouteOperation(EditOperation):
         }
         vehicle = self.vehicle_provider()
         self._search["vehicle"] = vehicle
+        logger.debug(
+            "Find route from node %d to node %d, %d planned nodes",
+            start_id,
+            goal_id,
+            len(self.plan_node_ids_provider()),
+        )
         finder = RouteFinder(costmap, vehicle)
 
         def search():
@@ -137,6 +147,7 @@ class FindRouteOperation(EditOperation):
             or search["data"] is not self.autodrive_data_provider()
             or not self.edit_history.is_planning
         ):
+            logger.debug("Route search result dropped: the network or the plan changed")
             self.status_changed.emit(
                 tr("Route search stopped, because the network or the plan changed")
             )
@@ -195,13 +206,18 @@ class FindRouteOperation(EditOperation):
             node_ids.append(next_id)
             next_id += 1
 
+        connections = chain_connections(autodrive_data, node_ids)
+        dual = CONNECTION_STATES[ConnectionType.DUAL]
+        logger.debug(
+            "Route of %d points: %d new nodes, existing nodes used %s, made dual %s",
+            len(points),
+            len(new_nodes),
+            [item for item in chain if isinstance(item, int)],
+            [(source, target) for source, target, state in connections if state == dual],
+        )
+
         self.edit_history.push(
-            AddRouteCommand(
-                tr("Find route"),
-                autodrive_data,
-                new_nodes,
-                chain_connections(autodrive_data, node_ids),
-            )
+            AddRouteCommand(tr("Find route"), autodrive_data, new_nodes, connections)
         )
 
         return len(new_nodes)

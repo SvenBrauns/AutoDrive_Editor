@@ -19,11 +19,15 @@ it stops at once.
 """
 
 import heapq
+import logging
 import math
+import time
 from dataclasses import dataclass, field
 
 from autodrive_editor.editing.dubins import Pose, advance, shortest_path
 from autodrive_editor.file_io.navigation_costmap import BLOCKED_VALUE, ROAD_VALUE, NavigationCostmap
+
+logger = logging.getLogger(__name__)
 
 Point = tuple[float, float]
 Lane = tuple[Point, Point]
@@ -202,14 +206,48 @@ class RouteFinder:
         """Points of the route from start to goal about SAMPLE apart, or None if there is no
         drivable route. The search area grows if nothing is found near start and goal."""
 
+        self._log_request(request)
+
         for growth in WINDOW_GROWTH:
+            started = time.perf_counter()
             search = _Search(self, request, WINDOW_MARGIN * growth)
             route = search.run(cancelled)
+            logger.debug(
+                "Search window %d × %d m: %s, %d steps, %.2f s",
+                search.grid.columns,
+                search.grid.rows,
+                search.outcome,
+                search.expansions,
+                time.perf_counter() - started,
+            )
 
             if route is not None or cancelled() or search.covers_map:
                 return route
 
         return None
+
+    def _log_request(self, request: RouteRequest):
+        if not logger.isEnabledFor(logging.DEBUG):
+            return
+
+        def degrees(headings):
+            if headings is None:
+                return "any"
+
+            return ", ".join(f"{math.degrees(heading) % 360:.0f}°" for heading in headings)
+
+        logger.debug(
+            "Route search from %s (cell value %d, headings %s) to %s (cell value %d, headings %s), "
+            "%d planned lanes, %s",
+            _rounded(request.start),
+            self.costmap.value_at(*request.start),
+            degrees(request.start_headings),
+            _rounded(request.goal),
+            self.costmap.value_at(*request.goal),
+            degrees(request.goal_headings),
+            len(request.lanes),
+            self.vehicle,
+        )
 
 
 class _Search:
@@ -234,6 +272,9 @@ class _Search:
         self.corridor_width = vehicle.width / 2 + vehicle.margin
         self.curvatures = (0.0, 0.5 / self.radius, -0.5 / self.radius, 1 / self.radius)
         self.curvatures += (-1 / self.radius,)
+        # How the search ended and how many states it looked at, for the debug log.
+        self.outcome = "not run"
+        self.expansions = 0
 
     def run(self, cancelled) -> list[Point] | None:
         request = self.request
@@ -242,6 +283,11 @@ class _Search:
         start_index = self.grid.index(*request.start)
 
         if start_index is None or self.to_goal[start_index] == math.inf:
+            reachable = sum(1 for cost in self.to_goal if cost < math.inf)
+            self.outcome = (
+                f"no way over the cells from start to goal; {reachable} m² can reach the goal "
+                f"of {len(self.to_goal)} m² in the window"
+            )
             return None
 
         open_list = []
@@ -267,8 +313,10 @@ class _Search:
                 continue
 
             expansions += 1
+            self.expansions = expansions
 
             if expansions % 1000 == 0 and cancelled():
+                self.outcome = "cancelled"
                 return None
 
             x, z, _ = node.pose
@@ -277,7 +325,10 @@ class _Search:
                 end = self._dubins_end(node)
 
                 if end is not None:
-                    return _route_points(end)
+                    points = _route_points(end)
+                    length = sum(math.dist(a, b) for a, b in zip(points, points[1:], strict=False))
+                    self.outcome = f"route found, {length:.0f} m, cost {end.cost:.0f}"
+                    return points
 
             for curvature in self.curvatures:
                 child = self._step(node, curvature)
@@ -294,6 +345,11 @@ class _Search:
                     )
                     counter += 1
 
+        self.outcome = (
+            f"gave up after {MAX_EXPANSIONS} steps"
+            if open_list
+            else "every drivable pose tried (turning radius or safety distance too large?)"
+        )
         return None
 
     def _key(self, pose: Pose) -> tuple[int, int, int]:
@@ -567,3 +623,7 @@ def _route_points(end: _Node) -> list[Point]:
         node = node.parent
 
     return [point for piece in reversed(pieces) for point in piece]
+
+
+def _rounded(point: Point) -> str:
+    return f"({point[0]:.1f}, {point[1]:.1f})"

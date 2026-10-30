@@ -734,4 +734,6 @@ TEXTS = {
     "Select the two nodes the route should connect": "Die zwei Nodes auswählen, die die Route verbinden soll",
     "The savegame has no drivability map yet. Save the game in Farming Simulator first (again after placing buildings)": "Der Spielstand hat noch keine Befahrbarkeitskarte. Zuerst im Landwirtschafts-Simulator speichern (auch wieder nach dem Platzieren von Gebäuden)",
     "Vehicle width:": "Fahrzeugbreite:",
+    "Debug log": "Debug-Log",
+    "Write detailed entries to the log file, e.g. for each route search": "Ausführliche Einträge in die Logdatei schreiben, z. B. zu jeder Routensuche",
 }

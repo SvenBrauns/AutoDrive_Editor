@@ -4,6 +4,7 @@ from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QAction, QActionGroup, QGuiApplication, QKeySequence
 from PySide6.QtWidgets import QMainWindow, QSizePolicy, QToolBar, QToolButton, QWidget
 
+from autodrive_editor.error_log import set_debug_logging
 from autodrive_editor.i18n import tr
 from autodrive_editor.measurement.mode import MeasurementMode
 from autodrive_editor.ui.actions.shortcuts import ShortcutRegistry
@@ -261,6 +262,14 @@ class MainWindowActions:
 
         self.open_log_folder_action.triggered.connect(open_log_folder)
 
+        self.debug_log_action = QAction(tr("Debug log"), self.window)
+        self.debug_log_action.setCheckable(True)
+        self.debug_log_action.setStatusTip(
+            tr("Write detailed entries to the log file, e.g. for each route search")
+        )
+        self.debug_log_action.setChecked(self.window.settings.debug_log)
+        self.debug_log_action.toggled.connect(self._set_debug_log)
+
         self.display_options_action = QAction(tr("Display options…"), self.window)
 
         self.display_options_action.triggered.connect(self.window.open_display_options)
@@ -346,6 +355,10 @@ class MainWindowActions:
 
         self.planning_mode_action = self.window.planning.action
         self.find_route_action = self.window.planning.find_route_action
+
+    def _set_debug_log(self, enabled: bool):
+        self.window.settings.set_debug_log(enabled)
+        set_debug_logging(enabled)
 
     def _create_map_scale_actions(self):
         self.map_scale_action_group = QActionGroup(self.window)
@@ -606,6 +619,7 @@ class MainWindowActions:
         help_menu.addAction(self.check_updates_action)
 
         help_menu.addAction(self.open_log_folder_action)
+        help_menu.addAction(self.debug_log_action)
 
         help_menu.addSeparator()
 

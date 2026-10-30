@@ -128,4 +128,4 @@ The editor follows the light or dark mode of Windows. Under `File → Settings` 
 
 ## Help and errors
 
-`Help → Version history` shows what changed in each version, `Help → About` shows the version and license. If an unexpected error occurs, the editor shows a message and keeps running. The details are written to a log file (`Help → Open log folder`, in `%APPDATA%\AutoDrive Editor\logs`); please attach it when reporting a bug.
+`Help → Version history` shows what changed in each version, `Help → About` shows the version and license. If an unexpected error occurs, the editor shows a message and keeps running. The details are written to a log file (`Help → Open log folder`, in `%APPDATA%\AutoDrive Editor\logs`); please attach it when reporting a bug. `Help → Debug log` adds detailed entries to the log, e.g. for each route search (start, goal, headings, why no route was found); turn it on, repeat what went wrong, and attach the log.
