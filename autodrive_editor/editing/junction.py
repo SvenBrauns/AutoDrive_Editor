@@ -503,17 +503,7 @@ def junction_command(
     connections = []
 
     def stem_line(lane_index: int | None, meeting_id: int) -> list[int]:
-        """Node IDs along the stem (lane_index None) or one of its lanes (see lane_poses)."""
-
-        points = [
-            pose[:2] if lane_index is None else lane_poses(pose, gap)[lane_index][:2]
-            for pose in stem[1:]
-        ]
-
-        if tip_id is not None:
-            return [meeting_id, *(new_node(point) for point in points[:-1]), tip_id]
-
-        return [meeting_id, *(new_node(point) for point in points)]
+        return _stem_ids(stem, lane_index, gap, meeting_id, tip_id, new_node)
 
     if gap > 0:
         for index, (kind, pose) in enumerate(zip(BOTH, lane_poses(junction, gap), strict=True)):
@@ -543,6 +533,28 @@ def junction_command(
         connections += [(a, b, state) for a, b in pairwise(chain)]
 
     return AddRouteCommand(tr("Junction"), autodrive_data, new_nodes, connections)
+
+
+def _stem_ids(
+    stem: list[Pose],
+    lane_index: int | None,
+    gap: float,
+    meeting_id: int,
+    tip_id: int | None,
+    new_node: Callable[[Point], int],
+) -> list[int]:
+    """Node IDs along the stem (lane_index None) or one of its lanes (see lane_poses), from the
+    meeting node to the tip, or to the node `tip_id` if given."""
+
+    points = [
+        pose[:2] if lane_index is None else lane_poses(pose, gap)[lane_index][:2]
+        for pose in stem[1:]
+    ]
+
+    if tip_id is not None:
+        return [meeting_id, *(new_node(point) for point in points[:-1]), tip_id]
+
+    return [meeting_id, *(new_node(point) for point in points)]
 
 
 def _curve_connections(
@@ -736,12 +748,18 @@ def _curve_path(kind: CurveKind, point: Point, lane_heading: float, junction: Po
     if path is None:
         return None
 
-    needed = abs(math.remainder(goal[2] - start[2], math.tau))
+    return path if _turns_little(path, start[2], goal[2], radius) else None
+
+
+def _turns_little(path, start_heading: float, goal_heading: float, radius: float) -> bool:
+    """Whether the Dubins path turns at most EXTRA_TURN more than needed (no loop)."""
+
+    needed = abs(math.remainder(goal_heading - start_heading, math.tau))
     turned = sum(
         length for letter, length in zip(path.word, path.lengths, strict=True) if letter != "S"
     )
 
-    return path if turned / radius <= needed + EXTRA_TURN else None
+    return turned / radius <= needed + EXTRA_TURN
 
 
 def _places(
