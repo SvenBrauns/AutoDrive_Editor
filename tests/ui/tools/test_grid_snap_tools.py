@@ -60,7 +60,7 @@ def test_checkbox_shortcut_and_button_stay_in_sync(snap_window):
     controls = snap_window.actions.grid_controls
     assert controls.snap_input.isChecked()
     assert controls.isChecked()
-    assert snap_window.actions.grid_snap_action.shortcut().toString() == "G"
+    assert snap_window.actions.grid_snap_action.shortcut().toString() == "S"
 
     controls.snap_input.setChecked(False)
 

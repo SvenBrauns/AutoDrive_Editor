@@ -3,6 +3,7 @@ from base_game_helpers import make_installation
 from game_folder_helpers import make_game_folder
 from PySide6.QtGui import QAction, QKeySequence
 
+from autodrive_editor.editing.route_finder import Vehicle
 from autodrive_editor.game.game_folder import GameFolder
 from autodrive_editor.game.game_installation import GameInstallation
 from autodrive_editor.settings import app_settings
@@ -165,3 +166,15 @@ def test_update_check_is_shown_and_stored(qapp):
     dialog.accept()
 
     assert AppSettings().check_updates
+
+
+def test_ok_stores_the_vehicle_size(qapp):
+    settings = AppSettings()
+    dialog = SettingsDialog(settings, ShortcutRegistry())
+
+    dialog.turning_radius_input.setValue(14)
+    dialog.vehicle_width_input.setValue(4)
+    dialog.safety_margin_input.setValue(1)
+    dialog.accept()
+
+    assert settings.vehicle == Vehicle(14, 4, 1)

@@ -13,6 +13,7 @@ from autodrive_editor.file_io.savegame_buildings import (
 )
 from autodrive_editor.file_io.savegame_sheds import IndoorArea
 from autodrive_editor.ui.dialogs.parking_map_overlay import ParkingMapOverlay
+from autodrive_editor.ui.tools.generate_tool import GenerateTask
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 from autodrive_editor.ui.tools.navigate_tool import NavigateTool
 
@@ -34,7 +35,7 @@ def parking_window(zoomed_window):
     window._ask_parking_settings = ask
     shed_type = BuildingType("shed.xml", "Farm barn", "sheds", BuildingGroup.SHEDS, 1)
     window.scene_renderer.set_buildings(SavegameBuildings(types=[shed_type], areas=[SHED]))
-    window.set_interaction_mode(InteractionMode.PARKING_SPOTS)
+    window.set_generate_task(GenerateTask.PARKING_SPOTS)
     return window
 
 
@@ -63,7 +64,7 @@ def test_tool_sits_next_to_the_selection(parking_window):
     actions = parking_window.actions
     toolbar = actions.quick_access_toolbar.actions()
 
-    assert toolbar.index(actions.parking_action) == toolbar.index(actions.selection_action) + 1
+    assert toolbar.index(actions.generate_action) == toolbar.index(actions.selection_action) + 1
 
 
 def hover_label(window):

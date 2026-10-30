@@ -3,7 +3,13 @@ import sys
 
 import pytest
 
-from autodrive_editor.error_log import LOG_FILE_NAME, install_error_handler, logger, setup_logging
+from autodrive_editor.error_log import (
+    LOG_FILE_NAME,
+    install_error_handler,
+    logger,
+    set_debug_logging,
+    setup_logging,
+)
 
 
 @pytest.fixture
@@ -42,3 +48,17 @@ def test_unexpected_error_is_logged_and_shown(log_file, monkeypatch):
     assert "ValueError: broken node" in shown[0]
     assert "Traceback" in shown[0]
     assert "ValueError: broken node" in log_file.read_text(encoding="utf-8")
+
+
+def test_debug_log_switches_the_level():
+    root = logging.getLogger()
+    level = root.level
+
+    try:
+        set_debug_logging(True)
+        assert root.level == logging.DEBUG
+
+        set_debug_logging(False)
+        assert root.level == logging.INFO
+    finally:
+        root.setLevel(level)

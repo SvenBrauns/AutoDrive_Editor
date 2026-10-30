@@ -1,0 +1,228 @@
+import time
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+from costmap_helpers import make_costmap
+
+from autodrive_editor.editing.commands.move_nodes import MoveNodesCommand
+from autodrive_editor.editing.edit_context import EditContext
+from autodrive_editor.editing.edit_history import EditHistory
+from autodrive_editor.editing.operations.find_route import FindRouteOperation, Waypoint
+from autodrive_editor.editing.plan_changes import PlanChanges
+from autodrive_editor.editing.route_finder import Vehicle
+from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
+from autodrive_editor.model.connections import ConnectionType, get_connection_type
+
+# Blocked except a corridor 8 m wide between two open yards, where vehicles can turn.
+CORRIDOR_MAP = make_costmap(
+    blocked=[(-40, -100, 40, -4), (-40, 4, 40, 100)],
+)
+
+
+class Fixture:
+    def __init__(self, qapp, costmap=CORRIDOR_MAP):
+        self.qapp = qapp
+        self.data = AutoDriveData()
+        self.data.add_node(NodeData(1, -60, 0, 0))
+        self.data.add_node(NodeData(2, 60, 0, 0))
+        self.history = EditHistory()
+        self.costmap = costmap
+        self.plan = None
+        self.messages = []
+        context = EditContext(
+            edit_history=self.history,
+            autodrive_data_provider=lambda: self.data,
+            node_selection=SimpleNamespace(selected_node_ids=set(), primary_node_id=None),
+        )
+        self.operation = FindRouteOperation(
+            context,
+            costmap_provider=lambda: self.costmap,
+            savegame_provider=lambda: Path("savegame1"),
+            vehicle_provider=lambda: Vehicle(8, 3, 0.5),
+            spacing_provider=lambda: 5.0,
+            plan_node_ids_provider=lambda: self.plan.changed_node_ids if self.plan else set(),
+            height_for_new_node=lambda data, x, z: 3.0,
+        )
+        self.operation.status_changed.connect(self.messages.append)
+        self.history.data_changed.connect(lambda change: self.plan and self.plan.update(change))
+
+    def start_plan(self):
+        self.plan = PlanChanges(self.data)
+        self.history.start_plan()
+
+    def wait(self):
+        deadline = time.monotonic() + 60
+
+        while self.operation.is_searching and time.monotonic() < deadline:
+            self.qapp.processEvents()
+            time.sleep(0.01)
+
+    def find(self, *waypoints):
+        """Sets the waypoints (node IDs or (x, z)) and waits for the route."""
+
+        self.operation.clear()
+
+        for waypoint in waypoints:
+            if isinstance(waypoint, int):
+                self.operation.add_waypoint(0, 0, waypoint)
+            else:
+                self.operation.add_waypoint(*waypoint)
+
+        self.wait()
+
+        return self.operation.route
+
+    def path_from(self, start_id, goal_id):
+        """Node IDs of a shortest way from start to goal over outgoing connections, or None."""
+
+        previous, queue = {start_id: None}, [start_id]
+
+        for node_id in queue:
+            for other in sorted(self.data.nodes[node_id].outgoing):
+                if other not in previous:
+                    previous[other] = node_id
+                    queue.append(other)
+
+        if goal_id not in previous:
+            return None
+
+        path = [goal_id]
+
+        while path[-1] != start_id:
+            path.append(previous[path[-1]])
+
+        return path[::-1]
+
+
+@pytest.fixture
+def route(qapp):
+    return Fixture(qapp)
+
+
+def test_preview_is_found_outside_planning_but_only_added_in_planning_mode(route):
+    assert route.find(1, 2).is_clear
+
+    assert not route.operation.apply()
+    assert route.messages[-1] == "Find route adds routes in planning mode"
+
+
+def test_without_drivability_map_explains_how_to_get_one(route):
+    route.costmap = None
+
+    assert route.find(1, 2) is None
+    assert "Save the game" in route.operation.missing_costmap_message()
+
+
+def test_route_through_the_corridor_is_one_undo_step_in_the_plan(route):
+    route.start_plan()
+    route.find(1, 2)
+
+    assert route.operation.apply()
+
+    path = route.path_from(1, 2)
+    assert path is not None and len(path) > 20
+    assert all(abs(route.data.nodes[n].z) < 2.5 for n in path if abs(route.data.nodes[n].x) < 40)
+    assert {route.data.nodes[n].y for n in path[1:-1]} == {3.0}
+    assert route.history.undo_stack.count() == 0
+    assert route.history.can_undo
+
+    route.history.undo()
+    assert set(route.data.nodes) == {1, 2}
+
+
+def test_free_waypoints_become_nodes_and_the_last_starts_the_next_route(route):
+    route.start_plan()
+    route.find((-60, 20), 1, (60, -20))
+
+    assert route.operation.apply()
+
+    first = next(n for n in route.data.nodes.values() if (n.x, n.z) == (-60, 20))
+    last = next(n for n in route.data.nodes.values() if (n.x, n.z) == (60, -20))
+    path = route.path_from(first.node_id, last.node_id)
+    assert path is not None and 1 in path
+    assert route.operation.waypoints == [Waypoint(60, -20, last.node_id)]
+
+
+def test_way_back_through_the_narrow_corridor_shares_the_lane_as_dual(route):
+    route.start_plan()
+    route.find(1, 2)
+    route.operation.apply()
+    corridor = [n for n in route.path_from(1, 2) if abs(route.data.nodes[n].x) < 30]
+
+    route.find(2, 1)
+    assert route.operation.apply()
+
+    assert route.path_from(2, 1) is not None
+    for source, target in zip(corridor, corridor[1:], strict=False):
+        nodes = route.data.nodes
+        assert get_connection_type(nodes[source], nodes[target]) == ConnectionType.DUAL
+
+
+def test_route_through_a_wall_is_marked_and_not_added(qapp):
+    route = Fixture(qapp, make_costmap(blocked=[(-10, -100, 10, 100)]))
+    route.start_plan()
+
+    assert not route.find(1, 2).is_clear
+    assert "crosses obstacles" in route.messages[-1]
+    assert not route.operation.apply()
+    assert set(route.data.nodes) == {1, 2}
+
+
+def test_waypoints_follow_moved_nodes_and_the_route_is_searched_again(route):
+    route.find(1, 2)
+
+    route.history.push(
+        MoveNodesCommand(route.data, {2: (60, 0, 0)}, {2: (70, 0, 0)}, merge_key=None)
+    )
+    assert route.operation.route is None
+    route.wait()
+
+    assert route.operation.waypoints[1] == Waypoint(70, 0, 2)
+    assert route.operation.route.points[-1] == pytest.approx((70, 0))
+
+
+def test_moving_a_free_waypoint_searches_again(route):
+    route.find(1, (60, 0))
+
+    route.operation.move_waypoint(1, 60, 2)
+    route.wait()
+
+    assert route.operation.route.points[-1] == pytest.approx((60, 2))
+
+
+def test_removing_waypoints(route):
+    route.find(1, (0, 0), 2)
+
+    route.operation.remove_waypoint(1)
+    route.wait()
+
+    assert [waypoint.node_id for waypoint in route.operation.waypoints] == [1, 2]
+    assert route.operation.clear()
+    assert route.operation.route is None
+    assert not route.operation.clear()
+
+
+def test_leg_at_a_point_of_the_route_and_inserting_a_waypoint_there(route):
+    route.find(1, (0, 0), 2)
+
+    assert route.operation.leg_at(-30, 0, 1.0) == 0
+    assert route.operation.leg_at(30, 0, 1.0) == 1
+    assert route.operation.leg_at(30, 20, 1.0) is None
+
+    route.operation.insert_waypoint(2, 30, 1)
+
+    assert route.operation.waypoints[2] == Waypoint(30, 1)
+    assert route.operation.leg_at(30, 0, 1.0) is None
+
+
+def test_a_newer_change_cancels_the_running_search_and_the_last_route_stays_shown(route):
+    route.find(1, (60, 0))
+    shown = route.operation.shown_route
+
+    route.operation.move_waypoint(1, 60, 1)
+    route.operation.move_waypoint(1, 60, 2)
+
+    assert route.operation.shown_route is shown
+    route.wait()
+    assert route.operation.route.points[-1] == pytest.approx((60, 2))

@@ -8,6 +8,7 @@ from pathlib import Path
 from PySide6.QtCore import QSettings
 
 from autodrive_editor.editing.path_shapes import PathOptions
+from autodrive_editor.editing.route_finder import Vehicle
 from autodrive_editor.file_io.savegame_buildings import BuildingGroup
 from autodrive_editor.game.game_folder import GameFolder
 from autodrive_editor.game.game_installation import GameInstallation
@@ -32,6 +33,11 @@ class AppSettings:
     PATH_CONNECTION_KEY = "path/connection_type"
     PATH_FLAG_KEY = "path/flag"
     PATH_CONTROL_POINTS_KEY = "path/control_points"
+    VEHICLE_KEYS = {
+        "turning_radius": "route/turning_radius",
+        "width": "route/vehicle_width",
+        "margin": "route/safety_margin",
+    }
     ROTATE_SNAP_KEY = "rotate/snap_angle"
     RECENT_ITEMS_KEY = "app/recent_items"
     LANGUAGE_KEY = "app/language"
@@ -41,6 +47,7 @@ class AppSettings:
     SHORTCUTS_KEY = "app/shortcuts"
     CHECK_UPDATES_KEY = "app/check_updates"
     REOPEN_LAST_KEY = "app/reopen_last"
+    DEBUG_LOG_KEY = "app/debug_log"
     NO_SAVEGAME_QUESTION_KEY = "routes/no_savegame_question"
     LINKED_SAVEGAMES_KEY = "routes/linked_savegames"
     OPEN_TAB_KEY = "app/open_dialog_tab"
@@ -180,6 +187,16 @@ class AppSettings:
         self._settings.sync()
 
     @property
+    def debug_log(self) -> bool:
+        """Whether the log file also gets the detailed debug entries."""
+
+        return self._settings.value(self.DEBUG_LOG_KEY, False, type=bool)
+
+    def set_debug_log(self, enabled: bool):
+        self._settings.setValue(self.DEBUG_LOG_KEY, bool(enabled))
+        self._settings.sync()
+
+    @property
     def reopen_last(self) -> bool:
         """Whether the last opened file is opened again at startup."""
 
@@ -240,6 +257,24 @@ class AppSettings:
         self._settings.setValue(self.PATH_CONNECTION_KEY, options.connection_type.value)
         self._settings.setValue(self.PATH_FLAG_KEY, int(options.flag))
         self._settings.setValue(self.PATH_CONTROL_POINTS_KEY, int(options.control_points))
+        self._settings.sync()
+
+    @property
+    def vehicle(self) -> Vehicle:
+        """Size of the vehicle the route finder plans for."""
+
+        default = Vehicle()
+        values = {
+            name: self._settings.value(key, getattr(default, name), type=float)
+            for name, key in self.VEHICLE_KEYS.items()
+        }
+
+        return Vehicle(**values) if all(value > 0 for value in values.values()) else default
+
+    def set_vehicle(self, vehicle: Vehicle):
+        for name, key in self.VEHICLE_KEYS.items():
+            self._settings.setValue(key, float(getattr(vehicle, name)))
+
         self._settings.sync()
 
     @property

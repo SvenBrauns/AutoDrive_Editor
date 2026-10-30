@@ -81,12 +81,15 @@ SELECTION_TOOL = ToolDefinition(
     "A",
 )
 
-PARKING_TOOL = ToolDefinition(
-    InteractionMode.PARKING_SPOTS,
-    tr("Parking spots"),
-    tr("Click a shed to create parking spots in it"),
-    "parking_spots",
-    "S",
+GENERATE_TOOL = ToolDefinition(
+    InteractionMode.GENERATE,
+    tr("Generate"),
+    tr(
+        "Generate routes through waypoints or parking spots in sheds; the arrow picks what. "
+        "Starts planning mode"
+    ),
+    "generate",
+    "G",
 )
 
 MOVE_TOOL = ToolDefinition(

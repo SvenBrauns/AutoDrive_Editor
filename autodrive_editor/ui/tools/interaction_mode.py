@@ -8,7 +8,7 @@ class InteractionMode(Enum):
 
     NAVIGATE = auto()
     SELECT = auto()
-    PARKING_SPOTS = auto()
+    GENERATE = auto()
     CREATE_NODES = auto()
     CREATE_SUBPRIO_NODES = auto()
     TOGGLE_NODE_TYPE = auto()
@@ -37,7 +37,7 @@ class InteractionMode(Enum):
         display_names = {
             InteractionMode.NAVIGATE: tr("Navigation"),
             InteractionMode.SELECT: tr("Selection"),
-            InteractionMode.PARKING_SPOTS: tr("Parking spots"),
+            InteractionMode.GENERATE: tr("Generate"),
             InteractionMode.CREATE_NODES: tr("Create nodes (Regular)"),
             InteractionMode.CREATE_SUBPRIO_NODES: tr("Create nodes (Subprio)"),
             InteractionMode.TOGGLE_NODE_TYPE: tr("Toggle node type"),

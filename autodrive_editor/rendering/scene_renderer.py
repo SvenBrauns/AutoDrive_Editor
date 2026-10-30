@@ -4,6 +4,7 @@ from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QPainterPath, QPolygonF
 from PySide6.QtWidgets import QGraphicsScene
 
+from autodrive_editor.file_io.navigation_costmap import NavigationCostmap
 from autodrive_editor.file_io.savegame_buildings import BuildingGroup, SavegameBuildings
 from autodrive_editor.file_io.savegame_sheds import IndoorArea
 from autodrive_editor.file_io.savegame_stations import Stop
@@ -11,6 +12,7 @@ from autodrive_editor.model.autodrive_data import AutoDriveData, MarkerData, Nod
 from autodrive_editor.rendering.connections.connection_data import ConnectionData
 from autodrive_editor.rendering.display_style import DisplayStyle
 from autodrive_editor.rendering.layers.connection_layer import ConnectionLayerItem
+from autodrive_editor.rendering.layers.drivability_layer import DrivabilityLayerItem
 from autodrive_editor.rendering.layers.marker_layer import MarkerLayerItem
 from autodrive_editor.rendering.layers.network_tiles import NetworkTiles
 from autodrive_editor.rendering.layers.node_label_layer import NodeLabelLayerItem
@@ -62,6 +64,8 @@ class SceneRenderer:
         self.parking_markers: list[MarkerData] = []
         # Building types, indoor areas and stops of the buildings in the savegame.
         self.buildings = SavegameBuildings()
+        # The drivability map of the savegame.
+        self.costmap: NavigationCostmap | None = None
         # Groups the user moved building types to, by building file.
         self.building_groups: dict[str, BuildingGroup] = {}
         # Building files that are not shown.
@@ -82,12 +86,14 @@ class SceneRenderer:
         self.plan_layer: PlanLayerItem | None = None
         self.shed_layer: ShedLayerItem | None = None
         self.station_layer: StationLayerItem | None = None
+        self.drivability_layer: DrivabilityLayerItem | None = None
 
     @property
     def layers(self) -> list:
         return [
             layer
             for layer in (
+                self.drivability_layer,
                 self.shed_layer,
                 self.station_layer,
                 self.connection_layer,
@@ -120,6 +126,7 @@ class SceneRenderer:
         self.plan_layer = PlanLayerItem(style)
         self.shed_layer = ShedLayerItem(style)
         self.station_layer = StationLayerItem(style)
+        self.drivability_layer = DrivabilityLayerItem(style)
 
         self.network_bounds = _get_bounds(autodrive_data.nodes.values())
 
@@ -129,6 +136,7 @@ class SceneRenderer:
             self.scene.addItem(layer)
 
         self._refresh_buildings()
+        self.drivability_layer.set_costmap(self.costmap)
 
         self._refresh_selection()
         self._refresh_plan()
@@ -146,9 +154,11 @@ class SceneRenderer:
         self.plan_layer = None
         self.shed_layer = None
         self.station_layer = None
+        self.drivability_layer = None
 
         self.parking_markers = []
         self.buildings = SavegameBuildings()
+        self.costmap = None
 
         self.node_spatial_index.clear()
         self.connection_spatial_index.clear()
@@ -411,6 +421,12 @@ class SceneRenderer:
     def set_buildings(self, buildings: SavegameBuildings):
         self.buildings = buildings
         self._refresh_buildings()
+
+    def set_costmap(self, costmap: NavigationCostmap | None):
+        self.costmap = costmap
+
+        if self.drivability_layer is not None:
+            self.drivability_layer.set_costmap(costmap)
 
     def set_building_types(self, groups: dict[str, BuildingGroup], hidden: set[str]):
         """The groups the user moved building types to, and the hidden building files."""

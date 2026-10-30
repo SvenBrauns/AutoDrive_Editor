@@ -40,7 +40,7 @@ The dialog opens on the tab you used last.
 | --- | --- | --- |
 | Navigation | `N` | Move and rotate the map |
 | Selection | `A` | Click or right-drag to select; Shift + right-drag for freehand selection; Ctrl adds to the selection |
-| Parking spots | `S` | Click a shed to create parking spots in it, see [Parking spots in sheds](#parking-spots-in-sheds) |
+| Generate | `G` | Starts planning mode and generates what is picked behind the arrow: a route through waypoints (see [Planning mode](#planning-mode)) or the parking spots of a clicked shed (see [Parking spots in sheds](#parking-spots-in-sheds)) |
 | Move | `V` | Drag a node or the selection; Shift moves along one grid axis only |
 | Rotate | `R` | Rotate the selection using the ring; Shift snaps in steps (default 15°, set with the arrow) |
 | Create (Regular / Subprio) | `E` / `Shift+E` | Create a node on free ground |
@@ -56,15 +56,21 @@ The dialog opens on the tab you used last.
 | Add marker / Edit marker | `M` / `Shift+M` | Add or edit a marker; enter its name and group |
 | Move marker / Delete marker | `Ctrl+M` / `Ctrl+Shift+M` | Move a marker to another node or delete it |
 
-Also available: Undo and Redo (`Ctrl+Z` / `Ctrl+Y`), Copy, Cut and Paste (`Ctrl+C/X/V`; `Ctrl+Shift+V` pastes at the original position), the grid with snapping (`G`), distance and angle measurement, and the `Markers` dock with all marker groups.
+Also available: Undo and Redo (`Ctrl+Z` / `Ctrl+Y`), Copy, Cut and Paste (`Ctrl+C/X/V`; `Ctrl+Shift+V` pastes at the original position), the grid with snapping (`S`), distance and angle measurement, and the `Markers` dock with all marker groups.
 
 ## Planning mode
 
 The planning button at the right end of the toolbar (`Edit → Planning mode`, `Ctrl+P`) starts a plan. All tools work as usual, but the edits are collected in the plan: a blue bar above the map shows how many nodes the plan changed, and those nodes get a blue halo. Undo and Redo work inside the plan and stop at its start. `Apply plan` adds the whole plan to the history as one undo step; `Discard plan` reverts all of it. Clicking the planning button again, opening another file or closing the editor asks whether to apply or discard the plan. While a plan is open, saving is not possible and autosave pauses.
 
+**Find route** (`Generate` tool, `G`, task `Route` behind its arrow). Click nodes or free ground one after another as waypoints. The editor searches a drivable one-way route through them in that order and shows it; parts that cross buildings, fences, trees or water are red. The route drives only forward, turns no tighter than the minimum turning radius and keeps half the vehicle width plus a safety margin away from obstacles; these values are set under `File → Settings → Route finder`. It keeps to roads and yards where it can, crosses grass before fields, and leaves the first and enters the last node in the direction of their connections. At the waypoints in between it takes the direction that suits the next part. Near the waypoints, blocked ground may be crossed, since nodes can sit under a roof or in a hall. Drag free waypoints or any node to change the route; it is searched again after each change. Pressing on the route inserts a waypoint there, which can be dragged right away. Right-click a waypoint to remove it, `Backspace` removes the last one, `Esc` all. Where the route is red, move nodes or add a waypoint on the way round. `Enter` adds a route without red parts to the plan as one undo step; free waypoints become nodes, and the last waypoint starts the next route.
+
+Routes already in the plan are reused: a route in the same direction joins them. The way back (select the nodes the other way round) gets its own lane where there is room; where there is not, it shares the lane, which becomes dual there. If there is no room to turn at all, the editor reports that no drivable route was found.
+
+The route finder uses the game's drivability map, which Farming Simulator writes into the savegame (`vehicleNavigationCostmap.dat`) on every save. A route needs a linked savegame for it. Save the game again after placing buildings, so the map knows them. `View → Show → Drivability map` draws it: blocked ground red (blue in forests), rough ground orange, grass yellow, fields green; roads and yards are clear.
+
 ## Display
 
-`View → Show` switches nodes, node IDs, each connection type (Regular, Dual, Reverse), markers, marker names, the parking positions of vehicles and sheds on and off. The line color shows the connection type; arrows show the direction, dual connections get one pointing to each end. Subprio nodes are drawn orange. Node IDs appear only when zoomed in; parking positions (a "P" next to the marker) are read from a savegame's `vehicles.xml`. A route needs a linked savegame for this, see [Parking spots in sheds](#parking-spots-in-sheds), which also explains the sheds. Hidden nodes and connections cannot be clicked or selected unless `Hidden items can be selected` is on. Sizes and colors are set under `View → Display options`. All switches are remembered.
+`View → Show` switches nodes, node IDs, each connection type (Regular, Dual, Reverse), markers, marker names, the parking positions of vehicles, sheds, stations and the drivability map (see [Planning mode](#planning-mode)) on and off. The line color shows the connection type; arrows show the direction, dual connections get one pointing to each end. Subprio nodes are drawn orange. Node IDs appear only when zoomed in; parking positions (a "P" next to the marker) are read from a savegame's `vehicles.xml`. A route needs a linked savegame for this, see [Parking spots in sheds](#parking-spots-in-sheds), which also explains the sheds. Hidden nodes and connections cannot be clicked or selected unless `Hidden items can be selected` is on. Sizes and colors are set under `View → Display options`. All switches are remembered.
 
 ## Parking spots in sheds
 
@@ -78,7 +84,7 @@ The editor creates AutoDrive parking spots in the sheds of a savegame.
 
 **Building types.** `Generate → Building types…` lists the building types of the savegame that have indoor areas, stations or a bunker silo, in four groups: Stations (unload or load triggers), Sheds (only indoor areas), Bunker silos and Other. A production with a hall is a station, not a shed; farmhouses and weighing stations are in Other, as only the player's character goes inside or vehicles only drive over them. If a type is in the wrong group, choose another one in its `Group` column; unticked types or groups are hidden. `Reset` puts every listed type back in its own group and shows it. Both apply on every map.
 
-**Create parking spots.** Choose the Parking spots tool (`S`); pointing at a shed shows the building's name and category. Left-click a shed outline. The dialog shows a top view of the shed, turned so the open side is at the bottom, with an arrow to north, and updates while you type. The planned spots are also drawn on the map; while the dialog is open the map can be moved, zoomed and rotated, but not edited.
+**Create parking spots.** Choose the Generate tool (`G`) and `Parking spots` behind its arrow; pointing at a shed shows the building's name and category. Left-click a shed outline. The dialog shows a top view of the shed, turned so the open side is at the bottom, with an arrow to north, and updates while you type. The planned spots are also drawn on the map; while the dialog is open the map can be moved, zoomed and rotated, but not edited.
 
 - **Mode**: *Back in* (vehicles reverse into the bay, the marker is at the back wall) or *Drive through* (one forward line per bay through the shed, the exit is on the opposite side).
 - **Open side** / **Entry side**: the side the vehicles come in. Click a side or its compass label in the top view to change it.
@@ -122,4 +128,4 @@ The editor follows the light or dark mode of Windows. Under `File → Settings` 
 
 ## Help and errors
 
-`Help → Version history` shows what changed in each version, `Help → About` shows the version and license. If an unexpected error occurs, the editor shows a message and keeps running. The details are written to a log file (`Help → Open log folder`, in `%APPDATA%\AutoDrive Editor\logs`); please attach it when reporting a bug.
+`Help → Version history` shows what changed in each version, `Help → About` shows the version and license. If an unexpected error occurs, the editor shows a message and keeps running. The details are written to a log file (`Help → Open log folder`, in `%APPDATA%\AutoDrive Editor\logs`); please attach it when reporting a bug. `Help → Debug log` adds detailed entries to the log, e.g. for each route search (start, goal, headings, why no route was found); turn it on, repeat what went wrong, and attach the log.
