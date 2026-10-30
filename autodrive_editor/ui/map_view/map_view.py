@@ -205,14 +205,13 @@ class MapView(QGraphicsView):
         corner = self.mapToScene(QPoint(0, 0))
         super().resizeEvent(event)
 
-        # Where a bar above or beside the map appears or goes, the map stays still on screen.
+        # Where a bar or panel beside the map appears or goes, or the window changes size, the
+        # map stays still on screen.
         origin = self.mapTo(self.window(), QPoint(0, 0))
         old_origin = getattr(self, "_window_origin", origin)
         self._window_origin = origin
-
-        if origin != old_origin:
-            delta = self.mapToScene(old_origin - origin) - corner
-            self.translate(delta.x(), delta.y())
+        delta = self.mapToScene(old_origin - origin) - corner
+        self.translate(delta.x(), delta.y())
 
         self._zoom_controller.schedule_viewport_update()
 

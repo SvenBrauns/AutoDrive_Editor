@@ -155,3 +155,18 @@ def test_the_map_stays_still_when_the_bar_shows_and_hides(loaded_window, qapp):
     qapp.processEvents()
 
     assert (window_position_of(10, 0) - before).manhattanLength() <= 1
+
+
+def test_the_map_stays_still_when_a_panel_opens_beside_it(loaded_window, qapp):
+    window = loaded_window
+    view = window.view
+    window.scene.setSceneRect(-1000, -1000, 2000, 2000)
+    view.set_zoom_level(4.0)
+    view.centerOn(10, 0)
+    qapp.processEvents()
+    before = view.viewport().mapTo(window, view.mapFromScene(10, 0))
+
+    window.debug_dock.show()
+    qapp.processEvents()
+
+    assert (view.viewport().mapTo(window, view.mapFromScene(10, 0)) - before).manhattanLength() <= 1
