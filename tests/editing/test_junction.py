@@ -8,10 +8,13 @@ from autodrive_editor.editing.junction import (
     BOTH,
     MIN_RADIUS,
     CurveKind,
+    Stem,
     junction_command,
     junction_distance,
+    lane_poses,
     plan_junction,
     road_lanes,
+    uses_two_lanes,
 )
 from autodrive_editor.editing.route_finder import Route, Vehicle
 from autodrive_editor.model.autodrive_data import AutoDriveData, MarkerData, NodeData
@@ -366,3 +369,93 @@ def test_curves_of_an_oblique_junction_are_arcs_without_detours():
     for curve in plan.curves:
         length = sum(math.dist(a, b) for a, b in pairwise(curve.points))
         assert length < 6.0 * math.radians(120) + distance + 1
+
+
+def test_auto_stem_has_two_lanes_on_a_road_of_two_one_way_lanes():
+    two_lanes = road_lanes(two_lane_road(), 7, 8)
+    dual = AutoDriveData()
+    road(dual, 1, [(x, 0.0) for x in range(-60, 61, 10)], ConnectionType.DUAL)
+    dual_lanes = road_lanes(dual, 7, 8)
+
+    assert uses_two_lanes(Stem.AUTO, two_lanes)
+    assert not uses_two_lanes(Stem.AUTO, dual_lanes)
+    assert not uses_two_lanes(Stem.AUTO, two_lanes[:1])
+    assert not uses_two_lanes(Stem.TWO_WAY, two_lanes)
+    assert uses_two_lanes(Stem.TWO_LANES, dual_lanes)
+
+
+def test_lane_poses_put_the_in_lane_on_the_right_of_the_way_into_the_yard():
+    # Driving south into the yard, the right is west (smaller x).
+    in_pose, out_pose = lane_poses(JUNCTION, 5.5)
+
+    assert in_pose == pytest.approx((-2.75, 15.0, math.pi / 2))
+    assert out_pose == pytest.approx((2.75, 15.0, math.pi / 2))
+
+
+def test_junction_distance_with_a_lane_gap_leaves_room_for_both_lanes():
+    lanes = road_lanes(two_lane_road(), 7, 8)
+    heading = math.radians(60)
+
+    # The out-lane starts 2.75 m to the left, where the line along the heading crosses the
+    # east-bound lane further on.
+    later = 2.75 * math.cos(heading) / math.sin(heading)
+    expected = later + 6.0 * (1 + math.cos(heading)) / math.sin(heading)
+
+    assert junction_distance(lanes, (0.0, 0.0), heading, 6.0, gap=5.5) == pytest.approx(expected)
+
+
+def test_with_a_lane_gap_curves_in_and_out_meet_at_their_own_lane():
+    plan = plan_junction(
+        road_lanes(two_lane_road(), 7, 8), JUNCTION, BOTH, 6.0, None, VEHICLE, gap=5.5
+    )
+    in_pose, out_pose = lane_poses(JUNCTION, 5.5)
+
+    assert plan.missing == []
+    assert len(plan.curves) == 4
+
+    for curve in plan.curves:
+        if curve.kind == CurveKind.IN:
+            assert curve.points[-1] == pytest.approx(in_pose[:2])
+        else:
+            assert curve.points[0] == pytest.approx(out_pose[:2])
+
+
+def reachable(data, start_id):
+    seen, todo = {start_id}, [start_id]
+
+    while todo:
+        for target_id in data.nodes[todo.pop()].outgoing - seen:
+            seen.add(target_id)
+            todo.append(target_id)
+
+    return seen
+
+
+def test_a_two_lane_stem_is_two_one_way_lanes_into_and_out_of_the_yard():
+    data = two_lane_road()
+    plan = plan_junction(road_lanes(data, 7, 8), JUNCTION, BOTH, 6.0, None, VEHICLE, gap=5.5)
+    command = junction_command(
+        data, plan, JUNCTION, 5.0, lambda data, x, z: 0.0, stem_length=12, gap=5.5
+    )
+
+    command.apply()
+
+    assert data.validate_connections() == []
+    new_ids = command.new_ids
+    for node_id in new_ids:
+        for target_id in data.nodes[node_id].outgoing & new_ids:
+            pair = (data.nodes[node_id], data.nodes[target_id])
+            assert get_connection_type(*pair) == ConnectionType.REGULAR
+
+    def stem_end(x):
+        return next(
+            node.node_id
+            for node in command.new_nodes
+            if node.x == pytest.approx(x) and node.z == pytest.approx(27.0)
+        )
+
+    in_end, out_end = stem_end(-2.75), stem_end(2.75)
+    # From both lanes into the yard, from the yard to both lanes; the in-lane ends in the yard.
+    assert in_end in reachable(data, 1) & reachable(data, 101)
+    assert {13, 113} <= reachable(data, out_end)
+    assert data.nodes[in_end].outgoing == set()

@@ -1,11 +1,12 @@
 """Junction template: where a yard road meets a public road.
 
 One-way curves lead in from each road lane to the junction node and out from it to each lane;
-the stem into the yard starts at the junction node. Each curve leaves or joins its lane
-tangentially at the yard radius, so it works on straight and curved roads, with two one-way lanes
-(as from the AI scan) or one two-way road. Where a curve is blocked on the drivability map, other
-places along the lane are tried, then tighter radii down to MIN_RADIUS, then the route finder; a
-curve that still does not fit is left out and listed.
+the stem into the yard starts at the junction node. A stem of two one-way lanes has a meeting
+point per lane instead, half the lane gap to each side of the stem's centre line. Each curve
+leaves or joins its lane tangentially at the yard radius, so it works on straight and curved
+roads, with two one-way lanes (as from the AI scan) or one two-way road. Where a curve is
+blocked on the drivability map, other places along the lane are tried, then tighter radii down
+to MIN_RADIUS, then the route finder; a curve that still does not fit is left out and listed.
 
 Headings are in radians in the x-z plane; as z points south on the map, a rising heading is a
 turn to the right.
@@ -58,6 +59,8 @@ NODE_TURN = math.radians(22.5)
 STEM_TOLERANCE = 0.01
 # Points checked along a curve, in metres.
 SAMPLE = 0.5
+# Distance between the two lanes of a two-lane stem.
+LANE_GAP = 5.5
 
 
 class CurveKind(Enum):
@@ -66,6 +69,14 @@ class CurveKind(Enum):
 
 
 BOTH = (CurveKind.IN, CurveKind.OUT)
+
+
+class Stem(Enum):
+    """The stem into the yard: matching the road, one two-way road, or two one-way lanes."""
+
+    AUTO = "auto"
+    TWO_WAY = "two_way"
+    TWO_LANES = "two_lanes"
 
 
 @dataclass(frozen=True)
@@ -149,11 +160,40 @@ def road_lanes(autodrive_data: AutoDriveData, source_id: int, target_id: int) ->
     return [lane, _follow(autodrive_data, best[1], best[2])]
 
 
-def junction_distance(lanes: list[RoadLane], foot: Point, heading: float, radius: float) -> float:
+def uses_two_lanes(stem: Stem, lanes: list[RoadLane]) -> bool:
+    """Whether the stem is two one-way lanes. Auto gives two lanes on a road of two one-way
+    lanes, a two-way stem on a two-way road or a single one-way lane."""
+
+    if stem == Stem.AUTO:
+        return len(lanes) == 2 and lanes[1].node_ids != lanes[0].node_ids[::-1]
+
+    return stem == Stem.TWO_LANES
+
+
+def lane_poses(junction: Pose, gap: float) -> tuple[Pose, Pose]:
+    """The meeting points of a two-lane stem: the in-lane half the gap to the right of the way
+    into the yard, the out-lane half the gap to the left."""
+
+    x, z, heading = junction
+    right_x, right_z = -math.sin(heading) * gap / 2, math.cos(heading) * gap / 2
+
+    return (x + right_x, z + right_z, heading), (x - right_x, z - right_z, heading)
+
+
+def junction_distance(
+    lanes: list[RoadLane], foot: Point, heading: float, radius: float, gap: float = 0.0
+) -> float:
     """How far from `foot` along the heading the curves of a junction meet: far enough past each
     lane the line crosses that both the curve in from it and the one out to it fit as an arc of
     the radius, turning the angle φ between lane and stem or its supplement: r (1 + |cos φ|)
-    / sin φ past the lane, one radius where the stem leaves the road square."""
+    / sin φ past the lane, one radius where the stem leaves the road square. With a lane `gap`,
+    far enough for both lanes of the stem (see lane_poses)."""
+
+    if gap > 0:
+        return max(
+            junction_distance(lanes, pose[:2], heading, radius)
+            for pose in lane_poses((*foot, heading), gap)
+        )
 
     dx, dz = math.cos(heading), math.sin(heading)
     distance = radius
@@ -188,22 +228,29 @@ def plan_junction(
     vehicle: Vehicle,
     marker_ids: frozenset[int] = frozenset(),
     find_route: Callable[[RouteRequest], Route | None] | None = None,
+    gap: float = 0.0,
 ) -> JunctionPlan:
     """The curves of each kind between each lane and the junction, whose heading points into
-    the yard. Curves avoid blocked cells (see FREE_RADIUS) and never end on a marker node."""
+    the yard; with a lane `gap`, curves in meet at the in-lane and curves out at the out-lane of
+    a two-lane stem. Curves avoid blocked cells (see FREE_RADIUS) and never end on a marker
+    node."""
 
     checker = _BlockedCheck(costmap, junction, radius, vehicle)
     plan = JunctionPlan([], [])
+    in_pose, out_pose = lane_poses(junction, gap) if gap > 0 else (junction, junction)
+    poses = {CurveKind.IN: in_pose, CurveKind.OUT: out_pose}
 
     for kind in kinds:
+        pose = poses[kind]
+
         for lane in lanes:
-            curve = _fit(lane, kind, junction, radius, checker, marker_ids)
+            curve = _fit(lane, kind, pose, radius, checker, marker_ids)
 
             if curve is None and find_route is not None:
-                curve = _searched(lane, kind, junction, radius, marker_ids, find_route)
+                curve = _searched(lane, kind, pose, radius, marker_ids, find_route)
 
             if curve is None:
-                plan.missing.append(_missing_text(lane, kind, junction))
+                plan.missing.append(_missing_text(lane, kind, pose))
             else:
                 plan.curves.append(curve)
 
@@ -218,13 +265,15 @@ def junction_command(
     height_for_new_node: Callable[[AutoDriveData, float, float], float],
     junction_id: int | None = None,
     stem_length: float = 0.0,
+    gap: float = 0.0,
 ) -> AddRouteCommand:
     """The edit that adds the curves: a new junction node unless `junction_id` is given, new
     nodes along each curve, and the lane connections split where a curve leaves or joins one.
     Curve ends on the same connection closer than SNAP share a node. Curves that end along the
     line behind the junction share its nodes from where they reach it; a piece used both in and
     out is two-way. A two-way stem of `stem_length` continues from the junction along its
-    heading."""
+    heading. With a lane `gap`, each lane of the stem gets its own meeting node and a one-way
+    stem of `stem_length` (`junction_id` is not used then)."""
 
     next_id = max(autodrive_data.nodes, default=0) + 1
     new_nodes: list[NodeData] = []
@@ -237,18 +286,70 @@ def junction_command(
 
         return next_id - 1
 
-    if junction_id is None:
-        junction_id = new_node(junction[:2])
-
     regular = CONNECTION_STATES[ConnectionType.REGULAR]
     # New nodes on lane connections, per connection (source, target): (fraction, point, id).
     splits: dict[tuple[int, int], list[tuple[float, Point, int]]] = {}
+    connections = []
+
+    def stem_line(pose: Pose, meeting_id: int) -> list[int]:
+        x, z, heading = pose
+        count = math.ceil(stem_length / spacing)
+        ids = [meeting_id]
+
+        for step in range(1, count + 1):
+            along = stem_length * step / count
+            ids.append(new_node((x + along * math.cos(heading), z + along * math.sin(heading))))
+
+        return ids
+
+    if gap > 0:
+        for kind, pose in zip(BOTH, lane_poses(junction, gap), strict=True):
+            meeting_id = new_node(pose[:2])
+            curves = [curve for curve in plan.curves if curve.kind == kind]
+            connections += _curve_connections(curves, pose, meeting_id, spacing, splits, new_node)
+            stem_ids = stem_line(pose, meeting_id)
+
+            if kind == CurveKind.OUT:
+                stem_ids.reverse()
+
+            connections += [(a, b, regular) for a, b in pairwise(stem_ids)]
+    else:
+        if junction_id is None:
+            junction_id = new_node(junction[:2])
+
+        connections += _curve_connections(
+            plan.curves, junction, junction_id, spacing, splits, new_node
+        )
+        dual = CONNECTION_STATES[ConnectionType.DUAL]
+        connections += [(a, b, dual) for a, b in pairwise(stem_line(junction, junction_id))]
+
+    for (source_id, target_id), points in splits.items():
+        state = read_connection_state(autodrive_data, source_id, target_id)
+        chain = [source_id, *(node_id for _, _, node_id in sorted(points)), target_id]
+        connections.append((source_id, target_id, NO_CONNECTION))
+        connections += [(a, b, state) for a, b in pairwise(chain)]
+
+    return AddRouteCommand(tr("Junction"), autodrive_data, new_nodes, connections)
+
+
+def _curve_connections(
+    curves: list[Curve],
+    junction: Pose,
+    junction_id: int,
+    spacing: float,
+    splits: dict,
+    new_node: Callable[[Point], int],
+) -> list:
+    """Connections of the curves meeting at the junction node, with new nodes along them and on
+    the line behind the junction (see junction_command)."""
+
+    regular = CONNECTION_STATES[ConnectionType.REGULAR]
     # Per curve: its own points from the road to the stem line, and where it reaches the line.
-    parts = [_stem_part(curve, junction) for curve in plan.curves]
+    parts = [_stem_part(curve, junction) for curve in curves]
     stem = _stem_nodes(junction, parts, spacing, new_node, junction_id)
     connections = []
 
-    for curve, (points, back) in zip(plan.curves, parts, strict=True):
+    for curve, (points, back) in zip(curves, parts, strict=True):
         road_id = _road_end_id(curve, splits, new_node)
         spaced = spaced_points(points, min(spacing, curve.radius * NODE_TURN))
         chain = [road_id, *(new_node(point) for point in spaced[1:-1]), stem[back]]
@@ -258,24 +359,7 @@ def junction_command(
 
         connections += [(a, b, regular) for a, b in pairwise(chain)]
 
-    connections += _stem_connections(plan, parts, stem)
-    x, z, heading = junction
-    count = math.ceil(stem_length / spacing)
-    stem_ids = [junction_id]
-
-    for step in range(1, count + 1):
-        along = stem_length * step / count
-        stem_ids.append(new_node((x + along * math.cos(heading), z + along * math.sin(heading))))
-
-    connections += [(a, b, CONNECTION_STATES[ConnectionType.DUAL]) for a, b in pairwise(stem_ids)]
-
-    for (source_id, target_id), points in splits.items():
-        state = read_connection_state(autodrive_data, source_id, target_id)
-        chain = [source_id, *(node_id for _, _, node_id in sorted(points)), target_id]
-        connections.append((source_id, target_id, NO_CONNECTION))
-        connections += [(a, b, state) for a, b in pairwise(chain)]
-
-    return AddRouteCommand(tr("Junction"), autodrive_data, new_nodes, connections)
+    return connections + _stem_connections(curves, parts, stem)
 
 
 def _stem_part(curve: Curve, junction: Pose) -> tuple[list[Point], float]:
@@ -331,7 +415,7 @@ def _stem_nodes(
 
 
 def _stem_connections(
-    plan: JunctionPlan, parts: list[tuple[list[Point], float]], stem: dict[float, int]
+    curves: list[Curve], parts: list[tuple[list[Point], float]], stem: dict[float, int]
 ) -> list:
     """Connections along the line behind the junction: towards it where curves in use them,
     away from it where curves out do, two-way where both do."""
@@ -341,11 +425,11 @@ def _stem_connections(
     for near, far in pairwise(sorted(stem)):
         used_in = any(
             curve.kind == CurveKind.IN and back >= far
-            for curve, (_, back) in zip(plan.curves, parts, strict=True)
+            for curve, (_, back) in zip(curves, parts, strict=True)
         )
         used_out = any(
             curve.kind == CurveKind.OUT and back >= far
-            for curve, (_, back) in zip(plan.curves, parts, strict=True)
+            for curve, (_, back) in zip(curves, parts, strict=True)
         )
         if used_in and used_out:
             connections.append((stem[far], stem[near], CONNECTION_STATES[ConnectionType.DUAL]))
@@ -413,7 +497,7 @@ def _fit(
         for _, end, path in sorted(paths, key=lambda item: item[0]):
             points = [pose[:2] for pose in path.sample(SAMPLE)]
 
-            if checker.is_clear(points, end.point):
+            if checker.is_clear(points, (junction[:2], end.point)):
                 if kind == CurveKind.IN:
                     points[0], points[-1] = end.point, junction[:2]
                 else:
@@ -600,15 +684,15 @@ class _BlockedCheck:
         )
         self.grid = Grid(costmap, bounds, vehicle.width / 2 + vehicle.margin)
 
-    def is_clear(self, points: list[Point], road_point: Point) -> bool:
+    def is_clear(self, points: list[Point], free_points: tuple[Point, ...]) -> bool:
+        """Whether the points stay clear, apart from those within FREE_RADIUS of the free points
+        (the curve's meeting point and road end)."""
+
         if self.grid is None:
             return True
 
         for point in points:
-            if (
-                math.dist(point, self.junction) <= FREE_RADIUS
-                or math.dist(point, road_point) <= FREE_RADIUS
-            ):
+            if any(math.dist(point, free) <= FREE_RADIUS for free in free_points):
                 continue
 
             index = self.grid.index(*point)
