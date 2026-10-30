@@ -8,7 +8,7 @@ The editor supports only Farming Simulator 25.
 
 Design: [docs/generators.md](docs/generators.md). Each step is its own branch.
 
-- [ ] stations generator, entry and exit routes (5b): connect the lanes over the triggers to the network; with the rest of the join rules (fixed nodes, "part of another layout" for join points, reuse of separate pieces, replacement of pass-through stretches, regular and subprio for yards)
+- [ ] stations generator, connecting the lanes to the network: plan the layouts first (draft in docs/generators.md, step 5 "Layouts"), then build in branches 5b (join points, fixed nodes, progress dialog, direct layout), 5c (through and loop spines with branches, straighter routes), 5d (reuse of separate pieces, replacement of pass-through stretches, regular and subprio for yards, gate warnings)
 - [ ] shed generator: connect the parking layout to the network
 - [ ] bunker silos generator (designed separately)
 - [ ] afterwards: turn docs/generators.md into manual sections and delete it
