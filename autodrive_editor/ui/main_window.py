@@ -730,6 +730,7 @@ class MainWindow(QMainWindow):
             self.find_route_operation,
             self.move_nodes_operation,
             node_at=self.selection_coordinator.get_node_at,
+            connection_at=self._get_connection_at,
             color_provider=lambda: self.scene_renderer.display_style.regular_connection_color,
             z_value=display_style.selected_node_z + 1,
         )

@@ -9,6 +9,7 @@ from autodrive_editor.editing.operations.find_route import FindRouteOperation
 from autodrive_editor.editing.operations.move_nodes import MoveNodesOperation
 from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import NodeData
+from autodrive_editor.rendering.connections.connection_data import ConnectionData
 from autodrive_editor.ui.tools.map_tool import DragGesture, MapTool, is_alive_in_scene
 
 BLOCKED_COLOR = QColor(230, 30, 30)
@@ -35,6 +36,7 @@ class FindRouteTool(MapTool):
         operation: FindRouteOperation,
         move_nodes_operation: MoveNodesOperation,
         node_at: Callable[[QPoint], NodeData | None],
+        connection_at: Callable[[QPoint], ConnectionData | None],
         color_provider: Callable[[], tuple[int, int, int]],
         z_value: float,
     ):
@@ -43,6 +45,7 @@ class FindRouteTool(MapTool):
         self.operation = operation
         self.move_nodes_operation = move_nodes_operation
         self._node_at = node_at
+        self._connection_at = connection_at
         self._color_provider = color_provider
         self._z_value = z_value
 
@@ -150,8 +153,19 @@ class FindRouteTool(MapTool):
 
         # Only a click adds a waypoint. Releasing after a pan does nothing.
         if not self._end_pan():
-            scene_position = self.view.mapToScene(event.position().toPoint())
-            self._add_waypoint(scene_position.x(), scene_position.y())
+            position = event.position().toPoint()
+            scene_position = self.view.mapToScene(position)
+            connection = self._connection_at(position)
+
+            if connection is not None and self.operation.missing_costmap_message() is None:
+                self.operation.add_waypoint_on_connection(
+                    connection.source_id,
+                    connection.target_id,
+                    scene_position.x(),
+                    scene_position.y(),
+                )
+            else:
+                self._add_waypoint(scene_position.x(), scene_position.y())
 
         return True
 
@@ -179,8 +193,8 @@ class FindRouteTool(MapTool):
 
     def status_hint(self) -> str | None:
         return self.operation.missing_costmap_message() or tr(
-            "Click nodes or free ground as waypoints; drag waypoints or nodes to change the "
-            "route. Right-click or Backspace removes waypoints, Enter adds the route"
+            "Click nodes, connections or free ground as waypoints; drag waypoints or nodes to "
+            "change the route. Right-click or Backspace removes waypoints, Enter adds the route"
         )
 
     def cursor_at(self, view_position: QPoint) -> Qt.CursorShape:
@@ -196,7 +210,7 @@ class FindRouteTool(MapTool):
         if not self.view.has_node_at(view_position) and self._leg_at(view_position) is not None:
             return Qt.SizeAllCursor
 
-        if self.view.has_node_at(view_position):
+        if self.view.has_node_at(view_position) or self._connection_at(view_position) is not None:
             return Qt.PointingHandCursor
 
         return Qt.CrossCursor
@@ -218,7 +232,7 @@ class FindRouteTool(MapTool):
 
     def _waypoint_at(self, view_position: QPoint, free_only: bool = False) -> int | None:
         for index, waypoint in reversed(list(enumerate(self.operation.waypoints))):
-            if free_only and waypoint.node_id is not None:
+            if free_only and not waypoint.is_free:
                 continue
 
             handle_position = self.view.mapFromScene(QPointF(waypoint.x, waypoint.z))
@@ -277,8 +291,8 @@ class FindRouteTool(MapTool):
             if index < len(waypoints):
                 waypoint = waypoints[index]
                 item.setPos(waypoint.x, waypoint.z)
-                # Free waypoints are filled white, waypoints on nodes only ringed.
-                filled = waypoint.node_id is None
+                # Free waypoints are filled white, waypoints on nodes or connections only ringed.
+                filled = waypoint.is_free
                 item.setBrush(QBrush(QColor(255, 255, 255)) if filled else QBrush(Qt.NoBrush))
 
     def _new_handle_item(self) -> QGraphicsEllipseItem:

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Find route: a waypoint can sit on a connection, which is split there when the route is added. The status bar warns when the route joins at a marker node, starts at a node nothing drives to or ends at a node that leads nowhere
 - `View → Show → Sheds` also shows the buildings that came with the map
 - The Generate tool (`G`, replaces the Parking spots tool) starts planning mode and creates what is picked behind its arrow: a route or the parking spots of a shed. It shows the name and category of the building under the pointer. Grid snapping moves from `G` to `S`
 - `Generate → Building types…` (replaces `View → Sheds…`): the building types of the savegame in the groups Stations, Sheds, Bunker silos and Other; a type can be moved to another group or hidden, on every map; `Reset` undoes both. Productions, farmhouses and weighing stations are no longer drawn as sheds
