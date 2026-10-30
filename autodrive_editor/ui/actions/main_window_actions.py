@@ -9,8 +9,8 @@ from autodrive_editor.i18n import tr
 from autodrive_editor.measurement.mode import MeasurementMode
 from autodrive_editor.ui.actions.shortcuts import ShortcutRegistry
 from autodrive_editor.ui.actions.tool_catalog import (
+    GENERATE_TOOL,
     NAVIGATION_TOOL,
-    PARKING_TOOL,
     SELECTION_TOOL,
     TOOL_GROUPS,
     ToolDefinition,
@@ -153,7 +153,7 @@ class MainWindowActions:
 
         self.selection_action = self._create_tool_action(SELECTION_TOOL)
 
-        self.parking_action = self._create_tool_action(PARKING_TOOL)
+        self.generate_action = self._create_tool_action(GENERATE_TOOL)
 
         for _, rows in TOOL_GROUPS:
             for row in rows:
@@ -346,7 +346,7 @@ class MainWindowActions:
 
         self.grid_snap_action = QAction(tool_icon("grid_snap"), tr("Snap to grid"), self.window)
         self.grid_snap_action.setCheckable(True)
-        self.grid_snap_action.setShortcut(QKeySequence("G"))
+        self.grid_snap_action.setShortcut(QKeySequence("S"))
         self.grid_snap_action.toggled.connect(
             lambda enabled: self.window.grid_coordinator.set_grid_snap_enabled(enabled)
         )
@@ -681,7 +681,7 @@ class MainWindowActions:
 
         self.quick_access_toolbar.addAction(self.selection_action)
 
-        self.quick_access_toolbar.addAction(self.parking_action)
+        self.quick_access_toolbar.addAction(self.generate_action)
 
         self._add_toolbar_gap()
 

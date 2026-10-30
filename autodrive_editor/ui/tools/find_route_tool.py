@@ -19,7 +19,8 @@ OUTDATED_OPACITY = 0.45
 
 class FindRouteTool(MapTool):
     """Left click on a node or free ground adds a waypoint. Left dragging a free waypoint moves
-    it, left dragging a node moves the node, left dragging elsewhere pans. Right click on a
+    it, left dragging a node moves the node. Pressing on the route inserts a waypoint there,
+    which a drag moves at once. Left dragging elsewhere pans. Right click on a
     waypoint removes it, Backspace the last one. Esc removes all waypoints, Enter adds the
     route to the plan."""
 
@@ -93,6 +94,14 @@ class FindRouteTool(MapTool):
         if node is not None and self.move_nodes_operation.begin_drag(position):
             self._pressed_node_id = node.node_id
             self._node_drag.press(Qt.LeftButton, position)
+            return True
+
+        scene_position = self.view.mapToScene(position)
+        leg = self._leg_at(position)
+
+        if leg is not None:
+            self.operation.insert_waypoint(leg + 1, scene_position.x(), scene_position.y())
+            self._dragged_waypoint = leg + 1
             return True
 
         self._begin_pan(event)
@@ -184,6 +193,9 @@ class FindRouteTool(MapTool):
         if self._waypoint_at(view_position, free_only=True) is not None:
             return Qt.SizeAllCursor
 
+        if not self.view.has_node_at(view_position) and self._leg_at(view_position) is not None:
+            return Qt.SizeAllCursor
+
         if self.view.has_node_at(view_position):
             return Qt.PointingHandCursor
 
@@ -197,6 +209,12 @@ class FindRouteTool(MapTool):
             return
 
         self.operation.add_waypoint(x, z, node_id)
+
+    def _leg_at(self, view_position: QPoint) -> int | None:
+        scene_position = self.view.mapToScene(view_position)
+        tolerance = self.HANDLE_GRAB_DISTANCE / max(self.view.zoom_level, 1e-6)
+
+        return self.operation.leg_at(scene_position.x(), scene_position.y(), tolerance)
 
     def _waypoint_at(self, view_position: QPoint, free_only: bool = False) -> int | None:
         for index, waypoint in reversed(list(enumerate(self.operation.waypoints))):

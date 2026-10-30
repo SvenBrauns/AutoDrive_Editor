@@ -1,4 +1,5 @@
 import logging
+import math
 import threading
 from collections.abc import Callable
 from dataclasses import dataclass, replace
@@ -94,6 +95,31 @@ class FindRouteOperation(EditOperation):
 
         self.waypoints.append(Waypoint(x, z, node_id))
         self._search()
+
+    def insert_waypoint(self, index: int, x: float, z: float):
+        """Adds a free waypoint before the one at the index."""
+
+        self.waypoints.insert(index, Waypoint(x, z))
+        self._search()
+
+    def leg_at(self, x: float, z: float, tolerance: float) -> int | None:
+        """The leg of the shown route that passes within `tolerance` of the point: leg k runs
+        from waypoint k to k + 1. None if the route does not pass there or is outdated."""
+
+        route = self.shown_route
+
+        if route is None or len(route.waypoint_indices) != len(self.waypoints):
+            return None
+
+        nearest = min(
+            range(len(route.points)),
+            key=lambda index: math.dist(route.points[index], (x, z)),
+        )
+
+        if math.dist(route.points[nearest], (x, z)) > tolerance:
+            return None
+
+        return max(leg for leg, start in enumerate(route.waypoint_indices[:-1]) if start <= nearest)
 
     def remove_waypoint(self, index: int):
         del self.waypoints[index]

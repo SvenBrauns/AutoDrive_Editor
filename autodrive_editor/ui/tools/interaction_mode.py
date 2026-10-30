@@ -8,7 +8,7 @@ class InteractionMode(Enum):
 
     NAVIGATE = auto()
     SELECT = auto()
-    PARKING_SPOTS = auto()
+    GENERATE = auto()
     CREATE_NODES = auto()
     CREATE_SUBPRIO_NODES = auto()
     TOGGLE_NODE_TYPE = auto()
@@ -27,7 +27,6 @@ class InteractionMode(Enum):
     DRAW_LINE = auto()
     DRAW_BEZIER = auto()
     DRAW_ARC = auto()
-    FIND_ROUTE = auto()
     ADD_MARKER = auto()
     EDIT_MARKER = auto()
     MOVE_MARKER = auto()
@@ -38,7 +37,7 @@ class InteractionMode(Enum):
         display_names = {
             InteractionMode.NAVIGATE: tr("Navigation"),
             InteractionMode.SELECT: tr("Selection"),
-            InteractionMode.PARKING_SPOTS: tr("Parking spots"),
+            InteractionMode.GENERATE: tr("Generate"),
             InteractionMode.CREATE_NODES: tr("Create nodes (Regular)"),
             InteractionMode.CREATE_SUBPRIO_NODES: tr("Create nodes (Subprio)"),
             InteractionMode.TOGGLE_NODE_TYPE: tr("Toggle node type"),
@@ -57,7 +56,6 @@ class InteractionMode(Enum):
             InteractionMode.DRAW_LINE: tr("Line"),
             InteractionMode.DRAW_BEZIER: tr("Bézier curve"),
             InteractionMode.DRAW_ARC: tr("Arc"),
-            InteractionMode.FIND_ROUTE: tr("Find route"),
             InteractionMode.ADD_MARKER: tr("Add marker"),
             InteractionMode.EDIT_MARKER: tr("Edit marker"),
             InteractionMode.MOVE_MARKER: tr("Move marker"),

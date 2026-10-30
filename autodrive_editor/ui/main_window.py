@@ -7,8 +7,11 @@ from PySide6.QtWidgets import (
     QInputDialog,
     QLabel,
     QMainWindow,
+    QMenu,
+    QToolButton,
     QVBoxLayout,
     QWidget,
+    QWidgetAction,
 )
 
 from autodrive_editor.editing.commands.edit_command import DataChange
@@ -75,6 +78,7 @@ from autodrive_editor.ui.panels.check_dock import CheckDock
 from autodrive_editor.ui.panels.debug_dock import DebugDock
 from autodrive_editor.ui.panels.debug_dock_coordinator import DebugDockCoordinator
 from autodrive_editor.ui.panels.display_options_dialog import DisplayOptionsDialog
+from autodrive_editor.ui.panels.generate_options import GenerateOptionsWidget
 from autodrive_editor.ui.panels.marker_dock import MarkerDock
 from autodrive_editor.ui.panels.node_info_formatter import NodeInfoFormatter
 from autodrive_editor.ui.panels.path_options import PathOptionsWidget
@@ -87,6 +91,7 @@ from autodrive_editor.ui.tools.connect_nodes_tool import ConnectNodesTool
 from autodrive_editor.ui.tools.create_node_tool import CreateNodeTool
 from autodrive_editor.ui.tools.delete_nodes_tool import DeleteNodesTool
 from autodrive_editor.ui.tools.find_route_tool import FindRouteTool
+from autodrive_editor.ui.tools.generate_tool import GenerateTask, GenerateTool
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 from autodrive_editor.ui.tools.measure_tool import MeasureTool
 from autodrive_editor.ui.tools.move_nodes_tool import MoveNodesTool
@@ -624,21 +629,6 @@ class MainWindow(QMainWindow):
         )
 
         self.view.register_tool(
-            InteractionMode.PARKING_SPOTS,
-            NodeClickTool(
-                self.view,
-                self.parking_spot_operation.create_at,
-                lambda: (
-                    tr("Click a shed to create parking spots in it")
-                    if self.scene_renderer.shown_shed_areas
-                    else tr("No sheds shown: open a savegame or link one to the route")
-                ),
-                is_target=lambda view_position: self._get_shed_at(view_position) is not None,
-                hover_text=self._get_shed_name_at,
-            ),
-        )
-
-        self.view.register_tool(
             InteractionMode.EDIT_NODE_POSITION,
             NodeClickTool(
                 self.view,
@@ -686,6 +676,8 @@ class MainWindow(QMainWindow):
 
         self._register_marker_tools()
 
+        self._register_generate_tool()
+
         self.view.register_measure_tool(MeasureTool(self.view, self.measurement_coordinator))
 
     def _register_align_tools(self):
@@ -731,17 +723,39 @@ class MainWindow(QMainWindow):
                 ),
             )
 
-        self.view.register_tool(
-            InteractionMode.FIND_ROUTE,
-            FindRouteTool(
-                self.view,
-                self.find_route_operation,
-                self.move_nodes_operation,
-                node_at=self.selection_coordinator.get_node_at,
-                color_provider=lambda: self.scene_renderer.display_style.regular_connection_color,
-                z_value=display_style.selected_node_z + 1,
-            ),
+    def _register_generate_tool(self):
+        display_style = self.scene_renderer.display_style
+        route_tool = FindRouteTool(
+            self.view,
+            self.find_route_operation,
+            self.move_nodes_operation,
+            node_at=self.selection_coordinator.get_node_at,
+            color_provider=lambda: self.scene_renderer.display_style.regular_connection_color,
+            z_value=display_style.selected_node_z + 1,
         )
+        parking_tool = NodeClickTool(
+            self.view,
+            self.parking_spot_operation.create_at,
+            lambda: (
+                tr("Click a shed to create parking spots in it")
+                if self.scene_renderer.shown_shed_areas
+                else tr("No sheds shown: open a savegame or link one to the route")
+            ),
+            is_target=lambda view_position: self._get_shed_at(view_position) is not None,
+            hover_text=self._get_shed_name_at,
+        )
+        self.generate_tool = GenerateTool(
+            self.view,
+            {GenerateTask.ROUTE: route_tool, GenerateTask.PARKING_SPOTS: parking_tool},
+            start_planning=lambda: self.planning.start_plan(),
+        )
+        self.view.register_tool(InteractionMode.GENERATE, self.generate_tool)
+
+    def set_generate_task(self, task: GenerateTask):
+        """Picks what the Generate tool creates and selects the tool."""
+
+        self.generate_tool.set_task(task)
+        self.set_interaction_mode(InteractionMode.GENERATE)
 
     def _create_tool_options(self):
         """The options behind the arrows of the Rotate and path tool buttons."""
@@ -756,6 +770,18 @@ class MainWindow(QMainWindow):
             self.settings.set_rotate_snap_angle(angle)
 
         rotate_options.snap_angle_changed.connect(apply_snap_angle)
+
+        # The Generate button is on the quick access bar: same arrow as on the tool panel.
+        self.generate_options = GenerateOptionsWidget(self.generate_tool.task)
+        button = self.actions.quick_access_toolbar.widgetForAction(self.actions.generate_action)
+        menu = QMenu(button)
+        widget_action = QWidgetAction(menu)
+        widget_action.setDefaultWidget(self.generate_options)
+        menu.addAction(widget_action)
+        button.setMenu(menu)
+        button.setPopupMode(QToolButton.MenuButtonPopup)
+        self.generate_options.task_changed.connect(self.set_generate_task)
+        self.generate_options.task_changed.connect(menu.close)
         tool_panel.set_tool_options(tool_actions[InteractionMode.ROTATE_SELECTION], rotate_options)
 
         # One options widget per path tool; changing one updates the others.

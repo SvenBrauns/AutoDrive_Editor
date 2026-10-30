@@ -201,3 +201,16 @@ def test_removing_waypoints(route):
     assert route.operation.clear()
     assert route.operation.route is None
     assert not route.operation.clear()
+
+
+def test_leg_at_a_point_of_the_route_and_inserting_a_waypoint_there(route):
+    route.find(1, (0, 0), 2)
+
+    assert route.operation.leg_at(-30, 0, 1.0) == 0
+    assert route.operation.leg_at(30, 0, 1.0) == 1
+    assert route.operation.leg_at(30, 20, 1.0) is None
+
+    route.operation.insert_waypoint(2, 30, 1)
+
+    assert route.operation.waypoints[2] == Waypoint(30, 1)
+    assert route.operation.leg_at(30, 0, 1.0) is None

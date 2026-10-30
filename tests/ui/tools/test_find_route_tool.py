@@ -9,6 +9,7 @@ from PySide6.QtCore import QPoint, Qt
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
+from autodrive_editor.ui.tools.generate_tool import GenerateTask
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
 # Test network from conftest: nodes 1, 2, 3 on z=0 at x = 0, 10, 20.
@@ -17,7 +18,7 @@ from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 @pytest.fixture
 def window(zoomed_window):
     zoomed_window.find_route_operation.costmap_provider = make_costmap
-    zoomed_window.set_interaction_mode(InteractionMode.FIND_ROUTE)
+    zoomed_window.set_generate_task(GenerateTask.ROUTE)
 
     return zoomed_window
 
@@ -40,7 +41,7 @@ def test_clicks_on_free_ground_and_nodes_add_waypoints_and_show_the_route(window
     wait(window)
 
     assert waypoint_ids(window) == [None, 3]
-    tool = window.view.active_tool
+    tool = window.generate_tool.current
     assert tool._route_item.isVisible() and not tool._route_item.path().isEmpty()
     assert tool._blocked_item.path().isEmpty()
 
@@ -81,3 +82,35 @@ def test_without_drivability_map_no_waypoint_is_added(window):
 
     assert waypoint_ids(window) == []
     assert "drivability map" in window.status.text()
+
+
+def test_selecting_generate_starts_planning_mode(window):
+    assert window.edit_history.is_planning
+    assert window.actions.generate_action.shortcut().toString() == "G"
+
+
+def test_the_options_pick_what_generate_creates(window):
+    window.set_interaction_mode(InteractionMode.SELECT)
+
+    window.generate_options.task_buttons[GenerateTask.PARKING_SPOTS].setChecked(True)
+
+    assert window.generate_tool.task == GenerateTask.PARKING_SPOTS
+    assert window.view.active_tool is window.generate_tool
+
+
+def test_dragging_the_route_inserts_a_waypoint_there(window):
+    click(window, view_pos(window, 0, 20))
+    click(window, view_pos(window, 20, 20))
+    wait(window)
+
+    drag(window, view_pos(window, 10, 20), view_pos(window, 10, 26))
+    wait(window)
+
+    waypoints = window.find_route_operation.waypoints
+    assert len(waypoints) == 3
+    assert waypoints[1].x == pytest.approx(10, abs=0.5)
+    assert waypoints[1].z == pytest.approx(26, abs=0.5)
+    route = window.find_route_operation.route
+    assert route.points[route.waypoint_indices[1]] == pytest.approx(
+        (waypoints[1].x, waypoints[1].z)
+    )

@@ -720,7 +720,7 @@ TEXTS = {
     "Exit line": "Abfahrtslinie",
     "A marker in this group already has the name “{name}”.": "Ein Marker in dieser Gruppe heißt bereits „{name}“.",
     "Find route": "Route finden",
-    "Click nodes or free ground as waypoints: a drivable route through them is shown, red where it crosses obstacles. Enter adds it to the plan": "Nodes oder freie Stellen als Wegpunkte anklicken: Eine befahrbare Route durch sie wird angezeigt, rot wo sie Hindernisse kreuzt. Enter fügt sie dem Plan hinzu",
+    "Generate routes through waypoints or parking spots in sheds; the arrow picks what. Starts planning mode": "Routen durch Wegpunkte oder Parkplätze in Hallen erzeugen; der Pfeil wählt, was. Startet den Planungsmodus",
     "Find route adds routes in planning mode": "Route finden fügt Routen nur im Planungsmodus hinzu",
     "The route is still being searched": "Die Route wird noch gesucht",
     "The route crosses obstacles (red). Move or add waypoints first": "Die Route kreuzt Hindernisse (rot). Zuerst Wegpunkte verschieben oder hinzufügen",
