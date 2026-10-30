@@ -242,6 +242,12 @@ class MainWindow(QMainWindow):
     def set_measurement_mode(self, measurement_mode: MeasurementMode):
         self.measurement_coordinator.set_mode(measurement_mode)
 
+    def undo(self):
+        """Undoes the last edit; a junction still being drawn is cancelled instead."""
+
+        if not self.junction_operation.cancel():
+            self.edit_history.undo()
+
     def delete_selection(self):
         self.delete_nodes_operation.delete_selection()
 

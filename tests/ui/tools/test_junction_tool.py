@@ -158,3 +158,18 @@ def test_the_stem_options_fit_into_the_menu_and_are_saved(window, qapp):
     assert window.settings.junction_stem == (Stem.AUTO, 7.0)
     options.style_box.setCurrentIndex(options.style_box.findData(Style.CURVES))
     assert window.settings.junction_style == Style.CURVES
+
+
+def test_undo_in_step_two_cancels_the_junction_not_the_last_edit(window):
+    data = window.project_coordinator.autodrive_data
+    drag(window, view_pos(window, 5, 0), view_pos(window, 5, 15))
+    press_enter(window)
+    added = len(data.nodes)
+    drag(window, view_pos(window, -35, 0), view_pos(window, -35, 15))
+
+    window.actions.undo_action.trigger()
+
+    assert window.junction_operation.preview is None
+    assert len(data.nodes) == added
+    window.actions.undo_action.trigger()
+    assert len(data.nodes) == 13

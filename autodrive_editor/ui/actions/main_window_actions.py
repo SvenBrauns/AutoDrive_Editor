@@ -443,7 +443,7 @@ class MainWindowActions:
             icon="undo",
             base_text=self.UNDO_TEXT,
             shortcut=QKeySequence.Undo,
-            trigger=edit_history.undo,
+            trigger=self.window.undo,
             can_run_changed=undo_group.canUndoChanged,
             text_changed=undo_group.undoTextChanged,
         )
