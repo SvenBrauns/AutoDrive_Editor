@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Generate tool, task `Stations`: click a station or right-drag a box around several; a dialog with a map preview creates a one-way subprio lane over each chosen stop with a marker (name and group per type), into the plan. Lanes can be turned by dragging their end on the map or by angle
+- The station arrows take their direction from the drivability map, and the stops of a building circle it counterclockwise
 - Find route: a waypoint can sit on a connection, which is split there when the route is added. The status bar warns when the route joins at a marker node, starts at a node nothing drives to or ends at a node that leads nowhere
 - `View → Show → Sheds` also shows the buildings that came with the map
 - The Generate tool (`G`, replaces the Parking spots tool) starts planning mode (again on a click after the plan was applied or discarded) and creates what is picked behind its arrow: a route or the parking spots of a shed. It shows the name and category of the building under the pointer. Grid snapping moves from `G` to `S`
