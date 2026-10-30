@@ -11,12 +11,15 @@ from autodrive_editor.ui.tools.map_tool import MapTool
 class GenerateTask(Enum):
     ROUTE = "route"
     PARKING_SPOTS = "parking_spots"
+    STATIONS = "stations"
 
     @property
     def display_name(self) -> str:
-        return {GenerateTask.ROUTE: tr("Route"), GenerateTask.PARKING_SPOTS: tr("Parking spots")}[
-            self
-        ]
+        return {
+            GenerateTask.ROUTE: tr("Route"),
+            GenerateTask.PARKING_SPOTS: tr("Parking spots"),
+            GenerateTask.STATIONS: tr("Stations"),
+        }[self]
 
 
 class GenerateTool(MapTool):

@@ -30,11 +30,15 @@ class ParkingMapOverlay(QGraphicsItem):
     def set_plan(self, frame: ShedFrame, network: ParkingNetwork | None):
         """Shows the network in the frame's shed; None hides it."""
 
+        points = [] if network is None else [frame.to_map(*p) for p in network.points]
+        self.set_network(network, points)
+
+    def set_network(self, network: ParkingNetwork | None, points: list[tuple[float, float]]):
+        """Shows the network with its nodes at the map points (x, z); None hides it."""
+
         self.prepareGeometryChange()
         self.network = network
-        self.points = (
-            [] if network is None else [QPointF(*frame.to_map(*p)) for p in network.points]
-        )
+        self.points = [QPointF(*point) for point in points] if network is not None else []
         self.update()
 
     def boundingRect(self) -> QRectF:

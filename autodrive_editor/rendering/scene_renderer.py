@@ -4,6 +4,7 @@ from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QPainterPath, QPolygonF
 from PySide6.QtWidgets import QGraphicsScene
 
+from autodrive_editor.editing.station_layout import building_stops_at
 from autodrive_editor.file_io.navigation_costmap import NavigationCostmap
 from autodrive_editor.file_io.savegame_buildings import BuildingGroup, SavegameBuildings
 from autodrive_editor.file_io.savegame_sheds import IndoorArea
@@ -335,6 +336,23 @@ class SceneRenderer:
                 return area
 
         return None
+
+    def get_station_stops_at(self, x: float, z: float, tolerance: float) -> list[Stop]:
+        """All stops of the station building picked at the scene point, while stations are
+        shown."""
+
+        if not self.visibility.stations:
+            return []
+
+        return building_stops_at(self.shown_stops, x, z, tolerance)
+
+    def get_stops_in_path(self, path: QPainterPath) -> list[Stop]:
+        """The shown stops inside the scene path, while stations are shown."""
+
+        if not self.visibility.stations:
+            return []
+
+        return [stop for stop in self.shown_stops if path.contains(QPointF(*stop.position[::2]))]
 
     def get_connection_at(self, x: float, z: float, tolerance: float) -> ConnectionData | None:
         """The connection closest to the scene point, if it is within

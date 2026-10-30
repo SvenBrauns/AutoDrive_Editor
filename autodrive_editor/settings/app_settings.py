@@ -9,6 +9,7 @@ from PySide6.QtCore import QSettings
 
 from autodrive_editor.editing.path_shapes import PathOptions
 from autodrive_editor.editing.route_finder import Vehicle
+from autodrive_editor.editing.station_layout import StationSettings
 from autodrive_editor.file_io.savegame_buildings import BuildingGroup
 from autodrive_editor.game.game_folder import GameFolder
 from autodrive_editor.game.game_installation import GameInstallation
@@ -37,6 +38,11 @@ class AppSettings:
         "turning_radius": "route/turning_radius",
         "width": "route/vehicle_width",
         "margin": "route/safety_margin",
+    }
+    STATION_KEYS = {
+        "before": "stations/lane_before",
+        "after": "stations/lane_after",
+        "spacing": "stations/spacing",
     }
     ROTATE_SNAP_KEY = "rotate/snap_angle"
     RECENT_ITEMS_KEY = "app/recent_items"
@@ -274,6 +280,24 @@ class AppSettings:
     def set_vehicle(self, vehicle: Vehicle):
         for name, key in self.VEHICLE_KEYS.items():
             self._settings.setValue(key, float(getattr(vehicle, name)))
+
+        self._settings.sync()
+
+    @property
+    def station_settings(self) -> StationSettings:
+        """Lane lengths and node spacing of the stations generator."""
+
+        default = StationSettings()
+        values = {
+            name: self._settings.value(key, getattr(default, name), type=float)
+            for name, key in self.STATION_KEYS.items()
+        }
+
+        return StationSettings(**values) if values["spacing"] > 0 else default
+
+    def set_station_settings(self, settings: StationSettings):
+        for name, key in self.STATION_KEYS.items():
+            self._settings.setValue(key, float(getattr(settings, name)))
 
         self._settings.sync()
 
