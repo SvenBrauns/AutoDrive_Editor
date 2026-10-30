@@ -1,4 +1,4 @@
-"""Rules for where new pieces meet the existing network (docs/generators.md, step 4)."""
+"""Rules for where new pieces meet the existing network."""
 
 from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData

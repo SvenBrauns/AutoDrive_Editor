@@ -1,4 +1,4 @@
-"""Lanes and markers for the stops of stations (docs/generators.md, step 5).
+"""Lanes and markers for the stops of stations.
 
 Each chosen stop gets a straight one-way lane along its heading, with a node exactly at the stop
 that carries the marker. The default heading comes from the drivability map: the lane axis with
