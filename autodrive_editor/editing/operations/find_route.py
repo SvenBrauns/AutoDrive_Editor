@@ -93,7 +93,8 @@ class FindRouteOperation(EditOperation):
         self._search_again = False
         self._search_done.connect(self._finish)
         self.edit_history.data_changed.connect(self._handle_data_changed)
-        self.edit_history.planning_changed.connect(lambda _planning: self._search())
+        # Only an ended plan changes the planned lanes; a new plan is empty.
+        self.edit_history.planning_changed.connect(lambda planning: planning or self._search())
 
     @property
     def is_searching(self) -> bool:
