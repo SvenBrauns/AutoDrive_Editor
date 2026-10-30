@@ -2,6 +2,7 @@ import pytest
 from base_game_helpers import make_installation
 from game_folder_helpers import make_game_folder
 
+from autodrive_editor.editing.junction import Stem
 from autodrive_editor.editing.path_shapes import PathOptions
 from autodrive_editor.editing.route_finder import Vehicle
 from autodrive_editor.editing.station_layout import StationSettings
@@ -379,3 +380,11 @@ def test_debug_log_is_off_until_turned_on():
     settings.set_debug_log(True)
 
     assert AppSettings().debug_log
+
+
+def test_junction_stem_defaults_to_auto_with_a_lane_gap_of_5_5_and_is_kept():
+    assert AppSettings().junction_stem == (Stem.AUTO, 5.5)
+
+    AppSettings().set_junction_stem(Stem.TWO_LANES, 7.0)
+
+    assert AppSettings().junction_stem == (Stem.TWO_LANES, 7.0)

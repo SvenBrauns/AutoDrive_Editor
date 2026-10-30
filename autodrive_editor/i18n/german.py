@@ -778,6 +778,13 @@ TEXTS = {
     "Junction added; missing: {missing}": "Einmündung hinzugefügt; es fehlt: {missing}",
     "Junctions are added in planning mode": "Einmündungen werden nur im Planungsmodus hinzugefügt",
     "No curve of the junction fits here": "Hier passt keine Kurve der Einmündung",
+    "Stem:": "Zufahrt:",
+    "Auto": "Automatisch",
+    "Two-way": "Beide Richtungen",
+    "Two lanes": "Zwei Spuren",
+    "Auto: two lanes on a road of two one-way lanes, two-way on a two-way road": "Automatisch: zwei Spuren an einer Straße aus zwei Einbahnspuren, beide Richtungen an einer Straße in beide Richtungen",
+    "Lane gap:": "Spurabstand:",
+    "Distance between the two lanes of the stem": "Abstand zwischen den beiden Spuren der Zufahrt",
     "Searching the curves that do not fit…": "Suche die Kurven, die nicht passen …",
     "Press on a road and drag towards the yard to add a junction; release adds it, Esc cancels": "Auf eine Straße drücken und zum Hof ziehen, um eine Einmündung anzulegen; Loslassen fügt sie hinzu, Esc bricht ab",
 }

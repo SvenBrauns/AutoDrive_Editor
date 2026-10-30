@@ -9,13 +9,16 @@ from autodrive_editor.editing.dubins import Pose
 from autodrive_editor.editing.edit_context import EditContext, EditOperation
 from autodrive_editor.editing.junction import (
     BOTH,
+    LANE_GAP,
     YARD_RADIUS,
     JunctionPlan,
     RoadLane,
+    Stem,
     junction_command,
     junction_distance,
     plan_junction,
     road_lanes,
+    uses_two_lanes,
 )
 from autodrive_editor.editing.route_finder import RouteFinder, Vehicle
 from autodrive_editor.file_io.navigation_costmap import NavigationCostmap
@@ -29,11 +32,14 @@ class JunctionPreview:
     # Where the curves meet, heading into the yard, and the stem beyond it.
     junction: Pose
     stem_length: float
+    # Gap between the lanes of a two-lane stem, 0 for a two-way stem.
+    gap: float = 0.0
 
 
 class JunctionOperation(EditOperation):
     """Junction task: pressing on a road connection and dragging away from the road previews a
-    junction (curves in and out at the yard radius, a two-way stem to the drag end); release adds
+    junction (curves in and out at the yard radius, a stem to the drag end: two-way or two one-way
+    lanes, see Stem); release adds
     it to the plan as one undo step. Curves that do not fit as drawn are searched with the route
     finder in a background thread first."""
 
@@ -50,6 +56,7 @@ class JunctionOperation(EditOperation):
         vehicle_provider: Callable[[], Vehicle],
         spacing_provider: Callable[[], float],
         height_for_new_node: Callable[[AutoDriveData, float, float], float],
+        stem_provider: Callable[[], tuple[Stem, float]] = lambda: (Stem.AUTO, LANE_GAP),
         parent=None,
     ):
         super().__init__(context, parent)
@@ -58,6 +65,7 @@ class JunctionOperation(EditOperation):
         self.vehicle_provider = vehicle_provider
         self.spacing_provider = spacing_provider
         self.height_for_new_node = height_for_new_node
+        self.stem_provider = stem_provider
 
         self.preview: JunctionPreview | None = None
         self._lanes: list[RoadLane] = []
@@ -104,14 +112,16 @@ class JunctionOperation(EditOperation):
             return
 
         heading = math.atan2(z - foot_z, x - foot_x)
-        distance = junction_distance(self._lanes, self._foot, heading, YARD_RADIUS)
+        stem, gap = self.stem_provider()
+        gap = gap if uses_two_lanes(stem, self._lanes) else 0.0
+        distance = junction_distance(self._lanes, self._foot, heading, YARD_RADIUS, gap)
         junction = (
             foot_x + distance * math.cos(heading),
             foot_z + distance * math.sin(heading),
             heading,
         )
-        plan = self._plan(junction)
-        self.preview = JunctionPreview(plan, junction, max(0.0, length - distance))
+        plan = self._plan(junction, gap)
+        self.preview = JunctionPreview(plan, junction, max(0.0, length - distance), gap)
         self.preview_changed.emit()
 
     def finish(self) -> bool:
@@ -145,7 +155,7 @@ class JunctionOperation(EditOperation):
             def find_route(request):
                 return None if cancelled.is_set() else finder.find(request, cancelled.is_set)
 
-            plan = self._plan(preview.junction, find_route)
+            plan = self._plan(preview.junction, preview.gap, find_route)
 
             try:
                 self._search_done.emit(None if cancelled.is_set() else plan)
@@ -172,7 +182,7 @@ class JunctionOperation(EditOperation):
 
         return had_something
 
-    def _plan(self, junction: Pose, find_route=None) -> JunctionPlan:
+    def _plan(self, junction: Pose, gap: float, find_route=None) -> JunctionPlan:
         autodrive_data = self.autodrive_data_provider()
 
         return plan_junction(
@@ -184,6 +194,7 @@ class JunctionOperation(EditOperation):
             self.vehicle_provider(),
             frozenset(autodrive_data.markers),
             find_route,
+            gap,
         )
 
     def _finish(self, plan: JunctionPlan | None):
@@ -194,7 +205,7 @@ class JunctionOperation(EditOperation):
             return
 
         preview = running["preview"]
-        self._add(JunctionPreview(plan, preview.junction, preview.stem_length))
+        self._add(JunctionPreview(plan, preview.junction, preview.stem_length, preview.gap))
 
     def _add(self, preview: JunctionPreview) -> bool:
         autodrive_data = self.autodrive_data_provider()
@@ -213,6 +224,7 @@ class JunctionOperation(EditOperation):
             self.spacing_provider(),
             self.height_for_new_node,
             stem_length=preview.stem_length,
+            gap=preview.gap,
         )
         self.cancel()
         self.edit_history.push(command)

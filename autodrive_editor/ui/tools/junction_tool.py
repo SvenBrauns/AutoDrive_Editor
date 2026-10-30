@@ -5,6 +5,7 @@ from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QColor, QMouseEvent, QPainterPath, QPen
 from PySide6.QtWidgets import QGraphicsPathItem
 
+from autodrive_editor.editing.junction import lane_poses
 from autodrive_editor.editing.operations.junction import JunctionOperation
 from autodrive_editor.i18n import tr
 from autodrive_editor.rendering.connections.connection_data import ConnectionData
@@ -112,12 +113,17 @@ class JunctionTool(MapTool):
                 for point in curve.points[1:]:
                     path.lineTo(*point)
 
-            x, z, heading = preview.junction
-            path.moveTo(x, z)
-            path.lineTo(
-                x + preview.stem_length * math.cos(heading),
-                z + preview.stem_length * math.sin(heading),
-            )
+            if preview.gap > 0:
+                poses = lane_poses(preview.junction, preview.gap)
+            else:
+                poses = (preview.junction,)
+
+            for x, z, heading in poses:
+                path.moveTo(x, z)
+                path.lineTo(
+                    x + preview.stem_length * math.cos(heading),
+                    z + preview.stem_length * math.sin(heading),
+                )
 
         item = self._item if is_alive_in_scene(self._item, self.view.scene()) else None
 

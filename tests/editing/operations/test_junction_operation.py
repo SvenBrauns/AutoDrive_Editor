@@ -5,6 +5,7 @@ from costmap_helpers import make_costmap
 
 from autodrive_editor.editing.edit_context import EditContext
 from autodrive_editor.editing.edit_history import EditHistory
+from autodrive_editor.editing.junction import CurveKind, Stem, lane_poses
 from autodrive_editor.editing.operations.junction import JunctionOperation
 from autodrive_editor.editing.route_finder import Vehicle
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
@@ -18,7 +19,7 @@ from autodrive_editor.model.connections import (
 class Fixture:
     """An east-bound lane at z = 0 from x = -60 to 60 (node IDs 1–13, 10 m apart)."""
 
-    def __init__(self, qapp, costmap=None):
+    def __init__(self, qapp, costmap=None, stem=(Stem.AUTO, 5.5)):
         self.qapp = qapp
         self.data = AutoDriveData()
 
@@ -39,6 +40,7 @@ class Fixture:
             vehicle_provider=lambda: Vehicle(8, 3, 0.5),
             spacing_provider=lambda: 5.0,
             height_for_new_node=lambda data, x, z: 0.0,
+            stem_provider=lambda: stem,
         )
         self.operation.status_changed.connect(self.messages.append)
 
@@ -117,3 +119,25 @@ def test_cancel_clears_the_preview(qapp):
 
     assert fixture.operation.preview is None
     assert not fixture.operation.finish()
+
+
+def test_a_two_lane_stem_has_its_lanes_the_gap_apart(qapp):
+    fixture = Fixture(qapp, stem=(Stem.TWO_LANES, 6.0))
+    fixture.history.start_plan()
+    fixture.drag(2.0, 20.0)
+
+    preview = fixture.operation.preview
+    assert preview.gap == 6.0
+    in_pose, _ = lane_poses(preview.junction, 6.0)
+    curve_in = next(curve for curve in preview.plan.curves if curve.kind == CurveKind.IN)
+    assert curve_in.points[-1] == pytest.approx(in_pose[:2])
+
+    assert fixture.operation.finish()
+    assert fixture.data.validate_connections() == []
+
+
+def test_auto_stem_is_two_way_on_a_single_lane(qapp):
+    fixture = Fixture(qapp, stem=(Stem.AUTO, 6.0))
+    fixture.drag(2.0, 20.0)
+
+    assert fixture.operation.preview.gap == 0.0

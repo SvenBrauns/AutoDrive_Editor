@@ -582,6 +582,7 @@ class MainWindow(QMainWindow):
             vehicle_provider=lambda: self.settings.vehicle,
             spacing_provider=lambda: self.create_path_operation.options.spacing,
             height_for_new_node=self.create_nodes_operation.height_for_new_node,
+            stem_provider=lambda: self.settings.junction_stem,
             parent=self,
         )
 
@@ -866,7 +867,9 @@ class MainWindow(QMainWindow):
         rotate_options.snap_angle_changed.connect(apply_snap_angle)
 
         # The Generate button is on the quick access bar: same arrow as on the tool panel.
-        self.generate_options = GenerateOptionsWidget(self.generate_tool.task)
+        self.generate_options = GenerateOptionsWidget(
+            self.generate_tool.task, *self.settings.junction_stem
+        )
         button = self.actions.quick_access_toolbar.widgetForAction(self.actions.generate_action)
         menu = QMenu(button)
         widget_action = QWidgetAction(menu)
@@ -876,6 +879,15 @@ class MainWindow(QMainWindow):
         button.setPopupMode(QToolButton.MenuButtonPopup)
         self.generate_options.task_changed.connect(self.set_generate_task)
         self.generate_options.task_changed.connect(menu.close)
+
+        # Bound now: both names are used again below.
+        def refit_menu(menu=menu, widget_action=widget_action):
+            # The task's options may have appeared or disappeared: measure the menu again.
+            menu.removeAction(widget_action)
+            menu.addAction(widget_action)
+
+        menu.aboutToShow.connect(refit_menu)
+        self.generate_options.stem_changed.connect(self.settings.set_junction_stem)
         tool_panel.set_tool_options(tool_actions[InteractionMode.ROTATE_SELECTION], rotate_options)
 
         # One options widget per path tool; changing one updates the others.

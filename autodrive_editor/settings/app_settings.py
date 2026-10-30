@@ -7,6 +7,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QSettings
 
+from autodrive_editor.editing.junction import LANE_GAP, Stem
 from autodrive_editor.editing.path_shapes import PathOptions
 from autodrive_editor.editing.route_finder import Vehicle
 from autodrive_editor.editing.station_layout import StationSettings
@@ -48,6 +49,8 @@ class AppSettings:
         "spacing": "stations/spacing",
     }
     ROTATE_SNAP_KEY = "rotate/snap_angle"
+    JUNCTION_STEM_KEY = "junction/stem"
+    JUNCTION_GAP_KEY = "junction/lane_gap"
     RECENT_ITEMS_KEY = "app/recent_items"
     LANGUAGE_KEY = "app/language"
     CHECK_OVERLAP_KEY = "check/overlap_tolerance"
@@ -510,6 +513,20 @@ class AppSettings:
 
     def set_rotate_snap_angle(self, angle: float):
         self._settings.setValue(self.ROTATE_SNAP_KEY, float(angle))
+        self._settings.sync()
+
+    @property
+    def junction_stem(self) -> tuple[Stem, float]:
+        """The Junction task's stem kind and the gap between the lanes of a two-lane stem."""
+
+        value = self._settings.value(self.JUNCTION_STEM_KEY, Stem.AUTO.value, type=str)
+        stem = Stem(value) if value in {each.value for each in Stem} else Stem.AUTO
+
+        return stem, self._settings.value(self.JUNCTION_GAP_KEY, LANE_GAP, type=float)
+
+    def set_junction_stem(self, stem: Stem, gap: float):
+        self._settings.setValue(self.JUNCTION_STEM_KEY, stem.value)
+        self._settings.setValue(self.JUNCTION_GAP_KEY, float(gap))
         self._settings.sync()
 
     @property
