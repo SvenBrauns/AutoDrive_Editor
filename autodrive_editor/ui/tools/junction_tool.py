@@ -169,10 +169,10 @@ class JunctionTool(MapTool):
         path = QPainterPath()
 
         if preview is not None:
-            for curve in preview.plan.curves:
-                path.moveTo(*curve.points[0])
+            for line in preview.plan.paths():
+                path.moveTo(*line[0])
 
-                for point in curve.points[1:]:
+                for point in line[1:]:
                     path.lineTo(*point)
 
             for index in range(2 if preview.gap > 0 else 1):

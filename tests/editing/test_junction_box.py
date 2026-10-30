@@ -237,3 +237,16 @@ def test_no_box_where_the_road_part_is_too_short():
     road(data, 101, [(x, -4.0) for x in range(8, -9, -8)])
 
     assert plan_box(road_lanes(data, 2, 3), FOOT, SOUTH, GAP) is None
+
+
+def test_a_crossing_on_a_lane_node_is_that_node():
+    data = two_lane_road()
+    # The in-lane crosses the east-bound lane at node 7 (x = 0).
+    plan = plan_box(road_lanes(data, 7, 8), (2.75, 0.0), SOUTH, GAP)
+
+    near, _ = plan.road
+    assert [end.node_id for end in near.ends][1:3] == [7, None]
+
+    build(data, plan, tip=(2.75, 20.0))
+
+    assert data.validate_connections() == []

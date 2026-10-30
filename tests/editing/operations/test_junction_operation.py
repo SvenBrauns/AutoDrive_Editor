@@ -7,7 +7,8 @@ from costmap_helpers import make_costmap
 
 from autodrive_editor.editing.edit_context import EditContext
 from autodrive_editor.editing.edit_history import EditHistory
-from autodrive_editor.editing.junction import CurveKind, Stem, lane_poses
+from autodrive_editor.editing.junction import CurveKind, JunctionPlan, Stem, lane_poses
+from autodrive_editor.editing.junction_box import BoxPlan, Style
 from autodrive_editor.editing.operations.junction import JunctionOperation
 from autodrive_editor.editing.route_finder import Vehicle
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
@@ -19,9 +20,12 @@ from autodrive_editor.model.connections import (
 
 
 class Fixture:
-    """An east-bound lane at z = 0 from x = -60 to 60 (node IDs 1–13, 10 m apart)."""
+    """An east-bound lane at z = 0 from x = -60 to 60 (node IDs 1–13, 10 m apart); with
+    `two_lanes` also a west-bound lane at z = -4 (IDs 101–113)."""
 
-    def __init__(self, qapp, costmap=None, stem=(Stem.AUTO, 5.5)):
+    def __init__(
+        self, qapp, costmap=None, stem=(Stem.AUTO, 5.5), style=Style.CURVES, two_lanes=False
+    ):
         self.qapp = qapp
         self.data = AutoDriveData()
 
@@ -33,6 +37,18 @@ class Fixture:
                     self.data, index, index + 1, CONNECTION_STATES[ConnectionType.REGULAR]
                 )
 
+        if two_lanes:
+            for index, x in enumerate(range(60, -61, -10)):
+                self.data.add_node(NodeData(index + 101, x, 0, -4))
+
+                if index:
+                    write_connection_state(
+                        self.data,
+                        index + 100,
+                        index + 101,
+                        CONNECTION_STATES[ConnectionType.REGULAR],
+                    )
+
         self.history = EditHistory()
         self.messages = []
         context = EditContext(edit_history=self.history, autodrive_data_provider=lambda: self.data)
@@ -43,6 +59,7 @@ class Fixture:
             spacing_provider=lambda: 5.0,
             height_for_new_node=lambda data, x, z: 0.0,
             stem_provider=lambda: stem,
+            style_provider=lambda: style,
         )
         self.operation.status_changed.connect(self.messages.append)
 
@@ -235,3 +252,34 @@ def test_adding_a_junction_writes_debug_log_lines(qapp, caplog):
 
     assert "Junction at (2.0, 6.0)" in caplog.text
     assert "curve in from lane" in caplog.text
+
+
+def test_the_box_style_builds_a_box_on_a_road_of_two_one_way_lanes(qapp):
+    fixture = Fixture(qapp, style=Style.BOX, two_lanes=True)
+    fixture.history.start_plan()
+    fixture.drag(2.0, 20.0)
+
+    preview = fixture.operation.preview
+    assert isinstance(preview.plan, BoxPlan)
+    assert preview.junction[:2] == pytest.approx((2.0, 7.0))
+    assert preview.gap == 5.5
+    assert fixture.operation.release()
+    assert fixture.operation.finish()
+
+    assert fixture.data.validate_connections() == []
+    assert fixture.messages[-1] == "Junction added"
+    centre = [n for n in fixture.data.nodes.values() if math.dist((n.x, n.z), (2, -2)) < 1e-6]
+    assert len(centre) == 1 and len(centre[0].outgoing) == 4
+
+
+def test_the_box_style_falls_back_to_curves_and_says_so(qapp):
+    fixture = Fixture(qapp, style=Style.BOX)
+    fixture.history.start_plan()
+    fixture.drag(2.0, 20.0)
+
+    assert isinstance(fixture.operation.preview.plan, JunctionPlan)
+    assert fixture.operation.finish()
+
+    assert fixture.messages[-1] == (
+        "Junction added; built with curves: a box needs two one-way lanes on the road and the stem"
+    )

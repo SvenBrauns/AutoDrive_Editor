@@ -583,6 +583,7 @@ class MainWindow(QMainWindow):
             spacing_provider=lambda: self.create_path_operation.options.spacing,
             height_for_new_node=self.create_nodes_operation.height_for_new_node,
             stem_provider=lambda: self.settings.junction_stem,
+            style_provider=lambda: self.settings.junction_style,
             parent=self,
         )
 
@@ -869,7 +870,7 @@ class MainWindow(QMainWindow):
 
         # The Generate button is on the quick access bar: same arrow as on the tool panel.
         self.generate_options = GenerateOptionsWidget(
-            self.generate_tool.task, *self.settings.junction_stem
+            self.generate_tool.task, *self.settings.junction_stem, self.settings.junction_style
         )
         button = self.actions.quick_access_toolbar.widgetForAction(self.actions.generate_action)
         menu = QMenu(button)
@@ -889,6 +890,7 @@ class MainWindow(QMainWindow):
 
         menu.aboutToShow.connect(refit_menu)
         self.generate_options.stem_changed.connect(self.settings.set_junction_stem)
+        self.generate_options.style_changed.connect(self.settings.set_junction_style)
         tool_panel.set_tool_options(tool_actions[InteractionMode.ROTATE_SELECTION], rotate_options)
 
         # One options widget per path tool; changing one updates the others.

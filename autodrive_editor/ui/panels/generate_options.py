@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
 )
 
 from autodrive_editor.editing.junction import Stem
+from autodrive_editor.editing.junction_box import Style
 from autodrive_editor.i18n import tr
 from autodrive_editor.ui.tools.generate_tool import GenerateTask
 
@@ -21,8 +22,12 @@ class GenerateOptionsWidget(QWidget):
     task_changed = Signal(object)
     # The Junction task's stem kind and lane gap.
     stem_changed = Signal(object, float)
+    # The Junction task's style (see Style).
+    style_changed = Signal(object)
 
-    def __init__(self, task: GenerateTask, stem: Stem, gap: float, parent=None):
+    def __init__(
+        self, task: GenerateTask, stem: Stem, gap: float, style: Style = Style.BOX, parent=None
+    ):
         super().__init__(parent)
 
         layout = QVBoxLayout(self)
@@ -38,6 +43,18 @@ class GenerateOptionsWidget(QWidget):
             layout.addWidget(button)
 
         self.junction_options = QWidget(self)
+        self.style_box = QComboBox(self.junction_options)
+        self.style_box.setToolTip(
+            tr("Box: a box where two lanes cross two lanes, otherwise turn curves")
+        )
+
+        for each, name in ((Style.BOX, tr("Box")), (Style.CURVES, tr("Curves"))):
+            self.style_box.addItem(name, each)
+
+        self.style_box.setCurrentIndex(self.style_box.findData(style))
+        self.style_box.currentIndexChanged.connect(
+            lambda: self.style_changed.emit(self.style_box.currentData())
+        )
         self.stem_box = QComboBox(self.junction_options)
         self.stem_box.setToolTip(
             tr("Auto: two lanes on a road of two one-way lanes, two-way on a two-way road")
@@ -63,6 +80,7 @@ class GenerateOptionsWidget(QWidget):
 
         form = QFormLayout(self.junction_options)
         form.setContentsMargins(0, 0, 0, 0)
+        form.addRow(tr("Style:"), self.style_box)
         form.addRow(tr("Stem:"), self.stem_box)
         form.addRow(tr("Lane gap:"), self.gap_box)
         layout.addWidget(self.junction_options)

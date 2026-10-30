@@ -26,6 +26,7 @@ from autodrive_editor.editing.junction import (
     stem_poses,
     uses_two_lanes,
 )
+from autodrive_editor.editing.junction_box import BoxPlan, Style, box_command, plan_box
 from autodrive_editor.editing.route_finder import RouteFinder, Vehicle
 from autodrive_editor.file_io.navigation_costmap import NavigationCostmap
 from autodrive_editor.i18n import tr
@@ -36,8 +37,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class JunctionPreview:
-    plan: JunctionPlan
-    # Where the curves meet, heading into the yard.
+    plan: JunctionPlan | BoxPlan
+    # Where the curves meet or the box's near edge, heading into the yard.
     junction: Pose
     # The stem's centre line from the junction to its tip (see stem_poses).
     stem: tuple[Pose, ...]
@@ -59,7 +60,8 @@ class JunctionOperation(EditOperation):
     dropping it on a node joins it. finish adds the junction to the plan as one undo step;
     curves that do not fit as drawn are searched with the route finder in a background thread
     first. Where turn curves of a road on the far side meet the road, straight lanes lead
-    across to it (see roads_across)."""
+    across to it (see roads_across). In the Box style (see junction_box) a two-lane stem on a
+    road of two one-way lanes gets a box instead of the curves."""
 
     preview_changed = Signal()
     # A search started or ended.
@@ -75,6 +77,7 @@ class JunctionOperation(EditOperation):
         spacing_provider: Callable[[], float],
         height_for_new_node: Callable[[AutoDriveData, float, float], float],
         stem_provider: Callable[[], tuple[Stem, float]] = lambda: (Stem.AUTO, LANE_GAP),
+        style_provider: Callable[[], Style] = lambda: Style.BOX,
         parent=None,
     ):
         super().__init__(context, parent)
@@ -84,6 +87,7 @@ class JunctionOperation(EditOperation):
         self.spacing_provider = spacing_provider
         self.height_for_new_node = height_for_new_node
         self.stem_provider = stem_provider
+        self.style_provider = style_provider
 
         self.preview: JunctionPreview | None = None
         self._lanes: list[RoadLane] = []
@@ -141,13 +145,13 @@ class JunctionOperation(EditOperation):
         heading = road_heading + math.copysign(math.pi / 2, side)
         self._foot = (foot_x, foot_z)
         gap = self._gap(None)
-        junction = self._junction(heading, gap)
         autodrive_data = self.autodrive_data_provider()
         self._across = roads_across(autodrive_data, self._lanes, self._foot, heading)
+        junction, plan = self._plan(heading, gap)
         tip = (foot_x + length * math.cos(heading), foot_z + length * math.sin(heading))
         distance = math.dist(self._foot, junction[:2])
         tip = tip if length > distance else junction[:2]
-        self._set_preview(self._plan(junction, gap), junction, tip, gap, None)
+        self._set_preview(plan, junction, tip, gap, None)
 
     def release(self) -> bool:
         """Ends step 1: the stem's tip can be dragged now. False (and cancelled) if there is
@@ -180,8 +184,7 @@ class JunctionOperation(EditOperation):
         junction, plan = preview.junction, preview.plan
 
         if gap != preview.gap:
-            junction = self._junction(junction[2], gap)
-            plan = self._plan(junction, gap)
+            junction, plan = self._plan(junction[2], gap)
 
         self._set_preview(plan, junction, (x, z), gap, node_id)
 
@@ -218,7 +221,7 @@ class JunctionOperation(EditOperation):
             def find_route(request):
                 return None if cancelled.is_set() else finder.find(request, cancelled.is_set)
 
-            plan = self._plan(preview.junction, preview.gap, find_route)
+            _, plan = self._plan(preview.junction[2], preview.gap, find_route)
 
             try:
                 self._search_done.emit(None if cancelled.is_set() else plan)
@@ -272,17 +275,38 @@ class JunctionOperation(EditOperation):
         self.preview = JunctionPreview(plan, junction, stem, gap, tip_id)
         self.preview_changed.emit()
 
-    def _plan(self, junction: Pose, gap: float, find_route=None) -> JunctionPlan:
-        autodrive_data = self.autodrive_data_provider()
+    def _plan(self, heading: float, gap: float, find_route=None) -> tuple[Pose, object]:
+        """Where the stem starts, and the box (Box style, where it fits) or the curves."""
 
-        return plan_junction(
+        autodrive_data = self.autodrive_data_provider()
+        markers = frozenset(autodrive_data.markers)
+
+        if self.style_provider() == Style.BOX:
+            box = plan_box(
+                self._lanes,
+                self._foot,
+                heading,
+                gap,
+                self.costmap_provider(),
+                self.vehicle_provider(),
+                markers,
+                self._across,
+                find_route,
+            )
+
+            if box is not None:
+                return box.junction, box
+
+        junction = self._junction(heading, gap)
+
+        return junction, plan_junction(
             self._lanes,
             junction,
             BOTH,
             YARD_RADIUS,
             self.costmap_provider(),
             self.vehicle_provider(),
-            frozenset(autodrive_data.markers),
+            markers,
             find_route,
             gap,
             self._across,
@@ -303,17 +327,22 @@ class JunctionOperation(EditOperation):
     def _add(self, preview: JunctionPreview) -> bool:
         autodrive_data = self.autodrive_data_provider()
         nodes = autodrive_data.nodes if autodrive_data is not None else {}
-        lane_ids = {node_id for curve in preview.plan.curves for node_id in curve.lane.node_ids}
+        plan = preview.plan
+        is_box = isinstance(plan, BoxPlan)
+        lanes = [lane.lane for lane in plan.road] if is_box else [c.lane for c in plan.curves]
+        lane_ids = {node_id for lane in lanes for node_id in lane.node_ids}
 
-        if not preview.plan.curves or not lane_ids <= set(nodes):
+        if not (is_box or plan.curves) or not lane_ids <= set(nodes):
             self.status_changed.emit(tr("No curve of the junction fits here"))
             self.cancel()
             return False
 
-        command = junction_command(
+        build = box_command if is_box else junction_command
+        arguments = () if is_box else (preview.junction,)
+        command = build(
             autodrive_data,
-            preview.plan,
-            preview.junction,
+            plan,
+            *arguments,
             self.spacing_provider(),
             self.height_for_new_node,
             stem=list(preview.stem),
@@ -324,10 +353,19 @@ class JunctionOperation(EditOperation):
         self.cancel()
         self.edit_history.push(command)
 
-        if preview.plan.missing:
-            self.status_changed.emit(
-                tr("Junction added; missing: {missing}", missing=", ".join(preview.plan.missing))
+        details = []
+
+        if not is_box and self.style_provider() == Style.BOX:
+            details.append(
+                tr("built with curves: a box needs two one-way lanes on the road and the stem")
             )
+        if plan.missing:
+            details.append(tr("missing: {missing}", missing=", ".join(plan.missing)))
+        if is_box and plan.blocked:
+            details.append(tr("on blocked ground: {pieces}", pieces=", ".join(plan.blocked)))
+
+        if details:
+            self.status_changed.emit(tr("Junction added; {details}", details="; ".join(details)))
         else:
             self.status_changed.emit(tr("Junction added"))
 
@@ -337,7 +375,8 @@ class JunctionOperation(EditOperation):
 def _log(preview: JunctionPreview, command):
     x, z, heading = preview.junction
     logger.debug(
-        "Junction at (%.1f, %.1f) heading %.0f°, %s, stem %.1f m to (%.1f, %.1f), tip node %s",
+        "Junction%s at (%.1f, %.1f) heading %.0f°, %s, stem %.1f m to (%.1f, %.1f), tip node %s",
+        " box" if isinstance(preview.plan, BoxPlan) else "",
         x,
         z,
         math.degrees(heading),
@@ -365,5 +404,7 @@ def _log(preview: JunctionPreview, command):
 
     if preview.plan.missing:
         logger.debug("  missing: %s", ", ".join(preview.plan.missing))
+    if isinstance(preview.plan, BoxPlan) and preview.plan.blocked:
+        logger.debug("  on blocked ground: %s", ", ".join(preview.plan.blocked))
 
     logger.debug("  %d new nodes, %d connections", len(command.new_nodes), len(command.connections))

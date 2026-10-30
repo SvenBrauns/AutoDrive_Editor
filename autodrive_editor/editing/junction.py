@@ -123,6 +123,11 @@ class JunctionPlan:
     # The curves that do not fit, as text for the user.
     missing: list[str]
 
+    def paths(self) -> list[tuple[Point, ...]]:
+        """Lines for the preview."""
+
+        return [curve.points for curve in self.curves]
+
 
 def road_lanes(autodrive_data: AutoDriveData, source_id: int, target_id: int) -> list[RoadLane]:
     """The lanes of the road with the connection: a two-way road gives its lane each way, a

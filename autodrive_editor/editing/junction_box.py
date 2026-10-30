@@ -54,6 +54,8 @@ Point = tuple[float, float]
 
 # From the outer lane to the box edge, in metres; also the radius of the right turns.
 BOX_MARGIN = 7.0
+# A crossing this close to a lane node is that node, in metres (box edges: SNAP).
+CROSSING_SNAP = 0.1
 
 
 class Style(Enum):
@@ -329,7 +331,8 @@ def _box_lane(
     lane: RoadLane, first: float, second: float, marker_ids: frozenset[int]
 ) -> BoxLane | None:
     """The box points on the lane around its crossings at distances `first` and `second` along
-    it; None if the lane part is too short. A point within SNAP of a lane node is that node."""
+    it; None if the lane part is too short. A box edge within SNAP of a lane node is that node,
+    a crossing within CROSSING_SNAP."""
 
     lengths = _lengths(lane)
     low, high = sorted((first, second))
@@ -338,25 +341,24 @@ def _box_lane(
     if wanted[0] <= 0 or wanted[3] >= lengths[-1]:
         return None
 
-    ends, along, used = [], [], set()
+    ends, along = [], []
 
-    for distance in wanted:
+    for place, distance in enumerate(wanted):
         index = max(i for i in range(len(lengths) - 1) if lengths[i] <= distance)
         snapped = None
+        reach = SNAP if place in (0, 3) else CROSSING_SNAP
 
         for node_index in (index, index + 1):
             node_id = lane.node_ids[node_index]
 
             if (
                 0 < node_index < len(lane.node_ids) - 1
-                and abs(lengths[node_index] - distance) < SNAP
+                and abs(lengths[node_index] - distance) < reach
                 and node_id not in marker_ids
-                and node_id not in used
             ):
                 snapped = node_index
 
         if snapped is not None:
-            used.add(lane.node_ids[snapped])
             ends.append(RoadEnd(lane.points[snapped], node_id=lane.node_ids[snapped]))
             along.append(lengths[snapped])
             continue

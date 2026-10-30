@@ -7,6 +7,7 @@ from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import QApplication
 
 from autodrive_editor.editing.junction import Stem
+from autodrive_editor.editing.junction_box import Style
 from autodrive_editor.ui.tools.generate_tool import GenerateTask
 
 
@@ -155,3 +156,5 @@ def test_the_stem_options_fit_into_the_menu_and_are_saved(window, qapp):
 
     assert opened_height() > route_height
     assert window.settings.junction_stem == (Stem.AUTO, 7.0)
+    options.style_box.setCurrentIndex(options.style_box.findData(Style.CURVES))
+    assert window.settings.junction_style == Style.CURVES
