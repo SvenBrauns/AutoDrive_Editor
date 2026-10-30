@@ -1,7 +1,10 @@
 """Junction task of the Generate tool with the real window."""
 
 import pytest
-from mouse_helpers import drag, press_escape, view_pos
+from mouse_helpers import click, drag, press_escape, view_pos
+from PySide6.QtCore import QEvent, Qt
+from PySide6.QtGui import QKeyEvent
+from PySide6.QtWidgets import QApplication
 
 from autodrive_editor.editing.junction import Stem
 from autodrive_editor.ui.tools.generate_tool import GenerateTask
@@ -30,7 +33,11 @@ def window(window, write_xml, qapp):
     return window
 
 
-def test_dragging_from_a_road_previews_and_release_adds_the_junction(window):
+def press_enter(window):
+    QApplication.sendEvent(window.view, QKeyEvent(QEvent.KeyPress, Qt.Key_Return, Qt.NoModifier))
+
+
+def test_release_shows_the_tip_handle_and_enter_adds_the_junction(window):
     data = window.project_coordinator.autodrive_data
     start, end = view_pos(window, 5, 0), view_pos(window, 5, 15)
 
@@ -38,12 +45,54 @@ def test_dragging_from_a_road_previews_and_release_adds_the_junction(window):
 
     tool = window.generate_tool.current
     assert tool._item.isVisible() and not tool._item.path().isEmpty()
+    assert not tool._handle.isVisible()
 
     drag(window, end, end)
 
+    assert len(data.nodes) == 13
+    assert tool._handle.isVisible()
+    handle = tool._handle.pos()
+    assert (handle.x(), handle.y()) == pytest.approx((5, 15), abs=0.5)
+
+    press_enter(window)
+
     assert len(data.nodes) > 13
     assert window.edit_history.is_planning and window.edit_history.has_plan_edits
-    assert not tool._item.isVisible()
+    assert not tool._item.isVisible() and not tool._handle.isVisible()
+
+
+def test_dragging_the_tip_bends_the_stem_and_a_click_away_adds_it(window):
+    data = window.project_coordinator.autodrive_data
+    drag(window, view_pos(window, 5, 0), view_pos(window, 5, 15))
+
+    drag(window, view_pos(window, 5, 15), view_pos(window, 12, 20))
+
+    stem = window.junction_operation.preview.stem
+    assert stem[-1][:2] == pytest.approx((12, 20), abs=0.5)
+    assert len(data.nodes) == 13
+
+    click(window, view_pos(window, -10, 20))
+
+    assert len(data.nodes) > 13
+
+
+def test_dropping_the_tip_on_a_node_joins_it(window):
+    drag(window, view_pos(window, 5, 0), view_pos(window, 5, 15))
+
+    drag(window, view_pos(window, 5, 15), view_pos(window, 20.3, 0.2))
+
+    assert window.junction_operation.preview.tip_id == 9
+
+
+def test_escape_cancels_the_bending(window):
+    data = window.project_coordinator.autodrive_data
+    drag(window, view_pos(window, 5, 0), view_pos(window, 5, 15))
+
+    press_escape(window)
+
+    assert window.junction_operation.preview is None
+    assert not window.junction_operation.is_bending
+    assert len(data.nodes) == 13
 
 
 def test_escape_cancels_the_preview(window):
@@ -81,7 +130,8 @@ def test_the_preview_shows_both_lanes_of_a_two_lane_stem(window):
             for i, element in enumerate(elements)
             if element.isMoveTo() and (element.x, element.y) == pytest.approx((lane_x, z))
         )
-        end = elements[start + 1]
+        following = [i for i in range(start + 1, len(elements)) if elements[i].isMoveTo()]
+        end = elements[(following[0] if following else len(elements)) - 1]
         assert (end.x, end.y) == pytest.approx((lane_x, 25), abs=0.5)
 
 

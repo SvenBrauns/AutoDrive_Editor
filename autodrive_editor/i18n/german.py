@@ -774,6 +774,8 @@ TEXTS = {
     "No left turn in from the {direction}": "Kein Linksabbiegen in den Hof aus Richtung {direction}",
     "No right turn out to the {direction}": "Kein Rechtsabbiegen aus dem Hof nach {direction}",
     "No left turn out to the {direction}": "Kein Linksabbiegen aus dem Hof nach {direction}",
+    "No straight on to the {direction}": "Kein Geradeaus aus dem Hof nach {direction}",
+    "No straight on from the {direction}": "Kein Geradeaus in den Hof aus Richtung {direction}",
     "Junction added": "Einmündung hinzugefügt",
     "Junction added; missing: {missing}": "Einmündung hinzugefügt; es fehlt: {missing}",
     "Junctions are added in planning mode": "Einmündungen werden nur im Planungsmodus hinzugefügt",
@@ -786,5 +788,6 @@ TEXTS = {
     "Lane gap:": "Spurabstand:",
     "Distance between the two lanes of the stem": "Abstand zwischen den beiden Spuren der Zufahrt",
     "Searching the curves that do not fit…": "Suche die Kurven, die nicht passen …",
-    "Press on a road and drag towards the yard to add a junction; release adds it, Esc cancels": "Auf eine Straße drücken und zum Hof ziehen, um eine Einmündung anzulegen; Loslassen fügt sie hinzu, Esc bricht ab",
+    "Press on a road and drag towards the yard to place a junction, Esc cancels": "Auf eine Straße drücken und zum Hof ziehen, um eine Einmündung zu setzen, Esc bricht ab",
+    "Drag the handle to bend the stem, drop it on a node to join it; Enter or a click elsewhere adds the junction, Esc cancels": "Den Griff ziehen, um die Zufahrt zu biegen, auf einem Wegpunkt ablegen, um sie dort anzuschließen; Enter oder ein Klick daneben fügt die Einmündung hinzu, Esc bricht ab",
 }

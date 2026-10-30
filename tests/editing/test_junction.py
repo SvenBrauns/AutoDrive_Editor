@@ -7,13 +7,18 @@ from costmap_helpers import make_costmap
 from autodrive_editor.editing.junction import (
     BOTH,
     MIN_RADIUS,
+    NODE_TURN,
     CurveKind,
     Stem,
+    foot_on_lane,
+    is_on_two_way_road,
     junction_command,
     junction_distance,
     lane_poses,
     plan_junction,
     road_lanes,
+    roads_across,
+    stem_poses,
     uses_two_lanes,
 )
 from autodrive_editor.editing.route_finder import Route, Vehicle
@@ -334,7 +339,9 @@ def test_junction_distance_is_a_radius_beyond_the_farthest_lane():
 def test_a_two_way_stem_continues_from_the_junction():
     data = two_lane_road()
     plan = plan_junction(road_lanes(data, 7, 8), MEETING, BOTH, 6.0, None, VEHICLE)
-    command = junction_command(data, plan, MEETING, 5.0, lambda data, x, z: 0.0, stem_length=12)
+    command = junction_command(
+        data, plan, MEETING, 5.0, lambda data, x, z: 0.0, stem=stem_poses(MEETING, (0, 18), 5.0)
+    )
 
     command.apply()
 
@@ -435,7 +442,13 @@ def test_a_two_lane_stem_is_two_one_way_lanes_into_and_out_of_the_yard():
     data = two_lane_road()
     plan = plan_junction(road_lanes(data, 7, 8), JUNCTION, BOTH, 6.0, None, VEHICLE, gap=5.5)
     command = junction_command(
-        data, plan, JUNCTION, 5.0, lambda data, x, z: 0.0, stem_length=12, gap=5.5
+        data,
+        plan,
+        JUNCTION,
+        5.0,
+        lambda data, x, z: 0.0,
+        stem=stem_poses(JUNCTION, (0, 27), 5.0),
+        gap=5.5,
     )
 
     command.apply()
@@ -459,3 +472,178 @@ def test_a_two_lane_stem_is_two_one_way_lanes_into_and_out_of_the_yard():
     assert in_end in reachable(data, 1) & reachable(data, 101)
     assert {13, 113} <= reachable(data, out_end)
     assert data.nodes[in_end].outgoing == set()
+
+
+def test_a_straight_stem_runs_on_along_the_junction_heading():
+    poses = stem_poses(JUNCTION, (0.0, 27.0), 5.0)
+
+    assert [coordinate for pose in poses for coordinate in pose[:2]] == pytest.approx(
+        [0, 15, 0, 19, 0, 23, 0, 27]
+    )
+    assert all(pose[2] == pytest.approx(math.pi / 2) for pose in poses)
+
+
+def test_a_bent_stem_leaves_along_the_heading_and_bends_in_one_arc_to_the_tip():
+    poses = stem_poses(JUNCTION, (10.0, 30.0), 5.0)
+
+    assert poses[0] == pytest.approx(JUNCTION)
+    assert poses[-1][:2] == pytest.approx((10.0, 30.0))
+    # One arc: every point equally far from a centre on the line square to the heading.
+    centre_x = (10.0**2 + 15.0**2) / (2 * 10.0)
+    radii = [math.dist((x, z), (centre_x, 15.0)) for x, z, _ in poses]
+    assert radii == pytest.approx([centre_x] * len(poses))
+    for a, b in pairwise(poses):
+        assert math.dist(a[:2], b[:2]) <= 5.0 + 1e-9
+        assert abs(math.remainder(b[2] - a[2], math.tau)) <= NODE_TURN + 1e-9
+
+
+def test_a_stem_to_the_junction_itself_is_only_the_junction():
+    assert stem_poses(JUNCTION, JUNCTION[:2], 5.0) == [JUNCTION]
+
+
+def test_foot_on_lane_is_the_closest_lane_point_with_the_lane_heading():
+    lane = road_lanes(two_lane_road(), 7, 8)[0]
+
+    assert foot_on_lane(lane, (12.0, 20.0)) == pytest.approx((12.0, 0.0, 0.0))
+
+
+def test_two_way_road_nodes():
+    data = two_lane_road()
+    road(data, 200, [(0.0, 40.0), (10.0, 40.0)], ConnectionType.DUAL)
+
+    assert is_on_two_way_road(data, 200)
+    assert not is_on_two_way_road(data, 7)
+
+
+def test_a_two_lane_stem_bent_onto_a_node_joins_both_lanes_to_it():
+    data = two_lane_road()
+    data.add_node(NodeData(500, 10.0, 0, 30.0))
+    plan = plan_junction(road_lanes(data, 7, 8), JUNCTION, BOTH, 6.0, None, VEHICLE, gap=5.5)
+    stem = stem_poses(JUNCTION, (10.0, 30.0), 5.0)
+    command = junction_command(
+        data, plan, JUNCTION, 5.0, lambda data, x, z: 0.0, stem=stem, gap=5.5, tip_id=500
+    )
+
+    command.apply()
+
+    assert data.validate_connections() == []
+    tip = data.nodes[500]
+    assert len(tip.incoming) == 1 and len(tip.outgoing) == 1
+    assert 500 in reachable(data, 1) & reachable(data, 101)
+    assert {13, 113} <= reachable(data, 500)
+
+
+def test_a_two_way_stem_onto_a_node_ends_two_way_there():
+    data = two_lane_road()
+    data.add_node(NodeData(500, 0.0, 0, 27.0))
+    plan = plan_junction(road_lanes(data, 7, 8), JUNCTION, BOTH, 6.0, None, VEHICLE)
+    stem = stem_poses(JUNCTION, (0.0, 27.0), 5.0)
+    command = junction_command(
+        data, plan, JUNCTION, 5.0, lambda data, x, z: 0.0, stem=stem, tip_id=500
+    )
+
+    command.apply()
+
+    (last_id,) = data.nodes[500].incoming
+    assert get_connection_type(data.nodes[last_id], data.nodes[500]) == ConnectionType.DUAL
+    assert data.nodes[last_id].z == pytest.approx(23.0)
+
+
+def connect(data, source_id, target_id):
+    write_connection_state(data, source_id, target_id, CONNECTION_STATES[ConnectionType.REGULAR])
+
+
+def crossing_road():
+    """two_lane_road with a side road to the north: its north-bound lane at x = -3 starts at
+    node 201 (z = -30), where turn curves from both road lanes meet; its south-bound lane at
+    x = 3 ends at node 211 (z = -30), where turn curves to both road lanes split."""
+
+    data = two_lane_road()
+    road(data, 201, [(-3.0, -30.0), (-3.0, -40.0), (-3.0, -50.0)])
+
+    for node_id, z in ((211, -30.0), (212, -40.0), (213, -50.0)):
+        data.add_node(NodeData(node_id, 3.0, 0, z))
+    for source, target in ((213, 212), (212, 211)):
+        connect(data, source, target)
+
+    # From the east-bound lane (node 4, x = -30) and the west-bound one (node 104, x = 30).
+    for first_id, branch, road_id in (
+        (301, [(-20.0, -8.0), (-10.0, -18.0)], 4),
+        (311, [(15.0, -12.0), (2.0, -22.0)], 104),
+    ):
+        road(data, first_id, branch)
+        connect(data, road_id, first_id)
+        connect(data, first_id + 1, 201)
+
+    # To the east-bound lane (node 10, x = 30) and the west-bound one (node 110, x = -30).
+    for first_id, branch, road_id in (
+        (321, [(10.0, -18.0), (20.0, -8.0)], 10),
+        (331, [(-10.0, -14.0), (-25.0, -6.0)], 110),
+    ):
+        road(data, first_id, branch)
+        connect(data, 211, first_id)
+        connect(data, first_id + 1, road_id)
+
+    return data
+
+
+def test_the_road_across_is_where_turn_curves_meet_and_split_on_the_far_side():
+    data = crossing_road()
+    lanes = road_lanes(data, 7, 8)
+
+    across = roads_across(data, lanes, (0.0, 0.0), math.pi / 2)
+
+    assert [(kind, lane.node_ids) for kind, lane in across] == [
+        (CurveKind.OUT, (201, 202)),
+        (CurveKind.IN, (212, 211)),
+    ]
+    # Not when the stem leaves on the side road's side.
+    assert roads_across(data, lanes, (0.0, 0.0), -math.pi / 2) == []
+
+
+def test_straight_lanes_lead_across_to_the_road_on_the_far_side():
+    data = crossing_road()
+    lanes = road_lanes(data, 7, 8)
+    across = roads_across(data, lanes, (0.0, 0.0), math.pi / 2)
+
+    plan = plan_junction(lanes, JUNCTION, BOTH, 6.0, None, VEHICLE, across=across)
+
+    assert plan.missing == []
+    straight = [curve for curve in plan.curves if curve.across]
+    assert [(curve.kind, curve.road_end.node_id) for curve in straight] == [
+        (CurveKind.OUT, 201),
+        (CurveKind.IN, 211),
+    ]
+    out_lane, in_lane = straight
+    assert out_lane.points[0] == pytest.approx(JUNCTION[:2])
+    assert out_lane.points[-1] == pytest.approx((-3.0, -30.0))
+    assert in_lane.points[0] == pytest.approx((3.0, -30.0))
+
+    command = junction_command(data, plan, JUNCTION, 5.0, lambda data, x, z: 0.0)
+    command.apply()
+
+    assert data.validate_connections() == []
+    (junction_id,) = (node.node_id for node in command.new_nodes if node.z == JUNCTION[1])
+    assert 202 in reachable(data, junction_id)
+    assert junction_id in reachable(data, 213)
+
+
+def test_straight_lanes_blocked_by_an_island_are_searched_or_listed():
+    data = crossing_road()
+    lanes = road_lanes(data, 7, 8)
+    across = roads_across(data, lanes, (0.0, 0.0), math.pi / 2)
+    costmap = make_costmap(blocked=[(-10, -20, 10, -8)])
+
+    plan = plan_junction(lanes, JUNCTION, BOTH, 6.0, costmap, VEHICLE, across=across)
+
+    assert plan.missing == ["No straight on to the north", "No straight on from the north"]
+
+    def find_route(request):
+        return Route(list(request.waypoints), [0, 1], [False, False])
+
+    plan = plan_junction(
+        lanes, JUNCTION, BOTH, 6.0, costmap, VEHICLE, find_route=find_route, across=across
+    )
+
+    assert plan.missing == []
+    assert all(curve.searched for curve in plan.curves if curve.across)

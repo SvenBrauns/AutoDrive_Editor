@@ -1,3 +1,5 @@
+import logging
+import math
 import time
 
 import pytest
@@ -141,3 +143,95 @@ def test_auto_stem_is_two_way_on_a_single_lane(qapp):
     fixture.drag(2.0, 20.0)
 
     assert fixture.operation.preview.gap == 0.0
+
+
+def add_west_bound_lane(data):
+    """A west-bound lane at z = -4 (IDs 101–113) beside the fixture's road."""
+
+    for index, x in enumerate(range(60, -61, -10)):
+        data.add_node(NodeData(101 + index, x, 0, -4))
+
+        if index:
+            write_connection_state(
+                data, 100 + index, 101 + index, CONNECTION_STATES[ConnectionType.REGULAR]
+            )
+
+
+def test_moving_along_the_road_moves_the_junction_and_keeps_the_stem_square(qapp):
+    fixture = Fixture(qapp)
+
+    fixture.drag(12.0, 20.0)
+
+    preview = fixture.operation.preview
+    assert preview.junction == pytest.approx((12.0, 6.0, math.pi / 2))
+    assert preview.stem[-1][:2] == pytest.approx((12.0, 20.0))
+
+
+def test_release_shows_the_tip_and_bending_moves_it(qapp):
+    fixture = Fixture(qapp)
+    fixture.history.start_plan()
+    fixture.drag(2.0, 20.0)
+
+    assert fixture.operation.release()
+    assert fixture.operation.is_bending
+    assert len(fixture.data.nodes) == 13
+
+    fixture.operation.bend_to(12.0, 30.0)
+
+    stem = fixture.operation.preview.stem
+    assert stem[0] == pytest.approx(fixture.operation.preview.junction)
+    assert stem[-1][:2] == pytest.approx((12.0, 30.0))
+    assert fixture.operation.finish()
+    assert not fixture.operation.is_bending
+    assert any(
+        (node.x, node.z) == pytest.approx((12.0, 30.0)) for node in fixture.data.nodes.values()
+    )
+
+
+def test_dropping_the_tip_on_a_node_joins_it(qapp):
+    fixture = Fixture(qapp)
+    fixture.data.add_node(NodeData(500, 10.0, 0, 30.0))
+    fixture.history.start_plan()
+    fixture.drag(2.0, 20.0)
+    fixture.operation.release()
+
+    fixture.operation.bend_to(11.0, 29.0, 500)
+
+    assert fixture.operation.preview.stem[-1][:2] == pytest.approx((10.0, 30.0))
+    assert fixture.operation.finish()
+    assert fixture.data.nodes[500].incoming and fixture.data.nodes[500].outgoing
+
+
+def test_auto_stem_is_two_way_when_the_tip_joins_a_two_way_road(qapp):
+    fixture = Fixture(qapp)
+    add_west_bound_lane(fixture.data)
+    fixture.data.add_node(NodeData(500, 10.0, 0, 30.0))
+    fixture.data.add_node(NodeData(501, 20.0, 0, 30.0))
+    fixture.data.add_node(NodeData(502, 10.0, 0, 40.0))
+    write_connection_state(fixture.data, 500, 501, CONNECTION_STATES[ConnectionType.DUAL])
+    write_connection_state(fixture.data, 502, 501, CONNECTION_STATES[ConnectionType.REGULAR])
+    fixture.drag(2.0, 20.0)
+    assert fixture.operation.preview.gap == 5.5
+    fixture.operation.release()
+
+    fixture.operation.bend_to(10.0, 30.0, 500)
+    assert fixture.operation.preview.gap == 0.0
+
+    fixture.operation.bend_to(10.0, 40.0, 502)
+    assert fixture.operation.preview.gap == 5.5
+
+    fixture.operation.bend_to(10.0, 30.0, 500)
+    fixture.operation.bend_to(15.0, 35.0)
+    assert fixture.operation.preview.gap == 5.5
+
+
+def test_adding_a_junction_writes_debug_log_lines(qapp, caplog):
+    caplog.set_level(logging.DEBUG, logger="autodrive_editor.editing.operations.junction")
+    fixture = Fixture(qapp)
+    fixture.history.start_plan()
+    fixture.drag(2.0, 20.0)
+
+    fixture.operation.finish()
+
+    assert "Junction at (2.0, 6.0)" in caplog.text
+    assert "curve in from lane" in caplog.text

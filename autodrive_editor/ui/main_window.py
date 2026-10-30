@@ -830,6 +830,7 @@ class MainWindow(QMainWindow):
             self.view,
             self.junction_operation,
             connection_at=self._get_connection_at,
+            node_at=self._get_node_id_at,
             color_provider=lambda: self.scene_renderer.display_style.regular_connection_color,
             missing_costmap_message=self.find_route_operation.missing_costmap_message,
             z_value=display_style.selected_node_z + 1,
@@ -1037,6 +1038,11 @@ class MainWindow(QMainWindow):
         stops = self._get_station_stops_at(view_position)
 
         return stops[0].name.strip() if stops else ""
+
+    def _get_node_id_at(self, view_position) -> int | None:
+        node = self.selection_coordinator.get_node_at(view_position)
+
+        return None if node is None else node.node_id
 
     def _get_connection_at(self, view_position):
         scene_position = self.view.mapToScene(view_position)
