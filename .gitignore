@@ -22,3 +22,6 @@ maps/
 local_projects/*.json
 # Test coverage
 .coverage
+
+# Design docs (never committed, turned into manual sections when a feature is done)
+docs/design/

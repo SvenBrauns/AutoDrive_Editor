@@ -64,11 +64,9 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 **The user has limited usage. Help keep sessions short.**
 
-- After a feature branch is merged, suggest `/clear` before the next feature. ROADMAP.md, DEVELOPMENT.md and `git log` carry the context over.
-- When the next steps are routine (merging, small fixes, doc updates), suggest switching to a smaller model with `/model`. Suggest the larger model again for planning and complex features.
+- At every good break (a commit that finishes a part, a merge, an agreed plan), give a short hand-over: whether to `/clear` now, which model to use next with `/model` (a smaller one for routine work like git cleanup, small fixes, docs; the larger one for planning and complex features), and a ready-to-paste first prompt for the new session. ROADMAP.md, DEVELOPMENT.md, `docs/design/` and `git log` carry the context over.
 - Only take screenshots when the look of something is the point of the change. Otherwise rely on tests.
-- Keep the reminders to one short line, not every turn.
-- Don't commit, merge or push yourself, and don't spawn an agent for it. Write the git commands (with commit message) for the user to run.
+- Don't spawn an agent for git work.
 - Keep tool output small: `ruff check . --output-format concise`, `python -m pytest -q` piped through `tail` when only the summary matters.
 
 ## 6. Project Conventions
@@ -78,6 +76,16 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - New functions get tests; test files mirror the package structure under `tests/`.
 - Every edit of the data model is an `EditCommand` pushed via `EditHistory.push()`, never a direct change to `AutoDriveData`. See DEVELOPMENT.md for architecture.
 - Keep the virtualization (never permanent NodeItems for all nodes).
+
+## 7. Git
+
+- Claude creates branches, commits and merges. Only the user pushes, tags and releases.
+- Local `main` is the development line: every commit on it passes tests and ruff. GitHub's `main` gets a push only at a release; releases are tags.
+- One branch per roadmap item or larger fix, kebab-case (e.g. `stations-junctions`). Typos, small doc fixes and one-line fixes go straight onto `main`.
+- Commit after each working piece (a function with its tests, a dialog, the docs) when tests pass, and always before a `/clear`, even halfway through a feature (on its branch). Short subject in the style of `git log`, plus the co-author line.
+- Merge with `--no-ff` only after the user has confirmed the feature works, then delete the branch.
+- Commit only what a user of the repository needs: code, tests, README, MANUAL (en/de), CHANGELOG, ROADMAP (open items only), CLAUDE.md, DEVELOPMENT.md. Never: design docs (`docs/design/`, git-ignored; they become manual sections when a feature is done), analysis scripts, screenshots, local data.
+- Before the user pushes, check `git log origin/main..main --name-only` for files that don't belong.
 
 ---
 
