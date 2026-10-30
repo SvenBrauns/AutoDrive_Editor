@@ -214,3 +214,15 @@ def test_leg_at_a_point_of_the_route_and_inserting_a_waypoint_there(route):
 
     assert route.operation.waypoints[2] == Waypoint(30, 1)
     assert route.operation.leg_at(30, 0, 1.0) is None
+
+
+def test_a_newer_change_cancels_the_running_search_and_the_last_route_stays_shown(route):
+    route.find(1, (60, 0))
+    shown = route.operation.shown_route
+
+    route.operation.move_waypoint(1, 60, 1)
+    route.operation.move_waypoint(1, 60, 2)
+
+    assert route.operation.shown_route is shown
+    route.wait()
+    assert route.operation.route.points[-1] == pytest.approx((60, 2))

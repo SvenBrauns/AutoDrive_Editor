@@ -188,12 +188,13 @@ class FindRouteOperation(EditOperation):
         )
 
     def _search(self):
-        """Starts a search for the current waypoints. While one runs, the next starts after it,
-        so dragging gives a new route as soon as the last one is done."""
+        """Starts a search for the current waypoints. A running search is outdated then: it is
+        cancelled, and the new one starts once it has stopped. The last route stays shown."""
 
         self.route = None
 
         if self._running is not None:
+            self._running["cancelled"].set()
             self._search_again = True
             self.preview_changed.emit()
             return
@@ -243,7 +244,6 @@ class FindRouteOperation(EditOperation):
 
         if self._search_again:
             self._search_again = False
-            self.shown_route = route
             self._search()
             return
 

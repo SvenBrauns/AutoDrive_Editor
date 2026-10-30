@@ -181,3 +181,14 @@ def test_debug_log_tells_that_the_route_crosses_blocked_cells(caplog):
 
     assert "Route search through (-40.0, 0.0), (31.0, 0.0)" in caplog.text
     assert "crosses blocked cells" in caplog.text
+
+
+def test_a_waypoint_in_a_closed_area_is_still_passed_and_the_crossing_marked(monkeypatch):
+    # Few steps, so the search gets stuck before the goal and continues in direct curves.
+    monkeypatch.setattr("autodrive_editor.editing.route_finder.MAX_EXPANSIONS", 300)
+    waypoints = ((-40, 0), (31, 0), (60, 40))
+    route = RouteFinder(make_costmap(blocked=CLOSED_AREA), VEHICLE).find(RouteRequest(waypoints))
+
+    for index, waypoint in zip(route.waypoint_indices, waypoints, strict=True):
+        assert route.points[index] == pytest.approx(waypoint)
+    assert not route.is_clear

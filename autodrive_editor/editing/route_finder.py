@@ -65,9 +65,13 @@ DUBINS_EXTRA = 20.0
 # Area around the waypoints that is searched first, and how often it grows.
 WINDOW_MARGIN = 60.0
 WINDOW_GROWTH = (1, 3, 6)
-# Search steps per leg. Then the cheapest route found so far is taken, which may cross blocked
-# cells where a clear route would need more steps.
+# Search steps of one search, so the preview stays quick. Then the cheapest route found so far
+# is taken; without one, the route goes on from the furthest point reached in direct curves
+# through the remaining waypoints, which may cross blocked cells.
 MAX_EXPANSIONS = 20_000
+# The estimate to the goal counts this much more, so the search goes for the goal sooner;
+# routes become a few percent longer than the cheapest.
+HEURISTIC_WEIGHT = 1.2
 
 
 @dataclass(frozen=True)
@@ -341,9 +345,11 @@ class _Search:
 
         dubins_distance = DUBINS_RADII * self.radius + DUBINS_EXTRA
         expansions = 0
-        max_expansions = MAX_EXPANSIONS * legs
-        # Cheapest end at the goal seen so far, used when the steps run out.
+        max_expansions = MAX_EXPANSIONS
+        # Cheapest end at the goal seen so far and the node furthest on the way, used when the
+        # steps run out.
         best_end: _Node | None = None
+        furthest: tuple[int, float, _Node] | None = None
 
         while open_list and expansions < max_expansions:
             _, _, node = heapq.heappop(open_list)
@@ -361,6 +367,11 @@ class _Search:
 
             if node.leg == legs:
                 return self._found(node, "route found")
+
+            progress = (node.leg, -self._estimate(node.pose, node.leg))
+
+            if furthest is None or progress > furthest[:2]:
+                furthest = (*progress, node)
 
             x, z, _ = node.pose
             target_x, target_z = waypoints[node.leg + 1]
@@ -380,29 +391,63 @@ class _Search:
 
                 if child.cost < best.get(child_key, math.inf):
                     best[child_key] = child.cost
-                    estimate = self._estimate(child.pose, child.leg)
+                    estimate = HEURISTIC_WEIGHT * self._estimate(child.pose, child.leg)
                     heapq.heappush(open_list, (child.cost + estimate, counter, child))
                     counter += 1
 
         if best_end is not None:
             return self._found(best_end, f"cheapest route after {max_expansions} steps")
 
-        self.outcome = (
-            f"gave up after {max_expansions} steps"
-            if open_list
-            else "every drivable pose tried (turning radius or safety distance too large?)"
-        )
+        if furthest is not None:
+            end, start_index = self._direct_end(furthest[2])
+            outcome = (
+                f"stuck after {expansions} steps on leg {furthest[2].leg + 1}, "
+                "direct curves from there"
+            )
+            return self._found(end, outcome, start_index)
+
+        self.outcome = "every drivable pose tried (turning radius or safety distance too large?)"
         return None
 
-    def _found(self, end: _Node, outcome: str) -> Route:
-        route = self._route(end)
+    def _direct_end(self, node: _Node) -> tuple[_Node, int]:
+        """The node continued by Dubins paths through the remaining waypoints, regardless of
+        blocked cells, and the number of route points before the first of them. At each waypoint
+        the heading points to the next one."""
+
+        waypoints = self.request.waypoints
+        start_index = len(self._route(node).points)
+
+        for leg in range(node.leg + 1, len(waypoints)):
+            x, z = waypoints[leg]
+
+            if leg + 1 < len(waypoints):
+                next_x, next_z = waypoints[leg + 1]
+                heading = math.atan2(next_z - z, next_x - x)
+            elif self.request.goal_headings:
+                heading = self.request.goal_headings[0]
+            else:
+                heading = math.atan2(z - node.pose[1], x - node.pose[0])
+
+            path = shortest_path(node.pose, (x, z, heading), self.radius)
+            poses = path.sample(SAMPLE)[1:]
+            points = [pose[:2] for pose in poses]
+            length = sum(math.dist(a, b) for a, b in pairwise([node.pose[:2], *points]))
+            node = _Node((x, z, heading), node.cost + length, node, points, 0.0, leg, True)
+
+        return node, start_index
+
+    def _found(self, end: _Node, outcome: str, direct_from: int | None = None) -> Route:
+        route = self._route(end, direct_from)
         length = sum(math.dist(a, b) for a, b in pairwise(route.points))
         crossing = "" if route.is_clear else ", crosses blocked cells"
         self.outcome = f"{outcome}, {length:.0f} m, cost {end.cost:.0f}{crossing}"
 
         return route
 
-    def _route(self, end: _Node) -> Route:
+    def _route(self, end: _Node, direct_from: int | None = None) -> Route:
+        """The route to the node. Points from `direct_from` on were not searched, so there the
+        safety distance to blocked cells counts as blocked too."""
+
         nodes = []
         node = end
 
@@ -419,16 +464,23 @@ class _Search:
             if node.at_waypoint:
                 waypoint_indices.append(len(points) - 1)
 
-        return Route(points, waypoint_indices, [self._is_blocked(point) for point in points])
+        searched = len(points) if direct_from is None else direct_from
+        blocked = [self._is_blocked(point, index >= searched) for index, point in enumerate(points)]
 
-    def _is_blocked(self, point: Point) -> bool:
+        return Route(points, waypoint_indices, blocked)
+
+    def _is_blocked(self, point: Point, with_safety_distance: bool = False) -> bool:
         index = self.grid.index(*point)
 
-        return (
-            index is not None
-            and self.grid.cells[index] >= BLOCKED_VALUE
-            and not self._in_free_zone(*point)
-        )
+        if index is None:
+            return with_safety_distance
+
+        if with_safety_distance:
+            blocked = self.grid.blocked[index]
+        else:
+            blocked = self.grid.cells[index] >= BLOCKED_VALUE
+
+        return bool(blocked) and not self._in_free_zone(*point)
 
     def _key(self, pose: Pose, leg: int) -> tuple[int, int, int, int]:
         x, z, heading = pose
