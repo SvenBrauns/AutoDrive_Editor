@@ -69,3 +69,13 @@ def test_new_route_clears_the_stops(renderer):
     renderer.render(AutoDriveData())
 
     assert renderer.station_layer.stops == []
+
+
+def test_arrow_shows_the_default_lane_heading(renderer):
+    # West of its building and heading up: circling counterclockwise turns it down the map.
+    stop = Stop("mill.xml", "a", "Mill", StopKind.SELL, (), (500, 80, 500), 0.0, True, (600, 500))
+    renderer.set_buildings(SavegameBuildings(types=[MILL], stops=[stop]))
+
+    assert renderer.stop_headings[stop] == 180
+    assert not is_yellow(renderer, 501.2, 502)
+    assert is_yellow(renderer, 501.2, 498)

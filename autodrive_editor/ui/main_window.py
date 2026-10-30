@@ -34,7 +34,6 @@ from autodrive_editor.editing.operations.reverse_direction import ReverseDirecti
 from autodrive_editor.editing.operations.rotate_selection import RotateSelectionOperation
 from autodrive_editor.editing.operations.stations import StationOperation
 from autodrive_editor.editing.path_shapes import PathShape
-from autodrive_editor.editing.station_layout import default_heading
 from autodrive_editor.error_log import set_debug_logging
 from autodrive_editor.file_io.autodrive_xml import ConfigFormat
 from autodrive_editor.file_io.game_files import GameFiles
@@ -343,10 +342,10 @@ class MainWindow(QMainWindow):
 
     def _ask_station_choices(self, stops, autodrive_data):
         taken_names = {(marker.name, marker.group) for marker in autodrive_data.markers.values()}
-        costmap = self.scene_renderer.costmap
+        headings = self.scene_renderer.stop_headings
         dialog = StationDialog(
             stops,
-            [default_heading(stop, costmap) for stop in stops],
+            [headings.get(stop, stop.heading) for stop in stops],
             taken_names,
             list(autodrive_data.nodes.values()),
             self.settings,
