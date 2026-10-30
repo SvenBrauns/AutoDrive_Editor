@@ -34,6 +34,8 @@ from autodrive_editor.model.connections import (
 
 Point = tuple[float, float]
 
+# Turning radius of curves in yards.
+YARD_RADIUS = 6.0
 # Curves tighten in RADIUS_STEP steps down to MIN_RADIUS where the yard radius does not fit.
 MIN_RADIUS = 4.0
 RADIUS_STEP = 1.0
@@ -61,6 +63,9 @@ SAMPLE = 0.5
 class CurveKind(Enum):
     IN = "in"
     OUT = "out"
+
+
+BOTH = (CurveKind.IN, CurveKind.OUT)
 
 
 @dataclass(frozen=True)
@@ -207,11 +212,14 @@ def junction_command(
     spacing: float,
     height_for_new_node: Callable[[AutoDriveData, float, float], float],
     junction_id: int | None = None,
+    stem_length: float = 0.0,
 ) -> AddRouteCommand:
     """The edit that adds the curves: a new junction node unless `junction_id` is given, new
     nodes along each curve, and the lane connections split where a curve leaves or joins one.
     Curve ends on the same connection closer than SNAP share a node. Curves that end along the
-    stem line share its nodes from where they reach it; a piece used both in and out is two-way."""
+    line behind the junction share its nodes from where they reach it; a piece used both in and
+    out is two-way. A two-way stem of `stem_length` continues from the junction along its
+    heading."""
 
     next_id = max(autodrive_data.nodes, default=0) + 1
     new_nodes: list[NodeData] = []
@@ -246,6 +254,15 @@ def junction_command(
         connections += [(a, b, regular) for a, b in pairwise(chain)]
 
     connections += _stem_connections(plan, parts, stem)
+    x, z, heading = junction
+    count = math.ceil(stem_length / spacing)
+    stem_ids = [junction_id]
+
+    for step in range(1, count + 1):
+        along = stem_length * step / count
+        stem_ids.append(new_node((x + along * math.cos(heading), z + along * math.sin(heading))))
+
+    connections += [(a, b, CONNECTION_STATES[ConnectionType.DUAL]) for a, b in pairwise(stem_ids)]
 
     for (source_id, target_id), points in splits.items():
         state = read_connection_state(autodrive_data, source_id, target_id)

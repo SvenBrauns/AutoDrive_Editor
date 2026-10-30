@@ -24,6 +24,7 @@ from autodrive_editor.editing.operations.create_nodes import CreateNodesOperatio
 from autodrive_editor.editing.operations.create_path import CreatePathOperation
 from autodrive_editor.editing.operations.delete_nodes import DeleteNodesOperation
 from autodrive_editor.editing.operations.find_route import FindRouteOperation
+from autodrive_editor.editing.operations.junction import JunctionOperation
 from autodrive_editor.editing.operations.markers import MarkerOperation
 from autodrive_editor.editing.operations.move_nodes import MoveNodesOperation
 from autodrive_editor.editing.operations.network_check import NetworkCheckOperation
@@ -95,6 +96,7 @@ from autodrive_editor.ui.tools.delete_nodes_tool import DeleteNodesTool
 from autodrive_editor.ui.tools.find_route_tool import FindRouteTool
 from autodrive_editor.ui.tools.generate_tool import GenerateTask, GenerateTool
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
+from autodrive_editor.ui.tools.junction_tool import JunctionTool
 from autodrive_editor.ui.tools.lane_handle_tool import LaneHandleTool
 from autodrive_editor.ui.tools.map_tool import MapTool
 from autodrive_editor.ui.tools.measure_tool import MeasureTool
@@ -574,6 +576,15 @@ class MainWindow(QMainWindow):
             parent=self,
         )
 
+        self.junction_operation = JunctionOperation(
+            context,
+            costmap_provider=lambda: self.scene_renderer.costmap,
+            vehicle_provider=lambda: self.settings.vehicle,
+            spacing_provider=lambda: self.create_path_operation.options.spacing,
+            height_for_new_node=self.create_nodes_operation.height_for_new_node,
+            parent=self,
+        )
+
         self.edit_operations = [
             self.move_nodes_operation,
             self.delete_nodes_operation,
@@ -591,6 +602,7 @@ class MainWindow(QMainWindow):
             self.marker_operation,
             self.network_check_operation,
             self.find_route_operation,
+            self.junction_operation,
         ]
 
     def _create_project_coordinator(self):
@@ -813,10 +825,19 @@ class MainWindow(QMainWindow):
             is_target=lambda view_position: bool(self._get_station_stops_at(view_position)),
             hover_text=self._get_station_name_at,
         )
+        junction_tool = JunctionTool(
+            self.view,
+            self.junction_operation,
+            connection_at=self._get_connection_at,
+            color_provider=lambda: self.scene_renderer.display_style.regular_connection_color,
+            missing_costmap_message=self.find_route_operation.missing_costmap_message,
+            z_value=display_style.selected_node_z + 1,
+        )
         self.generate_tool = GenerateTool(
             self.view,
             {
                 GenerateTask.ROUTE: route_tool,
+                GenerateTask.JUNCTION: junction_tool,
                 GenerateTask.PARKING_SPOTS: parking_tool,
                 GenerateTask.STATIONS: station_tool,
             },

@@ -5,6 +5,7 @@ import pytest
 from costmap_helpers import make_costmap
 
 from autodrive_editor.editing.junction import (
+    BOTH,
     MIN_RADIUS,
     CurveKind,
     junction_command,
@@ -22,7 +23,6 @@ from autodrive_editor.model.connections import (
 )
 
 VEHICLE = Vehicle(turning_radius=10, width=3, margin=0.5)
-BOTH = (CurveKind.IN, CurveKind.OUT)
 # Junction 15 m south of the road, the stem heading south (z grows southwards).
 JUNCTION = (0.0, 15.0, math.pi / 2)
 # Where the curves meet: one yard radius (6 m) south of the east-bound lane.
@@ -326,3 +326,18 @@ def test_junction_distance_is_a_radius_beyond_the_farthest_lane():
 
     assert junction_distance(lanes, (0.0, 0.0), math.pi / 2, 6.0) == pytest.approx(6.0)
     assert junction_distance(lanes, (0.0, 0.0), -math.pi / 2, 6.0) == pytest.approx(10.0)
+
+
+def test_a_two_way_stem_continues_from_the_junction():
+    data = two_lane_road()
+    plan = plan_junction(road_lanes(data, 7, 8), MEETING, BOTH, 6.0, None, VEHICLE)
+    command = junction_command(data, plan, MEETING, 5.0, lambda data, x, z: 0.0, stem_length=12)
+
+    command.apply()
+
+    stem = sorted(
+        (n for n in command.new_nodes if n.x == pytest.approx(0) and n.z >= 6), key=lambda n: n.z
+    )
+    assert [round(n.z) for n in stem] == [6, 10, 14, 18]
+    for a, b in pairwise(stem):
+        assert get_connection_type(a, b) == ConnectionType.DUAL

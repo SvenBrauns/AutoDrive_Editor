@@ -774,4 +774,10 @@ TEXTS = {
     "No left turn in from the {direction}": "Kein Linksabbiegen in den Hof aus Richtung {direction}",
     "No right turn out to the {direction}": "Kein Rechtsabbiegen aus dem Hof nach {direction}",
     "No left turn out to the {direction}": "Kein Linksabbiegen aus dem Hof nach {direction}",
+    "Junction added": "Einmündung hinzugefügt",
+    "Junction added; missing: {missing}": "Einmündung hinzugefügt; es fehlt: {missing}",
+    "Junctions are added in planning mode": "Einmündungen werden nur im Planungsmodus hinzugefügt",
+    "No curve of the junction fits here": "Hier passt keine Kurve der Einmündung",
+    "Searching the curves that do not fit…": "Suche die Kurven, die nicht passen …",
+    "Press on a road and drag towards the yard to add a junction; release adds it, Esc cancels": "Auf eine Straße drücken und zum Hof ziehen, um eine Einmündung anzulegen; Loslassen fügt sie hinzu, Esc bricht ab",
 }
