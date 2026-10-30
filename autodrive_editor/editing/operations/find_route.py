@@ -95,6 +95,8 @@ class FindRouteOperation(EditOperation):
         self.edit_history.data_changed.connect(self._handle_data_changed)
         # Only an ended plan changes the planned lanes; a new plan is empty.
         self.edit_history.planning_changed.connect(lambda planning: planning or self._search())
+        # A discarded plan is a complete reset, so its waypoints go too.
+        self.edit_history.plan_discarded.connect(self.clear)
 
     @property
     def is_searching(self) -> bool:
@@ -263,7 +265,13 @@ class FindRouteOperation(EditOperation):
         number = self._search_number
 
         def search():
-            self._search_done.emit(number, finder.find(request, cancelled.is_set))
+            result = finder.find(request, cancelled.is_set)
+
+            try:
+                self._search_done.emit(number, result)
+            except RuntimeError:
+                # The window was closed during the search.
+                pass
 
         threading.Thread(target=search, daemon=True).start()
 
