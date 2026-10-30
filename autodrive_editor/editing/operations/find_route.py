@@ -10,6 +10,7 @@ from PySide6.QtCore import Signal
 
 from autodrive_editor.editing.commands.add_route import AddRouteCommand
 from autodrive_editor.editing.edit_context import EditContext, EditOperation
+from autodrive_editor.editing.join_rules import join_problem
 from autodrive_editor.editing.route_finder import Route, RouteFinder, RouteRequest, Vehicle
 from autodrive_editor.editing.route_nodes import (
     chain_connections,
@@ -20,18 +21,31 @@ from autodrive_editor.editing.route_nodes import (
 from autodrive_editor.file_io.navigation_costmap import NavigationCostmap
 from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
-from autodrive_editor.model.connections import CONNECTION_STATES, ConnectionType
+from autodrive_editor.model.connections import (
+    CONNECTION_STATES,
+    NO_CONNECTION,
+    ConnectionType,
+    read_connection_state,
+)
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
 class Waypoint:
-    """A point the route passes: an existing node or a free map position."""
+    """A point the route passes: an existing node, a point on an existing connection (split
+    there when the route is added) or a free map position."""
 
     x: float
     z: float
     node_id: int | None = None
+    # The connection (source, target) and how far along it the point lies, from 0 to 1.
+    connection: tuple[int, int] | None = None
+    fraction: float = 0.0
+
+    @property
+    def is_free(self) -> bool:
+        return self.node_id is None and self.connection is None
 
 
 class FindRouteOperation(EditOperation):
@@ -95,6 +109,41 @@ class FindRouteOperation(EditOperation):
 
         self.waypoints.append(Waypoint(x, z, node_id))
         self._search()
+
+    def add_waypoint_on_connection(self, source_id: int, target_id: int, x: float, z: float):
+        """Adds a waypoint on the connection, at the point closest to (x, z)."""
+
+        nodes = self.autodrive_data_provider().nodes
+        source, target = nodes[source_id], nodes[target_id]
+        dx, dz = target.x - source.x, target.z - source.z
+        length_squared = dx * dx + dz * dz or 1.0
+        fraction = ((x - source.x) * dx + (z - source.z) * dz) / length_squared
+        fraction = min(max(fraction, 0.01), 0.99)
+
+        self.waypoints.append(
+            Waypoint(
+                source.x + fraction * dx,
+                source.z + fraction * dz,
+                connection=(source_id, target_id),
+                fraction=fraction,
+            )
+        )
+        self._search()
+
+    def join_warnings(self) -> list[str]:
+        """Why existing nodes among the waypoints are poor places to join the route."""
+
+        autodrive_data = self.autodrive_data_provider()
+        last = len(self.waypoints) - 1
+
+        return [
+            problem
+            for index, waypoint in enumerate(self.waypoints)
+            if waypoint.node_id is not None
+            and (
+                problem := join_problem(autodrive_data, waypoint.node_id, index == 0, index == last)
+            )
+        ]
 
     def insert_waypoint(self, index: int, x: float, z: float):
         """Adds a free waypoint before the one at the index."""
@@ -226,15 +275,49 @@ class FindRouteOperation(EditOperation):
         if autodrive_data is None or len(self.waypoints) < 2 or self.costmap_provider() is None:
             return None
 
-        lanes = planned_lanes(autodrive_data, self.plan_node_ids_provider())
-        first, last = self.waypoints[0], self.waypoints[-1]
+        lanes = self._lanes(autodrive_data)
 
         return RouteRequest(
             tuple((waypoint.x, waypoint.z) for waypoint in self.waypoints),
-            node_headings(autodrive_data, first.node_id) if first.node_id is not None else None,
-            node_headings(autodrive_data, last.node_id) if last.node_id is not None else None,
+            self._headings(autodrive_data, self.waypoints[0]),
+            self._headings(autodrive_data, self.waypoints[-1]),
             tuple((lane.source, lane.target) for lane in lanes),
         )
+
+    def _lanes(self, autodrive_data: AutoDriveData):
+        """The planned lanes routes can share, without the connections that get split."""
+
+        split = {waypoint.connection for waypoint in self.waypoints if waypoint.connection}
+        split |= {(target, source) for source, target in split}
+
+        return [
+            lane
+            for lane in planned_lanes(autodrive_data, self.plan_node_ids_provider())
+            if (lane.source_id, lane.target_id) not in split
+        ]
+
+    @staticmethod
+    def _headings(autodrive_data: AutoDriveData, waypoint: Waypoint) -> tuple[float, ...] | None:
+        """The directions a vehicle drives through the waypoint, None for a free one."""
+
+        if waypoint.node_id is not None:
+            return node_headings(autodrive_data, waypoint.node_id)
+
+        if waypoint.connection is None:
+            return None
+
+        source_id, target_id = waypoint.connection
+        source, target = autodrive_data.nodes[source_id], autodrive_data.nodes[target_id]
+        heading = math.atan2(target.z - source.z, target.x - source.x)
+        headings = []
+
+        if target_id in source.outgoing:
+            headings.append(heading)
+
+        if source_id in target.outgoing:
+            headings.append(heading + math.pi if heading <= 0 else heading - math.pi)
+
+        return tuple(headings) or None
 
     def _finish(self, number: int, route):
         if self._running is None or number != self._running["number"]:
@@ -257,13 +340,15 @@ class FindRouteOperation(EditOperation):
                 tr("The route crosses obstacles (red). Move nodes or waypoints until it is clear")
             )
         else:
-            self.status_changed.emit(tr("Route found. Enter adds it to the plan"))
+            message = tr("Route found. Enter adds it to the plan")
+            self.status_changed.emit(". ".join([message, *self.join_warnings()]))
 
         self.preview_changed.emit()
 
     def _handle_data_changed(self, _data_change):
-        """Waypoints on nodes follow them; waypoints of deleted nodes become free ones. The
-        route is searched again, as moved nodes or the plan may change it."""
+        """Waypoints on nodes or connections follow them; waypoints of deleted nodes or
+        connections become free ones. The route is searched again, as moved nodes or the plan
+        may change it."""
 
         autodrive_data = self.autodrive_data_provider()
 
@@ -271,6 +356,10 @@ class FindRouteOperation(EditOperation):
             return
 
         for index, waypoint in enumerate(self.waypoints):
+            if waypoint.connection is not None:
+                self.waypoints[index] = self._on_connection(autodrive_data, waypoint)
+                continue
+
             if waypoint.node_id is None:
                 continue
 
@@ -283,12 +372,31 @@ class FindRouteOperation(EditOperation):
 
         self._search()
 
+    @staticmethod
+    def _on_connection(autodrive_data: AutoDriveData, waypoint: Waypoint) -> Waypoint:
+        """The waypoint at its place on the connection, a free one if the connection is gone."""
+
+        source_id, target_id = waypoint.connection
+        source = autodrive_data.nodes.get(source_id)
+        target = autodrive_data.nodes.get(target_id)
+
+        if source is None or target is None or target_id not in source.outgoing:
+            return Waypoint(waypoint.x, waypoint.z)
+
+        fraction = waypoint.fraction
+
+        return replace(
+            waypoint,
+            x=source.x + fraction * (target.x - source.x),
+            z=source.z + fraction * (target.z - source.z),
+        )
+
     def _route_command(
         self, autodrive_data: AutoDriveData, route: Route
     ) -> tuple[AddRouteCommand, int]:
         """The edit that adds the route, and the ID of its last node."""
 
-        lanes = planned_lanes(autodrive_data, self.plan_node_ids_provider())
+        lanes = self._lanes(autodrive_data)
         positions = {
             node_id: (node.x, node.z)
             for node_id in {lane.source_id for lane in lanes} | {lane.target_id for lane in lanes}
@@ -297,13 +405,24 @@ class FindRouteOperation(EditOperation):
         next_id = max(autodrive_data.nodes, default=0) + 1
         new_nodes = []
         waypoint_ids = []
+        split_connections = []
 
-        # Free waypoints become new nodes.
+        # Free waypoints become new nodes; a waypoint on a connection splits it with a new node.
         for waypoint in self.waypoints:
             if waypoint.node_id is None:
                 y = self.height_for_new_node(autodrive_data, waypoint.x, waypoint.z)
                 new_nodes.append(NodeData(next_id, waypoint.x, y, waypoint.z))
                 waypoint_ids.append(next_id)
+
+                if waypoint.connection is not None:
+                    source_id, target_id = waypoint.connection
+                    state = read_connection_state(autodrive_data, source_id, target_id)
+                    split_connections += [
+                        (source_id, target_id, NO_CONNECTION),
+                        (source_id, next_id, state),
+                        (next_id, target_id, state),
+                    ]
+
                 next_id += 1
             else:
                 waypoint_ids.append(waypoint.node_id)
@@ -340,7 +459,7 @@ class FindRouteOperation(EditOperation):
             node_ids.append(next_id)
             next_id += 1
 
-        connections = chain_connections(autodrive_data, node_ids)
+        connections = split_connections + chain_connections(autodrive_data, node_ids)
         dual = CONNECTION_STATES[ConnectionType.DUAL]
         logger.debug(
             "Route of %d points: %d new nodes, existing nodes used %s, made dual %s",

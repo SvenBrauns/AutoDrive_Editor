@@ -728,7 +728,11 @@ TEXTS = {
     "No route found through the waypoints": "Keine Route durch die Wegpunkte gefunden",
     "The route crosses obstacles (red). Move nodes or waypoints until it is clear": "Die Route kreuzt Hindernisse (rot). Nodes oder Wegpunkte verschieben, bis sie frei ist",
     "Route found. Enter adds it to the plan": "Route gefunden. Enter fügt sie dem Plan hinzu",
-    "Click nodes or free ground as waypoints; drag waypoints or nodes to change the route. Right-click or Backspace removes waypoints, Enter adds the route": "Nodes oder freie Stellen als Wegpunkte anklicken; Wegpunkte oder Nodes ziehen, um die Route zu ändern. Rechtsklick oder Rücktaste entfernt Wegpunkte, Enter fügt die Route hinzu",
+    # editing/join_rules.py
+    "Node {id} is a marker: other routes would lead through it": "Node {id} ist ein Marker: andere Routen würden durch ihn führen",
+    "Nothing drives to node {id}, so the route cannot be reached": "Zu Node {id} führt nichts, die Route ist also nicht erreichbar",
+    "Node {id} leads nowhere, so the route ends in a dead end": "Node {id} führt nirgendwohin, die Route endet also in einer Sackgasse",
+    "Click nodes, connections or free ground as waypoints; drag waypoints or nodes to change the route. Right-click or Backspace removes waypoints, Enter adds the route": "Nodes, Connections oder freie Stellen als Wegpunkte anklicken; Wegpunkte oder Nodes ziehen, um die Route zu ändern. Rechtsklick oder Rücktaste entfernt Wegpunkte, Enter fügt die Route hinzu",
     "Find route needs the drivability map of a savegame. Link a savegame first": "Route finden braucht die Befahrbarkeitskarte eines Spielstands. Zuerst einen Spielstand verknüpfen",
     "Find route plans for a vehicle of this size: it turns no tighter than the turning radius and keeps half its width plus the safety margin away from buildings, fences and trees.": "Route finden plant für ein Fahrzeug dieser Größe: Es fährt keine engeren Kurven als den Wendekreis und hält die halbe Breite plus den Sicherheitsabstand von Gebäuden, Zäunen und Bäumen fern.",
     "Minimum turning radius:": "Kleinster Wenderadius:",

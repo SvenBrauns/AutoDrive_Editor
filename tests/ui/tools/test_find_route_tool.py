@@ -114,3 +114,11 @@ def test_dragging_the_route_inserts_a_waypoint_there(window):
     assert route.points[route.waypoint_indices[1]] == pytest.approx(
         (waypoints[1].x, waypoints[1].z)
     )
+
+
+def test_click_on_a_connection_adds_a_waypoint_on_it(window):
+    click(window, view_pos(window, 5, 0))
+
+    waypoint = window.find_route_operation.waypoints[0]
+    assert waypoint.connection in {(1, 2), (2, 1)}
+    assert (waypoint.x, waypoint.z) == pytest.approx((5, 0), abs=0.5)

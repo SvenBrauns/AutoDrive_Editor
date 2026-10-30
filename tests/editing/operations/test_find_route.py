@@ -5,14 +5,20 @@ from types import SimpleNamespace
 import pytest
 from costmap_helpers import make_costmap
 
+from autodrive_editor.editing.commands.delete_nodes import DeleteNodesCommand
 from autodrive_editor.editing.commands.move_nodes import MoveNodesCommand
 from autodrive_editor.editing.edit_context import EditContext
 from autodrive_editor.editing.edit_history import EditHistory
 from autodrive_editor.editing.operations.find_route import FindRouteOperation, Waypoint
 from autodrive_editor.editing.plan_changes import PlanChanges
 from autodrive_editor.editing.route_finder import Vehicle
-from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
-from autodrive_editor.model.connections import ConnectionType, get_connection_type
+from autodrive_editor.model.autodrive_data import AutoDriveData, MarkerData, NodeData
+from autodrive_editor.model.connections import (
+    CONNECTION_STATES,
+    ConnectionType,
+    get_connection_type,
+    write_connection_state,
+)
 
 # Blocked except a corridor 8 m wide between two open yards, where vehicles can turn.
 CORRIDOR_MAP = make_costmap(
@@ -226,3 +232,56 @@ def test_a_newer_change_cancels_the_running_search_and_the_last_route_stays_show
     assert route.operation.shown_route is shown
     route.wait()
     assert route.operation.route.points[-1] == pytest.approx((60, 2))
+
+
+def add_road(route, *nodes):
+    """Adds the nodes (ID, x, z) as a one-way road in their order."""
+
+    for node_id, x, z in nodes:
+        route.data.add_node(NodeData(node_id, x, 0, z))
+
+    for (source, *_), (target, *_) in zip(nodes, nodes[1:], strict=False):
+        write_connection_state(route.data, source, target, CONNECTION_STATES["regular"])
+
+
+def test_waypoint_on_a_connection_splits_it_when_the_route_is_added(route):
+    add_road(route, (10, -90, -20), (11, -50, -20))
+    route.start_plan()
+    route.operation.add_waypoint_on_connection(10, 11, -70, -18)
+    route.operation.add_waypoint(0, 0, 2)
+    route.wait()
+
+    assert route.operation.waypoints[0] == Waypoint(-70, -20, connection=(10, 11), fraction=0.5)
+    assert route.operation.apply()
+
+    split = next(n for n in route.data.nodes.values() if (n.x, n.z) == (-70, -20))
+    assert 11 not in route.data.nodes[10].outgoing
+    assert route.path_from(10, 11) == [10, split.node_id, 11]
+    assert route.path_from(10, 2) is not None
+
+    route.history.undo()
+    assert route.data.nodes[10].outgoing == {11}
+
+
+def test_waypoint_on_a_connection_follows_its_nodes_and_is_freed_with_the_connection(route):
+    add_road(route, (10, -90, -20), (11, -50, -20))
+    route.operation.add_waypoint_on_connection(10, 11, -70, -20)
+
+    route.history.push(
+        MoveNodesCommand(route.data, {11: (-50, 0, -20)}, {11: (-50, 0, -40)}, merge_key=None)
+    )
+    assert route.operation.waypoints[0] == Waypoint(-70, -30, connection=(10, 11), fraction=0.5)
+
+    route.history.push(DeleteNodesCommand(route.data, [11]))
+    assert route.operation.waypoints[0] == Waypoint(-70, -30)
+
+
+def test_route_found_message_warns_about_poor_join_nodes(route):
+    route.data.add_marker(MarkerData(2, "Silo"))
+    route.find(1, 2)
+
+    assert route.messages[-1] == (
+        "Route found. Enter adds it to the plan. "
+        "Nothing drives to node 1, so the route cannot be reached. "
+        "Node 2 is a marker: other routes would lead through it"
+    )
