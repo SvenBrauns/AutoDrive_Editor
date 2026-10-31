@@ -2,25 +2,22 @@
 
 ## Unreleased
 
-- Generate tool, task `Stations`: click a station or right-drag a box around several; a dialog with a map preview creates a one-way subprio lane over each chosen stop with a marker (name and group per type), into the plan. Lanes can be turned by dragging their end on the map or by angle
-- The station arrows take their direction from the drivability map, and the stops of a building circle it counterclockwise
-- Find route: a waypoint can sit on a connection, which is split there when the route is added. The status bar warns when the route joins at a marker node, starts at a node nothing drives to or ends at a node that leads nowhere
-- `View → Show → Sheds` also shows the buildings that came with the map
-- The Generate tool (`G`, replaces the Parking spots tool) starts planning mode (again on a click after the plan was applied or discarded) and creates what is picked behind its arrow: a route or the parking spots of a shed. It shows the name and category of the building under the pointer. Grid snapping moves from `G` to `S`
+- Planning mode (`Edit → Planning mode`, `Ctrl+P`, button at the right of the toolbar): edit with all tools, then apply the plan as one undo step or discard it. Changed nodes get a blue halo; saving and autosave wait until the plan is applied or discarded
+- The Generate tool (`G`) replaces the Parking spots tool. It starts planning mode and creates what is picked behind its arrow: a route, the parking spots of a shed or the lanes of stations, and shows the name and category of the building under the pointer. Grid snapping moves from `G` to `S`
+- Find route (Generate tool, task `Route`): click nodes, connections or free ground as waypoints and get a drivable one-way route through them over the savegame's drivability map, with turning radius, vehicle width and safety margin from `File → Settings → Route finder`. The route is searched again while waypoints or nodes are dragged, pressing on it inserts a waypoint, and parts crossing obstacles are red. `Enter` adds it to the plan; a waypoint on a connection splits it there. It keeps to roads and yards and reuses routes already in the plan; a way back without room for its own lane makes the shared lane dual. The status bar warns when the route joins at a marker node, starts at a node nothing drives to or ends at a node that leads nowhere
+- Station lanes (Generate tool, task `Stations`): click a station or right-drag a box around several; a dialog with a map preview creates a one-way subprio lane over each chosen stop with a marker (name and group per type). Lanes can be turned by dragging their end on the map or by angle
+- Parking spots: drive-through bays can have several parking positions in a row (`Positions per bay`, `Position spacing`), each with its own marker. While the dialog is open, the planned spots are drawn on the map, and the map can be moved, zoomed and rotated
 - `Generate → Building types…` (replaces `View → Sheds…`): the building types of the savegame in the groups Stations, Sheds, Bunker silos and Other; a type can be moved to another group or hidden, on every map; `Reset` undoes both. Productions, farmhouses and weighing stations are no longer drawn as sheds
-- `View → Show → Stations`: an arrow at each stop of the savegame's selling points, productions, silos, animal barns and diesel tanks, along the lane over the trigger
+- `View → Show → Stations`: an arrow at each stop of the savegame's selling points, productions, silos, animal barns and diesel tanks, along the lane over the trigger. The arrows take their direction from the drivability map, and the stops of a building circle it counterclockwise
+- `View → Show → Sheds` also shows the buildings that came with the map
+- `View → Show → Drivability map`: the game's drivability map of the savegame (blocked ground, grass, fields, roads)
 - `View → Ground map`: a map drawn from the map's ground textures (asphalt, concrete, gravel, grass, …) with field outlines and numbers, instead of the map image. Maps need to be imported again for it
 - Terrain heights are interpolated between the heightmap pixels instead of taken from the nearest pixel, so nodes follow slopes smoothly
 - The network check also finds invalid connection references (to unknown nodes, to the node itself, or incoming without the matching outgoing entry) and nodes without connections. `Fix` removes the invalid entries and deletes the unconnected nodes, except those with a marker
 - Saving runs the network check first; if it finds problems, they are shown and the editor asks whether to save anyway
 - The last opened file opens again at startup; can be turned off under `File → Settings`
 - Measuring points on a node move with the node (e.g. on undo); if the node is deleted, the point stays as a free point
-- Drive-through parking spots can have several parking positions in a row per bay (`Positions per bay`, `Position spacing`), each with its own marker
-- While the parking spots dialog is open, the planned spots are drawn on the map, and the map can be moved, zoomed and rotated
-- Planning mode (`Edit → Planning mode`, `Ctrl+P`, button at the right of the toolbar): edit with all tools, then apply the plan as one undo step or discard it; discarding also clears the Find route waypoints. Changed nodes get a blue halo; saving and autosave wait until the plan is applied or discarded
-- Find route (`Generate` tool, task `Route`): click nodes or free ground as waypoints and get a drivable one-way route through them over the savegame's drivability map, with turning radius, vehicle width and safety margin from `File → Settings → Route finder`. The route is shown and searched again while waypoints or nodes are dragged, and pressing on it inserts a waypoint; parts crossing obstacles are red. `Enter` adds it to the plan. It keeps to roads and yards and reuses routes already in the plan; a way back without room for its own lane makes the shared lane dual
 - `Help → Debug log`: detailed log entries for finding problems, e.g. for each route search
-- `View → Show → Drivability map`: the game's drivability map of the savegame (blocked ground, grass, fields, roads)
 
 ## 1.2.0 – 2026-10-29
 

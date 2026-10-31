@@ -6,7 +6,8 @@
 - [Netz öffnen](#netz-öffnen)
 - [Bedienung](#bedienung)
 - [Darstellung](#darstellung)
-- [Parkplätze in Hallen](#parkplätze-in-hallen)
+- [Gebäude des Savegames](#gebäude-des-savegames)
+- [Planen und Erzeugen](#planen-und-erzeugen)
 - [Netz prüfen](#netz-prüfen)
 - [Speichern](#speichern)
 - [Einstellungen](#einstellungen)
@@ -18,13 +19,15 @@ Der Editor sucht den LS25-Benutzerordner (meist `Dokumente\My Games\FarmingSimul
 
 Kartenbilder werden nicht mit dem Editor ausgeliefert. Über `Karte → Karten scannen` durchsucht der Editor den `mods`-Ordner und die Grundspiel-Karten und importiert Kartenbild, Heightmap und Kartengröße. Das ist pro Karte nur einmal nötig. Danach lädt beim Öffnen einer Route automatisch die passende Karte. Fehlt die Karte, bietet der Editor den Scan direkt an.
 
-**Bodenkarte.** `Ansicht → Bodenkarte` ersetzt das Kartenbild durch eine Karte, die aus den Bodentexturen der Karte gezeichnet ist: Asphalt, Beton, Schotter, Gras, Matsch, Wald, Fels und Sand je in einer eigenen Farbe, darüber die Feldgrenzen und Feldnummern. Sie zeigt die Karte so, wie das Spiel sie bemalt, was hilft, wo das Kartenbild veraltet ist. Mit einer älteren Version des Editors importierte Karten haben keine Bodenkarte; dafür die Karte neu importieren. Der Import einer großen Karte dauert dadurch etwas länger (etwa 15 Sekunden bei einer 16x-Karte).
-
 ## Netz öffnen
 
-- **Route öffnen** (empfohlen): Routen aus dem RoutesManager von AutoDrive. AutoDrive kann sie im laufenden Spiel neu laden, das Spiel muss also nicht neu gestartet werden.
-- **Savegame öffnen**: die `AutoDrive_config.xml` eines Savegames. Die Heightmap des Savegames wird mitgeladen.
-- **XML-Datei öffnen**: eine einzelne Datei in einem der beiden Formate.
+`Datei → Öffnen…` (`Strg+O`) zeigt die Routen und Savegames des Spielordners auf zwei Reitern:
+
+- **Routen** (empfohlen): Routen aus dem RoutesManager von AutoDrive. AutoDrive kann sie im laufenden Spiel neu laden, das Spiel muss also nicht neu gestartet werden.
+- **Savegames**: die `AutoDrive_config.xml` eines Savegames. Die Heightmap des Savegames wird mitgeladen.
+- **Datei auswählen…**: eine beliebige AutoDrive-XML-Datei in einem der beiden Formate.
+
+Der Dialog öffnet mit dem zuletzt benutzten Reiter.
 
 ## Bedienung
 
@@ -36,7 +39,7 @@ Kartenbilder werden nicht mit dem Editor ausgeliefert. Über `Karte → Karten s
 | --- | --- | --- |
 | Navigation | `N` | Karte verschieben und drehen |
 | Auswahl | `A` | Per Klick oder Rechtsziehen auswählen; Umschalt + Rechtsziehen für freie Auswahl; Strg ergänzt die Auswahl |
-| Erzeugen | `G` | Startet den Planungsmodus und erzeugt, was hinter dem Pfeil gewählt ist: eine Route durch Wegpunkte (siehe [Planungsmodus](#planungsmodus)), die Parkplätze einer angeklickten Halle (siehe [Parkplätze in Hallen](#parkplätze-in-hallen)) oder die Spuren gewählter Stationen (siehe dort Stationsspuren anlegen) |
+| Erzeugen | `G` | Startet den Planungsmodus und erzeugt, was hinter dem Pfeil gewählt ist: eine Route durch Wegpunkte, die Parkplätze einer Halle oder die Spuren von Stationen (siehe [Planen und Erzeugen](#planen-und-erzeugen)) |
 | Verschieben | `V` | Node oder Auswahl ziehen; Umschalt bewegt nur entlang einer Rasterachse |
 | Rotieren | `R` | Auswahl am Ring drehen; Umschalt rastet in Schritten ein (Standard 15°, über den Pfeil einstellbar) |
 | Erstellen (Regular / Subprio) | `E` / `Umschalt+E` | Node auf freier Fläche erstellen |
@@ -54,25 +57,17 @@ Kartenbilder werden nicht mit dem Editor ausgeliefert. Über `Karte → Karten s
 
 Außerdem: Rückgängig und Wiederholen (`Strg+Z` / `Strg+Y`), Kopieren, Ausschneiden und Einfügen (`Strg+C/X/V`; `Strg+Umschalt+V` fügt an der Originalposition ein), das Raster mit Einrasten (`S`), Abstands- und Winkelmessung sowie das Fenster `Marker` mit allen Markergruppen.
 
-## Planungsmodus
-
-Der Planungsknopf am rechten Ende der Werkzeugleiste (`Bearbeiten → Planungsmodus`, `Strg+P`) beginnt einen Plan. Alle Werkzeuge arbeiten wie gewohnt, die Änderungen werden aber im Plan gesammelt: Ein blauer Balken über der Karte zeigt, wie viele Nodes der Plan geändert hat, und diese Nodes bekommen einen blauen Hof. Rückgängig und Wiederholen arbeiten innerhalb des Plans und halten an seinem Anfang. `Plan übernehmen` fügt den ganzen Plan als einen Rückgängig-Schritt in den Verlauf ein; `Plan verwerfen` nimmt ihn vollständig zurück. Ein weiterer Klick auf den Planungsknopf, das Öffnen einer anderen Datei oder das Schließen des Editors fragt, ob der Plan übernommen oder verworfen werden soll. Solange ein Plan offen ist, kann nicht gespeichert werden und die automatische Sicherung pausiert.
-
-**Route finden** (Werkzeug `Erzeugen`, `G`, hinter seinem Pfeil `Route` wählen). Nodes, Connections oder freie Stellen nacheinander als Wegpunkte anklicken. Der Editor sucht eine befahrbare Einbahn-Route in dieser Reihenfolge durch sie und zeigt sie an; Teile, die Gebäude, Zäune, Bäume oder Wasser kreuzen, sind rot. Die Route fährt nur vorwärts, keine engeren Kurven als den kleinsten Wenderadius und hält die halbe Fahrzeugbreite plus einen Sicherheitsabstand von Hindernissen fern; diese Werte stellt man unter `Datei → Einstellungen → Routensuche` ein. Sie bleibt, wo es geht, auf Straßen und Höfen, fährt eher über Gras als über Felder und verlässt den ersten und erreicht den letzten Node in der Richtung ihrer Connections. An den Wegpunkten dazwischen nimmt sie die Richtung, die zum nächsten Stück passt. Nahe den Wegpunkten darf gesperrter Boden befahren werden, da Nodes unter einem Dach oder in einer Halle liegen können. Freie Wegpunkte oder beliebige Nodes ziehen, um die Route zu ändern; nach jeder Änderung wird sie neu gesucht. Drücken auf die Route setzt dort einen Wegpunkt, der sich gleich ziehen lässt. Rechtsklick auf einen Wegpunkt entfernt ihn, die `Rücktaste` den letzten, `Esc` alle. Wo die Route rot ist, Nodes verschieben oder einen Wegpunkt auf dem Umweg setzen. `Enter` fügt eine Route ohne rote Teile als ein Rückgängig-Schritt dem Plan hinzu; freie Wegpunkte werden zu Nodes, ein Wegpunkt auf einer Connection teilt sie mit einem neuen Node (gleicher Typ und gleiche Richtung), und der letzte Wegpunkt beginnt die nächste Route. Schließt die gefundene Route an einem ungünstigen Node an, sagt die Statusleiste warum, z. B. ein Marker-Node (andere Routen würden durch den Marker führen), ein erster Node, zu dem nichts führt, oder ein letzter Node, der nirgendwohin führt; die Route lässt sich trotzdem hinzufügen.
-
-Routen, die schon im Plan sind, werden mitbenutzt: Eine Route in derselben Richtung schließt sich ihnen an. Der Rückweg (die Nodes andersherum auswählen) bekommt eine eigene Spur, wo Platz ist; wo nicht, teilt er sich die Spur, die dort Dual wird. Ist gar kein Platz zum Wenden, meldet der Editor, dass keine befahrbare Route gefunden wurde.
-
-Die Routensuche nutzt die Befahrbarkeitskarte des Spiels, die der Landwirtschafts-Simulator bei jedem Speichern in den Spielstand schreibt (`vehicleNavigationCostmap.dat`). Eine Route braucht dafür ein verknüpftes Savegame. Nach dem Platzieren von Gebäuden erneut im Spiel speichern, damit die Karte sie kennt. `Ansicht → Anzeigen → Befahrbarkeitskarte` zeichnet sie: gesperrter Boden rot (in Wäldern blau), unwegsamer Boden orange, Gras gelb, Felder grün; Straßen und Höfe bleiben frei.
-
 ## Darstellung
 
-`Ansicht → Anzeigen` blendet Nodes, Node-IDs, jede Connection-Art (Regular, Dual, Reverse), Marker, Markernamen, die Parkpositionen der Fahrzeuge, Hallen, Stationen und die Befahrbarkeitskarte (siehe [Planungsmodus](#planungsmodus)) ein und aus. Die Linienfarbe zeigt die Connection-Art, Pfeile zeigen die Richtung; Dual-Connections bekommen zu jedem Ende einen. Subprio-Nodes sind orange. Node-IDs erscheinen erst beim Hineinzoomen; Parkpositionen (ein „P“ neben dem Marker) werden aus der `vehicles.xml` eines Spielstands gelesen. Eine Route braucht dafür ein verknüpftes Savegame, siehe [Parkplätze in Hallen](#parkplätze-in-hallen); dort sind auch die Hallen erklärt. Ausgeblendete Nodes und Connections lassen sich nur anklicken und auswählen, wenn `Ausgeblendete Elemente auswählbar` an ist. Größen und Farben stellt man unter `Ansicht → Darstellungsoptionen` ein. Alle Einstellungen bleiben gespeichert.
+`Ansicht → Anzeigen` blendet Nodes, Node-IDs, jede Connection-Art (Regular, Dual, Reverse), Marker, Markernamen, die Parkpositionen der Fahrzeuge, Hallen, Stationen und die Befahrbarkeitskarte (siehe [Route finden](#route-finden)) ein und aus. Die Linienfarbe zeigt die Connection-Art, Pfeile zeigen die Richtung; Dual-Connections bekommen zu jedem Ende einen. Subprio-Nodes sind orange. Node-IDs erscheinen erst beim Hineinzoomen; Parkpositionen (ein „P“ neben dem Marker) werden aus der `vehicles.xml` eines Spielstands gelesen. Eine Route braucht dafür ein verknüpftes Savegame, siehe [Gebäude des Savegames](#gebäude-des-savegames); dort sind auch Hallen und Stationen erklärt. Ausgeblendete Nodes und Connections lassen sich nur anklicken und auswählen, wenn `Ausgeblendete Elemente auswählbar` an ist. Größen und Farben stellt man unter `Ansicht → Darstellungsoptionen` ein. Alle Einstellungen bleiben gespeichert.
 
-## Parkplätze in Hallen
+**Bodenkarte.** `Ansicht → Bodenkarte` ersetzt das Kartenbild durch eine Karte, die aus den Bodentexturen der Karte gezeichnet ist: Asphalt, Beton, Schotter, Gras, Matsch, Wald, Fels und Sand je in einer eigenen Farbe, darüber die Feldgrenzen und Feldnummern. Sie zeigt die Karte so, wie das Spiel sie bemalt, was hilft, wo das Kartenbild veraltet ist. Mit einer älteren Version des Editors importierte Karten haben keine Bodenkarte; dafür die Karte neu importieren. Der Import einer großen Karte dauert dadurch etwas länger (etwa 15 Sekunden bei einer 16x-Karte).
 
-Der Editor legt AutoDrive-Parkplätze in den Hallen eines Savegames an.
+## Gebäude des Savegames
 
-**Savegame verknüpfen.** Eine Route hat kein Savegame. Beim Öffnen einer Route bietet der Editor an, eins zu verknüpfen (Savegames auf der Karte der Route zuerst); `Datei → Savegame verknüpfen…` ändert oder entfernt die Verknüpfung. Sie wird im Projekt der Route gespeichert; gibt es keins, bietet der Editor an, eins anzulegen. Mit „Für diese Route nicht mehr fragen“ kommt die Frage für diese Route nicht mehr. Die Heightmap des verknüpften Savegames ersetzt die der Karte, da Terraforming und Gebäude den Boden verändern. Ein geöffnetes Savegame braucht keine Verknüpfung.
+Der Editor liest die Gebäude eines Savegames: die Hallen zum Parken und die Stationen, an denen Fahrzeuge laden und abladen. Das Werkzeug Erzeugen baut darauf auf.
+
+**Savegame verknüpfen.** Eine Route hat kein Savegame. Beim Öffnen einer Route bietet der Editor an, eins zu verknüpfen (Savegames auf der Karte der Route zuerst); `Datei → Savegame verknüpfen…` ändert oder entfernt die Verknüpfung. Der Editor merkt sich die Verknüpfung für die Route. Mit „Für diese Route nicht mehr fragen“ kommt die Frage für diese Route nicht mehr. Die Heightmap des verknüpften Savegames ersetzt die der Karte, da Terraforming und Gebäude den Boden verändern. Ein geöffnetes Savegame braucht keine Verknüpfung.
 
 **Hallen.** `Ansicht → Anzeigen → Hallen` zeichnet die Innenbereiche der Gebäude des Savegames als lila Umrisse: die im Spiel gebauten und die, die mit der Karte kommen, sofern sie nicht abgerissen wurden. Die Gebäudedateien werden aus dem Installationsordner des Spiels und dem Mods-Ordner gelesen; Gebäude, deren Dateien fehlen, werden weggelassen und in der Statusleiste gezählt. Nur Gebäude der Gruppe Hallen werden als Hallen gezeichnet (siehe Gebäudetypen unten).
 
@@ -80,7 +75,23 @@ Der Editor legt AutoDrive-Parkplätze in den Hallen eines Savegames an.
 
 **Gebäudetypen.** `Erzeugen → Gebäudetypen…` listet die Gebäudetypen des Savegames mit Innenbereichen, Stationen oder einem Fahrsilo in vier Gruppen: Stationen (Ablade- oder Ladetrigger), Hallen (nur Innenbereiche), Fahrsilos und Sonstige. Eine Produktion mit Halle ist eine Station, keine Halle; Wohnhäuser und Waagen stehen unter Sonstige, da nur die Spielfigur hineingeht oder Fahrzeuge nur darüberfahren. Steht ein Typ in der falschen Gruppe, in seiner Spalte `Gruppe` eine andere wählen; nicht angehakte Typen oder Gruppen werden ausgeblendet. `Zurücksetzen` setzt jeden aufgeführten Typ in seine eigene Gruppe zurück und zeigt ihn an. Beides gilt auf jeder Karte.
 
-**Parkplätze anlegen.** Das Werkzeug Erzeugen (`G`) und hinter seinem Pfeil `Parkplätze` wählen; zeigt der Mauszeiger auf eine Halle, erscheinen Name und Kategorie des Gebäudes. Einen Hallenumriss mit links anklicken. Der Dialog zeigt die Halle von oben, so gedreht, dass die offene Seite unten liegt, mit einem Pfeil nach Norden, und aktualisiert sich bei jeder Eingabe. Die geplanten Parkplätze werden auch auf der Karte gezeichnet; solange der Dialog offen ist, lässt sich die Karte verschieben, zoomen und drehen, aber nicht bearbeiten.
+## Planen und Erzeugen
+
+Der Planungsknopf am rechten Ende der Werkzeugleiste (`Bearbeiten → Planungsmodus`, `Strg+P`) beginnt einen Plan. Alle Werkzeuge arbeiten wie gewohnt, die Änderungen werden aber im Plan gesammelt: Ein blauer Balken über der Karte zeigt, wie viele Nodes der Plan geändert hat, und diese Nodes bekommen einen blauen Hof. Rückgängig und Wiederholen arbeiten innerhalb des Plans und halten an seinem Anfang. `Plan übernehmen` fügt den ganzen Plan als einen Rückgängig-Schritt in den Verlauf ein; `Plan verwerfen` nimmt ihn vollständig zurück. Ein weiterer Klick auf den Planungsknopf, das Öffnen einer anderen Datei oder das Schließen des Editors fragt, ob der Plan übernommen oder verworfen werden soll. Solange ein Plan offen ist, kann nicht gespeichert werden und die automatische Sicherung pausiert.
+
+Das Werkzeug Erzeugen (`G`) startet den Planungsmodus und erzeugt, was hinter seinem Pfeil gewählt ist: eine Route, die Parkplätze einer Halle oder die Spuren von Stationen.
+
+### Route finden
+
+Hinter dem Pfeil des Werkzeugs Erzeugen `Route` wählen, dann Nodes, Connections oder freie Stellen nacheinander als Wegpunkte anklicken. Der Editor sucht eine befahrbare Einbahn-Route in dieser Reihenfolge durch sie und zeigt sie an; Teile, die Gebäude, Zäune, Bäume oder Wasser kreuzen, sind rot. Die Route fährt nur vorwärts, keine engeren Kurven als den kleinsten Wenderadius und hält die halbe Fahrzeugbreite plus einen Sicherheitsabstand von Hindernissen fern; diese Werte stellt man unter `Datei → Einstellungen → Routensuche` ein. Sie bleibt, wo es geht, auf Straßen und Höfen, fährt eher über Gras als über Felder und verlässt den ersten und erreicht den letzten Node in der Richtung ihrer Connections. An den Wegpunkten dazwischen nimmt sie die Richtung, die zum nächsten Stück passt. Nahe den Wegpunkten darf gesperrter Boden befahren werden, da Nodes unter einem Dach oder in einer Halle liegen können. Freie Wegpunkte oder beliebige Nodes ziehen, um die Route zu ändern; nach jeder Änderung wird sie neu gesucht. Drücken auf die Route setzt dort einen Wegpunkt, der sich gleich ziehen lässt. Rechtsklick auf einen Wegpunkt entfernt ihn, die `Rücktaste` den letzten, `Esc` alle. Wo die Route rot ist, Nodes verschieben oder einen Wegpunkt auf dem Umweg setzen. `Enter` fügt eine Route ohne rote Teile als ein Rückgängig-Schritt dem Plan hinzu; freie Wegpunkte werden zu Nodes, ein Wegpunkt auf einer Connection teilt sie mit einem neuen Node (gleicher Typ und gleiche Richtung), und der letzte Wegpunkt beginnt die nächste Route. Schließt die gefundene Route an einem ungünstigen Node an, sagt die Statusleiste warum, z. B. ein Marker-Node (andere Routen würden durch den Marker führen), ein erster Node, zu dem nichts führt, oder ein letzter Node, der nirgendwohin führt; die Route lässt sich trotzdem hinzufügen.
+
+Routen, die schon im Plan sind, werden mitbenutzt: Eine Route in derselben Richtung schließt sich ihnen an. Der Rückweg (die Nodes andersherum auswählen) bekommt eine eigene Spur, wo Platz ist; wo nicht, teilt er sich die Spur, die dort Dual wird. Ist gar kein Platz zum Wenden, meldet der Editor, dass keine befahrbare Route gefunden wurde.
+
+Die Routensuche nutzt die Befahrbarkeitskarte des Spiels, die der Landwirtschafts-Simulator bei jedem Speichern in den Spielstand schreibt (`vehicleNavigationCostmap.dat`). Eine Route braucht dafür ein verknüpftes Savegame. Nach dem Platzieren von Gebäuden erneut im Spiel speichern, damit die Karte sie kennt. `Ansicht → Anzeigen → Befahrbarkeitskarte` zeichnet sie: gesperrter Boden rot (in Wäldern blau), unwegsamer Boden orange, Gras gelb, Felder grün; Straßen und Höfe bleiben frei.
+
+### Parkplätze in Hallen
+
+Der Editor legt AutoDrive-Parkplätze in den Hallen eines Savegames an. Hinter dem Pfeil des Werkzeugs Erzeugen `Parkplätze` wählen; zeigt der Mauszeiger auf eine Halle, erscheinen Name und Kategorie des Gebäudes. Einen Hallenumriss mit links anklicken. Der Dialog zeigt die Halle von oben, so gedreht, dass die offene Seite unten liegt, mit einem Pfeil nach Norden, und aktualisiert sich bei jeder Eingabe. Die geplanten Parkplätze werden auch auf der Karte gezeichnet; solange der Dialog offen ist, lässt sich die Karte verschieben, zoomen und drehen, aber nicht bearbeiten.
 
 - **Modus**: *Rückwärts einparken* (die Fahrzeuge setzen rückwärts in den Stellplatz, der Marker liegt an der Rückwand) oder *Durchfahren* (eine Vorwärtslinie je Stellplatz durch die Halle, die Ausfahrt liegt auf der gegenüberliegenden Seite).
 - **Offene Seite** / **Einfahrtseite**: die Seite, von der die Fahrzeuge kommen. Zum Ändern eine Seite oder ihre Himmelsrichtung in der Draufsicht anklicken.
@@ -94,9 +105,11 @@ Beim Rückwärts-Einparken zeigt die Seitenansicht darunter die Linie eines Stel
 
 `Anlegen` erzeugt alle Nodes als Subprio-Nodes auf der Höhe der Halle, als ein Rückgängig-Schritt. Zweimal ausgeführt entstehen die Parkplätze zweimal. Danach sind die vier offenen Enden von Zufahrts- und Abfahrtslinie ausgewählt, damit man sie ans Straßennetz anschließen kann. `Halleneinstellungen zurücksetzen` stellt die Standardaufteilung wieder her.
 
-**Stationsspuren anlegen.** Das Werkzeug Erzeugen (`G`) und hinter seinem Pfeil `Stationen` wählen. Einen Haltestellenpfeil oder die Fläche zwischen den Pfeilen eines Gebäudes mit links anklicken, um alle seine Haltestellen zu wählen, oder mit rechts einen Rahmen ziehen (`Umschalt`: Lasso), um alle Haltestellen darin zu wählen; zeigt der Mauszeiger auf eine Station, erscheint ihr Name. Der Dialog listet die Haltestellen mit Häkchen, Art, Fruchtsorten, Markername und Gruppe (z. B. „Getreidelager (Verkaufsstelle)“ in „Verkaufsstellen“), Spurwinkel und einem Hinweis (keine KI-Stelle im Gebäude, ein vorhandener Node, wo die Spur hinkommt). Die Spurlänge vor und nach der Haltestelle (Standard 10 m) und der Knotenabstand bleiben für das nächste Mal gespeichert. Die Spuren werden auf der Karte gezeichnet; den Ring am vorderen Ende einer Spur ziehen, um sie um ihre Haltestelle zu drehen (`Umschalt`: 15°-Schritte), oder den Winkel eintippen. `Anlegen` fügt je gewählter Haltestelle eine gerade Einbahnspur aus Subprio-Nodes mit dem Marker auf dem Node an der Haltestelle in den Plan ein, als ein Rückgängig-Schritt. Danach sind die Spurenden ausgewählt, um sie ans Netz anzuschließen.
-
 **Vorlagen.** `Als Vorlage speichern…` speichert Modus, Seite, Anzahl Stellplätze, Abstände, Parkpositionen und Stellplatzlinie unter einem Namen für diesen Hallentyp; die Vorlage gilt so für dasselbe Gebäude auf jeder Karte. Linienrichtungen, Markername, Startnummer und Gruppe werden nicht gespeichert. `Vorlage laden…` listet die Vorlagen des Hallentyps, dort lassen sie sich auch löschen. Der Dialog öffnet mit der zuletzt gespeicherten oder geladenen Vorlage des Hallentyps.
+
+### Stationsspuren
+
+Hinter dem Pfeil des Werkzeugs Erzeugen `Stationen` wählen. Einen Haltestellenpfeil oder die Fläche zwischen den Pfeilen eines Gebäudes mit links anklicken, um alle seine Haltestellen zu wählen, oder mit rechts einen Rahmen ziehen (`Umschalt`: Lasso), um alle Haltestellen darin zu wählen; zeigt der Mauszeiger auf eine Station, erscheint ihr Name. Der Dialog listet die Haltestellen mit Häkchen, Art, Fruchtsorten, Markername und Gruppe (z. B. „Getreidelager (Verkaufsstelle)“ in „Verkaufsstellen“), Spurwinkel und einem Hinweis (keine KI-Stelle im Gebäude, ein vorhandener Node, wo die Spur hinkommt). Die Spurlänge vor und nach der Haltestelle (Standard 10 m) und der Knotenabstand bleiben für das nächste Mal gespeichert. Die Spuren werden auf der Karte gezeichnet; den Ring am vorderen Ende einer Spur ziehen, um sie um ihre Haltestelle zu drehen (`Umschalt`: 15°-Schritte), oder den Winkel eintippen. `Anlegen` fügt je gewählter Haltestelle eine gerade Einbahnspur aus Subprio-Nodes mit dem Marker auf dem Node an der Haltestelle in den Plan ein, als ein Rückgängig-Schritt. Danach sind die Spurenden ausgewählt, um sie ans Netz anzuschließen.
 
 ## Netz prüfen
 
@@ -114,7 +127,7 @@ Beim Speichern läuft zuerst die Prüfung. Findet sie Probleme, die nicht ignori
 
 Ungespeicherte Änderungen werden alle paar Minuten automatisch gesichert (Abstand unter `Datei → Einstellungen`). Wird der Editor unerwartet beendet, bietet er beim nächsten Start an, sie wiederherzustellen.
 
-`Datei → Zuletzt geöffnet` und der Startbildschirm listen die letzten fünf geöffneten Routen, Savegames, XML-Dateien und Projekte. Beim Start öffnet der Editor die zuletzt geöffnete wieder, außer es wird eine automatische Sicherung wiederhergestellt; das lässt sich unter `Datei → Einstellungen` abschalten.
+`Datei → Zuletzt geöffnet` und der Startbildschirm listen die letzten fünf geöffneten Routen, Savegames und XML-Dateien. Beim Start öffnet der Editor die zuletzt geöffnete wieder, außer es wird eine automatische Sicherung wiederhergestellt; das lässt sich unter `Datei → Einstellungen` abschalten.
 
 ## Einstellungen
 

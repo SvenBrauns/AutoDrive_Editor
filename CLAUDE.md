@@ -64,7 +64,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 **The user has limited usage. Help keep sessions short.**
 
-- At every good break (a commit that finishes a part, a merge, an agreed plan), give a short hand-over: whether to `/clear` now, which model to use next with `/model` (a smaller one for routine work like git cleanup, small fixes, docs; the larger one for planning and complex features), and a ready-to-paste first prompt for the new session. ROADMAP.md, DEVELOPMENT.md, `docs/design/` and `git log` carry the context over.
+- At every good break (a commit that finishes a part, a merge, an agreed plan), give a short hand-over: whether to `/clear` now, which model to use next with `/model` (a smaller one for routine work like git cleanup, small fixes, docs; the larger one for planning and complex features), and a ready-to-paste first prompt for the new session. DEVELOPMENT.md, `docs/design/` (designs and the task list `tasks.md`) and `git log` carry the context over.
 - Only take screenshots when the look of something is the point of the change. Otherwise rely on tests.
 - Don't spawn an agent for git work.
 - Keep tool output small: `ruff check . --output-format concise`, `python -m pytest -q` piped through `tail` when only the summary matters.
@@ -84,7 +84,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - One branch per roadmap item or larger fix, kebab-case (e.g. `stations-junctions`). Typos, small doc fixes and one-line fixes go straight onto `main`.
 - Commit after each working piece (a function with its tests, a dialog, the docs) when tests pass, and always before a `/clear`, even halfway through a feature (on its branch). Short subject in the style of `git log`, plus the co-author line.
 - Merge with `--no-ff` only after the user has confirmed the feature works, then delete the branch.
-- Commit only what a user of the repository needs: code, tests, README, MANUAL (en/de), CHANGELOG, ROADMAP (open items only), CLAUDE.md, DEVELOPMENT.md. Never: design docs (`docs/design/`, git-ignored; they become manual sections when a feature is done), analysis scripts, screenshots, local data.
+- Commit only what a user of the repository needs: code, tests, README, MANUAL (en/de), CHANGELOG, ROADMAP (a short outlook of general directions, updated before a push; detailed plans stay in `docs/design/`), CLAUDE.md, DEVELOPMENT.md. Never: design docs (`docs/design/`, git-ignored; they become manual sections when a feature is done), analysis scripts, screenshots, local data.
 - Before the user pushes, check `git log origin/main..main --name-only` for files that don't belong.
 
 ---

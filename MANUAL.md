@@ -6,7 +6,8 @@
 - [Opening a network](#opening-a-network)
 - [Controls](#controls)
 - [Display](#display)
-- [Parking spots in sheds](#parking-spots-in-sheds)
+- [Buildings of the savegame](#buildings-of-the-savegame)
+- [Planning and generating](#planning-and-generating)
 - [Checking the network](#checking-the-network)
 - [Saving](#saving)
 - [Settings](#settings)
@@ -17,8 +18,6 @@
 The editor looks for the FS25 user folder (usually `Documents\My Games\FarmingSimulator2025`) and the game's installation folder and shows both for you to check. You can change either later under `File → Settings`.
 
 Map images are not shipped with the editor. Use `Map → Scan maps` to search the `mods` folder and the base game maps; the editor then imports the map image, heightmap and map size. This is needed only once per map. After that, the matching map loads automatically when you open a route. If the map is missing, the editor offers the scan directly.
-
-**Ground map.** `View → Ground map` replaces the map image with a map drawn from the map's ground textures: asphalt, concrete, gravel, grass, mud, forest, rock and sand each in their own color, with the field outlines and field numbers on top. It shows the map as the game paints it, which helps where the map image is out of date. Maps imported with an older version of the editor have no ground map; import them again to get one. Importing a large map takes a little longer for this (about 15 seconds for a 16x map).
 
 ## Opening a network
 
@@ -40,7 +39,7 @@ The dialog opens on the tab you used last.
 | --- | --- | --- |
 | Navigation | `N` | Move and rotate the map |
 | Selection | `A` | Click or right-drag to select; Shift + right-drag for freehand selection; Ctrl adds to the selection |
-| Generate | `G` | Starts planning mode and generates what is picked behind the arrow: a route through waypoints (see [Planning mode](#planning-mode)), the parking spots of a clicked shed (see [Parking spots in sheds](#parking-spots-in-sheds)) or the lanes of picked stations (see Create station lanes there) |
+| Generate | `G` | Starts planning mode and generates what is picked behind the arrow: a route through waypoints, the parking spots of a shed or the lanes of stations (see [Planning and generating](#planning-and-generating)) |
 | Move | `V` | Drag a node or the selection; Shift moves along one grid axis only |
 | Rotate | `R` | Rotate the selection using the ring; Shift snaps in steps (default 15°, set with the arrow) |
 | Create (Regular / Subprio) | `E` / `Shift+E` | Create a node on free ground |
@@ -58,23 +57,15 @@ The dialog opens on the tab you used last.
 
 Also available: Undo and Redo (`Ctrl+Z` / `Ctrl+Y`), Copy, Cut and Paste (`Ctrl+C/X/V`; `Ctrl+Shift+V` pastes at the original position), the grid with snapping (`S`), distance and angle measurement, and the `Markers` dock with all marker groups.
 
-## Planning mode
-
-The planning button at the right end of the toolbar (`Edit → Planning mode`, `Ctrl+P`) starts a plan. All tools work as usual, but the edits are collected in the plan: a blue bar above the map shows how many nodes the plan changed, and those nodes get a blue halo. Undo and Redo work inside the plan and stop at its start. `Apply plan` adds the whole plan to the history as one undo step; `Discard plan` reverts all of it. Clicking the planning button again, opening another file or closing the editor asks whether to apply or discard the plan. While a plan is open, saving is not possible and autosave pauses.
-
-**Find route** (`Generate` tool, `G`, task `Route` behind its arrow). Click nodes, connections or free ground one after another as waypoints. The editor searches a drivable one-way route through them in that order and shows it; parts that cross buildings, fences, trees or water are red. The route drives only forward, turns no tighter than the minimum turning radius and keeps half the vehicle width plus a safety margin away from obstacles; these values are set under `File → Settings → Route finder`. It keeps to roads and yards where it can, crosses grass before fields, and leaves the first and enters the last node in the direction of their connections. At the waypoints in between it takes the direction that suits the next part. Near the waypoints, blocked ground may be crossed, since nodes can sit under a roof or in a hall. Drag free waypoints or any node to change the route; it is searched again after each change. Pressing on the route inserts a waypoint there, which can be dragged right away. Right-click a waypoint to remove it, `Backspace` removes the last one, `Esc` all. Where the route is red, move nodes or add a waypoint on the way round. `Enter` adds a route without red parts to the plan as one undo step; free waypoints become nodes, a waypoint on a connection splits it with a new node (same type and direction), and the last waypoint starts the next route. If the route found joins at a poor node, the status bar says why, e.g. a marker node (other routes would lead through the marker), a first node that nothing drives to or a last node that leads nowhere; the route can still be added.
-
-Routes already in the plan are reused: a route in the same direction joins them. The way back (select the nodes the other way round) gets its own lane where there is room; where there is not, it shares the lane, which becomes dual there. If there is no room to turn at all, the editor reports that no drivable route was found.
-
-The route finder uses the game's drivability map, which Farming Simulator writes into the savegame (`vehicleNavigationCostmap.dat`) on every save. A route needs a linked savegame for it. Save the game again after placing buildings, so the map knows them. `View → Show → Drivability map` draws it: blocked ground red (blue in forests), rough ground orange, grass yellow, fields green; roads and yards are clear.
-
 ## Display
 
-`View → Show` switches nodes, node IDs, each connection type (Regular, Dual, Reverse), markers, marker names, the parking positions of vehicles, sheds, stations and the drivability map (see [Planning mode](#planning-mode)) on and off. The line color shows the connection type; arrows show the direction, dual connections get one pointing to each end. Subprio nodes are drawn orange. Node IDs appear only when zoomed in; parking positions (a "P" next to the marker) are read from a savegame's `vehicles.xml`. A route needs a linked savegame for this, see [Parking spots in sheds](#parking-spots-in-sheds), which also explains the sheds. Hidden nodes and connections cannot be clicked or selected unless `Hidden items can be selected` is on. Sizes and colors are set under `View → Display options`. All switches are remembered.
+`View → Show` switches nodes, node IDs, each connection type (Regular, Dual, Reverse), markers, marker names, the parking positions of vehicles, sheds, stations and the drivability map (see [Find route](#find-route)) on and off. The line color shows the connection type; arrows show the direction, dual connections get one pointing to each end. Subprio nodes are drawn orange. Node IDs appear only when zoomed in; parking positions (a "P" next to the marker) are read from a savegame's `vehicles.xml`. A route needs a linked savegame for this, see [Buildings of the savegame](#buildings-of-the-savegame), which also explains sheds and stations. Hidden nodes and connections cannot be clicked or selected unless `Hidden items can be selected` is on. Sizes and colors are set under `View → Display options`. All switches are remembered.
 
-## Parking spots in sheds
+**Ground map.** `View → Ground map` replaces the map image with a map drawn from the map's ground textures: asphalt, concrete, gravel, grass, mud, forest, rock and sand each in their own color, with the field outlines and field numbers on top. It shows the map as the game paints it, which helps where the map image is out of date. Maps imported with an older version of the editor have no ground map; import them again to get one. Importing a large map takes a little longer for this (about 15 seconds for a 16x map).
 
-The editor creates AutoDrive parking spots in the sheds of a savegame.
+## Buildings of the savegame
+
+The editor reads the buildings of a savegame: the sheds to park in and the stations where vehicles load and unload. The Generate tool builds on them.
 
 **Link a savegame.** A route has no savegame. When a route is opened, the editor offers to link one (savegames on the route's map come first); `File → Link savegame…` changes or removes the link. The editor remembers the link for the route. With "Don't ask again for this route" the question no longer comes for that route. The linked savegame's heightmap replaces the map's, since terraforming and buildings change the ground. An opened savegame needs no link.
 
@@ -84,7 +75,23 @@ The editor creates AutoDrive parking spots in the sheds of a savegame.
 
 **Building types.** `Generate → Building types…` lists the building types of the savegame that have indoor areas, stations or a bunker silo, in four groups: Stations (unload or load triggers), Sheds (only indoor areas), Bunker silos and Other. A production with a hall is a station, not a shed; farmhouses and weighing stations are in Other, as only the player's character goes inside or vehicles only drive over them. If a type is in the wrong group, choose another one in its `Group` column; unticked types or groups are hidden. `Reset` puts every listed type back in its own group and shows it. Both apply on every map.
 
-**Create parking spots.** Choose the Generate tool (`G`) and `Parking spots` behind its arrow; pointing at a shed shows the building's name and category. Left-click a shed outline. The dialog shows a top view of the shed, turned so the open side is at the bottom, with an arrow to north, and updates while you type. The planned spots are also drawn on the map; while the dialog is open the map can be moved, zoomed and rotated, but not edited.
+## Planning and generating
+
+The planning button at the right end of the toolbar (`Edit → Planning mode`, `Ctrl+P`) starts a plan. All tools work as usual, but the edits are collected in the plan: a blue bar above the map shows how many nodes the plan changed, and those nodes get a blue halo. Undo and Redo work inside the plan and stop at its start. `Apply plan` adds the whole plan to the history as one undo step; `Discard plan` reverts all of it. Clicking the planning button again, opening another file or closing the editor asks whether to apply or discard the plan. While a plan is open, saving is not possible and autosave pauses.
+
+The Generate tool (`G`) starts planning mode and creates what is picked behind its arrow: a route, the parking spots of a shed or the lanes of stations.
+
+### Find route
+
+Choose `Route` behind the arrow of the Generate tool, then click nodes, connections or free ground one after another as waypoints. The editor searches a drivable one-way route through them in that order and shows it; parts that cross buildings, fences, trees or water are red. The route drives only forward, turns no tighter than the minimum turning radius and keeps half the vehicle width plus a safety margin away from obstacles; these values are set under `File → Settings → Route finder`. It keeps to roads and yards where it can, crosses grass before fields, and leaves the first and enters the last node in the direction of their connections. At the waypoints in between it takes the direction that suits the next part. Near the waypoints, blocked ground may be crossed, since nodes can sit under a roof or in a hall. Drag free waypoints or any node to change the route; it is searched again after each change. Pressing on the route inserts a waypoint there, which can be dragged right away. Right-click a waypoint to remove it, `Backspace` removes the last one, `Esc` all. Where the route is red, move nodes or add a waypoint on the way round. `Enter` adds a route without red parts to the plan as one undo step; free waypoints become nodes, a waypoint on a connection splits it with a new node (same type and direction), and the last waypoint starts the next route. If the route found joins at a poor node, the status bar says why, e.g. a marker node (other routes would lead through the marker), a first node that nothing drives to or a last node that leads nowhere; the route can still be added.
+
+Routes already in the plan are reused: a route in the same direction joins them. The way back (select the nodes the other way round) gets its own lane where there is room; where there is not, it shares the lane, which becomes dual there. If there is no room to turn at all, the editor reports that no drivable route was found.
+
+The route finder uses the game's drivability map, which Farming Simulator writes into the savegame (`vehicleNavigationCostmap.dat`) on every save. A route needs a linked savegame for it. Save the game again after placing buildings, so the map knows them. `View → Show → Drivability map` draws it: blocked ground red (blue in forests), rough ground orange, grass yellow, fields green; roads and yards are clear.
+
+### Parking spots in sheds
+
+The editor creates AutoDrive parking spots in the sheds of a savegame. Choose `Parking spots` behind the arrow of the Generate tool; pointing at a shed shows the building's name and category. Left-click a shed outline. The dialog shows a top view of the shed, turned so the open side is at the bottom, with an arrow to north, and updates while you type. The planned spots are also drawn on the map; while the dialog is open the map can be moved, zoomed and rotated, but not edited.
 
 - **Mode**: *Back in* (vehicles reverse into the bay, the marker is at the back wall) or *Drive through* (one forward line per bay through the shed, the exit is on the opposite side).
 - **Open side** / **Entry side**: the side the vehicles come in. Click a side or its compass label in the top view to change it.
@@ -98,9 +105,11 @@ When backing in, the side view below shows the line of one bay, which all bays u
 
 `Create` adds all nodes as subprio nodes at the shed's height, as one undo step. Running it twice creates the spots twice. Afterwards the four open ends of the entry and exit lines are selected, so you can connect them to the road network. `Reset shed settings` brings back the default layout.
 
-**Create station lanes.** Choose the Generate tool (`G`) and `Stations` behind its arrow. Left-click a stop arrow or the space between the arrows of a building to pick all its stops, or right-drag a box (`Shift`: a lasso) to pick all stops inside it; pointing at a station shows its name. The dialog lists the stops with a check box, type, fill types, marker name and group (e.g. "Grain store (Selling point)" in "Selling points"), the lane angle and a note (no AI spot in the building, an existing node where the lane goes). The lane length before and after the stop (default 10 m) and the node spacing are kept for next time. The lanes are drawn on the map; drag the ring at the front end of a lane to turn it around its stop (`Shift`: 15° steps), or type the angle. `Create` adds a straight one-way lane of subprio nodes per chosen stop with the marker on the node at the stop, into the plan as one undo step. The lane ends are selected afterwards, to connect them to the network.
-
 **Templates.** `Save as template…` stores the mode, side, number of bays, distances, parking positions and bay line under a name for this shed type, so it works for the same building on any map. Line directions, marker name, start number and group are not stored. `Load template…` lists the templates of the shed type, where they can also be deleted. The dialog opens with the template saved or loaded last for the shed type.
+
+### Station lanes
+
+Choose `Stations` behind the arrow of the Generate tool. Left-click a stop arrow or the space between the arrows of a building to pick all its stops, or right-drag a box (`Shift`: a lasso) to pick all stops inside it; pointing at a station shows its name. The dialog lists the stops with a check box, type, fill types, marker name and group (e.g. "Grain store (Selling point)" in "Selling points"), the lane angle and a note (no AI spot in the building, an existing node where the lane goes). The lane length before and after the stop (default 10 m) and the node spacing are kept for next time. The lanes are drawn on the map; drag the ring at the front end of a lane to turn it around its stop (`Shift`: 15° steps), or type the angle. `Create` adds a straight one-way lane of subprio nodes per chosen stop with the marker on the node at the stop, into the plan as one undo step. The lane ends are selected afterwards, to connect them to the network.
 
 ## Checking the network
 
