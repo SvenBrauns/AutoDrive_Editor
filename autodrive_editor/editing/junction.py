@@ -63,8 +63,8 @@ SAMPLE = 0.5
 LANE_GAP = 5.5
 # A road across the junction starts or ends at most this far from the junction's foot ...
 ACROSS = 80.0
-# ... and at most this angle off the stem's line, on the far side of the road.
-ACROSS_ANGLE = math.radians(45)
+# ... and at most this far to the side of the stem's line, on the far side of the road.
+ACROSS_SIDEWAYS = 10.0
 # Straight lanes across try these multiples of the yard radius, the gentlest first.
 ACROSS_RADII = (8, 4, 2, 1)
 
@@ -249,7 +249,7 @@ def roads_across(
     """The road on the far side, opposite a stem leaving `foot` along the heading: where turn
     curves from the road lanes meet (OUT: the lane from that node on) and where turn curves to
     them split (IN: the lane up to that node). Each lies within ACROSS of the foot and
-    ACROSS_ANGLE of the line opposite the stem, and needs at least two curves."""
+    ACROSS_SIDEWAYS of the line opposite the stem, and needs at least two curves."""
 
     nodes = autodrive_data.nodes
     on_road = {node_id for lane in lanes for node_id in lane.node_ids}
@@ -279,9 +279,10 @@ def roads_across(
                 continue
 
             opposite = -(dx * math.cos(heading) + dz * math.sin(heading))
+            sideways = abs(dx * math.sin(heading) - dz * math.cos(heading))
             onward = (node.outgoing if kind == CurveKind.OUT else node.incoming) - lasts
 
-            if opposite / distance < math.cos(ACROSS_ANGLE) or not onward:
+            if opposite <= 0 or sideways > ACROSS_SIDEWAYS or not onward:
                 continue
 
             if best is None or distance < best[0]:

@@ -599,6 +599,8 @@ def test_the_road_across_is_where_turn_curves_meet_and_split_on_the_far_side():
     ]
     # Not when the stem leaves on the side road's side.
     assert roads_across(data, lanes, (0.0, 0.0), -math.pi / 2) == []
+    # Nor when the side road lies well to the side of the stem's line.
+    assert roads_across(data, lanes, (20.0, 0.0), math.pi / 2) == []
 
 
 def test_straight_lanes_lead_across_to_the_road_on_the_far_side():
