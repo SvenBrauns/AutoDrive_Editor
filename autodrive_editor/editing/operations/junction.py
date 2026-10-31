@@ -90,6 +90,8 @@ class JunctionOperation(EditOperation):
         self.style_provider = style_provider
 
         self.preview: JunctionPreview | None = None
+        # The preview at the end of step 1, before any bending.
+        self._released: JunctionPreview | None = None
         self._lanes: list[RoadLane] = []
         self._across: list = []
         self._foot: tuple[float, float] | None = None
@@ -162,6 +164,7 @@ class JunctionOperation(EditOperation):
             return False
 
         self._bending = True
+        self._released = self.preview
 
         return True
 
@@ -235,6 +238,17 @@ class JunctionOperation(EditOperation):
 
         return True
 
+    def undo(self) -> bool:
+        """In step 2 with a bent stem: back to the stem as released. Otherwise cancels. False
+        if there was nothing to undo."""
+
+        if self._bending and self.preview != self._released:
+            self.preview = self._released
+            self.preview_changed.emit()
+            return True
+
+        return self.cancel()
+
     def cancel(self) -> bool:
         had_something = self.preview is not None or self._running is not None
 
@@ -246,6 +260,7 @@ class JunctionOperation(EditOperation):
         self._across = []
         self._bending = False
         self.preview = None
+        self._released = None
         self.preview_changed.emit()
 
         return had_something
