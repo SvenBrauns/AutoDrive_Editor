@@ -31,7 +31,7 @@ def stop(
 
 
 def test_lane_runs_along_the_arrow_with_a_node_at_the_stop():
-    points, index = lane_points(stop(), StationSettings(10, 10, 5), 90)
+    points, index = lane_points(stop(), StationSettings(10, 10, 5, 0), 90)
 
     assert points == pytest.approx(
         [(90, 5, 200), (95, 5, 200), (100, 5, 200), (105, 5, 200), (110, 5, 200)]
@@ -40,13 +40,13 @@ def test_lane_runs_along_the_arrow_with_a_node_at_the_stop():
 
 
 def test_heading_zero_points_up_the_map():
-    points, _ = lane_points(stop(), StationSettings(5, 5, 5), 0)
+    points, _ = lane_points(stop(), StationSettings(5, 5, 5, 0), 0)
 
     assert points == pytest.approx([(100, 5, 205), (100, 5, 200), (100, 5, 195)])
 
 
 def test_lane_heading_west_starts_east_of_the_stop():
-    points, index = lane_points(stop(), StationSettings(10, 5, 5), 270)
+    points, index = lane_points(stop(), StationSettings(10, 5, 5, 0), 270)
 
     assert points[0] == pytest.approx((110, 5, 200))
     assert points[-1] == pytest.approx((95, 5, 200))
@@ -54,7 +54,7 @@ def test_lane_heading_west_starts_east_of_the_stop():
 
 
 def test_stop_node_stays_at_the_stop_when_the_spacing_does_not_divide_the_lane():
-    points, index = lane_points(stop(), StationSettings(7, 3, 5), 90)
+    points, index = lane_points(stop(), StationSettings(7, 3, 5, 0), 90)
 
     assert points[index] == pytest.approx((100, 5, 200))
     assert points[0] == pytest.approx((93, 5, 200))
@@ -62,11 +62,26 @@ def test_stop_node_stays_at_the_stop_when_the_spacing_does_not_divide_the_lane()
 
 
 def test_lane_without_length_before_or_after_starts_or_ends_at_the_stop():
-    points, index = lane_points(stop(), StationSettings(0, 5, 5), 90)
+    points, index = lane_points(stop(), StationSettings(0, 5, 5, 0), 90)
     assert index == 0 and points[0] == pytest.approx((100, 5, 200))
 
-    points, index = lane_points(stop(), StationSettings(5, 0, 5), 90)
+    points, index = lane_points(stop(), StationSettings(5, 0, 5, 0), 90)
     assert index == len(points) - 1 and points[-1] == pytest.approx((100, 5, 200))
+
+
+def test_marker_lies_the_offset_past_the_stop_and_the_lane_goes_on_after_it():
+    points, index = lane_points(stop(), StationSettings(5, 5, 5, 8), 90)
+
+    assert points[index] == pytest.approx((108, 5, 200))
+    assert points[0] == pytest.approx((95, 5, 200))
+    assert points[-1] == pytest.approx((113, 5, 200))
+
+
+def test_marker_without_lane_before_still_starts_at_the_stop():
+    points, index = lane_points(stop(), StationSettings(0, 0, 5, 8), 90)
+
+    assert points[0] == pytest.approx((100, 5, 200))
+    assert index == len(points) - 1 and points[-1] == pytest.approx((108, 5, 200))
 
 
 def test_plan_has_one_way_lanes_markers_and_open_ends():
@@ -74,7 +89,7 @@ def test_plan_has_one_way_lanes_markers_and_open_ends():
         StopChoice(stop(), "A", "Selling points", 90),
         StopChoice(stop(position=(0, 0, 0)), "B", "Productions", 270),
     ]
-    network = plan_stations(choices, StationSettings(5, 5, 5))
+    network = plan_stations(choices, StationSettings(5, 5, 5, 0))
 
     assert len(network.points) == 6
     assert network.connections == [
@@ -99,7 +114,7 @@ def test_unique_name_adds_the_lowest_free_number():
 
 
 def test_occupied_finds_an_existing_node_on_the_lane():
-    points, _ = lane_points(stop(), StationSettings(10, 10, 5), 90)
+    points, _ = lane_points(stop(), StationSettings(10, 10, 5, 0), 90)
 
     assert occupied(points, [NodeData(1, 104.5, 0, 200.5)])
     assert not occupied(points, [NodeData(1, 104.5, 0, 202), NodeData(2, 130, 0, 200)])

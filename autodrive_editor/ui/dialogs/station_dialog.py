@@ -102,10 +102,12 @@ class StationDialog(QDialog):
         self.before_input = self._length_input(defaults.before, 0.0)
         self.after_input = self._length_input(defaults.after, 0.0)
         self.spacing_input = self._length_input(defaults.spacing, 1.0)
+        self.marker_input = self._length_input(defaults.marker, 0.0)
 
         form = QFormLayout()
         form.addRow(tr("Lane before the stop:"), self.before_input)
-        form.addRow(tr("Lane after the stop:"), self.after_input)
+        form.addRow(tr("Marker past the stop:"), self.marker_input)
+        form.addRow(tr("Lane after the marker:"), self.after_input)
         form.addRow(tr("Node spacing:"), self.spacing_input)
 
         self.problem_label = QLabel(self)
@@ -130,7 +132,10 @@ class StationDialog(QDialog):
     @property
     def settings(self) -> StationSettings:
         return StationSettings(
-            self.before_input.value(), self.after_input.value(), self.spacing_input.value()
+            self.before_input.value(),
+            self.after_input.value(),
+            self.spacing_input.value(),
+            self.marker_input.value(),
         )
 
     @property
@@ -158,7 +163,7 @@ class StationDialog(QDialog):
         of its lane, at least HANDLE_DISTANCE from the stop, and turns the lane around the stop."""
 
         result = []
-        length = max(self.after_input.value(), HANDLE_DISTANCE)
+        length = max(self.marker_input.value() + self.after_input.value(), HANDLE_DISTANCE)
 
         for row, stop in enumerate(self.stops):
             if self.table.item(row, STOP).checkState() != Qt.Checked:

@@ -48,6 +48,7 @@ class AppSettings:
         "before": "stations/lane_before",
         "after": "stations/lane_after",
         "spacing": "stations/spacing",
+        "marker": "stations/marker_offset",
     }
     ROTATE_SNAP_KEY = "rotate/snap_angle"
     JUNCTION_STEM_KEY = "junction/stem"
