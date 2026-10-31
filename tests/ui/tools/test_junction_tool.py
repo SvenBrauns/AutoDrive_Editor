@@ -1,7 +1,7 @@
 """Junction task of the Generate tool with the real window."""
 
 import pytest
-from mouse_helpers import click, drag, press_escape, view_pos
+from mouse_helpers import click, drag, hover, press_escape, view_pos
 from PySide6.QtCore import QEvent, Qt
 from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import QApplication
@@ -160,21 +160,41 @@ def test_the_stem_options_fit_into_the_menu_and_are_saved(window, qapp):
     assert window.settings.junction_style == Style.CURVES
 
 
-def test_undo_in_step_two_resets_the_bend_then_cancels_not_the_last_edit(window):
-    data = window.project_coordinator.autodrive_data
+def test_undo_steps_back_through_the_junction_even_with_nothing_else_to_undo(window):
     operation = window.junction_operation
+    undo = window.actions.undo_action
+    assert not undo.isEnabled()
+    drag(window, view_pos(window, 5, 0), view_pos(window, 5, 15))
+    released = operation.preview
+    operation.bend_to(10.0, 25.0)
+
+    assert undo.isEnabled()
+    undo.trigger()
+    assert operation.preview == released
+    undo.trigger()
+    assert operation.is_following
+    # Step 1 again: the junction follows the mouse, a click fixes it.
+    hover(window, view_pos(window, -15, 15))
+    assert operation.preview.junction[0] == pytest.approx(-15.0, abs=0.5)
+    click(window, view_pos(window, -15, 15))
+    assert operation.is_bending
+    undo.trigger()
+    undo.trigger()
+    assert operation.preview is None
+    assert not undo.isEnabled()
+
+
+def test_undo_in_step_two_cancels_the_junction_not_the_last_edit(window):
+    data = window.project_coordinator.autodrive_data
     drag(window, view_pos(window, 5, 0), view_pos(window, 5, 15))
     press_enter(window)
     added = len(data.nodes)
     drag(window, view_pos(window, -35, 0), view_pos(window, -35, 15))
-    released = operation.preview
-    operation.bend_to(-30.0, 25.0)
 
     window.actions.undo_action.trigger()
-
-    assert operation.preview == released
     window.actions.undo_action.trigger()
-    assert operation.preview is None
+
+    assert window.junction_operation.preview is None
     assert len(data.nodes) == added
     window.actions.undo_action.trigger()
     assert len(data.nodes) == 13

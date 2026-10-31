@@ -17,7 +17,7 @@ class JunctionTool(MapTool):
     a junction; moving along the road moves it. Step 2, after release: a handle at the stem's
     tip bends the stem when dragged and joins a node it is dropped on. Enter or a click away
     from the handle adds the junction to the plan, Esc cancels. Dragging elsewhere in step 1
-    pans."""
+    pans. After Undo back to step 1 the junction follows the mouse; a click fixes it."""
 
     # Radius of the tip handle, in pixels.
     HANDLE_RADIUS = 6
@@ -65,6 +65,12 @@ class JunctionTool(MapTool):
 
             return True
 
+        if self.operation.is_following:
+            self._dragging = True
+            scene_position = self.view.mapToScene(position)
+            self.operation.drag_to(scene_position.x(), scene_position.y())
+            return True
+
         connection = self._connection_at(position)
 
         if connection is not None:
@@ -81,11 +87,15 @@ class JunctionTool(MapTool):
         return True
 
     def mouse_move(self, event: QMouseEvent) -> bool:
-        if not event.buttons() & Qt.LeftButton:
-            return self._continue_pan(event)
-
         position = event.position().toPoint()
         scene_position = self.view.mapToScene(position)
+
+        if self.operation.is_following:
+            self.operation.drag_to(scene_position.x(), scene_position.y())
+            return True
+
+        if not event.buttons() & Qt.LeftButton:
+            return self._continue_pan(event)
 
         if self._dragging:
             self.operation.drag_to(scene_position.x(), scene_position.y())
@@ -147,7 +157,10 @@ class JunctionTool(MapTool):
         if self.operation.is_bending:
             return Qt.SizeAllCursor if self._is_on_handle(view_position) else Qt.ArrowCursor
 
-        if self._dragging or self._connection_at(view_position) is not None:
+        if self._dragging or self.operation.is_following:
+            return Qt.CrossCursor
+
+        if self._connection_at(view_position) is not None:
             return Qt.CrossCursor
 
         return Qt.OpenHandCursor

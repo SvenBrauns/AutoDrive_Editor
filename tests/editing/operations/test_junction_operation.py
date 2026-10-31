@@ -205,20 +205,29 @@ def test_release_shows_the_tip_and_bending_moves_it(qapp):
     )
 
 
-def test_undo_in_step_two_resets_the_bend_then_cancels(qapp):
-    fixture = Fixture(qapp)
-    fixture.drag(2.0, 20.0)
-    fixture.operation.release()
-    released = fixture.operation.preview
-    fixture.operation.bend_to(12.0, 30.0)
+def test_undo_in_step_two_resets_the_bend_then_goes_back_to_step_one_then_cancels(qapp):
+    operation = Fixture(qapp).operation
+    operation.start(7, 8, 2.0, 0.5)
+    operation.drag_to(2.0, 20.0)
+    operation.release()
+    released = operation.preview
+    operation.bend_to(12.0, 30.0)
 
-    assert fixture.operation.undo()
+    assert operation.undo()
 
-    assert fixture.operation.preview == released
-    assert fixture.operation.is_bending
-    assert fixture.operation.undo()
-    assert fixture.operation.preview is None
-    assert not fixture.operation.undo()
+    assert operation.preview == released
+    assert operation.is_bending
+    assert operation.undo()
+    assert not operation.is_bending
+    assert operation.is_following
+    operation.drag_to(-8.0, 20.0)
+    assert operation.preview.junction[0] == pytest.approx(-8.0)
+    assert operation.release()
+    assert operation.is_bending and not operation.is_following
+    assert operation.undo()
+    assert operation.undo()
+    assert operation.preview is None and not operation.is_following
+    assert not operation.undo()
 
 
 def test_dropping_the_tip_on_a_node_joins_it(qapp):

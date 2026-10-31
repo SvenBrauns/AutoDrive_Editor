@@ -96,6 +96,8 @@ class JunctionOperation(EditOperation):
         self._across: list = []
         self._foot: tuple[float, float] | None = None
         self._bending = False
+        # Back in step 1 after an Undo: the junction follows the mouse without a pressed button.
+        self._following = False
         self._running: dict | None = None
         self._search_done.connect(self._finish)
 
@@ -108,6 +110,12 @@ class JunctionOperation(EditOperation):
         """Whether step 2 is on: the stem's tip can be dragged."""
 
         return self._bending
+
+    @property
+    def is_following(self) -> bool:
+        """Whether Undo went back to step 1: drag_to follows the mouse until release."""
+
+        return self._following
 
     def start(self, source_id: int, target_id: int, x: float, z: float) -> bool:
         """Starts a junction on the road through the connection."""
@@ -164,6 +172,7 @@ class JunctionOperation(EditOperation):
             return False
 
         self._bending = True
+        self._following = False
         self._released = self.preview
 
         return True
@@ -239,11 +248,17 @@ class JunctionOperation(EditOperation):
         return True
 
     def undo(self) -> bool:
-        """In step 2 with a bent stem: back to the stem as released. Otherwise cancels. False
-        if there was nothing to undo."""
+        """In step 2: a bent stem back to the stem as released, a straight one back to step 1
+        (see is_following). Otherwise cancels. False if there was nothing to undo."""
 
         if self._bending and self.preview != self._released:
             self.preview = self._released
+            self.preview_changed.emit()
+            return True
+
+        if self._bending:
+            self._bending = False
+            self._following = True
             self.preview_changed.emit()
             return True
 
@@ -259,6 +274,7 @@ class JunctionOperation(EditOperation):
         self._lanes = []
         self._across = []
         self._bending = False
+        self._following = False
         self.preview = None
         self._released = None
         self.preview_changed.emit()
