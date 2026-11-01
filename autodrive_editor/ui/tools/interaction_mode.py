@@ -6,7 +6,6 @@ from autodrive_editor.i18n import tr
 class InteractionMode(Enum):
     """The active map tool. Exactly one is active at a time."""
 
-    NAVIGATE = auto()
     SELECT = auto()
     GENERATE = auto()
     CREATE_NODES = auto()
@@ -37,7 +36,6 @@ class InteractionMode(Enum):
     @property
     def display_name(self) -> str:
         display_names = {
-            InteractionMode.NAVIGATE: tr("Navigation"),
             InteractionMode.SELECT: tr("Selection"),
             InteractionMode.GENERATE: tr("Generate"),
             InteractionMode.CREATE_NODES: tr("Create nodes (Regular)"),

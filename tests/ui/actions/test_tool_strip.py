@@ -1,5 +1,6 @@
 import pytest
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QAction
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QToolButton
 
@@ -14,8 +15,17 @@ from autodrive_editor.ui.actions.tool_catalog import (
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
 
+def strip_buttons(window):
+    strip = window.actions.tool_strip
+    return {
+        action: strip.widgetForAction(action)
+        for action in strip.actions()
+        if not action.isSeparator()
+    }
+
+
 def tool_button(window, text):
-    for action, button in window.actions.tool_panel.tool_buttons.items():
+    for action, button in strip_buttons(window).items():
         if action.text() == text:
             return button
     raise AssertionError(f"no tool button {text!r}")
@@ -25,11 +35,34 @@ def checked_tools(window):
     return {mode for mode, action in window.actions.tool_actions.items() if action.isChecked()}
 
 
-def test_panel_shows_node_group_with_move_tool(window):
-    panel = window.actions.tool_panel
+def test_strip_is_a_fixed_column_at_the_left(window):
+    strip = window.actions.tool_strip
 
-    assert window.dockWidgetArea(panel) == Qt.LeftDockWidgetArea
+    assert window.toolBarArea(strip) == Qt.LeftToolBarArea
+    assert strip.orientation() == Qt.Vertical
+    assert not strip.isMovable()
+    assert not strip.toggleViewAction().isVisible()
     assert tool_button(window, "Move").isVisible()
+
+
+def test_strip_holds_17_tools_in_six_groups(window):
+    actions = window.actions.tool_strip.actions()
+
+    assert len([a for a in actions if not a.isSeparator()]) == 17
+    assert len([a for a in actions if a.isSeparator()]) == 5
+    assert [a.text() for a in actions[:3]] == ["Selection", "Move", "Generate"]
+
+
+def test_selection_is_the_start_tool(window):
+    assert window.view.interaction_mode == InteractionMode.SELECT
+    assert checked_tools(window) == {InteractionMode.SELECT}
+
+
+def test_selection_and_generate_left_the_top_toolbar(window):
+    toolbar = window.actions.quick_access_toolbar.actions()
+
+    assert window.actions.selection_action not in toolbar
+    assert window.actions.generate_action not in toolbar
 
 
 def test_clicking_move_tool_activates_it(window):
@@ -62,18 +95,6 @@ def test_measure_is_a_tool_and_another_tool_ends_measuring(window):
     assert checked_tools(window) == {InteractionMode.MOVE_NODES}
 
 
-def test_panel_can_be_toggled_from_view_menu(window, qapp):
-    toggle = window.actions.tool_panel.toggleViewAction()
-
-    toggle.trigger()
-    qapp.processEvents()
-    assert not window.actions.tool_panel.isVisible()
-
-    toggle.trigger()
-    qapp.processEvents()
-    assert window.actions.tool_panel.isVisible()
-
-
 def test_debug_dock_shows_move_tool_name(window, qapp):
     window.debug_dock.show()
     tool_button(window, "Move").click()
@@ -91,12 +112,8 @@ def test_tool_buttons_follow_mode_changes_from_code(window):
 # --- layout: icons, groups, labels, shortcuts --------------
 
 
-def nodes_group(window):
-    return window.actions.tool_panel.groups["Nodes"]
-
-
-def test_tool_buttons_show_icons_only_by_default(window):
-    for action, button in window.actions.tool_panel.tool_buttons.items():
+def test_tool_buttons_show_icons_only(window):
+    for action, button in strip_buttons(window).items():
         assert not action.icon().isNull(), action.text()
         assert button.toolButtonStyle() == Qt.ToolButtonIconOnly
 
@@ -106,35 +123,6 @@ def test_tooltips_name_tool_and_shortcut(window):
 
     assert "<b>Move</b> (V)" in tooltip
     assert "left-dragging" in tooltip
-
-
-def test_labels_can_be_shown(window):
-    window.actions.tool_labels_action.trigger()
-
-    for button in window.actions.tool_panel.tool_buttons.values():
-        assert button.toolButtonStyle() == Qt.ToolButtonTextBesideIcon
-
-    window.actions.tool_labels_action.trigger()
-    assert all(
-        button.toolButtonStyle() == Qt.ToolButtonIconOnly
-        for button in window.actions.tool_panel.tool_buttons.values()
-    )
-
-
-def test_group_can_be_collapsed(window, qapp):
-    group = nodes_group(window)
-    button = window.actions.tool_panel.tool_buttons[
-        window.actions.tool_actions[InteractionMode.MOVE_NODES]
-    ]
-
-    group.header_button.click()
-    qapp.processEvents()
-    assert not group.is_expanded
-    assert not button.isVisible()
-
-    group.header_button.click()
-    qapp.processEvents()
-    assert button.isVisible()
 
 
 @pytest.mark.parametrize(
@@ -173,8 +161,11 @@ def test_shift_e_picks_subprio_create_tool(window, qapp):
     assert window.view.interaction_mode == InteractionMode.CREATE_SUBPRIO_NODES
 
 
-def test_shortcuts_work_with_hidden_panel(window, qapp):
-    window.actions.tool_panel.hide()
+def test_n_is_free(window):
+    assert not [a for a in window.findChildren(QAction) if a.shortcut().toString() == "N"]
+
+
+def test_shortcuts_work_with_focus_on_the_map(window, qapp):
     window.activateWindow()
     window.view.setFocus()
 
@@ -196,7 +187,7 @@ def test_undo_and_redo_are_icon_buttons_in_top_toolbar(window):
     assert all(not button.icon().isNull() for button in buttons)
 
 
-@pytest.mark.parametrize("mode", [m for m in InteractionMode if m != InteractionMode.NAVIGATE])
+@pytest.mark.parametrize("mode", list(InteractionMode))
 def test_every_tool_explains_itself_in_the_status_bar(window, mode):
     window.set_interaction_mode(mode)
 

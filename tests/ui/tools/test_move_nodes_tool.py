@@ -164,15 +164,6 @@ def test_selection_mode_never_moves_nodes(editor):
     assert editor.edit_history.undo_stack.count() == 0
 
 
-def test_navigation_mode_never_moves_nodes(editor):
-    editor.set_interaction_mode(InteractionMode.NAVIGATE)
-    start = view_pos(editor, 0, 0)
-
-    drag(editor, start, start + QPoint(40, 0))
-
-    assert node_xz(editor, 1) == (0, 0)
-
-
 def test_switching_tool_mid_drag_cancels_it(editor):
     start = view_pos(editor, 0, 0)
     drag(editor, start, start + QPoint(40, 40), release=False)

@@ -12,8 +12,6 @@ from autodrive_editor.ui.actions.tool_catalog import (
     GENERATE_TASKS,
     GENERATE_TOOL,
     MERGED_TOOLS,
-    NAVIGATION_TOOL,
-    SELECTION_TOOL,
     TOOL_GROUPS,
     MergedTool,
     ToolDefinition,
@@ -30,7 +28,6 @@ from autodrive_editor.ui.dialogs.help_dialogs import (
     show_about,
     show_version_history,
 )
-from autodrive_editor.ui.panels.tool_panel import ToolPanel
 from autodrive_editor.ui.tools.generate_tool import GenerateTask
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
@@ -75,7 +72,8 @@ class MainWindowActions:
         self.map_scale_actions = {}
 
         self._create_actions()
-        self._create_tool_panel()
+        self._create_tool_strip()
+        self._create_show_actions()
         self._create_menu_bar()
         self._create_quick_access_toolbar()
         self._create_shortcut_registry()
@@ -116,7 +114,6 @@ class MainWindowActions:
                     "background_ground",
                     "background_picture",
                 )
-                + ("tool_labels",)
                 + ("reset_view", "reset_rotation"),
             ),
             (
@@ -134,7 +131,7 @@ class MainWindowActions:
                 self.shortcuts.add(name, group, getattr(self, f"{name}_action"))
 
         view = tr("View")
-        docks = (self.tool_panel, self.window.marker_dock, self.window.check_dock)
+        docks = (self.window.marker_dock, self.window.check_dock)
 
         for dock in docks + (self.window.debug_dock,):
             self.shortcuts.add(f"panel_{dock.objectName()}", view, dock.toggleViewAction())
@@ -168,21 +165,17 @@ class MainWindowActions:
         self.tool_actions: dict[InteractionMode, QAction] = {}
         self.tool_definitions: dict[InteractionMode, ToolDefinition] = {}
 
-        self.navigation_action = self._create_tool_action(NAVIGATION_TOOL)
+        for group in TOOL_GROUPS:
+            for entry in group:
+                if isinstance(entry, MergedTool):
+                    for variant in entry.variants:
+                        self._create_tool_action(variant, variant_text(entry, variant))
 
-        self.selection_action = self._create_tool_action(SELECTION_TOOL)
+                else:
+                    self._create_tool_action(entry)
 
-        self.generate_action = self._create_tool_action(GENERATE_TOOL)
-
-        for _, rows in TOOL_GROUPS:
-            for row in rows:
-                for entry in row:
-                    if isinstance(entry, MergedTool):
-                        for variant in entry.variants:
-                            self._create_tool_action(variant, variant_text(entry, variant))
-
-                    elif entry is not None:
-                        self._create_tool_action(entry)
+        self.selection_action = self.tool_actions[InteractionMode.SELECT]
+        self.generate_action = self.tool_actions[InteractionMode.GENERATE]
 
         self.interaction_action_group = QActionGroup(self.window)
 
@@ -195,7 +188,7 @@ class MainWindowActions:
                 lambda checked, mode=interaction_mode: self._activate_tool(mode, checked)
             )
 
-        self.navigation_action.setChecked(True)
+        self.selection_action.setChecked(True)
 
         # One strip button per merged tool: it shows the current variant and activates it.
         # The variant actions themselves are the buttons in the options bar.
@@ -630,10 +623,6 @@ class MainWindowActions:
 
         view_menu.addSeparator()
 
-        view_menu.addAction(self.tool_panel.toggleViewAction())
-
-        view_menu.addAction(self.tool_labels_action)
-
         view_menu.addAction(self.window.marker_dock.toggleViewAction())
 
         view_menu.addAction(self.window.check_dock.toggleViewAction())
@@ -762,14 +751,6 @@ class MainWindowActions:
 
         self._add_toolbar_gap()
 
-        self.quick_access_toolbar.addAction(self.navigation_action)
-
-        self.quick_access_toolbar.addAction(self.selection_action)
-
-        self.quick_access_toolbar.addAction(self.generate_action)
-
-        self._add_toolbar_gap()
-
         for action in (self.copy_action, self.cut_action, self.paste_action):
             self.quick_access_toolbar.addAction(action)
 
@@ -839,31 +820,32 @@ class MainWindowActions:
 
         button.setAutoRaise(True)
 
-    def _create_tool_panel(self):
-        self.tool_panel = ToolPanel(self.window)
+    def _create_tool_strip(self):
+        """The fixed one-column strip of all tools at the left, icons only."""
 
-        for group_title, rows in TOOL_GROUPS:
-            self.tool_panel.add_tool_group(
-                group_title,
-                [
-                    tuple(
-                        None
-                        if entry is None
-                        else self.merged_tool_actions[entry]
-                        if isinstance(entry, MergedTool)
-                        else self.tool_actions[entry.interaction_mode]
-                        for entry in row
-                    )
-                    for row in rows
-                ],
-            )
+        self.tool_strip = QToolBar(tr("Tools"), self.window)
+        self.tool_strip.setObjectName("tool_strip")
+        self.tool_strip.setMovable(False)
+        self.tool_strip.setFloatable(False)
+        self.tool_strip.setOrientation(Qt.Vertical)
+        self.tool_strip.setToolButtonStyle(Qt.ToolButtonIconOnly)
+        self.tool_strip.setIconSize(TOOLBAR_ICON_SIZE)
+        # Not listed in the toolbar context menu, so it cannot be hidden.
+        self.tool_strip.toggleViewAction().setVisible(False)
 
-        self.tool_labels_action = QAction(tr("Show tool labels"), self.window)
+        for index, group in enumerate(TOOL_GROUPS):
+            if index:
+                self.tool_strip.addSeparator()
 
-        self.tool_labels_action.setCheckable(True)
+            for entry in group:
+                if isinstance(entry, MergedTool):
+                    self.tool_strip.addAction(self.merged_tool_actions[entry])
+                else:
+                    self.tool_strip.addAction(self.tool_actions[entry.interaction_mode])
 
-        self.tool_labels_action.toggled.connect(self.tool_panel.set_labels_visible)
+        self.window.addToolBar(Qt.LeftToolBarArea, self.tool_strip)
 
+    def _create_show_actions(self):
         self.marker_names_action = QAction(tr("Marker names"), self.window)
         self.marker_names_action.setCheckable(True)
         self.marker_names_action.setChecked(self.window.settings.marker_names_visible)
@@ -882,8 +864,6 @@ class MainWindowActions:
                 action.setChecked(getattr(visibility, name))
                 action.toggled.connect(lambda checked, name=name: self._set_shown(name, checked))
                 self.show_actions[name] = action
-
-        self.window.addDockWidget(Qt.LeftDockWidgetArea, self.tool_panel)
 
     def _set_shown(self, name: str, shown: bool):
         visibility = self.window.scene_renderer.visibility
