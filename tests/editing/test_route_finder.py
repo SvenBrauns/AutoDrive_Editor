@@ -175,8 +175,8 @@ def test_widened_blocked_cells():
 def test_cost_by_kind_of_ground():
     assert cell_cost(51) == 1.0
     assert cell_cost(85) == 8.0
-    assert cell_cost(119) == 4.0
-    assert 4.0 < cell_cost(130) < 8.0
+    assert cell_cost(119) == 2.0
+    assert 2.0 < cell_cost(130) < 4.0
 
 
 def test_route_passes_a_gate_narrower_than_the_safety_distance():

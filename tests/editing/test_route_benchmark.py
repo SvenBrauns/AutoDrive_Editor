@@ -167,15 +167,15 @@ def report(results: list[Result], numbers: dict[str, float]) -> str:
     return "\n".join(lines + [f"{key}: {value:.2f}" for key, value in numbers.items()])
 
 
-# Results of 2026-11-01; deviations are medians in metres, times in seconds.
+# Results of 2026-11-01 (grass cost 2); deviations are medians in metres, times in seconds.
 BASELINE = {
     "incomplete": 0,
     "blocked": 0,
-    "loops": 3,
-    "time median": 0.17,
-    "time max": 6.6,
-    "curve mean deviation": 2.19,
-    "curve max deviation": 5.28,
+    "loops": 0,
+    "time median": 0.14,
+    "time max": 6.1,
+    "curve mean deviation": 2.17,
+    "curve max deviation": 4.57,
     "straight mean deviation": 0.50,
     "straight max deviation": 1.59,
 }

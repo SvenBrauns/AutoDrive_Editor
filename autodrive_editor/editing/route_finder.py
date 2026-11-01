@@ -191,7 +191,7 @@ class Grid:
 BLOCKED_TABLE = bytes(1 if value >= BLOCKED_VALUE else 0 for value in range(256))
 # Cost per metre of each band of cell values (see navigation_costmap): roads and yards, fields
 # (expensive, to spare the crops), grass, then rougher ground.
-BAND_COSTS = (1.0, 8.0, 4.0, 6.0, 8.0, 10.0)
+BAND_COSTS = (1.0, 8.0, 2.0, 6.0, 8.0, 10.0)
 BAND_WIDTH = 34
 
 
