@@ -69,16 +69,6 @@ def test_left_drag_on_empty_map_pans_in_every_tool(zoomed_window, mode):
     assert zoomed_window.edit_history.undo_stack.count() == 0
 
 
-# --- Navigation --------------------------------------------------------
-
-
-def test_navigation_click_does_not_select(zoomed_window):
-    click(zoomed_window, view_pos(zoomed_window, 10, 0))
-
-    assert selected(zoomed_window) == set()
-    assert cursor_shape(zoomed_window) == Qt.OpenHandCursor
-
-
 # --- Auswahl -----------------------------------------------------------
 
 
@@ -152,7 +142,7 @@ def test_switching_tool_cancels_box_selection(select_mode):
         release=False,
     )
 
-    select_mode.set_interaction_mode(InteractionMode.NAVIGATE)
+    select_mode.set_interaction_mode(InteractionMode.MOVE_NODES)
     send_mouse(
         select_mode,
         QEvent.MouseButtonRelease,
@@ -240,4 +230,4 @@ def test_escape_clears_measurement_then_returns_to_the_tool_before(measuring):
     assert measuring.view.interaction_mode == InteractionMode.MEASURE_DISTANCE
 
     press_escape(measuring)
-    assert measuring.view.interaction_mode == InteractionMode.NAVIGATE
+    assert measuring.view.interaction_mode == InteractionMode.SELECT

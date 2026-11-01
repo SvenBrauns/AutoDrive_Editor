@@ -34,9 +34,8 @@ def test_the_window_shows_the_active_tool_in_the_options_bar(window):
 
 
 def test_no_tool_button_has_an_arrow_menu(window):
-    buttons = list(window.actions.tool_panel.tool_buttons.values())
-    toolbar = window.actions.quick_access_toolbar
-    buttons.append(toolbar.widgetForAction(window.actions.generate_action))
+    strip = window.actions.tool_strip
+    buttons = [strip.widgetForAction(a) for a in strip.actions() if not a.isSeparator()]
 
     assert all(button.menu() is None for button in buttons)
 

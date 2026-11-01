@@ -1,5 +1,5 @@
 """All map tools with their name, description, icon and shortcut, and
-how they are grouped in the tool panel."""
+how they are grouped in the tool strip."""
 
 from dataclasses import dataclass
 
@@ -69,10 +69,6 @@ def tool_tooltip(text: str, shortcut: str, description: str) -> str:
 
     return f"<b>{text}</b>{shortcut}<br>{description}"
 
-
-NAVIGATION_TOOL = ToolDefinition(
-    InteractionMode.NAVIGATE, tr("Navigation"), tr("Move and rotate the map view"), "navigate", "N"
-)
 
 SELECTION_TOOL = ToolDefinition(
     InteractionMode.SELECT,
@@ -349,26 +345,20 @@ def variant_text(tool: MergedTool, variant: ToolDefinition) -> str:
     return f"{tool.text} – {variant.text}"
 
 
-# Tool groups in the left tool panel. Each row holds two tools (a tool or a merged tool).
-# None leaves a cell empty.
+# The tools of the tool strip, one column; a separator between the groups.
 TOOL_GROUPS = (
+    (SELECTION_TOOL, MOVE_TOOL, GENERATE_TOOL),
     (
-        tr("Nodes"),
-        (
-            (MOVE_TOOL, CREATE_TOOL),
-            (CONNECT_TOOL, DELETE_TOOL),
-            (TOGGLE_TYPE_TOOL, REVERSE_DIRECTION_TOOL),
-            (ROTATE_TOOL, NODE_POSITION_TOOL),
-        ),
+        CREATE_TOOL,
+        CONNECT_TOOL,
+        DELETE_TOOL,
+        TOGGLE_TYPE_TOOL,
+        REVERSE_DIRECTION_TOOL,
+        ROTATE_TOOL,
+        NODE_POSITION_TOOL,
     ),
-    (
-        tr("Align"),
-        (
-            (ALIGN_HORIZONTAL_TOOL, ALIGN_VERTICAL_TOOL),
-            (ALIGN_HEIGHT_TOOL, HEIGHT_FROM_TERRAIN_TOOL),
-        ),
-    ),
-    (tr("Draw"), ((DRAW_TOOL, None),)),
-    (tr("Markers"), ((MARKER_TOOL, None),)),
-    (tr("Measure"), ((MEASURE_TOOL, None),)),
+    (ALIGN_HORIZONTAL_TOOL, ALIGN_VERTICAL_TOOL, ALIGN_HEIGHT_TOOL, HEIGHT_FROM_TERRAIN_TOOL),
+    (DRAW_TOOL,),
+    (MARKER_TOOL,),
+    (MEASURE_TOOL,),
 )

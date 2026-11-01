@@ -29,9 +29,10 @@ class MapView(QGraphicsView):
     def __init__(self):
         super().__init__()
 
-        self._interaction_mode = InteractionMode.NAVIGATE
+        # Selection is the start tool; until the window registers it, a tool that only pans.
+        self._interaction_mode = InteractionMode.SELECT
 
-        self._tools: dict[InteractionMode, MapTool] = {InteractionMode.NAVIGATE: NavigateTool(self)}
+        self._tools: dict[InteractionMode, MapTool] = {InteractionMode.SELECT: NavigateTool(self)}
 
         # Above the tool of the interaction mode, e.g. the refresh tool of the game picture.
         self._overlay_tool: MapTool | None = None

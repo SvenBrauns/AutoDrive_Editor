@@ -166,7 +166,7 @@ def test_cancelled_move_restores_the_selection(marker_window, finish):
     elif finish == "click_source":
         click(marker_window, at(marker_window, 0))
     else:
-        use(marker_window, InteractionMode.NAVIGATE)
+        use(marker_window, InteractionMode.SELECT)
 
     assert marker_window.node_selection.selected_node_ids == {2, 3}
     assert marker_window.node_selection.primary_node_id == 3

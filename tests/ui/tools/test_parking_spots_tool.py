@@ -60,13 +60,6 @@ def test_click_beside_the_shed_does_not_ask(parking_window):
     assert parking_window.asked == []
 
 
-def test_tool_sits_next_to_the_selection(parking_window):
-    actions = parking_window.actions
-    toolbar = actions.quick_access_toolbar.actions()
-
-    assert toolbar.index(actions.generate_action) == toolbar.index(actions.selection_action) + 1
-
-
 def hover_label(window):
     label = window.view.viewport().findChild(QLabel)
     return label if label is not None and label.isVisible() else None
