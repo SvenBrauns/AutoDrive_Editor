@@ -15,8 +15,8 @@ Edit [AutoDrive](https://github.com/Stephan-S/FS25_AutoDrive) route networks for
 
 ## Highlights
 
-- **Your maps, found automatically.** One scan imports map image, heightmap and size from your `mods` folder and the base game. The right map opens with every route.
-- **Routes, savegames and XML files.** Open routes from AutoDrive's RoutesManager and reload them in the running game, no restart needed.
+- **Your maps, found automatically.** Open a savegame and its map comes with it: map image, heightmap and size are imported from your `mods` folder or the base game the first time, no extra step.
+- **Savegames, routes and XML files.** Pick a savegame or a RoutesManager route on one Open screen. With the companion mod `FS25_AutoDriveEditorLink`, Save reloads the network in the running game, no restart needed.
 - **Drawing tools.** Lines, Bézier curves and arcs with even node spacing. Rotate, align, set heights from the terrain, and copy and paste whole sections.
 - **Network check.** Finds overlapping nodes, nodes outside the map, wrong heights, invalid connection references and nodes without connections. Click an entry to jump to it, fix it with one click, or ignore it.
 - **Built for large networks.** Handles networks with more than 100,000 waypoints, like the one in the screenshots.
@@ -31,8 +31,7 @@ Edit [AutoDrive](https://github.com/Stephan-S/FS25_AutoDrive) route networks for
 
 1. Download the zip from [Releases](https://github.com/SvenBrauns/AutoDrive_Editor/releases/latest), unzip it and start `AutoDrive Editor.exe`. No Python or Java is needed. The program is not signed, so Windows may show "Windows protected your PC": click `More info → Run anyway`.
 2. On first start, check the game folders the editor found.
-3. Run `Map → Scan maps` once to import your maps.
-4. Open a route, savegame or XML file from the `File` menu.
+3. Pick a savegame or route on the Open screen. Its map is imported the first time.
 
 The [manual](MANUAL.md) explains all tools, shortcuts, the network check and saving.
 
@@ -45,7 +44,7 @@ This editor is a new FS25-only editor. Its first goal was everything the [AutoDr
 | Games | FS19, FS22, FS25 | FS25 |
 | Runs as | Java program (Java 11+) | Windows program, nothing to install |
 | Interface language | English | English, German |
-| Map images | Import from .zip or download | Scanned from your mods and the game |
+| Map images | Import from .zip or download | Imported from your mods and the game when a file opens |
 | Routes, savegames and XML files | ✅ | ✅ |
 | Nodes, connections, markers, copy and paste, undo | ✅ | ✅ |
 | Lines, Bézier curves (1 or 2 control points), arcs | ✅ | ✅ |

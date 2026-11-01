@@ -15,8 +15,8 @@
 
 ## Das Wichtigste
 
-- **Deine Karten, automatisch gefunden.** Ein Scan importiert Kartenbild, Heightmap und Größe aus dem `mods`-Ordner und dem Grundspiel. Zu jeder Route öffnet sich die passende Karte.
-- **Routen, Savegames und XML-Dateien.** Routen aus dem RoutesManager von AutoDrive öffnen und im laufenden Spiel neu laden, ohne Neustart.
+- **Deine Karten, automatisch gefunden.** Ein Savegame öffnen, und seine Karte kommt mit: Kartenbild, Heightmap und Größe werden beim ersten Mal aus dem `mods`-Ordner oder dem Grundspiel importiert, ohne Extraschritt.
+- **Savegames, Routen und XML-Dateien.** Ein Savegame oder eine Route aus dem RoutesManager auf einem Öffnen-Bildschirm wählen. Mit dem Begleit-Mod `FS25_AutoDriveEditorLink` lädt Speichern das Netz im laufenden Spiel neu, ohne Neustart.
 - **Zeichenwerkzeuge.** Linien, Bézierkurven und Kreisbögen mit gleichmäßigem Node-Abstand. Drehen, ausrichten, Höhen aus dem Gelände setzen und ganze Abschnitte kopieren und einfügen.
 - **Netzprüfung.** Findet übereinanderliegende Nodes, Nodes außerhalb der Karte, falsche Höhen, ungültige Connection-Verweise und Nodes ohne Connections. Ein Klick springt zur Stelle; beheben mit einem Klick oder ignorieren.
 - **Für große Netze gebaut.** Kommt mit Netzen über 100.000 Wegpunkten zurecht, wie dem in den Screenshots.
@@ -33,8 +33,7 @@ Die Screenshots zeigen die englische Oberfläche.
 
 1. Das Zip unter [Releases](https://github.com/SvenBrauns/AutoDrive_Editor/releases/latest) herunterladen, entpacken und `AutoDrive Editor.exe` starten. Python oder Java sind nicht nötig. Das Programm ist nicht signiert, daher zeigt Windows eventuell „Der Computer wurde durch Windows geschützt“: auf `Weitere Informationen → Trotzdem ausführen` klicken.
 2. Beim ersten Start die gefundenen Spielordner prüfen.
-3. Einmal `Karte → Karten scannen` ausführen, um die Karten zu importieren.
-4. Eine Route, ein Savegame oder eine XML-Datei über das Menü `Datei` öffnen.
+3. Auf dem Öffnen-Bildschirm ein Savegame oder eine Route wählen. Die Karte wird beim ersten Mal importiert.
 
 Die [Anleitung](MANUAL.de.md) erklärt alle Werkzeuge, Tastenkürzel, die Netzprüfung und das Speichern.
 
@@ -47,7 +46,7 @@ Dieser Editor ist ein neuer Editor nur für den LS25. Sein erstes Ziel war alles
 | Spiele | LS19, LS22, LS25 | LS25 |
 | Läuft als | Java-Programm (Java 11+) | Windows-Programm, keine Installation |
 | Sprache der Oberfläche | Englisch | Deutsch, Englisch |
-| Kartenbilder | Import aus .zip oder Download | Aus Mods und Spiel gescannt |
+| Kartenbilder | Import aus .zip oder Download | Beim Öffnen aus Mods und Spiel importiert |
 | Routen, Savegames und XML-Dateien | ✅ | ✅ |
 | Nodes, Connections, Marker, Kopieren und Einfügen, Rückgängig | ✅ | ✅ |
 | Linien, Bézierkurven (1 oder 2 Kontrollpunkte), Kreisbögen | ✅ | ✅ |
