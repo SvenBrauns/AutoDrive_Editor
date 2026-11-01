@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- `Map → Refresh game picture tiles`: mark tiles of the game picture on the map (click, or right-drag a box) and let the game render just those again, e.g. after changing a yard; the status bar shows the estimated time
 - `Map → Capture game picture…`: the companion mod `FS25_AutoDriveEditorLink` renders the whole map from above in the running game; the editor shows it as `View → Background → Game picture`. Resolution 0.25 or 0.5 m/px, progress and `Cancel` in the status bar, tiles appear as they arrive
 - Planning mode (`Edit → Planning mode`, `Ctrl+P`, button at the right of the toolbar): edit with all tools, then apply the plan as one undo step or discard it. Changed nodes get a blue halo; saving and autosave wait until the plan is applied or discarded
 - The Generate tool (`G`) replaces the Parking spots tool. It starts planning mode and creates what is picked behind its arrow: a route, the parking spots of a shed or the lanes of stations, and shows the name and category of the building under the pointer. Grid snapping moves from `G` to `S`

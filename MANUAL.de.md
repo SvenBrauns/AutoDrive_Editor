@@ -73,6 +73,8 @@ Während der Aufnahme wird das Spiel auf 12:00 Uhr und Sonne gestellt und bleibt
 
 **Anzeigen.** `Ansicht → Hintergrund → Spielbild` zeigt das Bild; nach einer Aufnahme wird es automatisch gewählt. Wo nichts aufgenommen wurde, scheint das Kartenbild durch. Das Bild eines Savegames bleibt erhalten, auch wenn das Savegame gelöscht wird.
 
+**Kacheln erneuern.** Nach einer Änderung auf der Karte nimmt `Karte → Spielbild-Kacheln erneuern` (auch in der Werkzeugleiste) nur die betroffenen Kacheln neu auf. Dafür braucht es ein aufgenommenes Bild und das verbundene Spiel wie bei einer Aufnahme. Das Werkzeug zeigt das Kachelraster: Klick auf eine Kachel oder mit rechts einen Rahmen ziehen markiert Kacheln, `Strg` + Rechtsziehen hebt die Markierung auf, Linksziehen verschiebt die Ansicht. Die Statusleiste zeigt die Zahl der markierten Kacheln und die nötige Zeit; `Enter` startet die Aufnahme, `Esc` löscht die Markierungen und beendet dann das Werkzeug. Die neuen Kacheln ersetzen die alten, sobald sie ankommen.
+
 ## Gebäude des Savegames
 
 Der Editor liest die Gebäude eines Savegames: die Hallen zum Parken und die Stationen, an denen Fahrzeuge laden und abladen. Das Werkzeug Erzeugen baut darauf auf.
