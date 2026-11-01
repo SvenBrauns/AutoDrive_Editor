@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- A map that is not imported yet is imported without asking when a file is opened, with a progress bar: a savegame names its mod (`mapId`), for a route the mods are searched for its map name. Only a map that is not found asks: `Choose mod zip…` or `Continue without map`; the Missing map question is gone. Without a map the map size fits the network (2, 4, 8 or 16 km)
 - A route opens alone: its network on the map named in `routes.xml`, without vehicles, sheds or stations. The question to link a savegame on loading and `File → Link savegame…` are gone; Save on a route writes only the route
 - One Open screen: the savegames (newest first) and below them the RoutesManager routes, plus `Open other file…`. It lies on the map while nothing is open and comes as a dialog with `File → Open…` (`Ctrl+O`). It replaces the Open dialog with its tabs and the welcome page with its recent list (`Open recent` stays in the File menu). Savegames without AutoDrive data are listed too; they open with an empty network, and Save creates their `AutoDrive_config.xml`
 - Create, Connect, Draw (Line, Arc, Bézier) and Marker are one tool each; their variants are buttons in the options bar. The keys stay and pick tool and variant; the tool button shows the current variant. Switching the Draw variant keeps a half drawn path
