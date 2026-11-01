@@ -756,7 +756,7 @@ TEXTS = {
     "Start": "Start",
     "Wait per tile:": "Wartezeit pro Kachel:",
     "Time the game gets to load a place before it renders it. Raise it if tiles have holes.": "Zeit, die das Spiel bekommt, um einen Ort zu laden, bevor es ihn rendert. Erhöhen, wenn Kacheln Löcher haben.",
-    "The game is set to 12:00 and sun and stays so; its clock keeps running. The game freezes briefly for each tile. The editor stays usable, the tiles appear as they arrive.": "Das Spiel wird auf 12:00 Uhr und Sonne gestellt und bleibt so; seine Uhr läuft weiter. Das Spiel friert für jede Kachel kurz ein. Der Editor bleibt bedienbar, die Kacheln erscheinen, sobald sie fertig sind.",
+    "The game is set to 12:00 and sun; afterwards the old weather and time come back. The game freezes briefly for each tile. The editor stays usable, the tiles appear as they arrive.": "Das Spiel wird auf 12:00 Uhr und Sonne gestellt; danach kommen das alte Wetter und die alte Uhrzeit zurück. Das Spiel friert für jede Kachel kurz ein. Der Editor bleibt bedienbar, die Kacheln erscheinen, sobald sie fertig sind.",
     "{resolution} m/px · {count} tiles · about {minutes} min, {size} MB": "{resolution} m/px · {count} Kacheln · etwa {minutes} Min., {size} MB",
     "Replaces the current picture ({resolution} m/px).": "Ersetzt das aktuelle Bild ({resolution} m/px).",
     "A game picture capture is running. Cancel it?": "Eine Spielbild-Aufnahme läuft. Abbrechen?",
