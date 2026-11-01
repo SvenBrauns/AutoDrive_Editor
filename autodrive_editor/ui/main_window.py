@@ -179,7 +179,6 @@ class MainWindow(QMainWindow):
         )
 
         self.actions = MainWindowActions(self)
-        self.actions.set_current_map_scale(self.background_map.map_scale)
         self._create_tool_options()
 
         self._create_open_screen()
@@ -189,19 +188,6 @@ class MainWindow(QMainWindow):
         # Created after the renderer is connected to the view, so the
         # dock reads the renderer state after it has been updated.
         self._create_debug_dock_coordinator()
-
-    def set_map_scale(self, map_scale: int):
-        action = self.actions.map_scale_actions.get(map_scale)
-
-        map_scale_label = action.text() if action is not None else str(map_scale)
-
-        try:
-            self.project_coordinator.set_map_scale(
-                map_scale=map_scale, map_scale_label=map_scale_label
-            )
-
-        except Exception as ex:
-            self._set_status(tr("The map size could not be changed: {error}", error=ex))
 
     def closeEvent(self, event):
         if self.files.confirm_discard_changes() and self.picture_capture.confirm_stop():
@@ -266,7 +252,9 @@ class MainWindow(QMainWindow):
         self.measurement_coordinator.align_view_to_measurement()
 
     def open_settings(self):
-        dialog = SettingsDialog(self.settings, self.actions.shortcuts, parent=self)
+        dialog = SettingsDialog(
+            self.settings, self.actions.shortcuts, map_import=self.map_import, parent=self
+        )
 
         if dialog.exec():
             self.files.apply_autosave_interval()
@@ -1192,15 +1180,12 @@ class MainWindow(QMainWindow):
 
         self.grid_coordinator.status_changed.connect(self._set_status)
 
-        self.project_coordinator.map_scale_changed.connect(self._handle_map_scale_changed)
-
-        self.project_coordinator.heightmap_path_changed.connect(self._handle_heightmap_path_changed)
-
         self.project_coordinator.backgrounds_changed.connect(self._update_background_choices)
 
         self.project_coordinator.autodrive_data_loaded.connect(self._handle_autodrive_data_loaded)
 
         self.project_coordinator.prepare_map = self.map_import.ensure_map
+        self.project_coordinator.map_for_file = lambda path: self.settings.file_map(path)
 
         self.edit_history.clean_changed.connect(self._handle_edit_clean_changed)
 
@@ -1251,12 +1236,6 @@ class MainWindow(QMainWindow):
 
     def _handle_rotation_step_changed(self, rotation_step: float):
         self.actions.rotation_controls.set_rotation_step(rotation_step)
-
-    def _handle_heightmap_path_changed(self, file_path):
-        self.actions.remove_heightmap_action.setEnabled(file_path is not None)
-
-    def _handle_map_scale_changed(self, map_scale: int):
-        self.actions.set_current_map_scale(map_scale)
 
     def _handle_autodrive_data_loaded(self, autodrive_data):
         # Edits of the previous data cannot be undone on new data.

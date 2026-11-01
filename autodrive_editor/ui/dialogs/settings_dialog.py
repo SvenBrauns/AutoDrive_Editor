@@ -17,6 +17,7 @@ from autodrive_editor.i18n import LANGUAGES, tr
 from autodrive_editor.settings.app_settings import AppSettings
 from autodrive_editor.ui.actions.shortcuts import ShortcutRegistry
 from autodrive_editor.ui.dialogs.folder_settings_widget import FolderSettingsWidget
+from autodrive_editor.ui.dialogs.maps_widget import MapsWidget
 from autodrive_editor.ui.dialogs.shortcuts_widget import ShortcutsWidget
 
 THEME_NAMES = {"system": tr("Like Windows"), "light": tr("Light"), "dark": tr("Dark")}
@@ -25,12 +26,14 @@ UPDATE_CHECK_TEXT = tr("Check for a new version at startup (contacts github.com)
 
 class SettingsDialog(QDialog):
     """Editor settings: the FS25 user folder and install folder, the
-    autosave interval, the language, the theme, the vehicle size for the
+    autosave interval, the language, the theme, the imported maps, the vehicle size for the
     route finder and the keyboard shortcuts."""
 
     MAX_AUTOSAVE_MINUTES = 60
 
-    def __init__(self, settings: AppSettings, shortcuts: ShortcutRegistry, parent=None):
+    def __init__(
+        self, settings: AppSettings, shortcuts: ShortcutRegistry, map_import=None, parent=None
+    ):
         super().__init__(parent)
 
         self.settings = settings
@@ -90,6 +93,12 @@ class SettingsDialog(QDialog):
 
         self.tabs = QTabWidget(self)
         self.tabs.addTab(general, tr("General"))
+
+        # The Maps tab works on the window's maps; dialogs opened without a window have none.
+        if map_import is not None:
+            self.maps = MapsWidget(map_import, self)
+            self.tabs.addTab(self.maps, tr("Maps"))
+
         self.tabs.addTab(self._create_route_tab(), tr("Route finder"))
         self.tabs.addTab(self.shortcuts, tr("Shortcuts"))
 

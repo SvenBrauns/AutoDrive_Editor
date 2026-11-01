@@ -1,18 +1,17 @@
-"""Importing maps from mods via the Karte menu."""
+"""Settings → Maps: import from a mod zip, re-import, remove, use for the open file."""
 
 import zipfile
 
 import pytest
-from base_game_helpers import make_installation
-from game_folder_helpers import make_game_folder
+from game_folder_helpers import add_routes, make_game_folder
 from map_mod_helpers import make_single_map_mod
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QFileDialog
 
 from autodrive_editor.file_io.map_mod import read_map_mod
-from autodrive_editor.game.map_scanner import scan_for_map_mods
+from autodrive_editor.terrain.game_picture import PICTURE_FOLDER
 from autodrive_editor.terrain.map_cache import MapCache
-from autodrive_editor.ui.dialogs.map_import_dialog import MapImportDialog
+
+MAP_NAME = "LS25_Testkarte_2_0"
 
 
 @pytest.fixture
@@ -23,30 +22,8 @@ def map_window(window, tmp_path, isolated_user_data, monkeypatch):
     window.messages = []
     monkeypatch.setattr(window.map_import, "_inform", window.messages.append)
     window.mods = folder / "mods"
+    window.folder = folder
     return window
-
-
-def test_scan_imports_the_chosen_maps(map_window, monkeypatch):
-    make_single_map_mod(map_window.mods, name="FS25_A", title="Karte A")
-    make_single_map_mod(map_window.mods, name="FS25_B", title="Karte B")
-    monkeypatch.setattr(
-        map_window.map_import,
-        "_choose_maps_to_import",
-        lambda result: [(m, e) for m in result.map_mods for e in m.maps if e.title == "Karte B"],
-    )
-
-    map_window.map_import.scan_map_mods()
-
-    assert [m.title for m in map_window.map_cache.maps()] == ["Karte B"]
-    assert map_window.status.text() == "1 map(s) imported"
-
-
-def test_scan_without_map_mods_explains_it(map_window):
-    map_window.mods.mkdir()
-
-    map_window.map_import.scan_map_mods()
-
-    assert "No map mods" in map_window.messages[0]
 
 
 def test_failed_imports_are_reported(map_window, tmp_path):
@@ -57,39 +34,6 @@ def test_failed_imports_are_reported(map_window, tmp_path):
     map_window.map_import._import_maps([(map_mod, map_mod.maps[0])])
 
     assert "Not imported" in map_window.messages[0]
-
-
-def test_import_dialog_marks_imported_and_broken_maps(qapp, tmp_path, isolated_user_data):
-    mods = tmp_path / "mods"
-    make_single_map_mod(mods, name="FS25_Neu", title="Neu")
-    old_path = make_single_map_mod(mods, name="FS25_Alt", title="Alt")
-    make_single_map_mod(mods, name="FS25_Kaputt", title="Kaputt", width=3000)
-    cache = MapCache()
-    cache.import_map(old_path, read_map_mod(old_path).maps[0])
-
-    dialog = MapImportDialog(scan_for_map_mods(mods).map_mods, cache)
-    rows = {
-        dialog.table.topLevelItem(i).text(0): dialog.table.topLevelItem(i)
-        for i in range(dialog.table.topLevelItemCount())
-    }
-
-    assert rows["Alt"].text(3) == "already imported"
-    assert rows["Neu"].text(3) == "new"
-    assert "Map size" in rows["Kaputt"].text(3)
-    assert not rows["Kaputt"].flags() & Qt.ItemFlag.ItemIsEnabled
-    assert not dialog.import_button.isEnabled()
-
-    dialog.select_new_maps()
-
-    assert [entry.title for _, entry in dialog.chosen_maps] == ["Neu"]
-    assert dialog.import_button.isEnabled()
-
-
-def test_map_menu_offers_scan_and_import(window):
-    map_menu = next(a.menu() for a in window.menuBar().actions() if a.text() == "Map")
-    texts = [action.text() for action in map_menu.actions()]
-
-    assert texts[:2] == ["Scan maps…", "Import map from mod…"]
 
 
 def choose_file(monkeypatch, path):
@@ -126,21 +70,74 @@ def test_import_from_mod_explains_unusable_files(
     assert map_window.map_cache.maps() == []
 
 
-def test_scan_lists_base_game_maps_first(map_window, tmp_path, monkeypatch):
-    map_window.mods.mkdir()
-    make_single_map_mod(map_window.mods, name="FS25_A", title="Karte A")
-    map_window.settings.set_install_folder(make_installation(tmp_path / "FS25", folders=("mapUS",)))
-    seen = []
+def test_reimport_reads_the_map_from_its_mod_again(map_window):
+    mod = make_single_map_mod(map_window.mods, name="FS25_A", title="Karte A")
+    cached = map_window.map_cache.import_map(mod, read_map_mod(mod).maps[0])
+    (cached.directory / "dem.png").unlink()
+
+    assert map_window.map_import.reimport(cached)
+
+    assert cached.heightmap_path is not None
+
+
+def test_reimport_without_the_mod_explains_it(map_window, tmp_path):
+    mod = make_single_map_mod(tmp_path / "elsewhere", name="FS25_A")
+    cached = map_window.map_cache.import_map(mod, read_map_mod(mod).maps[0])
+
+    assert not map_window.map_import.reimport(cached)
+
+    assert "FS25_A" in map_window.messages[0]
+
+
+def test_remove_deletes_the_map_with_its_picture_after_asking(map_window, monkeypatch):
+    mod = make_single_map_mod(map_window.mods, name="FS25_A")
+    cached = map_window.map_cache.import_map(mod, read_map_mod(mod).maps[0])
+    (cached.directory / PICTURE_FOLDER / "1").mkdir(parents=True)
+    (cached.directory / PICTURE_FOLDER / "1" / "tile.webp").write_bytes(b"x" * 3_000_000)
+    asked = []
     monkeypatch.setattr(
-        map_window.map_import,
-        "_choose_maps_to_import",
-        lambda result: (
-            seen.extend(result.map_mods)
-            or [(m, e) for m in result.map_mods if m.is_base_game for e in m.maps]
-        ),
+        map_window.map_import, "_confirm_remove", lambda name, size: asked.append(size) or True
     )
 
-    map_window.map_import.scan_map_mods()
+    assert map_window.map_import.remove(cached)
 
-    assert [m.name for m in seen] == ["FS25 Grundspiel", "FS25_A"]
-    assert [m.title for m in map_window.map_cache.maps()] == ["Riverbend Springs"]
+    assert asked == [3_000_000]
+    assert not cached.directory.exists()
+
+
+def test_removing_the_shown_map_takes_it_from_the_view(map_window, monkeypatch):
+    mod = make_single_map_mod(map_window.mods, name="FS25_A")
+    cached = map_window.map_cache.import_map(mod, read_map_mod(mod).maps[0])
+    map_window.project_coordinator.map_cache = map_window.map_cache
+    manager = add_routes(map_window.folder, [("R", "route.xml", MAP_NAME, 1)])
+    map_window.project_coordinator.load_xml_file(manager / "routes" / "route.xml")
+    assert map_window.background_map.has_background()
+    monkeypatch.setattr(map_window.map_import, "_confirm_remove", lambda name, size: True)
+
+    map_window.map_import.remove(cached)
+
+    assert not map_window.background_map.has_background()
+
+
+def test_map_chosen_for_the_open_file_is_shown_and_remembered(map_window, tmp_path, write_xml):
+    mod = make_single_map_mod(map_window.mods, name="FS25_A")
+    cached = map_window.map_cache.import_map(mod, read_map_mod(mod).maps[0])
+    map_window.project_coordinator.map_cache = map_window.map_cache
+    path = write_xml(x="0", y="0", z="0", out="", incoming="", flags="0")
+    map_window.project_coordinator.load_xml_file(path)
+    assert "choose one under File → Settings → Maps" in map_window.status.text()
+
+    map_window.map_import.use_for_open_file(cached)
+    assert map_window.background_map.has_background()
+
+    map_window.project_coordinator.load_xml_file(path)
+    assert map_window.background_map.has_background()
+
+
+def test_map_menu_is_gone_and_capture_is_under_background(window):
+    menus = {action.text(): action.menu() for action in window.menuBar().actions()}
+    view = {action.text(): action.menu() for action in menus["View"].actions() if action.menu()}
+
+    assert "Map" not in menus
+    assert window.actions.capture_picture_action in view["Background"].actions()
+    assert window.actions.refresh_picture_action in view["Background"].actions()

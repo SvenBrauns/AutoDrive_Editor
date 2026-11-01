@@ -211,3 +211,9 @@ class MapCache:
             map_id=info.get("map_id", ""),
             config_file=info.get("config_file", ""),
         )
+
+
+def folder_size(folder: Path) -> int:
+    """Bytes of all files below the folder; 0 if it does not exist."""
+
+    return sum(path.stat().st_size for path in folder.rglob("*") if path.is_file())

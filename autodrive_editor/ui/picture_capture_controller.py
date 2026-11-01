@@ -1,6 +1,6 @@
-"""Map → Capture game picture: asks the companion mod for the whole map, or with the refresh
-tool for the marked tiles, shows the progress in the status bar and puts the tiles into the
-shown picture as they arrive."""
+"""View → Background → Capture game picture: asks the companion mod for the whole map, or with
+the refresh tool for the marked tiles, shows the progress in the status bar and puts the tiles
+into the shown picture as they arrive."""
 
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -118,7 +118,10 @@ class PictureCaptureController(QObject):
         if self.running or picture is None:
             if not self.running:
                 self._inform(
-                    problem or tr("Capture the whole map first (Map → Capture game picture…).")
+                    problem
+                    or tr(
+                        "Capture the whole map first (View → Background → Capture game picture…)."
+                    )
                 )
 
             self.refresh_active_changed.emit(False)
