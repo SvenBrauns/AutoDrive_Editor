@@ -816,4 +816,13 @@ TEXTS = {
     "Saved, but not reloaded in the game: {reason}\n\nThe game overwrites the file on its next save.": "Gespeichert, aber nicht im Spiel neu geladen: {reason}\n\nDas Spiel überschreibt die Datei beim nächsten Speichern.",
     "Saved. The game is running, but the mod FS25_AutoDriveEditorLink does not answer, so the editor cannot reload the savegame in the game. The game overwrites the file on its next save: exit the game without saving, or install the mod.": "Gespeichert. Das Spiel läuft, aber die Mod FS25_AutoDriveEditorLink antwortet nicht, daher kann der Editor das Savegame im Spiel nicht neu laden. Das Spiel überschreibt die Datei beim nächsten Speichern: das Spiel ohne Speichern beenden oder die Mod installieren.",
     "The game did not answer within {seconds} s.": "Das Spiel hat nicht innerhalb von {seconds} s geantwortet.",
+    # Load route into savegame
+    "Load route into savegame": "Route ins Savegame laden",
+    "Load route into savegame…": "Route ins Savegame laden…",
+    "Load route “{name}”": "Route „{name}“ laden",
+    "No route holds the current network. Save the current network as a route first?": "Keine Route enthält das aktuelle Netz. Das aktuelle Netz zuerst als Route speichern?",
+    "Replace the savegame's network with a route of the RoutesManager": "Das Netz des Savegames durch eine Route aus dem RoutesManager ersetzen",
+    "Route “{name}” loaded; Save writes it into the savegame": "Route „{name}“ geladen; Speichern schreibt sie ins Savegame",
+    "Routes of this map in the RoutesManager:": "Routen dieser Karte im RoutesManager:",
+    "The RoutesManager has no routes of this map.": "Der RoutesManager hat keine Routen dieser Karte.",
 }

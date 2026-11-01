@@ -8,8 +8,10 @@ from PySide6.QtWidgets import QMessageBox
 
 from autodrive_editor.editing.commands.delete_nodes import DeleteNodesCommand
 from autodrive_editor.editing.commands.markers import DeleteMarkerCommand
+from autodrive_editor.editing.commands.replace_network import ReplaceNetworkCommand
 from autodrive_editor.file_io.autodrive_xml import AutoDriveXmlReader
 from autodrive_editor.file_io.routes_index import read_routes_index
+from autodrive_editor.model.autodrive_data import AutoDriveData, MarkerData, NodeData
 
 SAVEGAME = (
     "<AutoDrive><version>3.0.1.4</version><MapName>LS25_X</MapName>"
@@ -327,3 +329,20 @@ def test_restored_autosave_is_not_replaced_by_the_last_file(route_window, monkey
     route_window.files.open_at_startup()
 
     assert route_window.isWindowModified()
+
+
+def test_replaced_network_keeps_vehicle_targets_by_marker_name(savegame_window):
+    new = AutoDriveData()
+    for node_id in (1, 2):
+        new.add_node(NodeData(node_id, node_id * 5.0, 0, 0))
+    new.add_marker(MarkerData(1, "C", "All"))
+    new.add_marker(MarkerData(2, "A", "All"))
+    data = savegame_window.project_coordinator.autodrive_data
+    savegame_window.edit_history.push(ReplaceNetworkCommand(data, new, "Load route"))
+
+    savegame_window.files.save_xml()
+
+    vehicles = (savegame_window.savegame / "vehicles.xml").read_text(encoding="utf-8")
+    assert 'firstMarker="2"' in vehicles
+    assert 'secondMarker="1"' in vehicles
+    assert savegame_window.messages  # marker B, a parking target, is gone

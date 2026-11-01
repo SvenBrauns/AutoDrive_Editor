@@ -6,8 +6,9 @@ from pathlib import Path
 from PySide6.QtCore import QObject, QTimer, Signal
 from PySide6.QtWidgets import QDialog, QFileDialog, QInputDialog, QMessageBox, QWidget
 
+from autodrive_editor.editing.commands.replace_network import ReplaceNetworkCommand
 from autodrive_editor.editing.edit_history import EditHistory
-from autodrive_editor.file_io.autodrive_xml import ConfigFormat
+from autodrive_editor.file_io.autodrive_xml import AutoDriveXmlReader, ConfigFormat
 from autodrive_editor.file_io.routes_index import (
     RouteEntry,
     find_route_entry,
@@ -18,6 +19,7 @@ from autodrive_editor.game.savegame_info import SavegameInfo, savegames
 from autodrive_editor.i18n import tr
 from autodrive_editor.project.autosave import AutosaveStore
 from autodrive_editor.project.project_coordinator import ProjectCoordinator
+from autodrive_editor.project.route_match import same_network
 from autodrive_editor.settings.app_settings import AppSettings
 from autodrive_editor.settings.recent_items import (
     RecentItem,
@@ -25,6 +27,7 @@ from autodrive_editor.settings.recent_items import (
     with_recent_item,
     without_recent_item,
 )
+from autodrive_editor.ui.dialogs.list_choice_dialog import ListChoiceDialog
 from autodrive_editor.ui.dialogs.messages import APP_TITLE, inform
 from autodrive_editor.ui.dialogs.open_dialog import OpenDialog
 from autodrive_editor.ui.panels.open_screen import OpenLists, OpenScreen, settings_link
@@ -323,6 +326,82 @@ class FileController(QObject):
             self._after_save([])
 
         return True
+
+    def load_route_into_savegame(self) -> bool:
+        """File → Load route into savegame…: replaces the savegame's network with a route of
+        its map, as one undo step. Offers to keep the current network as a route first if no
+        route holds it."""
+
+        source = self.project_coordinator.config_source
+        data = self.project_coordinator.autodrive_data
+        game_folder = self.settings.game_folder
+
+        if source is None or source.format != ConfigFormat.SAVEGAME or not self.confirm_end_plan():
+            return False
+
+        routes = []
+
+        if game_folder is not None and game_folder.routes_xml_path.is_file():
+            routes = [
+                entry
+                for entry in read_routes_index(game_folder.routes_xml_path)
+                if entry.map_name == source.map_name and entry.path.is_file()
+            ]
+
+        if not routes:
+            self._inform(tr("The RoutesManager has no routes of this map."))
+            return False
+
+        if not any(same_network(data, AutoDriveXmlReader.load(e.path)) for e in routes):
+            answer = self._ask_save_network_first()
+
+            if answer == QMessageBox.Cancel or (
+                answer == QMessageBox.Yes and not self.save_as_route()
+            ):
+                return False
+
+        entry = self._choose_route(routes)
+
+        if entry is None:
+            return False
+
+        self.edit_history.push(
+            ReplaceNetworkCommand(
+                data,
+                AutoDriveXmlReader.load(entry.path),
+                tr("Load route “{name}”", name=entry.name),
+            )
+        )
+        self.project_coordinator.show_parking()
+        self.last_route_name = entry.name
+        self.status_changed.emit(
+            tr("Route “{name}” loaded; Save writes it into the savegame", name=entry.name)
+        )
+
+        return True
+
+    def _ask_save_network_first(self):
+        return QMessageBox.question(
+            self.window,
+            APP_TITLE,
+            tr("No route holds the current network. Save the current network as a route first?"),
+            QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
+            QMessageBox.Yes,
+        )
+
+    def _choose_route(self, routes: list[RouteEntry]) -> RouteEntry | None:
+        dialog = ListChoiceDialog(
+            tr("Load route into savegame"),
+            tr("Routes of this map in the RoutesManager:"),
+            [tr("Name"), tr("Revision"), tr("Date")],
+            [([entry.name, str(entry.revision), entry.date], entry) for entry in routes],
+            ok_text=tr("Load"),
+            sort_column=2,
+            newest_first=True,
+            parent=self.window,
+        )
+
+        return dialog.chosen_value if dialog.exec() == QDialog.DialogCode.Accepted else None
 
     def _routes_xml_for(self, source) -> Path | None:
         if find_route_entry(source.path) is not None:

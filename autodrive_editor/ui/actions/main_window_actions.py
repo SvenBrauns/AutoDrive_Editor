@@ -90,7 +90,7 @@ class MainWindowActions:
         groups = (
             (
                 tr("File"),
-                ("open", "save_xml", "save_xml_as", "settings", "exit"),
+                ("open", "save_xml", "save_xml_as", "load_route", "settings", "exit"),
             ),
             (
                 tr("Edit"),
@@ -237,6 +237,13 @@ class MainWindowActions:
         )
         self.save_xml_as_action.setEnabled(False)
         self.save_xml_as_action.triggered.connect(self.window.files.save_as_route)
+
+        self.load_route_action = QAction(tr("Load route into savegame…"), self.window)
+        self.load_route_action.setStatusTip(
+            tr("Replace the savegame's network with a route of the RoutesManager")
+        )
+        self.load_route_action.setEnabled(False)
+        self.load_route_action.triggered.connect(self.window.files.load_route_into_savegame)
 
         self.settings_action = QAction(tr("Settings…"), self.window)
 
@@ -500,6 +507,8 @@ class MainWindowActions:
         file_menu.addAction(self.save_xml_action)
 
         file_menu.addAction(self.save_xml_as_action)
+
+        file_menu.addAction(self.load_route_action)
 
         file_menu.addSeparator()
 
