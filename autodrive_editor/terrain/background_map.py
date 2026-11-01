@@ -78,6 +78,12 @@ class BackgroundMap:
         if was_showing or self.showing_picture():
             self.restore()
 
+    def picture_tiles_changed(self, keys):
+        """Tiles (level, col, row) of the shown picture were written."""
+
+        if self.picture_item is not None:
+            self.picture_item.tiles_changed(keys)
+
     def set_background(self, background: Background):
         """Shows the chosen background where the map has it, otherwise the map image."""
 

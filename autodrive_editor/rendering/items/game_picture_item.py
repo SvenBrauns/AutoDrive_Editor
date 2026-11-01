@@ -20,7 +20,7 @@ class GamePictureItem(QGraphicsObject):
     # Above the map image (-1000), below the field outlines (-950).
     Z_VALUE = -975.0
 
-    _loaded = Signal(object, QImage)
+    _loaded = Signal(object, int, QImage)
 
     def __init__(self, picture: GamePicture):
         super().__init__()
@@ -32,6 +32,8 @@ class GamePictureItem(QGraphicsObject):
         self.picture = picture
         self.pixmaps: OrderedDict[tuple[int, int, int], QPixmap] = OrderedDict()
         self.loading: set[tuple[int, int, int]] = set()
+        # Counts the rewrites of a tile, so a load started before one is dropped.
+        self.versions: dict[tuple[int, int, int], int] = {}
         self.loader = ThreadPoolExecutor(max_workers=2)
         self._loaded.connect(self._store)
 
@@ -97,20 +99,24 @@ class GamePictureItem(QGraphicsObject):
 
         if key not in self.loading:
             self.loading.add(key)
-            self.loader.submit(self._load, key, str(self.picture.tile_path(*key)))
+            version = self.versions.get(key, 0)
+            self.loader.submit(self._load, key, version, str(self.picture.tile_path(*key)))
 
         return None
 
-    def _load(self, key, path: str):
+    def _load(self, key, version: int, path: str):
         image = QImage(path)
 
         try:
-            self._loaded.emit(key, image)
+            self._loaded.emit(key, version, image)
         except RuntimeError:
             # The item was deleted while loading.
             pass
 
-    def _store(self, key, image: QImage):
+    def _store(self, key, version: int, image: QImage):
+        if version != self.versions.get(key, 0):
+            return
+
         # A tile that cannot be read stays in loading, so it is not tried again on every paint.
         if image.isNull():
             return
@@ -123,6 +129,15 @@ class GamePictureItem(QGraphicsObject):
             self.pixmaps.popitem(last=False)
 
         self.update(QRectF(*self.picture.grid.tile_rect(*key)))
+
+    def tiles_changed(self, keys):
+        """Tiles (level, col, row) were written again: they are loaded anew."""
+
+        for key in keys:
+            self.versions[key] = self.versions.get(key, 0) + 1
+            self.pixmaps.pop(key, None)
+            self.loading.discard(key)
+            self.update(QRectF(*self.picture.grid.tile_rect(*key)))
 
     def close(self):
         """Stops loading; call before the item is dropped."""
