@@ -16,6 +16,7 @@ from autodrive_editor.terrain import game_picture
 from autodrive_editor.terrain.background_map import Background
 from autodrive_editor.terrain.map_cache import MapCache
 from autodrive_editor.ui import picture_capture_controller
+from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
 MAP_ID = "FS25_Test.SampleModMap"
 
@@ -253,10 +254,10 @@ def test_refresh_and_measuring_end_each_other(capture_window):
     captured_picture(capture_window)
     actions = capture_window.actions
 
-    actions.distance_measurement_action.trigger()
+    capture_window.set_interaction_mode(InteractionMode.MEASURE_DISTANCE)
     actions.refresh_picture_action.setChecked(True)
-    assert not actions.distance_measurement_action.isChecked()
+    assert capture_window.view.interaction_mode != InteractionMode.MEASURE_DISTANCE
 
-    actions.distance_measurement_action.trigger()
+    capture_window.set_interaction_mode(InteractionMode.MEASURE_DISTANCE)
     assert not actions.refresh_picture_action.isChecked()
     assert capture_window.picture_capture.refresh_tool is None

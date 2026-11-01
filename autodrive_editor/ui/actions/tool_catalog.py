@@ -297,6 +297,23 @@ DELETE_MARKER_TOOL = ToolDefinition(
 )
 
 
+MEASURE_DISTANCE_TOOL = ToolDefinition(
+    InteractionMode.MEASURE_DISTANCE,
+    tr("Distance"),
+    tr("Measure the distance between nodes or free map points"),
+    "measure_distance",
+    "D",
+)
+
+MEASURE_ANGLE_TOOL = ToolDefinition(
+    InteractionMode.MEASURE_ANGLE,
+    tr("Angle"),
+    tr("Measure the direction angle between nodes or free map points"),
+    "measure_angle",
+    "Shift+D",
+)
+
+
 @dataclass(frozen=True)
 class MergedTool:
     """One tool with variants, e.g. Create with Regular and Subprio. Each variant keeps its own
@@ -318,7 +335,8 @@ DRAW_TOOL = MergedTool(tr("Draw"), (LINE_TOOL, ARC_TOOL, BEZIER_TOOL))
 MARKER_TOOL = MergedTool(
     tr("Marker"), (ADD_MARKER_TOOL, EDIT_MARKER_TOOL, MOVE_MARKER_TOOL, DELETE_MARKER_TOOL)
 )
-MERGED_TOOLS = (CREATE_TOOL, CONNECT_TOOL, DRAW_TOOL, MARKER_TOOL)
+MEASURE_TOOL = MergedTool(tr("Measure"), (MEASURE_DISTANCE_TOOL, MEASURE_ANGLE_TOOL))
+MERGED_TOOLS = (CREATE_TOOL, CONNECT_TOOL, DRAW_TOOL, MARKER_TOOL, MEASURE_TOOL)
 
 
 def merged_tool_of(mode: InteractionMode) -> MergedTool | None:
@@ -352,4 +370,5 @@ TOOL_GROUPS = (
     ),
     (tr("Draw"), ((DRAW_TOOL, None),)),
     (tr("Markers"), ((MARKER_TOOL, None),)),
+    (tr("Measure"), ((MEASURE_TOOL, None),)),
 )

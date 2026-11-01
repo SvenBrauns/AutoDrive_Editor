@@ -33,12 +33,7 @@ class MapView(QGraphicsView):
 
         self._tools: dict[InteractionMode, MapTool] = {InteractionMode.NAVIGATE: NavigateTool(self)}
 
-        # While measuring, the measure tool replaces the tool of the
-        # current interaction mode.
-        self._measure_tool: MapTool | None = None
-        self._measurement_active = False
-
-        # Above measuring, e.g. the refresh tool of the game picture.
+        # Above the tool of the interaction mode, e.g. the refresh tool of the game picture.
         self._overlay_tool: MapTool | None = None
 
         # Replaces every other tool while set, e.g. while a dialog is open beside the map.
@@ -87,19 +82,12 @@ class MapView(QGraphicsView):
         return self._interaction_mode
 
     @property
-    def measurement_active(self) -> bool:
-        return self._measurement_active
-
-    @property
     def active_tool(self) -> MapTool:
         if self._override_tool is not None:
             return self._override_tool
 
         if self._overlay_tool is not None:
             return self._overlay_tool
-
-        if self._measurement_active and self._measure_tool is not None:
-            return self._measure_tool
 
         return self._tools[self._interaction_mode]
 
@@ -114,12 +102,6 @@ class MapView(QGraphicsView):
 
         if interaction_mode == self._interaction_mode:
             tool.activate()
-
-    def register_measure_tool(self, tool: MapTool):
-        if not isinstance(tool, MapTool):
-            raise TypeError("Invalid measuring tool.")
-
-        self._measure_tool = tool
 
     def set_zoom_level(self, zoom_level):
         self._zoom_controller.set_zoom_level(zoom_level)
@@ -149,14 +131,6 @@ class MapView(QGraphicsView):
         self._switch_tool(lambda: setattr(self, "_interaction_mode", interaction_mode))
 
         self.interaction_mode_changed.emit(interaction_mode)
-
-    def set_measurement_active(self, active: bool):
-        active = bool(active)
-
-        if active == self._measurement_active:
-            return
-
-        self._switch_tool(lambda: setattr(self, "_measurement_active", active))
 
     def set_overlay_tool(self, tool: MapTool | None):
         self._switch_tool(lambda: setattr(self, "_overlay_tool", tool))

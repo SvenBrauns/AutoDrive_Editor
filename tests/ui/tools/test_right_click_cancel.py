@@ -5,7 +5,6 @@ from mouse_helpers import click, drag, send_mouse, view_pos
 from PySide6.QtCore import QEvent, QPoint, QRectF, Qt
 from PySide6.QtGui import QPainterPath
 
-from autodrive_editor.measurement.mode import MeasurementMode
 from autodrive_editor.model.connections import NO_CONNECTION, read_connection_state
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
@@ -86,15 +85,15 @@ def test_right_click_during_rotation_cancels_it(zoomed_window):
 
 
 def test_right_click_clears_then_ends_measurement(zoomed_window):
-    zoomed_window.set_measurement_mode(MeasurementMode.DISTANCE)
+    zoomed_window.set_interaction_mode(InteractionMode.MEASURE_DISTANCE)
     click(zoomed_window, view_pos(zoomed_window, 5, 20))
 
     right_click(zoomed_window, view_pos(zoomed_window, 5, 20))
     assert not zoomed_window.measurement_coordinator.state.has_start_point
-    assert zoomed_window.view.measurement_active
+    assert zoomed_window.view.interaction_mode == InteractionMode.MEASURE_DISTANCE
 
     right_click(zoomed_window, view_pos(zoomed_window, 5, 20))
-    assert not zoomed_window.view.measurement_active
+    assert zoomed_window.view.interaction_mode != InteractionMode.MEASURE_DISTANCE
 
 
 @pytest.mark.parametrize(

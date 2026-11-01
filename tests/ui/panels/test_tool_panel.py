@@ -9,6 +9,7 @@ from autodrive_editor.ui.actions.tool_catalog import (
     CREATE_TOOL,
     DRAW_TOOL,
     MARKER_TOOL,
+    MEASURE_TOOL,
 )
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
@@ -47,15 +48,16 @@ def test_exactly_one_tool_is_checked(window):
     assert checked_tools(window) == {InteractionMode.SELECT}
 
 
-def test_measuring_unchecks_tools_and_tool_ends_measuring(window):
+def test_measure_is_a_tool_and_another_tool_ends_measuring(window):
     tool_button(window, "Move").click()
 
-    window.actions.distance_measurement_action.trigger()
-    assert window.view.measurement_active
-    assert checked_tools(window) == set()
+    tool_button(window, "Measure").click()
+    assert window.view.interaction_mode == InteractionMode.MEASURE_DISTANCE
+    assert window.measurement_coordinator.mode == MeasurementMode.DISTANCE
+    assert checked_tools(window) == {InteractionMode.MEASURE_DISTANCE}
 
     tool_button(window, "Move").click()
-    assert not window.view.measurement_active
+    assert window.view.interaction_mode != InteractionMode.MEASURE_DISTANCE
     assert window.measurement_coordinator.mode == MeasurementMode.INACTIVE
     assert checked_tools(window) == {InteractionMode.MOVE_NODES}
 
@@ -243,11 +245,15 @@ def test_clicking_the_active_merged_tool_keeps_it_checked(window):
     assert strip_action(window, DRAW_TOOL).isChecked()
 
 
-def test_merged_tool_button_is_unchecked_while_measuring(window):
-    tool_button(window, "Marker").click()
-    window.actions.distance_measurement_action.trigger()
+def test_switching_the_measure_variant_changes_the_measurement(window):
+    window.set_interaction_mode(InteractionMode.MEASURE_DISTANCE)
+    window.actions.tool_actions[InteractionMode.MEASURE_ANGLE].trigger()
 
-    assert not strip_action(window, MARKER_TOOL).isChecked()
+    assert window.measurement_coordinator.mode == MeasurementMode.ANGLE
+    assert strip_action(window, MEASURE_TOOL).isChecked()
+    assert window.options_bar.stack.currentWidget().defaultAction() is (
+        window.actions.align_measurement_action
+    )
 
 
 @pytest.mark.parametrize(
@@ -268,6 +274,8 @@ def test_merged_tool_button_is_unchecked_while_measuring(window):
             MARKER_TOOL,
             InteractionMode.DELETE_MARKER,
         ),
+        (Qt.Key_D, Qt.NoModifier, MEASURE_TOOL, InteractionMode.MEASURE_DISTANCE),
+        (Qt.Key_D, Qt.ShiftModifier, MEASURE_TOOL, InteractionMode.MEASURE_ANGLE),
     ],
 )
 def test_variant_keys_pick_tool_and_variant(window, qapp, key, modifiers, tool, mode):

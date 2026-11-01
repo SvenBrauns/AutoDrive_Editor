@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
     QInputDialog,
     QLabel,
     QMainWindow,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -37,7 +38,6 @@ from autodrive_editor.file_io.autodrive_xml import ConfigFormat
 from autodrive_editor.file_io.game_files import GameFiles
 from autodrive_editor.i18n import tr
 from autodrive_editor.measurement.coordinator import MeasurementCoordinator
-from autodrive_editor.measurement.mode import MeasurementMode
 from autodrive_editor.model.autodrive_data import (
     REGULAR_FLAG,
     SUBPRIO_FLAG,
@@ -59,7 +59,7 @@ from autodrive_editor.terrain.background_map import Background, BackgroundMap
 from autodrive_editor.terrain.heightmap import Heightmap
 from autodrive_editor.terrain.map_cache import MapCache
 from autodrive_editor.ui.actions.main_window_actions import MainWindowActions
-from autodrive_editor.ui.actions.tool_catalog import MERGED_TOOLS
+from autodrive_editor.ui.actions.tool_catalog import MEASURE_TOOL, MERGED_TOOLS
 from autodrive_editor.ui.controls.grid_coordinator import GridCoordinator
 from autodrive_editor.ui.dialogs.building_types_dialog import BuildingTypesDialog
 from autodrive_editor.ui.dialogs.marker_dialog import MarkerDialog
@@ -240,11 +240,18 @@ class MainWindow(QMainWindow):
 
         self._set_status(tr("Rotation reset"))
 
-    def set_measurement_mode(self, measurement_mode: MeasurementMode):
-        if measurement_mode != MeasurementMode.INACTIVE:
-            self.picture_capture.set_refresh_active(False)
+    def end_measuring(self):
+        """Back to the tool used before measuring."""
 
-        self.measurement_coordinator.set_mode(measurement_mode)
+        self.set_interaction_mode(self._tool_before_measuring)
+
+    def _track_measuring(self, mode: InteractionMode):
+        """Measuring ends the refresh tool; other tools are remembered for end_measuring."""
+
+        if mode in MEASURE_TOOL.modes:
+            self.picture_capture.set_refresh_active(False)
+        else:
+            self._tool_before_measuring = mode
 
     def undo(self):
         """Undoes the last edit; a junction still being drawn is undone instead (see
@@ -305,8 +312,8 @@ class MainWindow(QMainWindow):
     def _handle_refresh_active(self, active: bool):
         self.actions.refresh_picture_action.setChecked(active)
 
-        if active:
-            self.set_measurement_mode(MeasurementMode.INACTIVE)
+        if active and self.view.interaction_mode in MEASURE_TOOL.modes:
+            self.end_measuring()
 
     def _show_captured_picture(self):
         self._update_background_choices()
@@ -779,7 +786,11 @@ class MainWindow(QMainWindow):
 
         self._register_generate_tool()
 
-        self.view.register_measure_tool(MeasureTool(self.view, self.measurement_coordinator))
+        self._tool_before_measuring = self.view.interaction_mode
+        measure_tool = MeasureTool(self.view, self.measurement_coordinator, self.end_measuring)
+
+        for mode in MEASURE_TOOL.modes:
+            self.view.register_tool(mode, measure_tool)
 
     def _register_align_tools(self):
         operation = self.align_nodes_operation
@@ -907,6 +918,12 @@ class MainWindow(QMainWindow):
 
         rotate_options.snap_angle_changed.connect(apply_snap_angle)
         self.options_bar.add_options([InteractionMode.ROTATE_SELECTION], rotate_options)
+
+        align_button = QToolButton()
+        align_button.setDefaultAction(self.actions.align_measurement_action)
+        align_button.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        align_button.setAutoRaise(True)
+        self.options_bar.add_options(MEASURE_TOOL.modes, align_button)
 
         self.generate_options = GenerateOptionsWidget(
             self.actions.generate_task_actions,
@@ -1156,9 +1173,7 @@ class MainWindow(QMainWindow):
 
         self.measurement_coordinator.status_changed.connect(self._set_status)
 
-        self.measurement_coordinator.measurement_mode_changed.connect(
-            self.actions.set_measurement_mode
-        )
+        self.view.interaction_mode_changed.connect(self._track_measuring)
 
         self.measurement_coordinator.alignment_available_changed.connect(
             self.actions.set_measurement_alignment_enabled
