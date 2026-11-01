@@ -232,7 +232,7 @@ class FindRouteOperation(EditOperation):
             return None
 
         if self.savegame_provider() is None:
-            return tr("Find route needs the drivability map of a savegame. Link a savegame first")
+            return tr("Find route needs the drivability map of a savegame. Open a savegame")
 
         return tr(
             "The savegame has no drivability map yet. Save the game in Farming Simulator first "

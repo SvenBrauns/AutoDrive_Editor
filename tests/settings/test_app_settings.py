@@ -226,40 +226,6 @@ def test_update_check_is_off_until_turned_on():
     assert AppSettings().check_updates
 
 
-def test_savegame_question_can_be_turned_off_per_route(tmp_path):
-    settings = AppSettings()
-    settings.set_asks_for_savegame(tmp_path / "a.xml", False)
-
-    reloaded = AppSettings()
-    assert not reloaded.asks_for_savegame(tmp_path / "a.xml")
-    assert reloaded.asks_for_savegame(tmp_path / "b.xml")
-
-    reloaded.set_asks_for_savegame(tmp_path / "a.xml", True)
-    assert AppSettings().asks_for_savegame(tmp_path / "a.xml")
-
-
-def test_linked_savegame_is_kept_per_route_and_can_be_removed(tmp_path):
-    savegame = tmp_path / "savegame1"
-    savegame.mkdir()
-    AppSettings().set_linked_savegame(tmp_path / "a.xml", savegame)
-
-    reloaded = AppSettings()
-    assert reloaded.linked_savegame(tmp_path / "a.xml") == savegame.resolve()
-    assert reloaded.linked_savegame(tmp_path / "b.xml") is None
-
-    reloaded.set_linked_savegame(tmp_path / "a.xml", None)
-    assert AppSettings().linked_savegame(tmp_path / "a.xml") is None
-
-
-def test_linked_savegame_that_is_gone_counts_as_not_linked(tmp_path):
-    savegame = tmp_path / "savegame1"
-    savegame.mkdir()
-    AppSettings().set_linked_savegame(tmp_path / "a.xml", savegame)
-    savegame.rmdir()
-
-    assert AppSettings().linked_savegame(tmp_path / "a.xml") is None
-
-
 def test_parking_templates_are_kept_per_shed_type():
     AppSettings().save_parking_template("a.xml", "Big", {"bays": 2})
     AppSettings().save_parking_template("a.xml", "Small", {"bays": 5})

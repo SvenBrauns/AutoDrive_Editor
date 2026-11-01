@@ -54,7 +54,7 @@ class ReloadController(QObject):
             return
 
         if savegame_folder is None:
-            self.status_changed.emit("Reload in game: link a savegame first.")
+            self.status_changed.emit("Reload in game: open a savegame first.")
             return
 
         savegame = read_savegame_info(savegame_folder)

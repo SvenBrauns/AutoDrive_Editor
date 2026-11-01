@@ -47,7 +47,7 @@ class BuildingTypesDialog(QDialog):
                 "shown. Both apply on every map."
             )
             if types
-            else tr("No buildings loaded: open a savegame or link one to the route."),
+            else tr("No buildings loaded: open a savegame."),
             self,
         )
         hint_label.setWordWrap(True)

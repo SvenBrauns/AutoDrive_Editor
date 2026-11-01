@@ -23,7 +23,6 @@ from autodrive_editor.file_io.routes_index import (
     routes_index_for,
 )
 from autodrive_editor.file_io.savegame_buildings import SavegameBuildings, read_savegame_buildings
-from autodrive_editor.file_io.savegame_parking import linked_park_markers
 from autodrive_editor.file_io.savegame_vehicles import (
     read_park_destinations,
     renumber_vehicle_markers,
@@ -109,9 +108,6 @@ class ProjectCoordinator(QObject):
         # vehicles.xml of the loaded savegame. Only saving into that
         # savegame updates it, not saving a copy elsewhere.
         self._vehicles_path: Path | None = None
-
-        # Savegame folder linked to a route; its vehicles' parking positions are shown.
-        self.savegame_directory: Path | None = None
 
         # Status bar note about buildings that could not be read.
         self.buildings_note = ""
@@ -227,7 +223,6 @@ class ProjectCoordinator(QObject):
         self.autodrive_data = data
         self.config_source = source
         self._file_markers = list(data.markers.values())
-        self.savegame_directory = None
         self._vehicles_path = (
             xml_path.parent / "vehicles.xml" if source.format == ConfigFormat.SAVEGAME else None
         )
@@ -419,30 +414,9 @@ class ProjectCoordinator(QObject):
         self._file_markers = file_markers
         self._show_parking()
 
-    def set_savegame(self, directory: Path | None):
-        """Links a savegame folder to the loaded route, or removes the link (None)."""
-
-        self.savegame_directory = Path(directory) if directory is not None else None
-
-        source = self.config_source
-        cached = self.map_cache.find(source.map_name) if self.map_cache and source else None
-
-        if cached is not None:
-            self._load_map_heightmap(source, cached)
-            self._load_map_picture(source, cached)
-
-        self._show_parking()
-        self._show_buildings()
-
     def _show_parking(self):
-        """Marks the markers vehicles park at: those of the loaded savegame, numbered in the order
-        of the file on disk, or those of the savegame linked to a route."""
-
-        if self.savegame_directory is not None:
-            self.scene_renderer.set_parking_markers(
-                linked_park_markers(self._file_markers, self.savegame_directory)
-            )
-            return
+        """Marks the markers the vehicles of the loaded savegame park at, numbered in the order
+        of the file on disk."""
 
         numbers = set()
 
@@ -454,14 +428,9 @@ class ProjectCoordinator(QObject):
         )
 
     def _show_buildings(self):
-        """Shows the sheds and stations of the buildings in the loaded or the linked savegame."""
+        """Shows the sheds and stations of the buildings in the loaded savegame."""
 
-        directory = self.savegame_directory
-
-        source = self.config_source
-
-        if directory is None and source is not None and source.format == ConfigFormat.SAVEGAME:
-            directory = source.path.parent
+        directory = self.savegame_folder()
 
         buildings = SavegameBuildings()
 
@@ -547,7 +516,7 @@ class ProjectCoordinator(QObject):
         return True, tr(" – map “{name}”", name=cached.title)
 
     def _load_map_heightmap(self, source: ConfigSource, cached):
-        """Loads the heightmap of the loaded or linked savegame, else the map's dem.png.
+        """Loads the heightmap of the loaded savegame, else the map's dem.png.
         A savegame's own heightmap includes terrain changes made in game."""
 
         heightmap_path = cached.heightmap_path
@@ -564,7 +533,7 @@ class ProjectCoordinator(QObject):
             self._set_heightmap_path(None)
 
     def _load_map_picture(self, source: ConfigSource, cached):
-        """The game picture of the loaded or linked savegame, else the map's newest one."""
+        """The game picture of the loaded savegame, else the map's newest one."""
 
         savegame = savegame_key(self._savegame_folder(source))
         self.background_map.set_picture(find_picture(cached.directory, savegame))
@@ -581,17 +550,13 @@ class ProjectCoordinator(QObject):
         return self.map_cache.find(source.map_name)
 
     def savegame_folder(self) -> Path | None:
-        """The savegame of the loaded config: linked, or the one it was loaded from."""
+        """The savegame the loaded config belongs to; None for a route."""
 
         return self._savegame_folder(self.config_source) if self.config_source else None
 
-    def _savegame_folder(self, source: ConfigSource) -> Path | None:
-        """The linked savegame, or the one the config was loaded from."""
-
-        if self.savegame_directory is None and source.format == ConfigFormat.SAVEGAME:
-            return source.path.parent
-
-        return self.savegame_directory
+    @staticmethod
+    def _savegame_folder(source: ConfigSource) -> Path | None:
+        return source.path.parent if source.format == ConfigFormat.SAVEGAME else None
 
     def _set_heightmap_path(self, file_path):
         self.current_heightmap_path = str(file_path) if file_path is not None else None

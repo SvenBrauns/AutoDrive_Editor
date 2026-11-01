@@ -99,7 +99,7 @@ class MainWindowActions:
         groups = (
             (
                 tr("File"),
-                ("open", "save_xml", "save_xml_as", "link_savegame", "settings", "exit"),
+                ("open", "save_xml", "save_xml_as", "settings", "exit"),
             ),
             (
                 tr("Edit"),
@@ -234,13 +234,6 @@ class MainWindowActions:
         self.align_measurement_action.setEnabled(False)
 
         self.align_measurement_action.triggered.connect(self.window.align_view_to_measurement)
-
-        self.link_savegame_action = QAction(tr("Link savegame…"), self.window)
-        self.link_savegame_action.setStatusTip(
-            tr("Show where the vehicles of a savegame park on the loaded route")
-        )
-        self.link_savegame_action.setEnabled(False)
-        self.link_savegame_action.triggered.connect(self.window.savegame_link.choose_link)
 
         self.open_action = QAction(tool_icon("open"), tr("Open…"), self.window)
         self.open_action.setShortcut(QKeySequence.Open)
@@ -575,10 +568,6 @@ class MainWindowActions:
         file_menu.addAction(self.save_xml_action)
 
         file_menu.addAction(self.save_xml_as_action)
-
-        file_menu.addSeparator()
-
-        file_menu.addAction(self.link_savegame_action)
 
         file_menu.addSeparator()
 

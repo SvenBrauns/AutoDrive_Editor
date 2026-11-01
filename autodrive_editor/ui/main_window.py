@@ -34,7 +34,6 @@ from autodrive_editor.editing.operations.rotate_selection import RotateSelection
 from autodrive_editor.editing.operations.stations import StationOperation
 from autodrive_editor.editing.path_shapes import PathShape
 from autodrive_editor.error_log import set_debug_logging
-from autodrive_editor.file_io.autodrive_xml import ConfigFormat
 from autodrive_editor.file_io.game_files import GameFiles
 from autodrive_editor.i18n import tr
 from autodrive_editor.measurement.coordinator import MeasurementCoordinator
@@ -90,7 +89,6 @@ from autodrive_editor.ui.panels.rotate_options import RotateOptionsWidget
 from autodrive_editor.ui.picture_capture_controller import PictureCaptureController
 from autodrive_editor.ui.planning_controller import PlanningController
 from autodrive_editor.ui.reload_controller import ReloadController
-from autodrive_editor.ui.savegame_link_controller import SavegameLinkController
 from autodrive_editor.ui.theme import apply_theme
 from autodrive_editor.ui.tools.connect_nodes_tool import ConnectNodesTool
 from autodrive_editor.ui.tools.create_node_tool import CreateNodeTool
@@ -684,9 +682,6 @@ class MainWindow(QMainWindow):
         )
         self.files.open_settings = self.open_settings
 
-        self.savegame_link = SavegameLinkController(self, self.settings, self.project_coordinator)
-        self.files.config_opened.connect(self.savegame_link.offer_link)
-
         self.map_import = MapImportController(
             self, self.settings, self.map_cache, self.project_coordinator
         )
@@ -856,7 +851,7 @@ class MainWindow(QMainWindow):
             lambda: (
                 tr("Click a shed to create parking spots in it")
                 if self.scene_renderer.shown_shed_areas
-                else tr("No sheds shown: open a savegame or link one to the route")
+                else tr("No sheds shown: open a savegame")
             ),
             is_target=lambda view_position: self._get_shed_at(view_position) is not None,
             hover_text=self._get_shed_name_at,
@@ -872,7 +867,7 @@ class MainWindow(QMainWindow):
             lambda: (
                 tr("Click a station or right-drag a box around several to create their lanes")
                 if self.scene_renderer.shown_stops
-                else tr("No stations shown: open a savegame or link one to the route")
+                else tr("No stations shown: open a savegame")
             ),
             is_target=lambda view_position: bool(self._get_station_stops_at(view_position)),
             hover_text=self._get_station_name_at,
@@ -1216,7 +1211,6 @@ class MainWindow(QMainWindow):
         self.files.status_changed.connect(self._set_status)
 
         self.files.saved.connect(self._update_window_title)
-        self.savegame_link.status_changed.connect(self._set_status)
 
         self.map_import.status_changed.connect(self._set_status)
 
@@ -1284,10 +1278,6 @@ class MainWindow(QMainWindow):
         self.actions.save_xml_action.setEnabled(True)
         self.actions.save_xml_as_action.setEnabled(True)
         self.planning.action.setEnabled(True)
-        source = self.project_coordinator.config_source
-        self.actions.link_savegame_action.setEnabled(
-            source is not None and source.format == ConfigFormat.ROUTE_EXPORT
-        )
 
         self._update_window_title()
 
