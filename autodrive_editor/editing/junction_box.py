@@ -37,6 +37,7 @@ from autodrive_editor.editing.junction import (
     _stem_ids,
     _straight,
     _turns_little,
+    kinked,
     lane_poses,
 )
 from autodrive_editor.editing.path_shapes import spaced_points
@@ -391,6 +392,11 @@ def _edge_pose(box_lane: BoxLane, end_index: int) -> Pose:
 def _right_turn(kind: CurveKind, box_lane: BoxLane, start: Pose, goal: Pose) -> Curve | None:
     """The arc of a right turn between the box edges, at BOX_MARGIN or tighter down to
     MIN_RADIUS."""
+
+    if kind == CurveKind.IN:
+        start = (*start[:2], kinked(kind, start[:2], start[2], goal[:2]))
+    else:
+        goal = (*goal[:2], kinked(kind, goal[:2], goal[2], start[:2]))
 
     radius = BOX_MARGIN
 

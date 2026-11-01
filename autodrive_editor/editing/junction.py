@@ -53,10 +53,14 @@ EXTRA_TURN = math.radians(30)
 # Around the junction node and the curve's road end, blocked cells do not count: the junction
 # may lie under a roof, and roads run close to fences.
 FREE_RADIUS = 3.0
+# Curves leave and join a road lane with this kink at the road node, like hand-made forks.
+FORK_KINK = math.radians(20)
 # Nodes on a curve are at most this many degrees of turn apart.
 NODE_TURN = math.radians(22.5)
-# Curve points this close to the line behind the junction lie on it, in metres.
-STEM_TOLERANCE = 0.01
+# Curve points this close to the line behind the junction, on a piece this parallel to it, lie on
+# it (curves from road ends 1 m apart reach it a few centimetres beside it), in metres / radians.
+STEM_TOLERANCE = 0.1
+STEM_PARALLEL = math.radians(2)
 # Points checked along a curve, in metres.
 SAMPLE = 0.5
 # Distance between the two lanes of a two-lane stem.
@@ -615,8 +619,16 @@ def _stem_part(curve: Curve, junction: Pose) -> tuple[list[Point], float]:
     while index > 0:
         px, pz = points[index - 1]
         back = (x - px) * dx + (z - pz) * dz
+        qx, qz = points[index]
+        length = math.hypot(qx - px, qz - pz)
+        sideways = abs((qx - px) * dz - (qz - pz) * dx)
 
         if abs((px - x) * dz - (pz - z) * dx) > STEM_TOLERANCE or back < -1e-6:
+            break
+        # The last point was moved onto the junction, so the last piece is left out.
+        parallel = index == len(points) - 1 or sideways <= length * math.sin(STEM_PARALLEL)
+
+        if not parallel:
             break
 
         index -= 1
@@ -753,6 +765,8 @@ def _fit(
 def _curve_path(kind: CurveKind, point: Point, lane_heading: float, junction: Pose, radius: float):
     """The Dubins path of the curve, or None if it turns much more than needed (a loop)."""
 
+    lane_heading = kinked(kind, point, lane_heading, junction[:2])
+
     if kind == CurveKind.IN:
         start, goal = (*point, lane_heading), junction
     else:
@@ -856,6 +870,7 @@ def _searched(
         return None
 
     _, end, heading = best
+    heading = kinked(kind, end.point, heading, junction[:2])
 
     if kind == CurveKind.IN:
         request = RouteRequest(
@@ -1059,6 +1074,17 @@ def _distance_to_segment(point: Point, a: Point, b: Point) -> float:
     t = _segment_fraction(point, a, b)
 
     return math.dist(point, (a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])))
+
+
+def kinked(kind: CurveKind, point: Point, lane_heading: float, toward: Point) -> float:
+    """The heading of a curve where it leaves (IN) or joins (OUT) a lane at the point: the lane
+    heading turned by FORK_KINK to the side where `toward` lies."""
+
+    dx, dz = math.cos(lane_heading), math.sin(lane_heading)
+    cross = dx * (toward[1] - point[1]) - dz * (toward[0] - point[0])
+    side = math.copysign(1.0, cross) if abs(cross) > 1e-9 else 0.0
+
+    return lane_heading + side * FORK_KINK * (1 if kind == CurveKind.IN else -1)
 
 
 def _heading(a: Point, b: Point) -> float:

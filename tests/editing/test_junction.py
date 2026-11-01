@@ -6,6 +6,7 @@ from costmap_helpers import make_costmap
 
 from autodrive_editor.editing.junction import (
     BOTH,
+    FORK_KINK,
     MIN_RADIUS,
     NODE_TURN,
     CurveKind,
@@ -14,6 +15,7 @@ from autodrive_editor.editing.junction import (
     is_on_two_way_road,
     junction_command,
     junction_distance,
+    kinked,
     lane_poses,
     plan_junction,
     road_lanes,
@@ -106,7 +108,7 @@ def test_road_lanes_follow_the_road_only_so_far():
     assert -120 < lane.points[0][0] < -60
 
 
-def test_four_curves_meet_at_the_junction_and_leave_the_lanes_tangentially():
+def test_four_curves_meet_at_the_junction_and_leave_the_lanes_with_a_kink():
     data = two_lane_road()
     plan = plan_junction(road_lanes(data, 7, 8), JUNCTION, BOTH, 6.0, None, VEHICLE)
 
@@ -129,11 +131,20 @@ def test_four_curves_meet_at_the_junction_and_leave_the_lanes_tangentially():
             end_heading = headings(curve.points[:2])[0] + math.pi
 
         lane_heading = 0.0 if lane_z == 0.0 else math.pi
-        assert math.cos(road_heading - lane_heading) > 0.99
+        kink = abs(math.remainder(road_heading - lane_heading, math.tau))
+        assert kink == pytest.approx(FORK_KINK, abs=0.05)
         assert math.cos(end_heading - JUNCTION[2]) > 0.99
 
 
-def test_curves_on_a_curved_road_leave_it_tangentially():
+def test_kinked_turns_the_lane_heading_towards_the_other_end():
+    # East-bound lane, the other end to the north (+z).
+    assert kinked(CurveKind.IN, (0, 0), 0.0, (5, 10)) == pytest.approx(FORK_KINK)
+    assert kinked(CurveKind.OUT, (0, 0), 0.0, (-5, 10)) == pytest.approx(-FORK_KINK)
+    assert kinked(CurveKind.IN, (0, 0), 0.0, (5, -10)) == pytest.approx(-FORK_KINK)
+    assert kinked(CurveKind.IN, (0, 0), 0.0, (10, 0)) == 0.0
+
+
+def test_curves_on_a_curved_road_leave_it_with_a_kink():
     # East-bound lane on a circle of 60 m radius around (0, 60), bending away from the junction
     # side: the road runs north of the circle's centre.
     data = AutoDriveData()
@@ -156,7 +167,8 @@ def test_curves_on_a_curved_road_leave_it_tangentially():
             heading = headings(curve.points[:2])[0]
         else:
             heading = headings(curve.points[-2:])[0]
-        assert math.cos(heading - tangent) > 0.98
+        kink = abs(math.remainder(heading - tangent, math.tau))
+        assert kink == pytest.approx(FORK_KINK, abs=0.05)
 
 
 def test_a_blocked_curve_moves_along_the_road_or_tightens():
