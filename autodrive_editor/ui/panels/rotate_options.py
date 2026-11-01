@@ -1,11 +1,11 @@
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QDoubleSpinBox, QFormLayout, QWidget
+from PySide6.QtWidgets import QDoubleSpinBox, QHBoxLayout, QLabel, QWidget
 
 from autodrive_editor.i18n import tr
 
 
 class RotateOptionsWidget(QWidget):
-    """The snap step of the Rotate tool, shown from the arrow of its button."""
+    """The snap step of the Rotate tool, shown in the options bar."""
 
     snap_angle_changed = Signal(float)
 
@@ -20,5 +20,8 @@ class RotateOptionsWidget(QWidget):
         self.snap_angle_box.setValue(snap_angle)
         self.snap_angle_box.valueChanged.connect(self.snap_angle_changed.emit)
 
-        layout = QFormLayout(self)
-        layout.addRow(tr("Snap step (Shift):"), self.snap_angle_box)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(QLabel(tr("Snap step (Shift):"), self))
+        layout.addWidget(self.snap_angle_box)
+        layout.addStretch(1)

@@ -7,11 +7,8 @@ from PySide6.QtWidgets import (
     QInputDialog,
     QLabel,
     QMainWindow,
-    QMenu,
-    QToolButton,
     QVBoxLayout,
     QWidget,
-    QWidgetAction,
 )
 
 from autodrive_editor.editing.commands.edit_command import DataChange
@@ -84,6 +81,7 @@ from autodrive_editor.ui.panels.display_options_dialog import DisplayOptionsDial
 from autodrive_editor.ui.panels.generate_options import GenerateOptionsWidget
 from autodrive_editor.ui.panels.marker_dock import MarkerDock
 from autodrive_editor.ui.panels.node_info_formatter import NodeInfoFormatter
+from autodrive_editor.ui.panels.options_bar import OptionsBar
 from autodrive_editor.ui.panels.path_options import PathOptionsWidget
 from autodrive_editor.ui.panels.rotate_options import RotateOptionsWidget
 from autodrive_editor.ui.panels.welcome_panel import WelcomePanel
@@ -891,10 +889,7 @@ class MainWindow(QMainWindow):
         self.set_interaction_mode(InteractionMode.GENERATE)
 
     def _create_tool_options(self):
-        """The options behind the arrows of the Rotate and path tool buttons."""
-
-        tool_panel = self.actions.tool_panel
-        tool_actions = self.actions.tool_actions
+        """The options of the Rotate, Generate and Draw tools in the options bar."""
 
         rotate_options = RotateOptionsWidget(self.rotate_selection_operation.snap_angle)
 
@@ -903,68 +898,41 @@ class MainWindow(QMainWindow):
             self.settings.set_rotate_snap_angle(angle)
 
         rotate_options.snap_angle_changed.connect(apply_snap_angle)
+        self.options_bar.add_options([InteractionMode.ROTATE_SELECTION], rotate_options)
 
-        # The Generate button is on the quick access bar: same arrow as on the tool panel.
         self.generate_options = GenerateOptionsWidget(
             self.generate_tool.task, *self.settings.junction_stem, self.settings.junction_style
         )
-        button = self.actions.quick_access_toolbar.widgetForAction(self.actions.generate_action)
-        menu = QMenu(button)
-        widget_action = QWidgetAction(menu)
-        widget_action.setDefaultWidget(self.generate_options)
-        menu.addAction(widget_action)
-        button.setMenu(menu)
-        button.setPopupMode(QToolButton.MenuButtonPopup)
         self.generate_options.task_changed.connect(self.set_generate_task)
-        self.generate_options.task_changed.connect(menu.close)
-
-        # Bound now: both names are used again below.
-        def refit_menu(menu=menu, widget_action=widget_action):
-            # The task's options may have appeared or disappeared: measure the menu again.
-            menu.removeAction(widget_action)
-            menu.addAction(widget_action)
-
-        menu.aboutToShow.connect(refit_menu)
         self.generate_options.stem_changed.connect(self.settings.set_junction_stem)
         self.generate_options.style_changed.connect(self.settings.set_junction_style)
-        tool_panel.set_tool_options(tool_actions[InteractionMode.ROTATE_SELECTION], rotate_options)
+        self.options_bar.add_options([InteractionMode.GENERATE], self.generate_options)
 
-        # One options widget per path tool; changing one updates the others.
-        self.path_options_widgets = {}
+        # One options widget for the three draw tools.
+        self.path_options = PathOptionsWidget(self.create_path_operation.options)
+        self.path_options.options_changed.connect(self._apply_path_options)
+        self.path_options.apply_requested.connect(self.create_path_operation.apply)
+        self.options_bar.add_options(
+            [InteractionMode.DRAW_LINE, InteractionMode.DRAW_ARC, InteractionMode.DRAW_BEZIER],
+            self.path_options,
+        )
 
-        for interaction_mode, shape in (
-            (InteractionMode.DRAW_LINE, PathShape.LINE),
-            (InteractionMode.DRAW_BEZIER, PathShape.BEZIER),
-            (InteractionMode.DRAW_ARC, PathShape.ARC),
-        ):
-            widget = PathOptionsWidget(
-                self.create_path_operation.options,
-                show_control_points=shape == PathShape.BEZIER,
-            )
-            menu = tool_panel.set_tool_options(tool_actions[interaction_mode], widget)
+        def update_apply_button():
+            self.path_options.apply_button.setEnabled(self.create_path_operation.is_adjusting)
 
-            widget.options_changed.connect(self._apply_path_options)
-            widget.apply_requested.connect(self.create_path_operation.apply)
-            widget.apply_requested.connect(menu.close)
+        self.create_path_operation.preview_changed.connect(update_apply_button)
+        update_apply_button()
 
-            self.path_options_widgets[shape] = widget
+        def show_tool(mode):
+            self.options_bar.show_tool(mode)
+            self.path_options.set_control_points_visible(mode == InteractionMode.DRAW_BEZIER)
 
-        def update_apply_buttons():
-            for widget in self.path_options_widgets.values():
-                widget.apply_button.setEnabled(self.create_path_operation.is_adjusting)
-
-        self.create_path_operation.preview_changed.connect(update_apply_buttons)
-
-        update_apply_buttons()
+        self.view.interaction_mode_changed.connect(show_tool)
+        show_tool(self.view.interaction_mode)
 
     def _apply_path_options(self, options):
         self.create_path_operation.set_options(options)
         self.settings.set_path_options(options)
-
-        for widget in self.path_options_widgets.values():
-            widget.blockSignals(True)
-            widget.set_options(options)
-            widget.blockSignals(False)
 
     def _register_marker_tools(self):
         operation = self.marker_operation
@@ -1100,11 +1068,13 @@ class MainWindow(QMainWindow):
         self.statusBar().addWidget(self.status, 1)
 
     def _create_central_widget(self):
-        # The planning bar sits above the map.
+        # The options bar and the planning bar sit above the map.
+        self.options_bar = OptionsBar(self)
         central = QWidget(self)
         layout = QVBoxLayout(central)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
+        layout.addWidget(self.options_bar)
         layout.addWidget(self.planning.bar)
         layout.addWidget(self.view, 1)
         self.setCentralWidget(central)

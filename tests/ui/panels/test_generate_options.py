@@ -4,13 +4,14 @@ from autodrive_editor.ui.panels.generate_options import GenerateOptionsWidget
 from autodrive_editor.ui.tools.generate_tool import GenerateTask
 
 
-def test_stem_options_are_shown_for_the_junction_task_only(qapp):
+def test_stem_options_are_enabled_for_the_junction_task_only(qapp):
     widget = GenerateOptionsWidget(GenerateTask.ROUTE, Stem.AUTO, 5.5)
 
-    assert widget.junction_options.isHidden()
+    assert not widget.junction_options.isEnabled()
 
     widget.task_buttons[GenerateTask.JUNCTION].setChecked(True)
 
+    assert widget.junction_options.isEnabled()
     assert not widget.junction_options.isHidden()
 
 

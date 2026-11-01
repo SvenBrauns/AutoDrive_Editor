@@ -1,5 +1,5 @@
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QComboBox, QDoubleSpinBox, QLabel, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QComboBox, QDoubleSpinBox, QHBoxLayout, QLabel, QPushButton, QWidget
 
 from autodrive_editor.editing.path_shapes import PathOptions
 from autodrive_editor.i18n import tr
@@ -9,21 +9,20 @@ from autodrive_editor.model.connections import ConnectionType
 
 class PathOptionsWidget(QWidget):
     """Node spacing, connection type and node type of the line and curve
-    tools, and a button that creates the pending curve. The Bézier tool's
-    copy also offers the number of control points."""
+    tools, and a button that creates the pending curve. For the Bézier tool
+    it also offers the number of control points."""
 
     options_changed = Signal(object)
 
     apply_requested = Signal()
 
-    def __init__(self, options: PathOptions, show_control_points: bool = False, parent=None):
+    def __init__(self, options: PathOptions, parent=None):
         super().__init__(parent)
 
         self._control_points = options.control_points
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(4, 4, 4, 0)
-        layout.setSpacing(2)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
 
         self.spacing_box = QDoubleSpinBox(self)
         self.spacing_box.setRange(0.5, 100.0)
@@ -52,23 +51,22 @@ class PathOptionsWidget(QWidget):
         self.apply_button.setToolTip(tr("Create curve (Enter)"))
         self.apply_button.clicked.connect(self.apply_requested.emit)
 
-        rows = [
+        self.control_points_label = QLabel(tr("Control points"), self)
+
+        for title, widget in (
             (tr("Spacing"), self.spacing_box),
             ("Connection", self.connection_box),
             (tr("Node type"), self.flag_box),
-        ]
-
-        if show_control_points:
-            rows.append((tr("Control points"), self.control_points_box))
-
-        else:
-            self.control_points_box.hide()
-
-        for title, widget in rows:
+        ):
             layout.addWidget(QLabel(title, self))
             layout.addWidget(widget)
+            layout.addSpacing(8)
 
+        layout.addWidget(self.control_points_label)
+        layout.addWidget(self.control_points_box)
         layout.addWidget(self.apply_button)
+        layout.addStretch(1)
+        self.set_control_points_visible(False)
 
         self.set_options(options)
 
@@ -96,6 +94,10 @@ class PathOptionsWidget(QWidget):
         self.control_points_box.setCurrentIndex(
             self.control_points_box.findData(options.control_points)
         )
+
+    def set_control_points_visible(self, visible: bool):
+        self.control_points_label.setVisible(visible)
+        self.control_points_box.setVisible(visible)
 
     def _emit_control_points(self):
         self._control_points = self.control_points_box.currentData()

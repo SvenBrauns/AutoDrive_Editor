@@ -41,7 +41,7 @@ def test_grid_spacing_is_used(snap_window):
     snap_window.grid_coordinator.set_grid_spacing(4.0)
     snap_window.set_interaction_mode(InteractionMode.CREATE_NODES)
 
-    click(snap_window, view_pos(snap_window, 13, 18))
+    click(snap_window, view_pos(snap_window, 13, 17))
 
     assert xz(snap_window, 4) == (12, 16)
 

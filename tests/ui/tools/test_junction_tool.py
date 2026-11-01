@@ -136,25 +136,12 @@ def test_the_preview_shows_both_lanes_of_a_two_lane_stem(window):
         assert (end.x, end.y) == pytest.approx((lane_x, 25), abs=0.5)
 
 
-def test_the_stem_options_fit_into_the_menu_and_are_saved(window, qapp):
+def test_the_stem_options_are_in_the_options_bar_and_are_saved(window):
     options = window.generate_options
-    menu = window.actions.quick_access_toolbar.widgetForAction(
-        window.actions.generate_action
-    ).menu()
-
-    def opened_height():
-        menu.popup(menu.pos())
-        qapp.processEvents()
-        height = menu.height()
-        menu.close()
-        return height
-
-    route_height = opened_height()
     options.task_buttons[GenerateTask.JUNCTION].setChecked(True)
-    options.gap_box.setValue(7.0)
-    qapp.processEvents()
 
-    assert opened_height() > route_height
+    assert window.options_bar.stack.currentWidget() is options
+    options.gap_box.setValue(7.0)
     assert window.settings.junction_stem == (Stem.AUTO, 7.0)
     options.style_box.setCurrentIndex(options.style_box.findData(Style.CURVES))
     assert window.settings.junction_style == Style.CURVES
