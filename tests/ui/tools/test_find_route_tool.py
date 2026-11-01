@@ -45,6 +45,21 @@ def test_clicks_on_free_ground_and_nodes_add_waypoints_and_show_the_route(window
     tool = window.generate_tool.current
     assert tool._route_item.isVisible() and not tool._route_item.path().isEmpty()
     assert tool._blocked_item.path().isEmpty()
+    assert tool._gap_item.path().isEmpty()
+
+
+def test_a_gap_is_drawn_where_no_route_was_found(window, monkeypatch):
+    # The search gets stuck at once.
+    monkeypatch.setattr("autodrive_editor.editing.route_finder.MAX_EXPANSIONS", 1)
+    monkeypatch.setattr(
+        "autodrive_editor.editing.route_finder._Search._dubins_end", lambda *a: None
+    )
+    click(window, view_pos(window, 0, 20))
+    click(window, view_pos(window, 40, 20))
+    wait(window)
+
+    tool = window.generate_tool.current
+    assert tool._gap_item.isVisible() and not tool._gap_item.path().isEmpty()
 
 
 def test_dragging_a_node_moves_it_and_adds_no_waypoint(window):
@@ -161,15 +176,15 @@ def test_the_generate_button_shows_the_current_task(window):
 
 def test_dragging_the_route_inserts_a_waypoint_there(window):
     click(window, view_pos(window, 0, 20))
-    click(window, view_pos(window, 20, 20))
+    click(window, view_pos(window, 40, 20))
     wait(window)
 
-    drag(window, view_pos(window, 10, 20), view_pos(window, 10, 26))
+    drag(window, view_pos(window, 20, 20), view_pos(window, 20, 26))
     wait(window)
 
     waypoints = window.find_route_operation.waypoints
     assert len(waypoints) == 3
-    assert waypoints[1].x == pytest.approx(10, abs=0.5)
+    assert waypoints[1].x == pytest.approx(20, abs=0.5)
     assert waypoints[1].z == pytest.approx(26, abs=0.5)
     route = window.find_route_operation.route
     assert route.points[route.waypoint_indices[1]] == pytest.approx(

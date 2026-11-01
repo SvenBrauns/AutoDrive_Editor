@@ -1,6 +1,5 @@
 import logging
 import math
-import threading
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from itertools import pairwise
@@ -11,6 +10,7 @@ from PySide6.QtCore import Signal
 from autodrive_editor.editing.commands.add_route import AddRouteCommand
 from autodrive_editor.editing.edit_context import EditContext, EditOperation
 from autodrive_editor.editing.join_rules import join_problem
+from autodrive_editor.editing.operations.background_search import BackgroundSearch
 from autodrive_editor.editing.route_finder import Route, RouteFinder, RouteRequest, Vehicle
 from autodrive_editor.editing.route_nodes import (
     chain_connections,
@@ -58,8 +58,6 @@ class FindRouteOperation(EditOperation):
     preview_changed = Signal()
     # A search started or ended.
     searching_changed = Signal(bool)
-    # From the search thread: the search number and the route or None.
-    _search_done = Signal(int, object)
 
     def __init__(
         self,
@@ -93,7 +91,7 @@ class FindRouteOperation(EditOperation):
         self._search_number = 0
         self._running: dict | None = None
         self._search_again = False
-        self._search_done.connect(self._finish)
+        self._background = BackgroundSearch(self)
         self.edit_history.data_changed.connect(self._handle_data_changed)
         # Only an ended plan changes the planned lanes; a new plan is empty.
         self.edit_history.planning_changed.connect(lambda planning: planning or self._search())
@@ -256,6 +254,10 @@ class FindRouteOperation(EditOperation):
             self.status_changed.emit(tr("The route is still being searched"))
             return False
 
+        if not self.route.is_complete:
+            self.status_changed.emit(self._gap_message(self.route))
+            return False
+
         if not self.route.is_clear:
             self.status_changed.emit(
                 tr("The route crosses obstacles (red). Move or add waypoints first")
@@ -307,21 +309,14 @@ class FindRouteOperation(EditOperation):
             return
 
         self._search_number += 1
-        cancelled = threading.Event()
-        self._running = {"number": self._search_number, "cancelled": cancelled}
         finder = RouteFinder(self.costmap_provider(), self.vehicle_provider())
         number = self._search_number
-
-        def search():
-            result = finder.find(request, cancelled.is_set)
-
-            try:
-                self._search_done.emit(number, result)
-            except RuntimeError:
-                # The window was closed during the search.
-                pass
-
-        threading.Thread(target=search, daemon=True).start()
+        cancelled = self._background.start(
+            lambda cancelled: finder.find(request, cancelled),
+            lambda route: self._finish(number, route),
+            lambda: self._finish(number, None, failed=True),
+        )
+        self._running = {"number": number, "cancelled": cancelled}
 
         self.searching_changed.emit(True)
         self.preview_changed.emit()
@@ -376,7 +371,7 @@ class FindRouteOperation(EditOperation):
 
         return tuple(headings) or None
 
-    def _finish(self, number: int, route):
+    def _finish(self, number: int, route, failed: bool = False):
         if self._running is None or number != self._running["number"]:
             return
 
@@ -390,8 +385,12 @@ class FindRouteOperation(EditOperation):
         self.searching_changed.emit(False)
         self.route = self.shown_route = route
 
-        if route is None:
+        if failed:
+            self.status_changed.emit(tr("The route search failed. Details are in the log file"))
+        elif route is None:
             self.status_changed.emit(tr("No route found through the waypoints"))
+        elif not route.is_complete:
+            self.status_changed.emit(self._gap_message(route))
         elif not route.is_clear:
             self.status_changed.emit(
                 tr("The route crosses obstacles (red). Move nodes or waypoints until it is clear")
@@ -401,6 +400,21 @@ class FindRouteOperation(EditOperation):
             self.status_changed.emit(". ".join([message, *self.join_warnings()]))
 
         self.preview_changed.emit()
+
+    def _gap_message(self, route: Route) -> str:
+        if route.too_close:
+            return tr(
+                "Waypoints {first} and {second} are too close for the turning radius of {radius} m "
+                "(red dashed). Move them apart",
+                first=route.gap_to,
+                second=route.gap_to + 1,
+                radius=f"{self.vehicle_provider().turning_radius:g}",
+            )
+
+        return tr(
+            "No drivable way found to waypoint {number} (red dashed). Move or add waypoints there",
+            number=route.gap_to + 1,
+        )
 
     def _handle_data_changed(self, _data_change):
         """Waypoints on nodes or connections follow them; waypoints of deleted nodes or

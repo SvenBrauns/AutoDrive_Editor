@@ -176,6 +176,47 @@ def test_route_through_a_wall_is_marked_and_not_added(qapp):
     assert set(route.data.nodes) == {1, 2}
 
 
+def test_a_route_with_a_gap_names_the_waypoint_and_is_not_added(qapp, monkeypatch):
+    # Too few steps to get through the corridor.
+    monkeypatch.setattr("autodrive_editor.editing.route_finder.MAX_EXPANSIONS", 5)
+    route = Fixture(qapp)
+    route.start_plan()
+
+    assert not route.find(1, 2).is_complete
+    message = "No drivable way found to waypoint 2 (red dashed). Move or add waypoints there"
+    assert route.messages[-1] == message
+    assert not route.operation.apply()
+    assert route.messages[-1] == message
+    assert set(route.data.nodes) == {1, 2}
+
+
+def test_waypoints_too_close_for_the_radius_are_named(route):
+    # One-way lanes east: the start node 11 and, 5 m behind it, the goal node 12.
+    for node_id, x, z in ((10, -20, 0), (11, 0, 0), (12, -5, 1), (13, 15, 1)):
+        route.data.add_node(NodeData(node_id, x, 0, z))
+    for source, target in ((10, 11), (12, 13)):
+        write_connection_state(
+            route.data, source, target, CONNECTION_STATES[ConnectionType.REGULAR]
+        )
+
+    assert route.find(11, 12).too_close
+    assert route.messages[-1] == (
+        "Waypoints 1 and 2 are too close for the turning radius of 8 m (red dashed). "
+        "Move them apart"
+    )
+
+
+def test_a_failing_search_ends_with_an_error_message(route, monkeypatch):
+    def broken(*args):
+        raise RuntimeError("broken")
+
+    monkeypatch.setattr("autodrive_editor.editing.route_finder.RouteFinder.find", broken)
+
+    assert route.find(1, 2) is None
+    assert not route.operation.is_searching
+    assert route.messages[-1] == "The route search failed. Details are in the log file"
+
+
 def test_waypoints_follow_moved_nodes_and_the_route_is_searched_again(route):
     route.find(1, 2)
 

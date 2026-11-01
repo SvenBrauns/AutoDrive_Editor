@@ -12,7 +12,7 @@ Headings as in junction.py: radians in the x-z plane, a rising heading turns rig
 
 import math
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from itertools import pairwise
 
@@ -29,6 +29,7 @@ from autodrive_editor.editing.junction import (
     CurveKind,
     RoadEnd,
     RoadLane,
+    _across_gap,
     _BlockedCheck,
     _compass,
     _heading,
@@ -36,6 +37,7 @@ from autodrive_editor.editing.junction import (
     _stem_ids,
     _straight,
     _turns_little,
+    kinked,
     lane_poses,
 )
 from autodrive_editor.editing.path_shapes import spaced_points
@@ -90,6 +92,8 @@ class BoxPlan:
     # Pieces that do not fit, and pieces built on blocked ground, as text for the user.
     missing: list[str]
     blocked: list[str]
+    # The pieces that do not fit as straight lines between their ends.
+    gaps: list[tuple[Point, Point]] = field(default_factory=list)
 
     def paths(self) -> list[tuple[Point, ...]]:
         """Lines for the preview."""
@@ -173,6 +177,7 @@ def plan_box(
 
         if curve is None:
             plan.missing.append(_missing_across_text(lane, kind, junction))
+            plan.gaps.append(_across_gap(lane, kind, (*far_edges[index], heading)))
         else:
             far_arm[kind] = curve
 
@@ -206,6 +211,7 @@ def plan_box(
 
         if curve is None:
             plan.missing.append(tr("No {turn}").format(turn=name))
+            plan.gaps.append((start[:2], goal[:2]))
             continue
 
         plan.curves.append(curve)
@@ -386,6 +392,11 @@ def _edge_pose(box_lane: BoxLane, end_index: int) -> Pose:
 def _right_turn(kind: CurveKind, box_lane: BoxLane, start: Pose, goal: Pose) -> Curve | None:
     """The arc of a right turn between the box edges, at BOX_MARGIN or tighter down to
     MIN_RADIUS."""
+
+    if kind == CurveKind.IN:
+        start = (*start[:2], kinked(kind, start[:2], start[2], goal[:2]))
+    else:
+        goal = (*goal[:2], kinked(kind, goal[:2], goal[2], start[:2]))
 
     radius = BOX_MARGIN
 

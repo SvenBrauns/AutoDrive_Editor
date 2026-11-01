@@ -2,9 +2,15 @@ import math
 
 import pytest
 from costmap_helpers import make_costmap
-from test_junction import VEHICLE, connect, reachable, road, two_lane_road
+from test_junction import VEHICLE, connect, headings, max_turn, reachable, road, two_lane_road
 
-from autodrive_editor.editing.junction import CurveKind, road_lanes, roads_across, stem_poses
+from autodrive_editor.editing.junction import (
+    FORK_KINK,
+    CurveKind,
+    road_lanes,
+    roads_across,
+    stem_poses,
+)
 from autodrive_editor.editing.junction_box import BOX_MARGIN, box_command, plan_box
 from autodrive_editor.editing.route_finder import Vehicle
 from autodrive_editor.model.autodrive_data import AutoDriveData
@@ -110,18 +116,20 @@ def test_the_box_reaches_7_m_beyond_the_outer_lanes():
     assert plan.missing == [] and plan.blocked == []
 
 
-def test_right_turns_are_arcs_from_box_edge_to_box_edge():
+def test_right_turns_run_from_box_edge_to_box_edge_with_a_kink_at_the_road():
     plan = plan_box(road_lanes(offset_road(), 7, 8), FOOT, SOUTH, GAP)
 
     turn_in, turn_out = plan.curves
     assert turn_in.kind == CurveKind.IN and turn_out.kind == CurveKind.OUT
-    assert turn_in.points[0] == pytest.approx((-9.75, 0)) and turn_in.radius == BOX_MARGIN
+    assert turn_in.points[0] == pytest.approx((-9.75, 0)) and turn_in.radius <= BOX_MARGIN
     assert turn_in.points[-1] == pytest.approx((-2.75, 7))
     assert turn_out.points[0] == pytest.approx((2.75, 7))
     assert turn_out.points[-1] == pytest.approx((9.75, 0))
 
-    for point in turn_in.points:
-        assert math.dist(point, (-9.75, 7)) == pytest.approx(BOX_MARGIN, abs=0.01)
+    # Leaves the east-bound lane 20° towards the stem, joins the east-bound lane from it.
+    assert headings(turn_in.points[:2])[0] == pytest.approx(FORK_KINK, abs=0.05)
+    assert headings(turn_out.points[-2:])[0] == pytest.approx(-FORK_KINK, abs=0.05)
+    assert max_turn(turn_in.points) <= 1 / turn_in.radius + 0.02
 
 
 def test_box_command_shares_crossing_nodes_and_makes_the_arms_two_way():
@@ -216,6 +224,7 @@ def test_a_far_arm_that_does_not_fit_is_listed_and_left_out():
     plan = plan_box(lanes, FOOT, SOUTH, GAP, costmap, VEHICLE, across=across)
 
     assert plan.missing == ["No straight on to the north", "No straight on from the north"]
+    assert len(plan.gaps) == 2
     assert plan.stem[0][0] == pytest.approx((-2.75, -4))
     assert len(plan.curves) == 2
 

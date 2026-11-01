@@ -130,6 +130,45 @@ def test_curves_that_do_not_fit_are_searched_then_added(qapp):
     assert fixture.messages[-1].startswith("Junction added")
 
 
+def test_a_failing_search_ends_with_an_error_message(qapp, monkeypatch):
+    def broken(*args):
+        raise RuntimeError("broken")
+
+    monkeypatch.setattr("autodrive_editor.editing.route_finder.RouteFinder.find", broken)
+    costmap = make_costmap(blocked=[(-90, 3, 10, 8), (30, 3, 90, 8)])
+    fixture = Fixture(qapp, costmap)
+    fixture.history.start_plan()
+    fixture.drag(2.0, 30.0)
+
+    assert fixture.operation.finish()
+    fixture.wait()
+
+    assert not fixture.operation.is_searching
+    assert len(fixture.data.nodes) == 13
+    assert fixture.messages[-1] == "The junction search failed. Details are in the log file"
+
+
+def test_pieces_left_out_stay_shown_as_gaps_until_esc(qapp, monkeypatch):
+    # A wall west of the junction; the search finds no way round it.
+    monkeypatch.setattr(
+        "autodrive_editor.editing.route_finder.RouteFinder.find", lambda *args: None
+    )
+    fixture = Fixture(qapp, make_costmap(blocked=[(-100, 3, 1, 8)]))
+    fixture.history.start_plan()
+    fixture.drag(2.0, 30.0)
+    assert fixture.operation.gaps == fixture.operation.preview.plan.gaps != []
+
+    assert fixture.operation.finish()
+    fixture.wait()
+
+    assert "missing: No right turn in from the west" in fixture.messages[-1]
+    assert fixture.operation.preview is None
+    assert len(fixture.operation.gaps) == 1
+
+    assert fixture.operation.cancel()
+    assert fixture.operation.gaps == []
+
+
 def test_cancel_clears_the_preview(qapp):
     fixture = Fixture(qapp)
     fixture.drag(2.0, 20.0)

@@ -678,6 +678,17 @@ TEXTS = {
     "The route crosses obstacles (red). Move or add waypoints first": "Die Route kreuzt Hindernisse (rot). Zuerst Wegpunkte verschieben oder hinzufügen",
     "Route with {count} new nodes added": "Route mit {count} neuen Nodes hinzugefügt",
     "No route found through the waypoints": "Keine Route durch die Wegpunkte gefunden",
+    "Waypoints {first} and {second} are too close for the turning radius of {radius} m (red dashed). Move them apart": (
+        "Die Wegpunkte {first} und {second} liegen zu nah für den Wenderadius von {radius} m "
+        "(rot gestrichelt). Weiter auseinander schieben"
+    ),
+    "No drivable way found to waypoint {number} (red dashed). Move or add waypoints there": (
+        "Kein befahrbarer Weg zu Wegpunkt {number} gefunden (rot gestrichelt). Dort Wegpunkte "
+        "verschieben oder hinzufügen"
+    ),
+    "The route search failed. Details are in the log file": (
+        "Die Routensuche ist fehlgeschlagen. Details stehen in der Logdatei"
+    ),
     "The route crosses obstacles (red). Move nodes or waypoints until it is clear": "Die Route kreuzt Hindernisse (rot). Nodes oder Wegpunkte verschieben, bis sie frei ist",
     "Route found. Enter adds it to the plan": "Route gefunden. Enter fügt sie dem Plan hinzu",
     # editing/join_rules.py
@@ -745,6 +756,9 @@ TEXTS = {
     "Lane gap:": "Spurabstand:",
     "Distance between the two lanes of the stem": "Abstand zwischen den beiden Spuren der Zufahrt",
     "Searching the curves that do not fit…": "Suche die Kurven, die nicht passen …",
+    "The junction search failed. Details are in the log file": (
+        "Die Suche für die Einmündung ist fehlgeschlagen. Details stehen in der Logdatei"
+    ),
     "Press on a road and drag towards the yard to place a junction, Esc cancels": "Auf eine Straße drücken und zum Hof ziehen, um eine Einmündung zu setzen, Esc bricht ab",
     "Drag the handle to bend the stem, drop it on a node to join it; Enter or a click elsewhere adds the junction, Esc cancels": "Den Griff ziehen, um die Zufahrt zu biegen, auf einem Wegpunkt ablegen, um sie dort anzuschließen; Enter oder ein Klick daneben fügt die Einmündung hinzu, Esc bricht ab",
     # game picture capture
