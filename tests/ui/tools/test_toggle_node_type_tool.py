@@ -137,11 +137,11 @@ def test_undo_restores_type_and_color(toggling):
 
 def test_node_info_shows_new_type(toggling):
     select(toggling, QRectF(5, -5, 10, 10))  # node 2
-    assert "Regular node" in toggling.debug_dock.node_info_value.text()
+    assert "Regular node" in toggling.inspector_dock.node_info_value.text()
 
     click(toggling, view_pos(toggling, 10, 0))
 
-    assert "Subprio node" in toggling.debug_dock.node_info_value.text()
+    assert "Subprio node" in toggling.inspector_dock.node_info_value.text()
 
 
 def test_click_on_empty_map_and_drag_change_nothing(toggling):

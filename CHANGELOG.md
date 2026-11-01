@@ -7,6 +7,7 @@
 - Measure is a tool (Distance `D`, Angle `Shift+D`) with `Align view to line` in its options bar; the three measuring buttons left the toolbar. Esc with nothing to clear goes back to the tool used before
 - The Tools panel is now a fixed one-column tool strip at the left with all 17 tools. Selection is the start tool; the Navigation tool is gone (left-drag on free ground pans in every tool). Selection and Generate left the top toolbar; `View → Tools` and `Show tool labels` are gone
 - Top toolbar: Open and Save (new icons), a Background button with the three backgrounds, then Grid, Snap to grid, Rotation and Refresh game picture tiles. The Grid popup no longer has its own snap checkbox (it showed the wrong key `G`)
+- Inspector dock (tabbed with Markers): shows the selected node; the node info left `Debug info`, which keeps only the runtime numbers and moved to `Help → Debug info`
 - Options bar above the map: shows the active tool's name and its options. The options of Rotate, Line, Arc, Bézier and Generate moved there from the arrows of their buttons
 - `Map → Refresh game picture tiles`: mark tiles of the game picture on the map (click, or right-drag a box) and let the game render just those again, e.g. after changing a yard; the status bar shows the estimated time
 - `Map → Capture game picture…`: the companion mod `FS25_AutoDriveEditorLink` renders the whole map from above in the running game; the editor shows it as `View → Background → Game picture`. Resolution 0.25 or 0.5 m/px, progress and `Cancel` in the status bar, tiles appear as they arrive
