@@ -4,14 +4,19 @@ from itertools import pairwise
 import pytest
 from costmap_helpers import GRASS, ROAD, make_costmap
 
+from autodrive_editor.editing.dubins import shortest_path
 from autodrive_editor.editing.route_finder import (
+    LOOP_CIRCLES,
     SWERVE_COST,
     Grid,
     RouteFinder,
     RouteRequest,
     Vehicle,
+    _is_loop,
+    _loop_start,
     _Node,
     _Search,
+    _too_close_leg,
     cell_cost,
 )
 from autodrive_editor.file_io.navigation_costmap import NavigationCostmap
@@ -197,15 +202,86 @@ def test_debug_log_tells_that_the_route_crosses_blocked_cells(caplog):
     assert "crosses blocked cells" in caplog.text
 
 
-def test_a_waypoint_in_a_closed_area_is_still_passed_and_the_crossing_marked(monkeypatch):
-    # Few steps, so the search gets stuck before the goal and continues in direct curves.
-    monkeypatch.setattr("autodrive_editor.editing.route_finder.MAX_EXPANSIONS", 300)
+def test_a_stuck_search_ends_the_route_there_with_a_gap_through_the_rest(monkeypatch):
+    # Few steps, so the search gets stuck before the goal.
+    monkeypatch.setattr("autodrive_editor.editing.route_finder.MAX_EXPANSIONS", 20)
     waypoints = ((-40, 0), (31, 0), (60, 40))
     route = RouteFinder(make_costmap(blocked=CLOSED_AREA), VEHICLE).find(RouteRequest(waypoints))
 
-    for index, waypoint in zip(route.waypoint_indices, waypoints, strict=True):
-        assert route.points[index] == pytest.approx(waypoint)
-    assert not route.is_clear
+    assert not route.is_complete and not route.is_clear
+    assert route.gap[0] == route.points[-1]
+    assert route.gap[1:] == list(waypoints[route.gap_to :])
+    assert len(route.waypoint_indices) == route.gap_to
+    assert not route.too_close
+
+
+def test_waypoints_too_close_for_the_radius_are_reported_without_a_search(caplog):
+    # The goal 5 m behind the start, both heading east: only a loop gets there.
+    request = RouteRequest(((0, 0), (-5, 0)), (0.0,), (0.0,))
+
+    with caplog.at_level("DEBUG", logger="autodrive_editor.editing.route_finder"):
+        route = RouteFinder(make_costmap(), VEHICLE).find(request)
+
+    assert route.too_close and route.points == []
+    assert route.gap == [(0, 0), (-5, 0)] and route.gap_to == 1
+    assert "Search window" not in caplog.text
+
+
+def test_waypoints_are_too_close_only_where_both_headings_are_fixed():
+    # A free goal heading leaves room for a wide turn of less than a loop.
+    assert _too_close_leg(RouteRequest(((0, 0), (-5, 0)), (0.0,), (0.0,)), 8) == 0
+    assert _too_close_leg(RouteRequest(((0, 0), (-5, 0)), (0.0,)), 8) is None
+    assert _too_close_leg(RouteRequest(((-40, 0), (0, 0), (-5, 0)), (0.0,), (0.0,)), 8) is None
+
+
+def test_a_u_turn_is_no_loop_but_a_full_circle_is():
+    radius = 8
+    reach = LOOP_CIRCLES * math.tau * radius
+    u_turn = [
+        (radius * math.sin(a / 20 * math.pi), radius * (1 - math.cos(a / 20 * math.pi)))
+        for a in range(21)
+    ]
+    circle = [
+        (radius * math.sin(a / 20 * math.tau), radius * (1 - math.cos(a / 20 * math.tau)))
+        for a in range(21)
+    ]
+
+    assert _loop_start(u_turn, reach) is None
+    assert _loop_start([(-30, 0), *circle, (30, 0)], reach) in (0, 1)
+
+
+def test_driving_round_a_large_building_is_no_loop():
+    corners = [(0, 0), (100, 0), (100, 100), (0, 100), (0, -10)]
+
+    assert _loop_start(corners, LOOP_CIRCLES * math.tau * 8) is None
+
+
+def test_dubins_paths_with_loops_are_recognised():
+    assert _is_loop(shortest_path((0, 0, 0), (-5, 0, 0), 8))
+    assert not _is_loop(shortest_path((0, 0, 0), (0, 20, math.pi), 8))
+
+
+def test_the_window_grows_only_when_the_search_reaches_its_edge(monkeypatch, caplog):
+    # Stuck inside the closed area long before the window's edge.
+    monkeypatch.setattr("autodrive_editor.editing.route_finder.MAX_EXPANSIONS", 300)
+    request = RouteRequest(((-40, 0), (31, 0)))
+
+    with caplog.at_level("DEBUG", logger="autodrive_editor.editing.route_finder"):
+        RouteFinder(make_costmap(size=600, blocked=CLOSED_AREA), VEHICLE).find(request)
+
+    assert caplog.text.count("Search window") == 1
+
+
+def test_a_cancelled_search_stops_while_measuring_the_cells():
+    search = _Search(
+        RouteFinder(make_costmap(size=400), VEHICLE), RouteRequest(((-40, 0), (40, 0))), 150
+    )
+
+    assert search._costs_to(0, lambda: True) is None
+    assert (
+        RouteFinder(make_costmap(), VEHICLE).find(RouteRequest(((-40, 0), (40, 0))), lambda: True)
+        is None
+    )
 
 
 def swerves(points):

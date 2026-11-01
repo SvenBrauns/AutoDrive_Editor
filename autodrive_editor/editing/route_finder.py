@@ -24,12 +24,16 @@ cells, so routes do not swerve.
   the lane where there is not.
 - Around the waypoints and along the start and goal headings, blocked cells can be driven on, as
   nodes may sit under a roof or in a hall.
+
+Routes never loop. Where the waypoints lie too close for the turning radius, nothing is searched;
+where the search finds no way on, the route ends there. Both leave a gap (see Route.gap).
 """
 
 import heapq
 import logging
 import math
 import time
+from collections import deque
 from dataclasses import dataclass, field
 from itertools import pairwise
 
@@ -79,13 +83,17 @@ DUBINS_EXTRA = 20.0
 # There, paths onto the line between the waypoints are tried too, joining it this many turning
 # radii further on.
 LINE_JOINS = (1.0, 2.0, 3.0, 4.0)
-# Area around the waypoints that is searched first, and how often it grows.
+# Area around the waypoints that is searched first, and how often it grows. It grows only when
+# the search found no complete route and tried to leave the area.
 WINDOW_MARGIN = 60.0
 WINDOW_GROWTH = (1, 3, 6)
 # Search steps of one search, so the preview stays quick. Then the cheapest route found so far
-# is taken; without one, the route goes on from the furthest point reached in direct curves
-# through the remaining waypoints, which may cross blocked cells.
+# is taken; without one, the route ends at the furthest point reached.
 MAX_EXPANSIONS = 20_000
+# A route turning this far one way within LOOP_CIRCLES turning circles of length has a loop.
+# Less, so a roundabout or a drive around a large building is no loop.
+LOOP_TURN = math.radians(300)
+LOOP_CIRCLES = 2
 # The estimate to the goal counts this much more, so the search goes for the goal sooner;
 # routes become a few percent longer than the cheapest.
 HEURISTIC_WEIGHT = 1.2
@@ -130,10 +138,21 @@ class Route:
     waypoint_indices: list[int]
     # For each point, whether it lies on a blocked cell outside the free zones.
     blocked: list[bool]
+    # Where no drivable connection was found: straight from the last point through the
+    # waypoints not reached, the first of them waypoint number `gap_to`. Empty when complete.
+    gap: list[Point] = field(default_factory=list)
+    gap_to: int = 0
+    # Whether the gap is there because two waypoints lie too close for the turning radius; then
+    # nothing was searched and the gap runs from waypoint `gap_to - 1` to `gap_to`.
+    too_close: bool = False
+
+    @property
+    def is_complete(self) -> bool:
+        return not self.gap
 
     @property
     def is_clear(self) -> bool:
-        return not any(self.blocked)
+        return self.is_complete and not any(self.blocked)
 
 
 class Grid:
@@ -260,10 +279,19 @@ class RouteFinder:
 
     def find(self, request: RouteRequest, cancelled=lambda: False) -> Route | None:
         """The route through the waypoints with points about SAMPLE apart, or None if the search
-        found none or was cancelled. The search area grows only while nothing is found; a detour
-        further out can be forced with a waypoint."""
+        was cancelled. A route that does not reach all waypoints has a gap. The search area grows
+        only while the search runs into its edge; a detour further out can be forced with a
+        waypoint."""
 
         self._log_request(request)
+        radius = request.turning_radius or self.vehicle.turning_radius
+        leg = _too_close_leg(request, radius)
+
+        if leg is not None:
+            logger.debug("Waypoints %d and %d too close for the radius", leg + 1, leg + 2)
+            gap = list(request.waypoints[leg : leg + 2])
+            return Route([], [], [], gap, leg + 1, too_close=True)
+
         route = None
 
         for growth in WINDOW_GROWTH:
@@ -279,7 +307,10 @@ class RouteFinder:
                 time.perf_counter() - started,
             )
 
-            if route is not None or cancelled() or search.covers_map:
+            if cancelled() or search.covers_map or not search.hit_edge:
+                break
+
+            if route is not None and route.is_complete:
                 break
 
         return None if cancelled() else route
@@ -333,13 +364,25 @@ class _Search:
         # How the search ended and how many states it looked at, for the debug log.
         self.outcome = "not run"
         self.expansions = 0
+        # Whether the search tried to leave the area.
+        self.hit_edge = False
         self._cell_costs: list[float] | None = None
 
     def run(self, cancelled) -> Route | None:
         request = self.request
         waypoints = request.waypoints
         legs = len(waypoints) - 1
-        self.to_goal = [self._costs_to(leg) for leg in range(legs)]
+        self.to_goal = []
+
+        for leg in range(legs):
+            costs = self._costs_to(leg, cancelled)
+
+            if costs is None:
+                self.outcome = "cancelled"
+                return None
+
+            self.to_goal.append(costs)
+
         # Cheapest cost over the cells from the end of each leg to the goal.
         self.remaining = [0.0] * legs
 
@@ -348,7 +391,8 @@ class _Search:
 
         if self._estimate(request.start, 0) == math.inf:
             self.outcome = "no way over the cells through the waypoints"
-            return None
+            start = _Node((*request.start, 0.0), 0.0, None, [request.start], at_waypoint=True)
+            return self._with_gap(self._route(start), 1)
 
         open_list = []
         best: dict[tuple, float] = {}
@@ -419,57 +463,42 @@ class _Search:
             return self._found(best_end, f"cheapest route after {max_expansions} steps")
 
         if furthest is not None:
-            end, start_index = self._direct_end(furthest[2])
-            outcome = (
-                f"stuck after {expansions} steps on leg {furthest[2].leg + 1}, "
-                "direct curves from there"
-            )
-            return self._found(end, outcome, start_index)
+            outcome = f"stuck after {expansions} steps on leg {furthest[2].leg + 1}"
+            return self._found(furthest[2], outcome)
 
         self.outcome = "every drivable pose tried (turning radius or safety distance too large?)"
         return None
 
-    def _direct_end(self, node: _Node) -> tuple[_Node, int]:
-        """The node continued by Dubins paths through the remaining waypoints, regardless of
-        blocked cells, and the number of route points before the first of them. At each waypoint
-        the heading points to the next one."""
+    def _found(self, end: _Node, outcome: str) -> Route:
+        """The route to the node, straightened, and up to a loop if it has one. A gap leads on
+        through the waypoints not reached."""
 
-        waypoints = self.request.waypoints
-        start_index = len(self._route(node).points)
+        route = self._route(self._straighten(end))
+        loop = _loop_start(route.points, LOOP_CIRCLES * math.tau * self.radius)
 
-        for leg in range(node.leg + 1, len(waypoints)):
-            x, z = waypoints[leg]
+        if loop is not None:
+            reached = [index for index in route.waypoint_indices if index <= loop]
+            route = Route(route.points[: loop + 1], reached, route.blocked[: loop + 1])
+            outcome += f", cut before a loop at {_rounded(route.points[-1])}"
 
-            if leg + 1 < len(waypoints):
-                next_x, next_z = waypoints[leg + 1]
-                heading = math.atan2(next_z - z, next_x - x)
-            elif self.request.goal_headings:
-                heading = self.request.goal_headings[0]
-            else:
-                heading = math.atan2(z - node.pose[1], x - node.pose[0])
+        if len(route.waypoint_indices) < len(self.request.waypoints):
+            route = self._with_gap(route, len(route.waypoint_indices))
 
-            path = shortest_path(node.pose, (x, z, heading), self.radius)
-            poses = path.sample(SAMPLE)[1:]
-            points = [pose[:2] for pose in poses]
-            length = sum(math.dist(a, b) for a, b in pairwise([node.pose[:2], *points]))
-            node = _Node((x, z, heading), node.cost + length, node, points, 0.0, leg, True)
-
-        return node, start_index
-
-    def _found(self, end: _Node, outcome: str, direct_from: int | None = None) -> Route:
-        if direct_from is None:
-            end = self._straighten(end)
-
-        route = self._route(end, direct_from)
         length = sum(math.dist(a, b) for a, b in pairwise(route.points))
-        crossing = "" if route.is_clear else ", crosses blocked cells"
-        self.outcome = f"{outcome}, {length:.0f} m, cost {end.cost:.0f}{crossing}"
+        crossing = "" if not any(route.blocked) else ", crosses blocked cells"
+        gap = f", gap to waypoint {route.gap_to + 1}" if route.gap else ""
+        self.outcome = f"{outcome}, {length:.0f} m, cost {end.cost:.0f}{crossing}{gap}"
 
         return route
 
-    def _route(self, end: _Node, direct_from: int | None = None) -> Route:
-        """The route to the node. Points from `direct_from` on were not searched, so there the
-        safety distance to blocked cells counts as blocked too."""
+    def _with_gap(self, route: Route, gap_to: int) -> Route:
+        route.gap = [route.points[-1], *self.request.waypoints[gap_to:]]
+        route.gap_to = gap_to
+
+        return route
+
+    def _route(self, end: _Node) -> Route:
+        """The route to the node."""
 
         points: list[Point] = []
         waypoint_indices = []
@@ -480,8 +509,7 @@ class _Search:
             if node.at_waypoint:
                 waypoint_indices.append(len(points) - 1)
 
-        searched = len(points) if direct_from is None else direct_from
-        blocked = [self._is_blocked(point, index >= searched) for index, point in enumerate(points)]
+        blocked = [self._is_blocked(point) for point in points]
 
         return Route(points, waypoint_indices, blocked)
 
@@ -560,7 +588,7 @@ class _Search:
         worst = worst[first + 1 : last + 1]
         path = shortest_path(start.pose, end.pose, self.radius)
 
-        if path is None or path.length > length + 1e-6:
+        if path is None or path.length > length + 1e-6 or _is_loop(path):
             return None
 
         most_blocked = max(blocked for blocked, _ in worst)
@@ -621,18 +649,13 @@ class _Search:
 
         return blocked, BAND_COSTS[band]
 
-    def _is_blocked(self, point: Point, with_safety_distance: bool = False) -> bool:
+    def _is_blocked(self, point: Point) -> bool:
         index = self.grid.index(*point)
 
         if index is None:
-            return with_safety_distance
+            return False
 
-        if with_safety_distance:
-            blocked = self.grid.blocked[index]
-        else:
-            blocked = self.grid.cells[index] >= BLOCKED_VALUE
-
-        return bool(blocked) and not self._in_free_zone(*point)
+        return self.grid.cells[index] >= BLOCKED_VALUE and not self._in_free_zone(*point)
 
     def _key(self, pose: Pose, leg: int) -> tuple[int, int, int, int]:
         x, z, heading = pose
@@ -648,10 +671,11 @@ class _Search:
 
         return math.inf if index is None else self.to_goal[leg][index] + self.remaining[leg]
 
-    def _costs_to(self, leg: int) -> list[float]:
+    def _costs_to(self, leg: int, cancelled=lambda: False) -> list[float] | None:
         """Cheapest cost from each cell to the end of the leg over the cells, ignoring the turning
-        radius. Dijkstra over the 8 neighbours of each cell; planned lanes count in the driving
-        direction of each step, and the distance to the leg's line counts as on the route."""
+        radius; None if cancelled. Dijkstra over the 8 neighbours of each cell; planned lanes
+        count in the driving direction of each step, and the distance to the leg's line counts
+        as on the route."""
 
         grid = self.grid
         columns = grid.columns
@@ -671,12 +695,18 @@ class _Search:
         diagonal = math.sqrt(2)
         steps = [(-1, 0, 1.0), (1, 0, 1.0), (0, -1, 1.0), (0, 1, 1.0)]
         steps += [(-1, -1, diagonal), (1, -1, diagonal), (-1, 1, diagonal), (1, 1, diagonal)]
+        popped = 0
 
         while queue:
             cost, index = heapq.heappop(queue)
 
             if cost > costs[index]:
                 continue
+
+            popped += 1
+
+            if popped % 10_000 == 0 and cancelled():
+                return None
 
             row, column = divmod(index, columns)
             own = cell_costs[index]
@@ -813,6 +843,7 @@ class _Search:
         index = self.grid.index(x, z)
 
         if index is None:
+            self.hit_edge = True
             return None
 
         cost = self._ground_cost(index, x, z)
@@ -855,7 +886,7 @@ class _Search:
         for heading in headings or (math.atan2(goal_z - z, goal_x - x),):
             path = shortest_path(node.pose, (goal_x, goal_z, heading), self.radius)
 
-            if path is not None:
+            if path is not None and not _is_loop(path):
                 candidates.append((heading, path.sample(SAMPLE)[1:]))
 
         if not headings:
@@ -911,7 +942,7 @@ class _Search:
             goal = (ax + along * dx, az + along * dz, heading)
             path = shortest_path(node.pose, goal, self.radius)
 
-            if path is None:
+            if path is None or _is_loop(path):
                 continue
 
             rest = length - along
@@ -956,6 +987,108 @@ def _turning_cost(path: DubinsPath, curvature: float, radius: float) -> float:
             curvature = part
 
     return cost
+
+
+def _is_loop(path: DubinsPath) -> bool:
+    """Whether the Dubins path has a loop (see LOOP_TURN)."""
+
+    turning = sum(
+        length for letter, length in zip(path.word, path.lengths, strict=True) if letter != "S"
+    )
+
+    if turning < LOOP_TURN * path.radius:
+        return False
+
+    points = [pose[:2] for pose in path.sample(path.radius / 4)]
+
+    return _loop_start(points, LOOP_CIRCLES * math.tau * path.radius) is not None
+
+
+def _loop_start(points: list[Point], reach: float) -> int | None:
+    """Index of the point where the first loop begins: from there, the heading turns LOOP_TURN
+    or more one way within `reach` metres. None without a loop."""
+
+    headings, starts, indices = [], [], []
+    along = 0.0
+
+    for index, (a, b) in enumerate(pairwise(points)):
+        length = math.dist(a, b)
+
+        if length < 1e-9:
+            continue
+
+        heading = math.atan2(b[1] - a[1], b[0] - a[0])
+
+        if headings:
+            # Unwrapped, so turning on keeps adding up.
+            heading = headings[-1] + math.remainder(heading - headings[-1], math.tau)
+
+        headings.append(heading)
+        starts.append(along)
+        indices.append(index)
+        along += length
+
+    # Pieces within reach before the current one, with rising and with falling headings, so the
+    # first holds the lowest heading and the last the highest.
+    lowest: deque[int] = deque()
+    highest: deque[int] = deque()
+
+    for piece, heading in enumerate(headings):
+        for queue in (lowest, highest):
+            while queue and starts[piece] - starts[queue[0]] > reach:
+                queue.popleft()
+
+        while lowest and headings[lowest[-1]] >= heading:
+            lowest.pop()
+
+        while highest and headings[highest[-1]] <= heading:
+            highest.pop()
+
+        lowest.append(piece)
+        highest.append(piece)
+
+        if heading - headings[lowest[0]] >= LOOP_TURN:
+            return indices[lowest[0]]
+
+        if headings[highest[0]] - heading >= LOOP_TURN:
+            return indices[highest[0]]
+
+    return None
+
+
+def _too_close_leg(request: RouteRequest, radius: float) -> int | None:
+    """The first leg whose waypoints lie too close for the radius: every way between them with
+    the headings possible there has a loop, even ignoring the ground. None if all legs can be
+    driven. Free headings are tried in ANY_HEADINGS and towards the next waypoint."""
+
+    waypoints = request.waypoints
+    last = len(waypoints) - 1
+    headings = None
+
+    for leg in range(last):
+        (ax, az), (bx, bz) = waypoints[leg], waypoints[leg + 1]
+        towards = math.atan2(bz - az, bx - ax)
+
+        if headings is None:
+            headings = request.start_headings or (towards, *ANY_HEADINGS)
+
+        ends = request.goal_headings if leg + 1 == last else None
+        reachable = []
+
+        for end in ends or (towards, *ANY_HEADINGS):
+            for start in headings:
+                path = shortest_path((ax, az, start), (bx, bz, end), radius)
+
+                if path is not None and not _is_loop(path):
+                    reachable.append(end)
+                    break
+
+        if not reachable:
+            return leg
+
+        headings = reachable
+
+    return None
 
 
 def _free_corridors(request: RouteRequest) -> list[Lane]:

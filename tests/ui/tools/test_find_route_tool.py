@@ -161,15 +161,15 @@ def test_the_generate_button_shows_the_current_task(window):
 
 def test_dragging_the_route_inserts_a_waypoint_there(window):
     click(window, view_pos(window, 0, 20))
-    click(window, view_pos(window, 20, 20))
+    click(window, view_pos(window, 40, 20))
     wait(window)
 
-    drag(window, view_pos(window, 10, 20), view_pos(window, 10, 26))
+    drag(window, view_pos(window, 20, 20), view_pos(window, 20, 26))
     wait(window)
 
     waypoints = window.find_route_operation.waypoints
     assert len(waypoints) == 3
-    assert waypoints[1].x == pytest.approx(10, abs=0.5)
+    assert waypoints[1].x == pytest.approx(20, abs=0.5)
     assert waypoints[1].z == pytest.approx(26, abs=0.5)
     route = window.find_route_operation.route
     assert route.points[route.waypoint_indices[1]] == pytest.approx(
