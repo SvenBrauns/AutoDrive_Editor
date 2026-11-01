@@ -3,7 +3,7 @@
 import stat
 
 import pytest
-from game_folder_helpers import ROUTE_XML, add_routes
+from game_folder_helpers import ROUTE_XML, add_routes, make_game_folder
 from PySide6.QtWidgets import QMessageBox
 
 from autodrive_editor.editing.commands.delete_nodes import DeleteNodesCommand
@@ -161,7 +161,7 @@ def test_save_as_turns_a_route_into_a_new_route(route_window):
     route_window.files._ask_route_name = lambda default: "Hof neu"
     delete_node(route_window, 2)
 
-    assert route_window.files.save_xml_as()
+    assert route_window.files.save_as_route()
 
     entries = read_routes_index(route_window.route_file.parent.parent / "routes.xml")
     assert [(e.name, e.map_name, e.revision) for e in entries] == [
@@ -179,24 +179,60 @@ def test_cancelled_route_name_saves_nothing(route_window):
     route_window.files._ask_route_name = lambda default: None
     delete_node(route_window, 2)
 
-    assert not route_window.files.save_xml_as()
+    assert not route_window.files.save_as_route()
     assert route_window.isWindowModified()
     assert len(read_routes_index(route_window.route_file.parent.parent / "routes.xml")) == 1
 
 
-def test_save_as_writes_a_savegame_copy_without_touching_vehicles(savegame_window, tmp_path):
-    target = tmp_path / "copy.xml"
-    savegame_window.files._ask_save_path = lambda path: target
+def test_save_as_route_keeps_a_version_of_a_savegame_and_stays_on_it(savegame_window, tmp_path):
+    folder = make_game_folder(tmp_path / "FarmingSimulator2025")
+    savegame_window.settings.set_game_folder(folder)
+    names = []
+    savegame_window.files._ask_route_name = lambda default: names.append(default) or "Stand 1"
     delete_marker(savegame_window, 2)
 
-    savegame_window.files.save_xml_as()
-    delete_marker(savegame_window, 3)
-    savegame_window.files.save_xml()
+    assert savegame_window.files.save_as_route()
 
-    assert "<MapName>LS25_X</MapName>" in target.read_text(encoding="utf-8-sig")
-    assert len(AutoDriveXmlReader.load(target).markers) == 1
+    entries = read_routes_index(folder / "modSettings/FS25_AutoDrive/routesManager/routes.xml")
+    assert [(e.name, e.map_name, e.revision) for e in entries] == [("Stand 1", "LS25_X", 1)]
+    assert len(AutoDriveXmlReader.load(entries[0].path).markers) == 2
+    assert names == ["LS25_X"]
+    assert savegame_window.project_coordinator.config_source.path.name == "AutoDrive_config.xml"
+    assert savegame_window.isWindowModified()
     assert (savegame_window.savegame / "vehicles.xml").read_text(encoding="utf-8") == VEHICLES
-    assert "copy" in savegame_window.windowTitle()
+
+
+def test_save_as_route_with_a_taken_name_replaces_it_after_asking(route_window):
+    asked = []
+    route_window.files._ask_route_name = lambda default: "Hof"
+    route_window.files._confirm_replace_route = lambda name: asked.append(name) or True
+    delete_node(route_window, 2)
+
+    assert route_window.files.save_as_route()
+
+    entries = read_routes_index(route_window.route_file.parent.parent / "routes.xml")
+    assert [(e.name, e.revision) for e in entries] == [("Hof", 4)]
+    assert asked == ["Hof"]
+    assert len(AutoDriveXmlReader.load(route_window.route_file)) == 2
+
+
+def test_refused_replace_saves_nothing(route_window):
+    route_window.files._ask_route_name = lambda default: "Hof"
+    route_window.files._confirm_replace_route = lambda name: False
+
+    assert not route_window.files.save_as_route()
+    assert route_window.route_file.read_text(encoding="utf-8") == ROUTE_XML
+
+
+def test_route_name_suggested_is_the_last_saved_route(route_window):
+    names = []
+    route_window.files._ask_route_name = lambda default: names.append(default) or "Hof neu"
+    route_window.files._confirm_replace_route = lambda name: True
+
+    route_window.files.save_as_route()
+    route_window.files.save_as_route()
+
+    assert names[1] == "Hof neu"
 
 
 def test_autosave_only_writes_unsaved_changes(route_window):

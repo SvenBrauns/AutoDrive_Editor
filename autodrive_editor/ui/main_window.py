@@ -682,6 +682,7 @@ class MainWindow(QMainWindow):
         self.files.confirm_end_capture = self.picture_capture.confirm_stop
 
         self.reload = ReloadController(self, self.settings, self.project_coordinator)
+        self.files.saved.connect(self.reload.after_save)
 
     def _create_planning(self):
         self.planning = PlanningController(

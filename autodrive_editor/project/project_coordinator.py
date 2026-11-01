@@ -13,13 +13,15 @@ from autodrive_editor.file_io.autodrive_xml import (
     ConfigFormat,
     ConfigSource,
 )
-from autodrive_editor.file_io.autodrive_xml_writer import save_config
+from autodrive_editor.file_io.autodrive_xml_writer import save_config, write_route_export
 from autodrive_editor.file_io.game_files import GameFiles
 from autodrive_editor.file_io.navigation_costmap import CostmapError, costmap_path, read_costmap
 from autodrive_editor.file_io.routes_index import (
     add_route,
+    create_routes_index,
     find_route_entry,
     mark_route_saved,
+    read_routes_index,
     routes_index_for,
 )
 from autodrive_editor.file_io.savegame_buildings import SavegameBuildings, read_savegame_buildings
@@ -299,48 +301,41 @@ class ProjectCoordinator(QObject):
 
         return renumber_vehicle_markers(vehicles_path, new_numbers)
 
-    def save_as_route(self, name: str, map_name: str):
-        """Saves the data as a new route in the RoutesManager the current
-        route is listed in, and goes on with that route."""
+    def save_as_route(self, name: str, routes_xml_path: Path) -> Path:
+        """Writes the network as a route of the RoutesManager; a route of the same name is
+        replaced and gets a new revision. A savegame stays open (the route keeps a version of
+        it); a route or other file goes on as the saved route. Returns the route file."""
 
-        routes_xml_path = routes_index_for(self.config_source.path)
+        source = self.config_source
+        map_name = source.map_name or ""
+        now = datetime.now()
+
+        if not routes_xml_path.is_file():
+            create_routes_index(routes_xml_path)
+
         self._back_up(routes_xml_path)
-        target = add_route(routes_xml_path, name, map_name, datetime.now())
+        entry = next((e for e in read_routes_index(routes_xml_path) if e.name == name), None)
 
-        self._save_as(target, display_name=name, map_name=map_name)
-
-    def save_as_file(self, target: Path) -> list[str]:
-        """Saves the data into another file in the same format and goes on
-        with that file. Returns affected vehicles like save_xml_file."""
-
-        target = Path(target).resolve()
-
-        if target == self.config_source.path:
-            return self.save_xml_file()
-
-        if target.is_file():
+        if entry is not None:
+            target = entry.path
             self._back_up(target)
+            mark_route_saved(target, now)
+        else:
+            target = add_route(routes_xml_path, name, map_name, now)
+            target.parent.mkdir(parents=True, exist_ok=True)
 
-        self._save_as(target, display_name=target.stem, map_name=self.config_source.map_name)
+        write_route_export(self.autodrive_data, target)
 
-        return []
+        if source.format != ConfigFormat.SAVEGAME:
+            self.config_source = replace(
+                source, format=ConfigFormat.ROUTE_EXPORT, path=target, display_name=name
+            )
+            self._file_markers = list(self.autodrive_data.markers.values())
+            self._vehicles_path = None
 
-    def _save_as(self, target: Path, display_name: str, map_name: str | None):
-        # The loaded file is the template, so its other settings are kept.
-        shutil.copyfile(self.config_source.path, target)
+        self.status_changed.emit(tr("Route “{name}” saved", name=name))
 
-        source = replace(
-            self.config_source, path=target, display_name=display_name, map_name=map_name
-        )
-        save_config(self.autodrive_data, source)
-
-        self.config_source = source
-        self._file_markers = list(self.autodrive_data.markers.values())
-        self._vehicles_path = None
-
-        self.status_changed.emit(
-            tr("{format} “{name}” saved", format=source.format_label, name=display_name)
-        )
+        return target
 
     def write_autosave(self, store: AutosaveStore):
         positions = {id(marker): number for number, marker in enumerate(self._file_markers, 1)}

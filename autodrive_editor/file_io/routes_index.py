@@ -132,6 +132,13 @@ def mark_route_saved(route_file: Path, now: datetime) -> bool:
     return True
 
 
+def create_routes_index(routes_xml_path: Path):
+    """An empty routes.xml, for a game folder where the RoutesManager has saved nothing yet."""
+
+    routes_xml_path.parent.mkdir(parents=True, exist_ok=True)
+    write_xml(routes_xml_path, ET.Element(ROUTES_INDEX_ROOT))
+
+
 def add_route(routes_xml_path: Path, name: str, map_name: str, now: datetime) -> Path:
     """Adds a new route entry to routes.xml with revision 1, as AutoDrive
     does when it saves a new route. Returns the path for its route file,
