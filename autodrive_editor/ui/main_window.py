@@ -89,6 +89,7 @@ from autodrive_editor.ui.panels.rotate_options import RotateOptionsWidget
 from autodrive_editor.ui.panels.welcome_panel import WelcomePanel
 from autodrive_editor.ui.picture_capture_controller import PictureCaptureController
 from autodrive_editor.ui.planning_controller import PlanningController
+from autodrive_editor.ui.reload_controller import ReloadController
 from autodrive_editor.ui.savegame_link_controller import SavegameLinkController
 from autodrive_editor.ui.theme import apply_theme
 from autodrive_editor.ui.tools.connect_nodes_tool import ConnectNodesTool
@@ -686,6 +687,8 @@ class MainWindow(QMainWindow):
         )
         self.files.confirm_end_capture = self.picture_capture.confirm_stop
 
+        self.reload = ReloadController(self, self.settings, self.project_coordinator)
+
     def _create_planning(self):
         self.planning = PlanningController(
             self,
@@ -1210,6 +1213,7 @@ class MainWindow(QMainWindow):
         self.map_import.status_changed.connect(self._set_status)
 
         self.picture_capture.status_changed.connect(self._set_status)
+        self.reload.status_changed.connect(self._set_status)
         self.picture_capture.picture_shown.connect(self._show_captured_picture)
         self.picture_capture.running_changed.connect(
             lambda running: self.actions.capture_picture_action.setEnabled(not running)

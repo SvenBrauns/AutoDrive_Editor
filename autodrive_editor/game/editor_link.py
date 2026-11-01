@@ -6,6 +6,7 @@
         pictures_<id>\\tile_<col>_<row>.dds  + .done marker, the mod per tile
         result_<id>.xml              + result_<id>.done, the mod at the end
         cancel_<id>                  the editor
+        network_<id>.xml             the editor, the network of a reload request
 """
 
 import os
@@ -44,9 +45,20 @@ class GameStatus:
 
 
 @dataclass(frozen=True)
+class ReloadInfo:
+    nodes: int
+    markers: int
+    groups: int
+    read_sec: float
+    upload_sec: float
+
+
+@dataclass(frozen=True)
 class CaptureResult:
     status: str
     message: str = ""
+    # Only for a reload request that is done.
+    reload: ReloadInfo | None = None
 
 
 def link_directory(game_folder_path: Path) -> Path:
@@ -87,9 +99,7 @@ def write_request(
 ):
     """A picture request for the tiles (col, row, centre x, centre z), in the order given."""
 
-    root = ET.Element(
-        "request", format=FORMAT, id=str(request_id), type="pictures", map=map_id, savegame=savegame
-    )
+    root = _request(request_id, "pictures", map_id, savegame)
     pictures = ET.SubElement(
         root,
         "pictures",
@@ -107,6 +117,26 @@ def write_request(
         ET.SubElement(pictures, "tile", col=str(col), row=str(row), x=f"{x:g}", z=f"{z:g}")
 
     _write_atomic(Path(directory) / "request.xml", ET.tostring(root, encoding="unicode"))
+
+
+def network_file_name(request_id: int) -> str:
+    return f"network_{request_id}.xml"
+
+
+def write_reload_request(directory: Path, request_id: int, map_id: str, savegame: str):
+    """Asks the game to load the network file of the request (written before) instead of its
+    network."""
+
+    root = _request(request_id, "reload", map_id, savegame)
+    ET.SubElement(root, "reload", file=network_file_name(request_id))
+
+    _write_atomic(Path(directory) / "request.xml", ET.tostring(root, encoding="unicode"))
+
+
+def _request(request_id: int, kind: str, map_id: str, savegame: str) -> ET.Element:
+    return ET.Element(
+        "request", format=FORMAT, id=str(request_id), type=kind, map=map_id, savegame=savegame
+    )
 
 
 def pictures_directory(directory: Path, request_id: int) -> Path:
@@ -170,7 +200,25 @@ def read_result(directory: Path, request_id: int) -> CaptureResult | None:
             "error", tr("The game mod has another version; please update the editor and the mod.")
         )
 
-    return CaptureResult(root.get("status", "error"), root.get("message", ""))
+    return CaptureResult(
+        root.get("status", "error"), root.get("message", ""), _reload_info(root.find("reload"))
+    )
+
+
+def _reload_info(element: ET.Element | None) -> ReloadInfo | None:
+    if element is None:
+        return None
+
+    try:
+        return ReloadInfo(
+            int(element.get("nodes")),
+            int(element.get("markers")),
+            int(element.get("groups")),
+            float(element.get("readSec")),
+            float(element.get("uploadSec")),
+        )
+    except (TypeError, ValueError):
+        return None
 
 
 def write_cancel(directory: Path, request_id: int):
@@ -178,8 +226,8 @@ def write_cancel(directory: Path, request_id: int):
 
 
 def clean_up(directory: Path):
-    """Deletes every exchanged file but the status: requests, answers, cancel files and tiles,
-    also those left by earlier captures. The request goes too, or the mod would capture it
+    """Deletes every exchanged file but the status: requests, answers, cancel files, tiles and
+    networks, also those left by earlier requests. The request goes too, or the mod would capture it
     again in the next game session once its answer is gone."""
 
     directory = Path(directory)
@@ -190,7 +238,7 @@ def clean_up(directory: Path):
     for path in directory.iterdir():
         if path.is_dir() and path.name.startswith("pictures_"):
             shutil.rmtree(path, ignore_errors=True)
-        elif path.name.startswith(("request.xml", "result_", "cancel_")):
+        elif path.name.startswith(("request.xml", "result_", "cancel_", "network_")):
             path.unlink(missing_ok=True)
 
 

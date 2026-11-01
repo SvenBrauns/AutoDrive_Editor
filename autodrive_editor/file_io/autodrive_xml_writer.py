@@ -38,6 +38,20 @@ def save_config(data: AutoDriveData, source: ConfigSource):
     write_xml(source.path, root)
 
 
+def write_route_export(data: AutoDriveData, path: Path):
+    """Writes the data as a new route file (root <routeExport>), for any loaded format. With
+    the savegame's precision, so a game that loads it holds the positions of the savegame."""
+
+    root = ET.Element("routeExport")
+    nodes = data.get_sorted_nodes()
+    new_ids = {node.node_id: new_id for new_id, node in enumerate(nodes, start=1)}
+    _write_route_waypoints(root, nodes, new_ids, _DECIMALS[ConfigFormat.SAVEGAME])
+    _write_route_markers(root, data, new_ids)
+    ET.indent(root, space="    ")
+
+    write_xml(Path(path), root)
+
+
 def write_xml(path: Path, root: ET.Element):
     """Writes like the game does: UTF-8 with BOM and CRLF line ends. A
     temporary file is replaced at the end, so a failed write keeps the old
@@ -49,10 +63,19 @@ def write_xml(path: Path, root: ET.Element):
     os.replace(temporary, path)
 
 
-def _write_route_waypoints(root, nodes: list[NodeData], new_ids: dict[int, int]):
+def _write_route_waypoints(
+    root,
+    nodes: list[NodeData],
+    new_ids: dict[int, int],
+    decimals=_DECIMALS[ConfigFormat.ROUTE_EXPORT],
+):
     waypoints = root.find("waypoints")
+
+    if waypoints is None:
+        waypoints = ET.SubElement(root, "waypoints")
+
     waypoints.set("c", str(len(nodes)))
-    _write_lists(waypoints, nodes, new_ids, ";", "in", _DECIMALS[ConfigFormat.ROUTE_EXPORT])
+    _write_lists(waypoints, nodes, new_ids, ";", "in", decimals)
 
 
 def _write_savegame_waypoints(root, nodes: list[NodeData], new_ids: dict[int, int]):

@@ -4,7 +4,7 @@ from datetime import datetime
 from PIL import Image
 
 from autodrive_editor.game import editor_link
-from autodrive_editor.game.editor_link import CaptureResult, GameStatus
+from autodrive_editor.game.editor_link import CaptureResult, GameStatus, ReloadInfo
 
 MAP = "FS25_Thueringen_2_0_16x.SampleModMap"
 NOW = datetime(2026, 11, 1, 14, 3, 22)
@@ -101,6 +101,28 @@ def test_result_is_read_once_its_marker_exists(tmp_path):
     assert editor_link.read_result(tmp_path, 17) == CaptureResult("error", "Other map")
 
 
+def test_reload_request_names_the_network_file(tmp_path):
+    editor_link.write_reload_request(tmp_path, 18, MAP, "1")
+
+    root = ET.parse(tmp_path / "request.xml").getroot()
+    assert root.attrib == {"format": "1", "id": "18", "type": "reload", "map": MAP, "savegame": "1"}
+    assert root.find("reload").attrib == {"file": "network_18.xml"}
+    assert editor_link.network_file_name(18) == "network_18.xml"
+
+
+def test_reload_result_carries_the_counts_and_times(tmp_path):
+    (tmp_path / "result_18.xml").write_text(
+        '<result format="1" id="18" status="done" message="">'
+        '<reload nodes="113021" markers="54" groups="6" readSec="1.2" uploadSec="0.6"/></result>',
+        encoding="utf-8",
+    )
+    (tmp_path / "result_18.done").write_bytes(b"")
+
+    assert editor_link.read_result(tmp_path, 18) == CaptureResult(
+        "done", "", ReloadInfo(113021, 54, 6, 1.2, 0.6)
+    )
+
+
 def test_result_of_another_format_is_an_error(tmp_path):
     (tmp_path / "result_17.xml").write_text('<result format="2" status="done"/>', encoding="utf-8")
     (tmp_path / "result_17.done").write_bytes(b"")
@@ -114,7 +136,14 @@ def test_clean_up_keeps_only_the_status(tmp_path):
         folder = editor_link.pictures_directory(tmp_path, request_id)
         folder.mkdir()
         (folder / "tile_0_0.dds").write_bytes(b"")
-    for name in ("result_16.xml", "result_17.done", "request.xml", "request.xml.tmp", "status.xml"):
+    for name in (
+        "result_16.xml",
+        "result_17.done",
+        "request.xml",
+        "request.xml.tmp",
+        "status.xml",
+        "network_17.xml",
+    ):
         (tmp_path / name).write_bytes(b"")
 
     editor_link.clean_up(tmp_path)
