@@ -17,3 +17,5 @@ select = ["F", "E", "I", "UP", "B"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = [".", "tests"]
+addopts = "-m 'not benchmark'"
+markers = ["benchmark: route finder benchmark, run with -m benchmark"]
