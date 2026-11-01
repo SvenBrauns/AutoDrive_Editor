@@ -684,7 +684,6 @@ TEXTS = {
     "Node {id} is a marker: other routes would lead through it": "Node {id} ist ein Marker: andere Routen würden durch ihn führen",
     "Nothing drives to node {id}, so the route cannot be reached": "Zu Node {id} führt nichts, die Route ist also nicht erreichbar",
     "Node {id} leads nowhere, so the route ends in a dead end": "Node {id} führt nirgendwohin, die Route endet also in einer Sackgasse",
-    "Click nodes, connections or free ground as waypoints; drag waypoints or nodes to change the route. Right-click or Backspace removes waypoints, Enter adds the route": "Nodes, Connections oder freie Stellen als Wegpunkte anklicken; Wegpunkte oder Nodes ziehen, um die Route zu ändern. Rechtsklick oder Rücktaste entfernt Wegpunkte, Enter fügt die Route hinzu",
     "Find route needs the drivability map of a savegame. Open a savegame": "Route finden braucht die Befahrbarkeitskarte eines Spielstands. Einen Spielstand öffnen",
     "Find route plans for a vehicle of this size: it turns no tighter than the turning radius and keeps half its width plus the safety margin away from buildings, fences and trees.": "Route finden plant für ein Fahrzeug dieser Größe: Es fährt keine engeren Kurven als den Wendekreis und hält die halbe Breite plus den Sicherheitsabstand von Gebäuden, Zäunen und Bäumen fern.",
     "Minimum turning radius:": "Kleinster Wenderadius:",
@@ -825,4 +824,8 @@ TEXTS = {
     "Route “{name}” loaded; Save writes it into the savegame": "Route „{name}“ geladen; Speichern schreibt sie ins Savegame",
     "Routes of this map in the RoutesManager:": "Routen dieser Karte im RoutesManager:",
     "The RoutesManager has no routes of this map.": "Der RoutesManager hat keine Routen dieser Karte.",
+    # Find route
+    "Clear (Esc)": "Leeren (Esc)",
+    "Click nodes, connections or free ground as waypoints; drag waypoints or nodes to change the route. Delete or right-click removes the waypoint under the pointer, Backspace the last one, Ctrl+Z undoes a waypoint change, Enter adds the route": "Nodes, Connections oder freie Stellen als Wegpunkte anklicken; Wegpunkte oder Nodes ziehen, um die Route zu ändern. Entf oder Rechtsklick entfernt den Wegpunkt unter dem Mauszeiger, Rücktaste den letzten, Strg+Z nimmt eine Wegpunkt-Änderung zurück, Enter fügt die Route hinzu",
+    "Remove last (Backspace)": "Letzten entfernen (Rücktaste)",
 }

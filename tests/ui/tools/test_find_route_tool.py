@@ -4,11 +4,12 @@ import time
 
 import pytest
 from costmap_helpers import make_costmap
-from mouse_helpers import click, drag, press_escape, view_pos
+from mouse_helpers import click, drag, hover, press_escape, view_pos
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
+from autodrive_editor.ui.tools.find_route_tool import HOVER_COLOR
 from autodrive_editor.ui.tools.generate_tool import GenerateTask
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
@@ -182,3 +183,54 @@ def test_click_on_a_connection_adds_a_waypoint_on_it(window):
     waypoint = window.find_route_operation.waypoints[0]
     assert waypoint.connection in {(1, 2), (2, 1)}
     assert (waypoint.x, waypoint.z) == pytest.approx((5, 0), abs=0.5)
+
+
+def test_delete_removes_the_waypoint_under_the_pointer_not_the_selection(window):
+    window.node_selection.replace({1}, 1)
+    for x in (0, 10, 20):
+        click(window, view_pos(window, x, 20))
+    tool = window.generate_tool.current
+
+    hover(window, view_pos(window, 10, 20))
+    assert tool._handle_items[1].pen().color() == HOVER_COLOR
+
+    QTest.keyClick(window.view, Qt.Key_Delete)
+
+    assert [round(w.x) for w in window.find_route_operation.waypoints] == [0, 20]
+    assert 1 in window.project_coordinator.autodrive_data.nodes
+
+    window.delete_selection()  # the Delete action: nothing hovered, deletes the selection
+    assert 1 not in window.project_coordinator.autodrive_data.nodes
+
+
+def test_ctrl_z_first_takes_back_waypoints_then_the_plan(window):
+    click(window, view_pos(window, 0, 20))
+    click(window, view_pos(window, 20, 20))
+    assert window.actions.undo_action.isEnabled()
+
+    window.actions.undo_action.trigger()
+
+    assert len(window.find_route_operation.waypoints) == 1
+
+
+def test_enter_starts_empty(window):
+    click(window, view_pos(window, 0, 20))
+    click(window, view_pos(window, 20, 0))
+    wait(window)
+
+    assert window.generate_tool.confirm()
+
+    assert window.find_route_operation.waypoints == []
+
+
+def test_options_bar_buttons_remove_the_last_waypoint_and_clear(window):
+    for x in (0, 10, 20):
+        click(window, view_pos(window, x, 20))
+    options = window.generate_options
+    assert options.route_options.isEnabled()
+
+    options.remove_last_button.click()
+    assert len(window.find_route_operation.waypoints) == 2
+
+    options.clear_button.click()
+    assert window.find_route_operation.waypoints == []

@@ -243,11 +243,13 @@ class MainWindow(QMainWindow):
         """Undoes the last edit; a junction still being drawn is undone instead (see
         JunctionOperation.undo)."""
 
-        if not self.junction_operation.undo():
+        if not self.junction_operation.undo() and not self.find_route_operation.undo_waypoints():
             self.edit_history.undo()
 
     def delete_selection(self):
-        self.delete_nodes_operation.delete_selection()
+        # Delete on a Find route waypoint removes the waypoint, not the selection.
+        if not self.view.active_tool.remove_hovered():
+            self.delete_nodes_operation.delete_selection()
 
     def align_view_to_measurement(self):
         self.measurement_coordinator.align_view_to_measurement()
@@ -924,6 +926,8 @@ class MainWindow(QMainWindow):
         self.actions.show_generate_task(self.generate_tool.task)
         self.generate_options.stem_changed.connect(self.settings.set_junction_stem)
         self.generate_options.style_changed.connect(self.settings.set_junction_style)
+        self.generate_options.remove_last_requested.connect(self.find_route_operation.remove_last)
+        self.generate_options.clear_requested.connect(self.find_route_operation.clear)
         self.options_bar.add_options([InteractionMode.GENERATE], self.generate_options)
 
         # One options widget for the three draw tools.

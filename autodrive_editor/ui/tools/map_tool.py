@@ -136,6 +136,12 @@ class MapTool:
 
         return False
 
+    def remove_hovered(self) -> bool:
+        """Called on Delete. Returns True if the thing under the pointer was removed, so the
+        selection is not deleted."""
+
+        return False
+
     def status_hint(self) -> str | None:
         """Optional hint shown in the status bar when the tool is
         selected, e.g. what has to be done first."""

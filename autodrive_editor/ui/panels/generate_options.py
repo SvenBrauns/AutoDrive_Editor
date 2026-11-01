@@ -1,6 +1,14 @@
 from PySide6.QtCore import QSize, Signal
 from PySide6.QtGui import QAction
-from PySide6.QtWidgets import QComboBox, QDoubleSpinBox, QHBoxLayout, QLabel, QToolButton, QWidget
+from PySide6.QtWidgets import (
+    QComboBox,
+    QDoubleSpinBox,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QToolButton,
+    QWidget,
+)
 
 from autodrive_editor.editing.junction import Stem
 from autodrive_editor.editing.junction_box import Style
@@ -9,8 +17,8 @@ from autodrive_editor.ui.tools.generate_tool import GenerateTask
 
 
 class GenerateOptionsWidget(QWidget):
-    """The task buttons of the Generate tool in the options bar, and the Junction task's options,
-    enabled only for that task."""
+    """The task buttons of the Generate tool in the options bar, the Route task's waypoint buttons
+    and the Junction task's options, each enabled only for its task."""
 
     TASK_ICON_SIZE = QSize(24, 24)
 
@@ -18,6 +26,9 @@ class GenerateOptionsWidget(QWidget):
     stem_changed = Signal(object, float)
     # The Junction task's style (see Style).
     style_changed = Signal(object)
+    # The Route task's buttons.
+    remove_last_requested = Signal()
+    clear_requested = Signal()
 
     def __init__(
         self,
@@ -92,13 +103,26 @@ class GenerateOptionsWidget(QWidget):
             row.addWidget(QLabel(title, self.junction_options))
             row.addWidget(widget)
 
+        self.route_options = QWidget(self)
+        route_row = QHBoxLayout(self.route_options)
+        route_row.setContentsMargins(0, 0, 0, 0)
+        self.remove_last_button = QPushButton(tr("Remove last (Backspace)"), self.route_options)
+        self.remove_last_button.clicked.connect(self.remove_last_requested)
+        self.clear_button = QPushButton(tr("Clear (Esc)"), self.route_options)
+        self.clear_button.clicked.connect(self.clear_requested)
+        route_row.addWidget(self.remove_last_button)
+        route_row.addWidget(self.clear_button)
+
+        layout.addSpacing(8)
+        layout.addWidget(self.route_options)
         layout.addSpacing(8)
         layout.addWidget(self.junction_options)
         layout.addStretch(1)
-        self.junction_options.setEnabled(task == GenerateTask.JUNCTION)
+        self.set_task(task)
 
     def set_task(self, task: GenerateTask):
         self.junction_options.setEnabled(task == GenerateTask.JUNCTION)
+        self.route_options.setEnabled(task == GenerateTask.ROUTE)
 
     def _emit_stem(self):
         self.stem_changed.emit(self.stem_box.currentData(), self.gap_box.value())

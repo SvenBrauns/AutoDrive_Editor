@@ -82,6 +82,8 @@ class FindRouteOperation(EditOperation):
         self.height_for_new_node = height_for_new_node
 
         self.waypoints: list[Waypoint] = []
+        # Earlier waypoint lists of the route being built, for Ctrl+Z inside the tool.
+        self._undo_waypoints: list[list[Waypoint]] = []
         # The route through the current waypoints, None while there is none or it is outdated.
         self.route: Route | None = None
         # The route last found, shown until the next one is found.
@@ -96,11 +98,32 @@ class FindRouteOperation(EditOperation):
         # Only an ended plan changes the planned lanes; a new plan is empty.
         self.edit_history.planning_changed.connect(lambda planning: planning or self._search())
         # A discarded plan is a complete reset, so its waypoints go too.
-        self.edit_history.plan_discarded.connect(self.clear)
+        self.edit_history.plan_discarded.connect(self.reset)
 
     @property
     def is_searching(self) -> bool:
         return self._running is not None
+
+    @property
+    def can_undo_waypoints(self) -> bool:
+        return bool(self._undo_waypoints)
+
+    def undo_waypoints(self) -> bool:
+        """Takes back the last change of the waypoints (add, move, remove). Returns False if
+        there is none, so Ctrl+Z goes on to the plan's undo."""
+
+        if not self._undo_waypoints:
+            return False
+
+        self.waypoints = self._undo_waypoints.pop()
+        self._search()
+
+        return True
+
+    def remember_waypoints(self):
+        """Keeps the waypoints before a change, e.g. before a waypoint is dragged."""
+
+        self._undo_waypoints.append(list(self.waypoints))
 
     def add_waypoint(self, x: float, z: float, node_id: int | None = None):
         if node_id is not None:
@@ -110,6 +133,7 @@ class FindRouteOperation(EditOperation):
         if self.waypoints and (self.waypoints[-1].x, self.waypoints[-1].z) == (x, z):
             return
 
+        self.remember_waypoints()
         self.waypoints.append(Waypoint(x, z, node_id))
         self._search()
 
@@ -123,6 +147,7 @@ class FindRouteOperation(EditOperation):
         fraction = ((x - source.x) * dx + (z - source.z) * dz) / length_squared
         fraction = min(max(fraction, 0.01), 0.99)
 
+        self.remember_waypoints()
         self.waypoints.append(
             Waypoint(
                 source.x + fraction * dx,
@@ -151,6 +176,7 @@ class FindRouteOperation(EditOperation):
     def insert_waypoint(self, index: int, x: float, z: float):
         """Adds a free waypoint before the one at the index."""
 
+        self.remember_waypoints()
         self.waypoints.insert(index, Waypoint(x, z))
         self._search()
 
@@ -174,11 +200,22 @@ class FindRouteOperation(EditOperation):
         return max(leg for leg, start in enumerate(route.waypoint_indices[:-1]) if start <= nearest)
 
     def remove_waypoint(self, index: int):
+        self.remember_waypoints()
         del self.waypoints[index]
         self._search()
 
+    def remove_last(self) -> bool:
+        """Removes the last waypoint. Returns whether there was one."""
+
+        if not self.waypoints:
+            return False
+
+        self.remove_waypoint(len(self.waypoints) - 1)
+
+        return True
+
     def move_waypoint(self, index: int, x: float, z: float):
-        """Moves a free waypoint."""
+        """Moves a free waypoint. A drag calls remember_waypoints() once before."""
 
         self.waypoints[index] = replace(self.waypoints[index], x=x, z=z)
         self._search()
@@ -187,13 +224,24 @@ class FindRouteOperation(EditOperation):
         """Removes all waypoints. Returns whether there were any."""
 
         had_waypoints = bool(self.waypoints)
+
+        if had_waypoints:
+            self.remember_waypoints()
+
         self.waypoints = []
         self._search()
 
         return had_waypoints
 
+    def reset(self):
+        """Starts empty, without waypoint undo, e.g. when the tool is left."""
+
+        self._undo_waypoints = []
+        self.waypoints = []
+        self._search()
+
     def apply(self) -> bool:
-        """Adds the route to the plan. The last waypoint, now a node, starts the next route."""
+        """Adds the route to the plan. The tool starts empty; the next click picks a new start."""
 
         autodrive_data = self.autodrive_data_provider()
 
@@ -214,10 +262,10 @@ class FindRouteOperation(EditOperation):
             )
             return False
 
-        command, last_id = self._route_command(autodrive_data, self.route)
-        last = self.waypoints[-1]
+        command = self._route_command(autodrive_data, self.route)
         # Set first, so the edit does not start a search for the old waypoints.
-        self.waypoints = [Waypoint(last.x, last.z, last_id)]
+        self.waypoints = []
+        self._undo_waypoints = []
         self.edit_history.push(command)
         self.status_changed.emit(
             tr("Route with {count} new nodes added", count=len(command.new_nodes))
@@ -400,10 +448,8 @@ class FindRouteOperation(EditOperation):
             z=source.z + fraction * (target.z - source.z),
         )
 
-    def _route_command(
-        self, autodrive_data: AutoDriveData, route: Route
-    ) -> tuple[AddRouteCommand, int]:
-        """The edit that adds the route, and the ID of its last node."""
+    def _route_command(self, autodrive_data: AutoDriveData, route: Route) -> AddRouteCommand:
+        """The edit that adds the route."""
 
         lanes = self._lanes(autodrive_data)
         positions = {
@@ -478,6 +524,4 @@ class FindRouteOperation(EditOperation):
             [(source, target) for source, target, state in connections if state == dual],
         )
 
-        command = AddRouteCommand(tr("Find route"), autodrive_data, new_nodes, connections)
-
-        return command, waypoint_ids[-1]
+        return AddRouteCommand(tr("Find route"), autodrive_data, new_nodes, connections)
