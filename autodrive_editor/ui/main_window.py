@@ -886,6 +886,8 @@ class MainWindow(QMainWindow):
         """Picks what the Generate tool creates and selects the tool."""
 
         self.generate_tool.set_task(task)
+        self.actions.show_generate_task(task)
+        self.generate_options.set_task(task)
         self.set_interaction_mode(InteractionMode.GENERATE)
 
     def _create_tool_options(self):
@@ -907,9 +909,12 @@ class MainWindow(QMainWindow):
         self.options_bar.add_options([InteractionMode.ROTATE_SELECTION], rotate_options)
 
         self.generate_options = GenerateOptionsWidget(
-            self.generate_tool.task, *self.settings.junction_stem, self.settings.junction_style
+            self.actions.generate_task_actions,
+            self.generate_tool.task,
+            *self.settings.junction_stem,
+            self.settings.junction_style,
         )
-        self.generate_options.task_changed.connect(self.set_generate_task)
+        self.actions.show_generate_task(self.generate_tool.task)
         self.generate_options.stem_changed.connect(self.settings.set_junction_stem)
         self.generate_options.style_changed.connect(self.settings.set_junction_style)
         self.options_bar.add_options([InteractionMode.GENERATE], self.generate_options)

@@ -1,13 +1,6 @@
-from PySide6.QtCore import Signal
-from PySide6.QtWidgets import (
-    QButtonGroup,
-    QComboBox,
-    QDoubleSpinBox,
-    QHBoxLayout,
-    QLabel,
-    QRadioButton,
-    QWidget,
-)
+from PySide6.QtCore import QSize, Signal
+from PySide6.QtGui import QAction
+from PySide6.QtWidgets import QComboBox, QDoubleSpinBox, QHBoxLayout, QLabel, QToolButton, QWidget
 
 from autodrive_editor.editing.junction import Stem
 from autodrive_editor.editing.junction_box import Style
@@ -16,32 +9,41 @@ from autodrive_editor.ui.tools.generate_tool import GenerateTask
 
 
 class GenerateOptionsWidget(QWidget):
-    """What the Generate tool creates, shown in the options bar, and the Junction task's options,
+    """The task buttons of the Generate tool in the options bar, and the Junction task's options,
     enabled only for that task."""
 
-    task_changed = Signal(object)
+    TASK_ICON_SIZE = QSize(24, 24)
+
     # The Junction task's stem kind and lane gap.
     stem_changed = Signal(object, float)
     # The Junction task's style (see Style).
     style_changed = Signal(object)
 
     def __init__(
-        self, task: GenerateTask, stem: Stem, gap: float, style: Style = Style.BOX, parent=None
+        self,
+        task_actions: dict[GenerateTask, QAction],
+        task: GenerateTask,
+        stem: Stem,
+        gap: float,
+        style: Style = Style.BOX,
+        parent=None,
     ):
         super().__init__(parent)
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        self.buttons = QButtonGroup(self)
-        self.task_buttons: dict[GenerateTask, QRadioButton] = {}
+        tasks = QHBoxLayout()
+        tasks.setSpacing(2)
+        layout.addLayout(tasks)
+        self.task_buttons: dict[GenerateTask, QToolButton] = {}
 
-        for each in GenerateTask:
-            button = QRadioButton(each.display_name, self)
-            button.setChecked(each == task)
-            button.toggled.connect(lambda checked, each=each: checked and self._set_task(each))
-            self.buttons.addButton(button)
+        for each, action in task_actions.items():
+            button = QToolButton(self)
+            button.setDefaultAction(action)
+            button.setIconSize(self.TASK_ICON_SIZE)
+            button.setAutoRaise(True)
             self.task_buttons[each] = button
-            layout.addWidget(button)
+            tasks.addWidget(button)
 
         self.junction_options = QWidget(self)
         self.style_box = QComboBox(self.junction_options)
@@ -95,9 +97,8 @@ class GenerateOptionsWidget(QWidget):
         layout.addStretch(1)
         self.junction_options.setEnabled(task == GenerateTask.JUNCTION)
 
-    def _set_task(self, task: GenerateTask):
+    def set_task(self, task: GenerateTask):
         self.junction_options.setEnabled(task == GenerateTask.JUNCTION)
-        self.task_changed.emit(task)
 
     def _emit_stem(self):
         self.stem_changed.emit(self.stem_box.currentData(), self.gap_box.value())

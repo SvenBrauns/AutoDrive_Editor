@@ -1,22 +1,35 @@
+from PySide6.QtGui import QAction
+
 from autodrive_editor.editing.junction import Stem
 from autodrive_editor.editing.junction_box import Style
 from autodrive_editor.ui.panels.generate_options import GenerateOptionsWidget
 from autodrive_editor.ui.tools.generate_tool import GenerateTask
 
 
+def task_actions():
+    return {task: QAction(task.display_name) for task in GenerateTask}
+
+
+def test_each_task_has_a_button_for_its_action(qapp):
+    actions = task_actions()
+    widget = GenerateOptionsWidget(actions, GenerateTask.ROUTE, Stem.AUTO, 5.5)
+
+    assert {t: b.defaultAction() for t, b in widget.task_buttons.items()} == actions
+
+
 def test_stem_options_are_enabled_for_the_junction_task_only(qapp):
-    widget = GenerateOptionsWidget(GenerateTask.ROUTE, Stem.AUTO, 5.5)
+    widget = GenerateOptionsWidget(task_actions(), GenerateTask.ROUTE, Stem.AUTO, 5.5)
 
     assert not widget.junction_options.isEnabled()
 
-    widget.task_buttons[GenerateTask.JUNCTION].setChecked(True)
+    widget.set_task(GenerateTask.JUNCTION)
 
     assert widget.junction_options.isEnabled()
     assert not widget.junction_options.isHidden()
 
 
 def test_changing_the_stem_or_gap_reports_both(qapp):
-    widget = GenerateOptionsWidget(GenerateTask.JUNCTION, Stem.AUTO, 5.5)
+    widget = GenerateOptionsWidget(task_actions(), GenerateTask.JUNCTION, Stem.AUTO, 5.5)
     changes = []
     widget.stem_changed.connect(lambda stem, gap: changes.append((stem, gap)))
 
@@ -27,7 +40,7 @@ def test_changing_the_stem_or_gap_reports_both(qapp):
 
 
 def test_the_style_starts_as_given_and_reports_changes(qapp):
-    widget = GenerateOptionsWidget(GenerateTask.JUNCTION, Stem.AUTO, 5.5, Style.BOX)
+    widget = GenerateOptionsWidget(task_actions(), GenerateTask.JUNCTION, Stem.AUTO, 5.5, Style.BOX)
     changes = []
     widget.style_changed.connect(changes.append)
 
