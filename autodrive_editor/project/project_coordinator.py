@@ -52,10 +52,6 @@ class ProjectCoordinator(QObject):
 
     debug_refresh_requested = Signal()
 
-    map_scale_changed = Signal(int)
-
-    heightmap_path_changed = Signal(object)
-
     # The backgrounds the loaded map has (ground map, game picture) changed.
     backgrounds_changed = Signal()
 
@@ -93,6 +89,9 @@ class ProjectCoordinator(QObject):
         # Opens the game and mod files the savegame's buildings are read from.
         self.game_files = game_files
 
+        # The map chosen for a file under Settings → Maps (AutoDrive name), None if none.
+        self.map_for_file: Callable[[Path], str | None] = lambda path: None
+
         # Called with the source of a file about to be shown; imports its map if it is missing.
         self.prepare_map: Callable[[ConfigSource], None] = lambda source: None
 
@@ -116,61 +115,6 @@ class ProjectCoordinator(QObject):
 
         # Files backed up as .bak in this session.
         self._backed_up_paths: set[Path] = set()
-
-    def load_background_file(self, file_path):
-        self.background_map.load(file_path)
-        self.backgrounds_changed.emit()
-
-        self.update_scene_rect()
-
-        if self.autodrive_data is None:
-            self.fit_scene_in_view()
-
-        self.status_changed.emit(tr("DDS background loaded"))
-
-        self.debug_refresh_requested.emit()
-
-    def load_heightmap_file(self, file_path):
-        heightmap_data = self.heightmap.load(file_path)
-
-        self._set_heightmap_path(heightmap_data.file_path)
-
-        self.selection_coordinator.refresh_info()
-
-        self.status_changed.emit(
-            tr(
-                "Heightmap loaded: {width} × {height}, {format}",
-                width=heightmap_data.width,
-                height=heightmap_data.height,
-                format=heightmap_data.format_description,
-            )
-        )
-
-        self.debug_refresh_requested.emit()
-
-    def remove_heightmap(self):
-        self.heightmap.clear()
-
-        self._set_heightmap_path(None)
-
-        self.selection_coordinator.refresh_info()
-
-        self.status_changed.emit(tr("Heightmap removed"))
-
-        self.debug_refresh_requested.emit()
-
-    def set_map_scale(self, map_scale: int, map_scale_label: str):
-        self.background_map.set_map_scale(map_scale)
-
-        self.update_scene_rect()
-
-        self.selection_coordinator.refresh_info()
-
-        self.map_scale_changed.emit(self.background_map.map_scale)
-
-        self.status_changed.emit(tr("Map size: {size}", size=map_scale_label))
-
-        self.debug_refresh_requested.emit()
 
     def load_xml_file(self, file_path, display_name=None, map_name=None, original_path=None):
         """Loads a route file or savegame config. Route files do not contain
@@ -197,7 +141,7 @@ class ProjectCoordinator(QObject):
         source = replace(
             source,
             path=xml_path,
-            map_name=map_name or source.map_name,
+            map_name=self.map_for_file(xml_path) or map_name or source.map_name,
             display_name=display_name or xml_path.stem,
         )
 
@@ -211,7 +155,7 @@ class ProjectCoordinator(QObject):
         source = ConfigSource(
             ConfigFormat.SAVEGAME,
             Path(config_path).resolve(),
-            map_name=map_name or None,
+            map_name=self.map_for_file(config_path) or map_name or None,
             display_name=display_name,
         )
         self.prepare_map(source)
@@ -261,6 +205,19 @@ class ProjectCoordinator(QObject):
 
         self.debug_refresh_requested.emit()
 
+    def use_map(self, map_name: str):
+        """Shows the open file on another imported map (Settings → Maps)."""
+
+        self.config_source = replace(self.config_source, map_name=map_name)
+        self.load_map_for_current_config()
+
+    def unload_map(self):
+        """Takes the map from under the open file, e.g. before the map is removed."""
+
+        if self.autodrive_data is not None:
+            self._show_without_map(self.autodrive_data)
+            self.update_scene_rect()
+
     def _show_without_map(self, data: AutoDriveData):
         """No imported map: no background and heightmap; the map size is the network's extent."""
 
@@ -272,7 +229,6 @@ class ProjectCoordinator(QObject):
         nodes = data.nodes.values()
         map_scale = map_scale_for_extent([n.x for n in nodes], [n.z for n in nodes])
         self.background_map.set_map_scale(map_scale)
-        self.map_scale_changed.emit(map_scale)
 
     def load_map_for_current_config(self) -> bool:
         """Loads the imported map of the current config, e.g. after it was
@@ -499,18 +455,23 @@ class ProjectCoordinator(QObject):
         """Loads the imported map AutoDrive names in the source. Returns
         whether a background was loaded and a note for the status bar."""
 
-        if self.map_cache is None or not source.map_name:
+        if self.map_cache is None:
             return False, ""
+
+        if not source.map_name:
+            return False, tr(
+                " – no map known; choose one under File → Settings → Maps → "
+                "“Use this map for the open file”"
+            )
 
         cached = self.map_cache.find(source.map_name)
 
         if cached is None:
             return False, (
-                tr(" – map “{name}” is not imported (Map → Scan maps)", name=source.map_name)
+                tr(" – map “{name}” is not imported (File → Settings → Maps)", name=source.map_name)
             )
 
         self.background_map.set_map_scale(cached.map_scale)
-        self.map_scale_changed.emit(cached.map_scale)
 
         self.background_map.load(str(cached.overview_path))
         self.background_map.set_ground(cached.ground_path, cached.fields())
@@ -565,5 +526,3 @@ class ProjectCoordinator(QObject):
 
     def _set_heightmap_path(self, file_path):
         self.current_heightmap_path = str(file_path) if file_path is not None else None
-
-        self.heightmap_path_changed.emit(self.current_heightmap_path)

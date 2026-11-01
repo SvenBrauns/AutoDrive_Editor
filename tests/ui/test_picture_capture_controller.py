@@ -1,4 +1,4 @@
-"""Map → Capture game picture, with the companion mod played by the test."""
+"""View → Background → Capture game picture, with the companion mod played by the test."""
 
 import json
 import time
@@ -214,7 +214,9 @@ def test_refresh_needs_a_captured_picture(capture_window):
 
     capture_window.picture_capture.set_refresh_active(True)
 
-    assert capture_window.messages == ["Capture the whole map first (Map → Capture game picture…)."]
+    assert capture_window.messages == [
+        "Capture the whole map first (View → Background → Capture game picture…)."
+    ]
     assert capture_window.picture_capture.refresh_tool is None
     assert not capture_window.actions.refresh_picture_action.isChecked()
 

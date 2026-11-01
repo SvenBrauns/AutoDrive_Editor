@@ -1,5 +1,5 @@
-"""Shown on the first start: checks the detected FS25 folders and offers
-to import the maps right away, so loaded routes find their map."""
+"""Shown on the first start: checks the detected FS25 folders. Maps are imported when a file
+needs them."""
 
 from PySide6.QtWidgets import QCheckBox, QDialog, QDialogButtonBox, QLabel, QVBoxLayout
 
@@ -18,8 +18,6 @@ class FirstStartDialog(QDialog):
         "File → Settings."
     )
 
-    SCAN_TEXT = tr("Then scan maps (base game maps and map mods in the mods folder)")
-
     def __init__(self, settings: AppSettings, parent=None):
         super().__init__(parent)
 
@@ -30,9 +28,6 @@ class FirstStartDialog(QDialog):
         intro.setWordWrap(True)
 
         self.folders = FolderSettingsWidget(settings, self)
-
-        self.scan_check_box = QCheckBox(self.SCAN_TEXT, self)
-        self.scan_check_box.setChecked(True)
 
         self.update_check_box = QCheckBox(UPDATE_CHECK_TEXT, self)
         self.update_check_box.setChecked(settings.check_updates)
@@ -48,14 +43,9 @@ class FirstStartDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.addWidget(intro)
         layout.addWidget(self.folders)
-        layout.addWidget(self.scan_check_box)
         layout.addWidget(self.update_check_box)
         layout.addStretch(1)
         layout.addWidget(buttons)
-
-    @property
-    def scan_requested(self) -> bool:
-        return self.result() == QDialog.DialogCode.Accepted and self.scan_check_box.isChecked()
 
     def accept(self):
         self.folders.store()

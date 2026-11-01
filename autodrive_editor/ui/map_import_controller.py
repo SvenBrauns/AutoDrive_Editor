@@ -1,30 +1,31 @@
+import shutil
+
 from PySide6.QtCore import QObject, Qt, Signal
 from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox, QProgressDialog, QWidget
 
 from autodrive_editor.file_io.autodrive_xml import ConfigFormat, ConfigSource
 from autodrive_editor.file_io.base_game_maps import read_base_game_maps
 from autodrive_editor.file_io.map_mod import MapMod, read_map_mod
-from autodrive_editor.game.map_scanner import ScanResult, scan_for_map_mods
 from autodrive_editor.game.map_source import (
     READ_ERRORS,
     MapSource,
     find_by_map_id,
     find_by_map_name,
+    find_import_source,
 )
 from autodrive_editor.game.savegame_info import read_savegame_info
 from autodrive_editor.i18n import tr
 from autodrive_editor.project.project_coordinator import ProjectCoordinator
 from autodrive_editor.settings.app_settings import AppSettings
-from autodrive_editor.terrain.map_cache import MapCache
+from autodrive_editor.terrain.game_picture import PICTURE_FOLDER
+from autodrive_editor.terrain.map_cache import CachedMap, MapCache, folder_size
 from autodrive_editor.ui.dialogs.first_start_dialog import FirstStartDialog
-from autodrive_editor.ui.dialogs.map_import_dialog import MapImportDialog
 from autodrive_editor.ui.dialogs.messages import APP_TITLE, inform
 
 
 class MapImportController(QObject):
-    """Imports map images and heightmaps from map mods and the base game:
-    on first start, from the menu, and when a file to be opened names a map
-    that is not imported yet."""
+    """Imports map images and heightmaps from map mods and the base game when a file to be
+    opened names a map that is not imported yet, and runs Settings → Maps."""
 
     status_changed = Signal(str)
 
@@ -52,59 +53,76 @@ class MapImportController(QObject):
             self._import_maps([(map_mod, entry) for entry in map_mod.maps])
 
     def run_first_start(self):
-        """Shows the setup dialog on the first start (or when a stored folder
-        is gone) and scans for maps if the user wants to."""
+        """Shows the setup dialog on the first start (or when a stored folder is gone). Maps are
+        imported when a file needs them."""
 
         if not self.settings.needs_setup:
             return
 
-        scan_requested = self._show_first_start_dialog()
+        self._show_first_start_dialog()
         self.settings.mark_setup_done()
 
-        if scan_requested:
-            self.scan_map_mods()
+    def _show_first_start_dialog(self):
+        FirstStartDialog(self.settings, parent=self.window).exec()
 
-    def _show_first_start_dialog(self) -> bool:
-        dialog = FirstStartDialog(self.settings, parent=self.window)
-        dialog.exec()
-
-        return dialog.scan_requested
-
-    def scan_map_mods(self):
-        """Offers the base game maps and the map mods for import. Works with
-        only one of the two folders set."""
+    def reimport(self, cached: CachedMap) -> bool:
+        """Settings → Maps → Re-import: reads the map from its mod again."""
 
         game_folder = self.settings.game_folder
-        has_game_folder = game_folder is not None and game_folder.is_valid
-        base_maps = self._read_base_game_maps()
+        mods = game_folder.mods_directory if game_folder is not None else None
+        found = find_import_source(cached, mods, self._read_base_game_maps())
 
-        if not has_game_folder and base_maps is None:
-            self._inform(
-                tr(
-                    "Neither a valid FS25 game folder nor an FS25 installation is set.\n"
-                    "Please set them under File → Settings."
-                )
+        if found is None:
+            self._inform(tr("The mod “{mod}” of this map was not found.", mod=cached.mod_name))
+            return False
+
+        return bool(self._import_maps([found]))
+
+    def remove(self, cached: CachedMap) -> bool:
+        """Settings → Maps → Remove: deletes the imported map with its game picture, after
+        asking."""
+
+        picture_bytes = folder_size(cached.directory / PICTURE_FOLDER)
+
+        if not self._confirm_remove(cached.title, picture_bytes):
+            return False
+
+        if self.project_coordinator.loaded_map() == cached:
+            self.project_coordinator.unload_map()
+
+        try:
+            shutil.rmtree(cached.directory)
+        except OSError as ex:
+            self._inform(tr("The map could not be removed:\n{error}", error=ex))
+            return False
+
+        self.status_changed.emit(tr("Map “{name}” removed", name=cached.title))
+        return True
+
+    def _confirm_remove(self, title: str, picture_bytes: int) -> bool:
+        text = tr("Remove the imported map “{name}”?", name=title)
+
+        if picture_bytes:
+            text += "\n\n" + tr(
+                "Its game picture ({size} MB) is deleted too.", size=f"{picture_bytes / 1e6:.0f}"
             )
+
+        answer = QMessageBox.question(
+            self.window, APP_TITLE, text, QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+        )
+
+        return answer == QMessageBox.Yes
+
+    def use_for_open_file(self, cached: CachedMap):
+        """Settings → Maps → Use this map for the open file; remembered for that file."""
+
+        source = self.project_coordinator.config_source
+
+        if source is None or not cached.autodrive_names:
             return
 
-        result = scan_for_map_mods(game_folder.mods_directory) if has_game_folder else ScanResult()
-
-        if base_maps is not None:
-            result.map_mods.insert(0, base_maps)
-
-        if not result.map_mods:
-            self._inform(
-                tr(
-                    "No map mods were found in the mods folder:\n{path}",
-                    path=game_folder.mods_directory,
-                )
-            )
-            return
-
-        chosen = self._choose_maps_to_import(result)
-
-        if chosen:
-            self._import_maps(chosen)
+        self.settings.set_file_map(source.path, cached.autodrive_names[0])
+        self.project_coordinator.use_map(cached.autodrive_names[0])
 
     def ensure_map(self, source: ConfigSource):
         """Before a file is shown: imports its map if it is missing, without asking. A savegame
@@ -205,13 +223,6 @@ class MapImportController(QObject):
             return read_base_game_maps(installation.data_directory)
         except Exception:
             return None
-
-    def _choose_maps_to_import(self, scan_result):
-        dialog = MapImportDialog(
-            scan_result.map_mods, self.map_cache, scan_result.skipped, parent=self.window
-        )
-
-        return dialog.chosen_maps if dialog.exec() else []
 
     def _import_maps(self, chosen, show_now=True):
         """Imports the given (mod, map) pairs into the map cache and reports the result.

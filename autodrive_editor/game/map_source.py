@@ -10,8 +10,10 @@ import zipfile
 from pathlib import Path
 from xml.etree.ElementTree import ParseError
 
+from autodrive_editor.file_io.base_game_maps import BASE_GAME_MOD_NAME
 from autodrive_editor.file_io.map_mod import MapEntry, MapMod, read_map_mod
 from autodrive_editor.game.map_scanner import scan_for_map_mods
+from autodrive_editor.terrain.map_cache import CachedMap
 
 MapSource = tuple[MapMod, MapEntry]
 
@@ -36,13 +38,35 @@ def find_by_map_id(
     if mod_name is None:
         return _entry_with_id(base_maps, inner_id)
 
+    return _entry_with_id(_read_mod(mod_name, mods_directory), inner_id)
+
+
+def find_import_source(
+    cached: CachedMap, mods_directory: Path | None, base_maps: MapMod | None
+) -> MapSource | None:
+    """The mod and map an imported map came from, to import it again."""
+
+    mod = base_maps if cached.mod_name == BASE_GAME_MOD_NAME else None
+    mod = mod or _read_mod(cached.mod_name, mods_directory)
+
+    if mod is None:
+        return None
+
+    return next(
+        ((mod, entry) for entry in mod.maps if entry.config_file == cached.config_file), None
+    )
+
+
+def _read_mod(mod_name: str, mods_directory: Path | None) -> MapMod | None:
+    """The mod zip or folder of this name in the mods folder; None if missing or unreadable."""
+
     if mods_directory is None:
         return None
 
     for path in (Path(mods_directory) / f"{mod_name}.zip", Path(mods_directory) / mod_name):
         if path.exists():
             try:
-                return _entry_with_id(read_map_mod(path), inner_id)
+                return read_map_mod(path)
             except READ_ERRORS:
                 return None
 

@@ -1,6 +1,7 @@
 """Settings that are kept between editor sessions."""
 
 import json
+import os
 from dataclasses import fields
 from pathlib import Path
 
@@ -63,6 +64,7 @@ class AppSettings:
     CHECK_UPDATES_KEY = "app/check_updates"
     REOPEN_LAST_KEY = "app/reopen_last"
     DEBUG_LOG_KEY = "app/debug_log"
+    FILE_MAPS_KEY = "maps/file_maps"
     PARKING_TEMPLATES_KEY = "parking/templates"
     # Named after the sheds, which were the first building types that could be hidden.
     HIDDEN_BUILDING_TYPES_KEY = "view/hidden_shed_types"
@@ -341,6 +343,27 @@ class AppSettings:
         )
         self._settings.sync()
 
+    def file_map(self, path) -> str | None:
+        """The map chosen with "Use this map for the open file" for this file (AutoDrive name)."""
+
+        name = self._file_maps().get(_file_key(path))
+
+        return name if isinstance(name, str) else None
+
+    def set_file_map(self, path, map_name: str):
+        maps = self._file_maps()
+        maps[_file_key(path)] = map_name
+        self._settings.setValue(self.FILE_MAPS_KEY, json.dumps(maps))
+        self._settings.sync()
+
+    def _file_maps(self) -> dict:
+        try:
+            maps = json.loads(self._settings.value(self.FILE_MAPS_KEY, "{}"))
+        except (TypeError, ValueError):
+            return {}
+
+        return maps if isinstance(maps, dict) else {}
+
     def parking_templates(self, building_file: str) -> dict[str, dict]:
         """Parking spot templates of a shed type (its building file), by name."""
 
@@ -544,3 +567,7 @@ class AppSettings:
                 self.set_game_folder(detected.path)
 
         return self.game_folder
+
+
+def _file_key(path) -> str:
+    return os.path.normcase(str(Path(path).resolve()))

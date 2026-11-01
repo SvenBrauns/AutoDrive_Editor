@@ -49,14 +49,6 @@ def test_route_loads_its_imported_map(map_window):
     assert "map “LS25 Testkarte 2.0”" in map_window.status.text()
 
 
-def test_map_size_menu_follows_the_detected_map(map_window):
-    import_test_map(map_window)
-
-    open_route(map_window, MAP_NAME)
-
-    assert map_window.actions.map_scale_actions[2].isChecked()
-
-
 def test_savegame_prefers_its_own_heightmap(map_window):
     import_test_map(map_window)
     savegame = add_savegame(map_window.folder, 1, "Spielstand", "LS25 Testkarte 2.0", MAP_NAME)
@@ -84,7 +76,7 @@ def test_map_that_is_not_imported_is_named_in_the_status(map_window):
 
     assert not map_window.background_map.has_background()
     assert "“Unbekannte_Karte” is not imported" in map_window.status.text()
-    assert "Scan maps" in map_window.status.text()
+    assert "Settings → Maps" in map_window.status.text()
 
 
 def test_without_map_name_nothing_is_detected(map_window, write_xml):

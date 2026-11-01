@@ -59,17 +59,8 @@ class MainWindowActions:
     sync with the active tool.
     """
 
-    MAP_SCALES = (
-        (tr("Original size"), 1),
-        (tr("4x map"), 2),
-        (tr("16x map"), 4),
-        (tr("64x map"), 8),
-    )
-
     def __init__(self, window: QMainWindow):
         self.window = window
-
-        self.map_scale_actions = {}
 
         self._create_actions()
         self._create_tool_strip()
@@ -116,11 +107,6 @@ class MainWindowActions:
                 )
                 + ("reset_view", "reset_rotation"),
             ),
-            (
-                tr("Map"),
-                ("scan_map_mods", "import_map_mod", "select_background", "select_heightmap")
-                + ("remove_heightmap",),
-            ),
             (tr("Check"), ("check_network",)),
             (tr("Generate"), ("building_types",)),
             (tr("Help"), ("version_history", "check_updates", "open_log_folder", "about")),
@@ -144,9 +130,6 @@ class MainWindowActions:
 
         for name, action in self.show_actions.items():
             self.shortcuts.add(f"show_{name}", view, action)
-
-        for map_scale, action in self.map_scale_actions.items():
-            self.shortcuts.add(f"map_scale_{map_scale}", tr("Map"), action)
 
     def apply_shortcuts(self, changed: dict[str, list[str]]):
         """Sets the stored shortcuts and shows them in the tool tooltips."""
@@ -333,18 +316,6 @@ class MainWindowActions:
 
         self.reset_rotation_action.triggered.connect(self.window.reset_view_rotation)
 
-        self.import_map_mod_action = QAction(tr("Import map from mod…"), self.window)
-        self.import_map_mod_action.setStatusTip(
-            tr("Import the map image and heightmap from a map mod (zip)")
-        )
-        self.import_map_mod_action.triggered.connect(self.window.map_import.import_map_mod)
-
-        self.scan_map_mods_action = QAction(tr("Scan maps…"), self.window)
-        self.scan_map_mods_action.setStatusTip(
-            tr("Search the mods folder for map mods and import maps")
-        )
-        self.scan_map_mods_action.triggered.connect(self.window.map_import.scan_map_mods)
-
         self.capture_picture_action = QAction(tr("Capture game picture…"), self.window)
         self.capture_picture_action.setStatusTip(
             tr("Let the game render the whole map from above, with the companion mod")
@@ -360,22 +331,6 @@ class MainWindowActions:
             tr("Mark tiles of the game picture and let the game render them again")
         )
         self.refresh_picture_action.toggled.connect(self.window.picture_capture.set_refresh_active)
-
-        self.select_background_action = QAction(tr("Choose DDS"), self.window)
-
-        self.select_background_action.triggered.connect(self.window.files.select_background)
-
-        self.select_heightmap_action = QAction(tr("Choose heightmap"), self.window)
-
-        self.select_heightmap_action.triggered.connect(self.window.files.select_heightmap)
-
-        self.remove_heightmap_action = QAction(tr("Remove heightmap"), self.window)
-
-        self.remove_heightmap_action.triggered.connect(
-            self.window.project_coordinator.remove_heightmap
-        )
-
-        self.remove_heightmap_action.setEnabled(False)
 
         self.check_network_action = QAction(tr("Check network"), self.window)
         self.check_network_action.setStatusTip(
@@ -394,8 +349,6 @@ class MainWindowActions:
         self.grid_snap_action.toggled.connect(
             lambda enabled: self.window.grid_coordinator.set_grid_snap_enabled(enabled)
         )
-
-        self._create_map_scale_actions()
 
         self.planning_mode_action = self.window.planning.action
 
@@ -416,28 +369,6 @@ class MainWindowActions:
     def _set_debug_log(self, enabled: bool):
         self.window.settings.set_debug_log(enabled)
         set_debug_logging(enabled)
-
-    def _create_map_scale_actions(self):
-        self.map_scale_action_group = QActionGroup(self.window)
-
-        self.map_scale_action_group.setExclusive(True)
-
-        for label, map_scale in self.MAP_SCALES:
-            action = QAction(label, self.window)
-
-            action.setCheckable(True)
-
-            action.setData(map_scale)
-
-            action.triggered.connect(
-                lambda checked, selected_scale=map_scale: (
-                    self.window.set_map_scale(selected_scale) if checked else None
-                )
-            )
-
-            self.map_scale_action_group.addAction(action)
-
-            self.map_scale_actions[map_scale] = action
 
     UNDO_TEXT = tr("Undo")
     REDO_TEXT = tr("Redo")
@@ -614,6 +545,9 @@ class MainWindowActions:
         for action in self.background_actions.values():
             background_menu.addAction(action)
 
+        background_menu.addAction(self.capture_picture_action)
+        background_menu.addAction(self.refresh_picture_action)
+
         view_menu.addSeparator()
 
         view_menu.addAction(self.window.inspector_dock.toggleViewAction())
@@ -640,32 +574,6 @@ class MainWindowActions:
         view_menu.addAction(self.reset_view_action)
 
         view_menu.addAction(self.reset_rotation_action)
-
-        map_menu = menu_bar.addMenu(tr("Map"))
-
-        map_menu.addAction(self.scan_map_mods_action)
-
-        map_menu.addAction(self.import_map_mod_action)
-
-        map_menu.addAction(self.capture_picture_action)
-        map_menu.addAction(self.refresh_picture_action)
-
-        map_menu.addSeparator()
-
-        map_menu.addAction(self.select_background_action)
-
-        map_menu.addSeparator()
-
-        map_menu.addAction(self.select_heightmap_action)
-
-        map_menu.addAction(self.remove_heightmap_action)
-
-        map_menu.addSeparator()
-
-        map_size_menu = map_menu.addMenu(tr("Map size"))
-
-        for _, map_scale in self.MAP_SCALES:
-            map_size_menu.addAction(self.map_scale_actions[map_scale])
 
         check_menu = menu_bar.addMenu(tr("Check"))
 
@@ -876,12 +784,6 @@ class MainWindowActions:
         visibility = self.window.scene_renderer.visibility
 
         self.window.set_visibility(replace(visibility, **{name: shown}))
-
-    def set_current_map_scale(self, map_scale: int):
-        action = self.map_scale_actions.get(map_scale)
-
-        if action is not None:
-            action.setChecked(True)
 
     def _check_tool_action(self, interaction_mode: InteractionMode | None):
         """Checks the action of the given tool, or none for None,

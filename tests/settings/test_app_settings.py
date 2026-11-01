@@ -363,3 +363,10 @@ def test_picture_wait_defaults_to_500_ms_and_is_kept():
     AppSettings().set_picture_wait_ms(300)
 
     assert AppSettings().picture_wait_ms == 300
+
+
+def test_map_chosen_for_a_file_is_remembered(tmp_path):
+    AppSettings().set_file_map(tmp_path / "a.xml", "LS25_Testkarte")
+
+    assert AppSettings().file_map(tmp_path / "a.xml") == "LS25_Testkarte"
+    assert AppSettings().file_map(tmp_path / "b.xml") is None

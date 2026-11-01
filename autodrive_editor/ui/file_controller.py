@@ -68,34 +68,6 @@ class FileController(QObject):
         self.autosave_timer.timeout.connect(self.autosave)
         self.apply_autosave_interval()
 
-    def select_background(self):
-        filename, _ = QFileDialog.getOpenFileName(
-            self.window, tr("Choose overview.dds"), "", tr("DDS images (*.dds);;All files (*)")
-        )
-
-        if not filename:
-            return
-
-        try:
-            self.project_coordinator.load_background_file(filename)
-
-        except Exception as ex:
-            self.status_changed.emit(tr("The DDS could not be loaded: {error}", error=ex))
-
-    def select_heightmap(self):
-        filename, _ = QFileDialog.getOpenFileName(
-            self.window, tr("Choose dem.png"), "", tr("PNG heightmaps (*.png);;All files (*)")
-        )
-
-        if not filename:
-            return
-
-        try:
-            self.project_coordinator.load_heightmap_file(filename)
-
-        except Exception as ex:
-            self.status_changed.emit(tr("The heightmap could not be loaded: {error}", error=ex))
-
     def open(self):
         """File → Open…: the Open screen as a dialog."""
 

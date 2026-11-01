@@ -22,9 +22,7 @@ def test_all_menu_and_tool_actions_can_be_changed(clean_window):
     )
     assert entries["tool_measure_distance"].text == "Measure – Distance"
     assert entries["align_measurement"].text == "Align the measuring line horizontally"
-    assert {"save_xml", "check_network", "panel_marker_dock", "show_nodes", "map_scale_2"} <= set(
-        entries
-    )
+    assert {"save_xml", "check_network", "panel_marker_dock", "show_nodes"} <= set(entries)
 
 
 def test_each_variant_key_is_its_own_entry(clean_window):
