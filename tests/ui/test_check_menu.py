@@ -20,6 +20,8 @@ def check_window(window, write_xml, qapp):
         flags="0;0;0;0",
     )
     window.project_coordinator.load_xml_file(path)
+    # Without a map the size would grow to hold node 3.
+    window.background_map.set_map_scale(1)
     qapp.processEvents()
     window.data = window.project_coordinator.autodrive_data
     return window

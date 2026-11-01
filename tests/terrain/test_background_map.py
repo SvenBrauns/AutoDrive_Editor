@@ -7,7 +7,7 @@ from PySide6.QtWidgets import QGraphicsScene
 from autodrive_editor.file_io.ground_map import Field
 from autodrive_editor.rendering.items.field_outline_item import FieldOutlineItem
 from autodrive_editor.rendering.items.game_picture_item import GamePictureItem
-from autodrive_editor.terrain.background_map import Background, BackgroundMap
+from autodrive_editor.terrain.background_map import Background, BackgroundMap, map_scale_for_extent
 from autodrive_editor.terrain.game_picture import GamePicture, PictureGrid
 
 FIELDS = [Field(1, [(-500, -500), (500, -500), (500, 500)])]
@@ -152,3 +152,11 @@ def test_changed_picture_tiles_reach_the_shown_picture(background, picture):
     background.picture_tiles_changed([(0, 0, 0)])
 
     assert picture_items(background)[0].versions == {(0, 0, 0): 1}
+
+
+def test_map_size_without_a_map_holds_the_whole_network():
+    assert map_scale_for_extent([], []) == 1
+    assert map_scale_for_extent([-1000, 500], [1024]) == 1
+    assert map_scale_for_extent([1025], [0]) == 2
+    assert map_scale_for_extent([0], [-4000]) == 4
+    assert map_scale_for_extent([9000], [0]) == 8

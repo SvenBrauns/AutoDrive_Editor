@@ -33,7 +33,7 @@ from autodrive_editor.model.autodrive_data import AutoDriveData
 from autodrive_editor.project.autosave import AutosaveInfo, AutosaveStore
 from autodrive_editor.rendering.scene_renderer import SceneRenderer
 from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
-from autodrive_editor.terrain.background_map import BackgroundMap
+from autodrive_editor.terrain.background_map import BackgroundMap, map_scale_for_extent
 from autodrive_editor.terrain.game_picture import find_picture, savegame_key
 from autodrive_editor.terrain.heightmap import Heightmap
 from autodrive_editor.terrain.map_cache import MapCache
@@ -60,9 +60,6 @@ class ProjectCoordinator(QObject):
     backgrounds_changed = Signal()
 
     autodrive_data_loaded = Signal(object)
-
-    # A loaded config names a map that is not imported (AutoDrive map name).
-    map_missing = Signal(str)
 
     def __init__(
         self,
@@ -95,6 +92,9 @@ class ProjectCoordinator(QObject):
 
         # Opens the game and mod files the savegame's buildings are read from.
         self.game_files = game_files
+
+        # Called with the source of a file about to be shown; imports its map if it is missing.
+        self.prepare_map: Callable[[ConfigSource], None] = lambda source: None
 
         self.autodrive_data: AutoDriveData | None = None
 
@@ -201,6 +201,7 @@ class ProjectCoordinator(QObject):
             display_name=display_name or xml_path.stem,
         )
 
+        self.prepare_map(source)
         self._show_loaded(loaded.data, source)
 
     def start_empty_savegame(self, config_path, display_name: str, map_name: str):
@@ -213,6 +214,7 @@ class ProjectCoordinator(QObject):
             map_name=map_name or None,
             display_name=display_name,
         )
+        self.prepare_map(source)
         self._show_loaded(AutoDriveData(), source)
 
     def _show_loaded(self, data: AutoDriveData, source: ConfigSource):
@@ -232,7 +234,7 @@ class ProjectCoordinator(QObject):
         map_loaded, map_note = self._load_detected_map(source)
 
         if not map_loaded:
-            self.background_map.restore()
+            self._show_without_map(data)
 
         self.scene_renderer.render(self.autodrive_data)
         self._show_parking()
@@ -259,8 +261,18 @@ class ProjectCoordinator(QObject):
 
         self.debug_refresh_requested.emit()
 
-        if not map_loaded and self._map_is_missing(source):
-            self.map_missing.emit(source.map_name)
+    def _show_without_map(self, data: AutoDriveData):
+        """No imported map: no background and heightmap; the map size is the network's extent."""
+
+        self.background_map.remove_from_scene(preserve_file_path=False)
+        self.backgrounds_changed.emit()
+        self.heightmap.clear()
+        self._set_heightmap_path(None)
+
+        nodes = data.nodes.values()
+        map_scale = map_scale_for_extent([n.x for n in nodes], [n.z for n in nodes])
+        self.background_map.set_map_scale(map_scale)
+        self.map_scale_changed.emit(map_scale)
 
     def load_map_for_current_config(self) -> bool:
         """Loads the imported map of the current config, e.g. after it was
@@ -276,13 +288,6 @@ class ProjectCoordinator(QObject):
             self.status_changed.emit(tr("Map loaded{map_note}", map_note=map_note))
 
         return map_loaded
-
-    def _map_is_missing(self, source: ConfigSource) -> bool:
-        return (
-            self.map_cache is not None
-            and bool(source.map_name)
-            and self.map_cache.find(source.map_name) is None
-        )
 
     def save_xml_file(self) -> list[str]:
         """Saves the data into the file it was loaded from. Routes listed in

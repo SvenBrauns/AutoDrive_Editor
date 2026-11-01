@@ -1,9 +1,17 @@
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, Qt, Signal
 from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox, QProgressDialog, QWidget
 
+from autodrive_editor.file_io.autodrive_xml import ConfigFormat, ConfigSource
 from autodrive_editor.file_io.base_game_maps import read_base_game_maps
-from autodrive_editor.file_io.map_mod import read_map_mod
+from autodrive_editor.file_io.map_mod import MapMod, read_map_mod
 from autodrive_editor.game.map_scanner import ScanResult, scan_for_map_mods
+from autodrive_editor.game.map_source import (
+    READ_ERRORS,
+    MapSource,
+    find_by_map_id,
+    find_by_map_name,
+)
+from autodrive_editor.game.savegame_info import read_savegame_info
 from autodrive_editor.i18n import tr
 from autodrive_editor.project.project_coordinator import ProjectCoordinator
 from autodrive_editor.settings.app_settings import AppSettings
@@ -15,13 +23,10 @@ from autodrive_editor.ui.dialogs.messages import APP_TITLE, inform
 
 class MapImportController(QObject):
     """Imports map images and heightmaps from map mods and the base game:
-    on first start, from the menu, and when a loaded config names a map
+    on first start, from the menu, and when a file to be opened names a map
     that is not imported yet."""
 
     status_changed = Signal(str)
-
-    MISSING_MAP_SCAN = "scan"
-    MISSING_MAP_IMPORT = "import"
 
     def __init__(
         self,
@@ -37,31 +42,14 @@ class MapImportController(QObject):
         self.map_cache = map_cache
         self.project_coordinator = project_coordinator
 
-        # Missing maps the user chose to go on without in this session.
+        # Missing maps that were not found or not imported in this session; not asked again.
         self.declined_missing_maps = set()
 
     def import_map_mod(self):
-        game_folder = self.settings.game_folder
-        start = str(game_folder.mods_directory) if game_folder is not None else ""
+        map_mod = self._choose_map_mod()
 
-        filename, _ = QFileDialog.getOpenFileName(
-            self.window, tr("Import map mod"), start, tr("Mod archive (*.zip)")
-        )
-
-        if not filename:
-            return
-
-        try:
-            map_mod = read_map_mod(filename)
-        except Exception as ex:
-            self._inform(tr("The mod could not be read:\n{error}", error=ex))
-            return
-
-        if map_mod is None:
-            self._inform(tr("This mod contains no map."))
-            return
-
-        self._import_maps([(map_mod, entry) for entry in map_mod.maps])
+        if map_mod is not None:
+            self._import_maps([(map_mod, entry) for entry in map_mod.maps])
 
     def run_first_start(self):
         """Shows the setup dialog on the first start (or when a stored folder
@@ -118,50 +106,92 @@ class MapImportController(QObject):
         if chosen:
             self._import_maps(chosen)
 
-    def offer_missing_map(self, map_name: str):
-        """Called when a loaded config names a map that is not imported.
-        Offers to import it and loads it right away."""
+    def ensure_map(self, source: ConfigSource):
+        """Before a file is shown: imports its map if it is missing, without asking. A savegame
+        names the mod in careerSavegame.xml; for a route the mods are scanned. Asks only if the
+        map is not found."""
 
-        if map_name in self.declined_missing_maps:
+        name = source.map_name
+
+        if not name or self.map_cache.find(name) is not None or name in self.declined_missing_maps:
             return
 
-        choice = self._ask_missing_map(map_name)
+        found = self._find_map(source) or self._ask_map_not_found(name)
 
-        if choice == self.MISSING_MAP_SCAN:
-            self.scan_map_mods()
-        elif choice == self.MISSING_MAP_IMPORT:
-            self.import_map_mod()
-        else:
-            self.declined_missing_maps.add(map_name)
+        if found is None:
+            self.declined_missing_maps.add(name)
             return
 
-        if not self.project_coordinator.load_map_for_current_config():
-            self.status_changed.emit(tr("Map “{name}” is still not imported", name=map_name))
+        self._import_maps([found], show_now=False)
 
-    def _ask_missing_map(self, map_name: str) -> str | None:
+    def _find_map(self, source: ConfigSource) -> MapSource | None:
+        game_folder = self.settings.game_folder
+        mods = game_folder.mods_directory if game_folder is not None else None
+        base_maps = self._read_base_game_maps()
+
+        try:
+            if source.format == ConfigFormat.SAVEGAME:
+                map_id = read_savegame_info(source.path.parent).map_id
+                return find_by_map_id(map_id, mods, base_maps) if map_id else None
+
+            return find_by_map_name(source.map_name, mods, base_maps)
+        except READ_ERRORS:
+            return None
+
+    def _ask_map_not_found(self, map_name: str) -> MapSource | None:
+        """Asks for the mod zip of a map that was not found; None to go on without the map."""
+
         box = QMessageBox(self.window)
         box.setWindowTitle(APP_TITLE)
         box.setIcon(QMessageBox.Icon.Question)
-        box.setText(tr("The map “{name}” is not imported yet.", name=map_name))
-        box.setInformativeText(
-            tr("Without map image and heightmap only the nodes are shown. Import the map now?")
-        )
-
-        scan_button = box.addButton(tr("Scan maps…"), QMessageBox.ButtonRole.AcceptRole)
-        import_button = box.addButton(tr("Import from mod…"), QMessageBox.ButtonRole.ActionRole)
+        box.setText(tr("The map “{name}” was not found in the mods folder.", name=map_name))
+        box.setInformativeText(tr("Without map image and heightmap only the nodes are shown."))
+        choose_button = box.addButton(tr("Choose mod zip…"), QMessageBox.ButtonRole.AcceptRole)
         box.addButton(tr("Continue without map"), QMessageBox.ButtonRole.RejectRole)
-        box.setDefaultButton(scan_button)
+        box.setDefaultButton(choose_button)
         box.exec()
 
-        clicked = box.clickedButton()
+        if box.clickedButton() is not choose_button:
+            return None
 
-        if clicked is scan_button:
-            return self.MISSING_MAP_SCAN
+        map_mod = self._choose_map_mod()
 
-        if clicked is import_button:
-            return self.MISSING_MAP_IMPORT
+        if map_mod is None:
+            return None
 
-        return None
+        found = next(
+            ((map_mod, entry) for entry in map_mod.maps if map_name in entry.autodrive_names),
+            (map_mod, map_mod.maps[0]) if len(map_mod.maps) == 1 else None,
+        )
+
+        if found is None:
+            self._inform(tr("This mod does not contain the map “{name}”.", name=map_name))
+
+        return found
+
+    def _choose_map_mod(self) -> MapMod | None:
+        """A map mod chosen in a file dialog; None if cancelled or not a map mod."""
+
+        game_folder = self.settings.game_folder
+        start = str(game_folder.mods_directory) if game_folder is not None else ""
+
+        filename, _ = QFileDialog.getOpenFileName(
+            self.window, tr("Import map mod"), start, tr("Mod archive (*.zip)")
+        )
+
+        if not filename:
+            return None
+
+        try:
+            map_mod = read_map_mod(filename)
+        except Exception as ex:
+            self._inform(tr("The mod could not be read:\n{error}", error=ex))
+            return None
+
+        if map_mod is None:
+            self._inform(tr("This mod contains no map."))
+
+        return map_mod
 
     def _read_base_game_maps(self):
         """The base game maps, if the FS25 install folder is known."""
@@ -183,13 +213,16 @@ class MapImportController(QObject):
 
         return dialog.chosen_maps if dialog.exec() else []
 
-    def _import_maps(self, chosen):
-        """Imports the given (mod, map) pairs into the map cache and reports
-        the result."""
+    def _import_maps(self, chosen, show_now=True):
+        """Imports the given (mod, map) pairs into the map cache and reports the result.
+        show_now shows a new map under the open file right away; False when a file is about to
+        be opened with it."""
 
         progress = QProgressDialog(tr("Importing maps…"), tr("Cancel"), 0, len(chosen), self.window)
         progress.setWindowTitle(tr("Import maps"))
-        progress.setMinimumDuration(300)
+        progress.setWindowModality(Qt.WindowModality.WindowModal)
+        # A single map imports in one blocking step; shown at once so the user sees why.
+        progress.setMinimumDuration(300 if len(chosen) > 1 else 0)
 
         imported, failed = [], []
 
@@ -210,7 +243,7 @@ class MapImportController(QObject):
         progress.setValue(len(chosen))
 
         # Shows a new or re-imported map (e.g. now with its ground map) right away.
-        if imported:
+        if imported and show_now:
             self.project_coordinator.load_map_for_current_config()
 
         message = tr("{count} map(s) imported.", count=len(imported))

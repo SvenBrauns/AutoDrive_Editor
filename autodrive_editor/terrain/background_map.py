@@ -317,3 +317,12 @@ def snap_to_grid(x: float, z: float, spacing: float, rotation_angle: float) -> t
     scene_point = QTransform().rotate(rotation_angle).map(snapped)
 
     return scene_point.x(), scene_point.y()
+
+
+def map_scale_for_extent(xs, zs) -> int:
+    """The smallest map size (1, 2, 4, 8 = 2, 4, 8, 16 km) that holds all positions; the map's
+    centre is 0, 0."""
+
+    reach = max((abs(value) for value in (*xs, *zs)), default=0.0)
+
+    return next((scale for scale in (1, 2, 4) if reach <= scale * 1024), 8)

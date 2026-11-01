@@ -1200,7 +1200,7 @@ class MainWindow(QMainWindow):
 
         self.project_coordinator.autodrive_data_loaded.connect(self._handle_autodrive_data_loaded)
 
-        self.project_coordinator.map_missing.connect(self.map_import.offer_missing_map)
+        self.project_coordinator.prepare_map = self.map_import.ensure_map
 
         self.edit_history.clean_changed.connect(self._handle_edit_clean_changed)
 
