@@ -3,9 +3,9 @@ from PySide6.QtWidgets import (
     QButtonGroup,
     QComboBox,
     QDoubleSpinBox,
-    QFormLayout,
+    QHBoxLayout,
+    QLabel,
     QRadioButton,
-    QVBoxLayout,
     QWidget,
 )
 
@@ -16,8 +16,8 @@ from autodrive_editor.ui.tools.generate_tool import GenerateTask
 
 
 class GenerateOptionsWidget(QWidget):
-    """What the Generate tool creates, shown from the arrow of its button, and the options of
-    the chosen task."""
+    """What the Generate tool creates, shown in the options bar, and the Junction task's options,
+    enabled only for that task."""
 
     task_changed = Signal(object)
     # The Junction task's stem kind and lane gap.
@@ -30,7 +30,8 @@ class GenerateOptionsWidget(QWidget):
     ):
         super().__init__(parent)
 
-        layout = QVBoxLayout(self)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
         self.buttons = QButtonGroup(self)
         self.task_buttons: dict[GenerateTask, QRadioButton] = {}
 
@@ -78,16 +79,24 @@ class GenerateOptionsWidget(QWidget):
         self.stem_box.currentIndexChanged.connect(self._emit_stem)
         self.gap_box.valueChanged.connect(self._emit_stem)
 
-        form = QFormLayout(self.junction_options)
-        form.setContentsMargins(0, 0, 0, 0)
-        form.addRow(tr("Style:"), self.style_box)
-        form.addRow(tr("Stem:"), self.stem_box)
-        form.addRow(tr("Lane gap:"), self.gap_box)
+        row = QHBoxLayout(self.junction_options)
+        row.setContentsMargins(0, 0, 0, 0)
+
+        for title, widget in (
+            (tr("Style:"), self.style_box),
+            (tr("Stem:"), self.stem_box),
+            (tr("Lane gap:"), self.gap_box),
+        ):
+            row.addWidget(QLabel(title, self.junction_options))
+            row.addWidget(widget)
+
+        layout.addSpacing(8)
         layout.addWidget(self.junction_options)
-        self.junction_options.setVisible(task == GenerateTask.JUNCTION)
+        layout.addStretch(1)
+        self.junction_options.setEnabled(task == GenerateTask.JUNCTION)
 
     def _set_task(self, task: GenerateTask):
-        self.junction_options.setVisible(task == GenerateTask.JUNCTION)
+        self.junction_options.setEnabled(task == GenerateTask.JUNCTION)
         self.task_changed.emit(task)
 
     def _emit_stem(self):

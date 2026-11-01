@@ -80,11 +80,9 @@ def test_shift_snaps_while_dragging(rotating):
     assert rotating.status.text() == "3 nodes rotated by 45.0°"
 
 
-def test_snap_step_is_set_from_the_tool_button_arrow(rotating):
-    button = rotating.actions.tool_panel.tool_buttons[
-        rotating.actions.tool_actions[InteractionMode.ROTATE_SELECTION]
-    ]
-    (options,) = button.menu().findChildren(RotateOptionsWidget)
+def test_snap_step_is_set_from_the_options_bar(rotating):
+    options = rotating.options_bar.stack.currentWidget()
+    assert isinstance(options, RotateOptionsWidget)
 
     options.snap_angle_box.setValue(35.0)
     drag(

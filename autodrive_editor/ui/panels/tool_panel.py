@@ -5,12 +5,10 @@ from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
     QMainWindow,
-    QMenu,
     QSizePolicy,
     QToolButton,
     QVBoxLayout,
     QWidget,
-    QWidgetAction,
 )
 
 from autodrive_editor.i18n import tr
@@ -130,22 +128,6 @@ class ToolPanel(QDockWidget):
         self.groups[title] = group
 
         return group
-
-    def set_tool_options(self, action: QAction, options_widget: QWidget) -> QMenu:
-        """Gives the tool's button an arrow, like the Grid button: clicking
-        the icon picks the tool, the arrow opens the options widget."""
-
-        button = self.tool_buttons[action]
-
-        menu = QMenu(button)
-        widget_action = QWidgetAction(menu)
-        widget_action.setDefaultWidget(options_widget)
-        menu.addAction(widget_action)
-
-        button.setMenu(menu)
-        button.setPopupMode(QToolButton.MenuButtonPopup)
-
-        return menu
 
     def set_labels_visible(self, visible: bool):
         self._labels_visible = bool(visible)
