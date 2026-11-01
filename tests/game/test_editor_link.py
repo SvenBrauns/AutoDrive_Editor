@@ -1,6 +1,8 @@
 import xml.etree.ElementTree as ET
 from datetime import datetime
 
+from PIL import Image
+
 from autodrive_editor.game import editor_link
 from autodrive_editor.game.editor_link import CaptureResult, GameStatus
 
@@ -119,3 +121,13 @@ def test_clean_up_removes_answer_cancel_and_leftover_tiles(tmp_path):
     editor_link.clean_up(tmp_path, 17)
 
     assert [path.name for path in tmp_path.iterdir()] == ["request.xml"]
+
+
+def test_tiles_of_the_mod_are_read_like_pillow_reads_them(tmp_path):
+    image = Image.new("RGB", (6, 4))
+    image.putdata([(x * 40, y * 60, 200) for y in range(4) for x in range(6)])
+    image.save(tmp_path / "tile.dds", "DDS")
+    image.save(tmp_path / "tile.png")
+
+    for name in ("tile.dds", "tile.png"):
+        assert editor_link.read_tile(tmp_path / name).convert("RGB").tobytes() == image.tobytes()

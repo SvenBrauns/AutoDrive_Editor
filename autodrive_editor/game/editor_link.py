@@ -10,10 +10,13 @@
 
 import os
 import re
+import struct
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+
+from PIL import Image
 
 from autodrive_editor.i18n import tr
 
@@ -24,6 +27,9 @@ STATUS_MAX_AGE = 10
 FIRST_WAIT_MS = 3000
 ALTITUDE = 150
 TILE_FILE = re.compile(r"tile_(\d+)_(\d+)\.done")
+DDS_HEADER = 128
+# Byte order of a 24-bit DDS by its red, green and blue masks.
+DDS_ORDERS = {(0xFF, 0xFF00, 0xFF0000): "RGB", (0xFF0000, 0xFF00, 0xFF): "BGR"}
 
 
 @dataclass(frozen=True)
@@ -122,6 +128,27 @@ def finished_tiles(directory: Path, request_id: int) -> list[tuple[int, int, Pat
             tiles.append((col, row, marker.with_suffix(".dds"), marker))
 
     return sorted(tiles, key=lambda tile: (tile[1], tile[0]))
+
+
+def read_tile(path: Path) -> Image.Image:
+    """A tile picture. The mod's uncompressed 24-bit DDS is read directly: Pillow takes
+    4.5 s for one of 2000², and blocks the editor meanwhile."""
+
+    with open(path, "rb") as file:
+        data = file.read()
+
+    if data[:4] == b"DDS " and len(data) >= DDS_HEADER:
+        height, width, pitch = struct.unpack_from("<3I", data, 12)
+        bits, *masks = struct.unpack_from("<4I", data, 88)
+        order = DDS_ORDERS.get(tuple(masks))
+        pitch = pitch or width * 3
+
+        if bits == 24 and order and len(data) >= DDS_HEADER + pitch * height:
+            return Image.frombuffer(
+                "RGB", (width, height), data[DDS_HEADER:], "raw", order, pitch, 1
+            ).copy()
+
+    return Image.open(path)
 
 
 def read_result(directory: Path, request_id: int) -> CaptureResult | None:

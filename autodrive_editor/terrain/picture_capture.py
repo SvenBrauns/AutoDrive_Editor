@@ -5,8 +5,6 @@ from concurrent.futures import Executor, Future, wait
 from datetime import datetime
 from pathlib import Path
 
-from PIL import Image
-
 from autodrive_editor.game import editor_link
 from autodrive_editor.game.editor_link import CaptureResult
 from autodrive_editor.i18n import tr
@@ -188,7 +186,7 @@ class PictureCapture:
         self.futures.append(self.executor.submit(function, *args))
 
     def _convert(self, col: int, row: int, path: Path, marker: Path):
-        with Image.open(path) as image:
+        with editor_link.read_tile(path) as image:
             self.picture.save_tile(col, row, image)
 
         path.unlink(missing_ok=True)
