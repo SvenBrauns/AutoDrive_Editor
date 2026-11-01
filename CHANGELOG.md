@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Create, Connect, Draw (Line, Arc, Bézier) and Marker are one tool each; their variants are buttons in the options bar. The keys stay and pick tool and variant; the tool button shows the current variant. Switching the Draw variant keeps a half drawn path
 - Options bar above the map: shows the active tool's name and its options. The options of Rotate, Line, Arc, Bézier and Generate moved there from the arrows of their buttons
 - `Map → Refresh game picture tiles`: mark tiles of the game picture on the map (click, or right-drag a box) and let the game render just those again, e.g. after changing a yard; the status bar shows the estimated time
 - `Map → Capture game picture…`: the companion mod `FS25_AutoDriveEditorLink` renders the whole map from above in the running game; the editor shows it as `View → Background → Game picture`. Resolution 0.25 or 0.5 m/px, progress and `Cancel` in the status bar, tiles appear as they arrive

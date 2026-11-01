@@ -155,6 +155,34 @@ def test_changing_control_points_resets_the_pending_handles(path):
     assert path.operation.handles == [(15, 20)]
 
 
+def test_changing_the_shape_keeps_start_and_end(path):
+    path.operation.set_shape(PathShape.ARC)
+    path.click(0, 20)
+    path.click(30, 20)
+
+    path.operation.change_shape(PathShape.BEZIER)
+
+    assert (path.operation.start.x, path.operation.end.x) == (0, 30)
+    assert path.operation.handles == [(10, 20), (20, 20)]
+
+    path.operation.change_shape(PathShape.LINE)
+
+    assert path.operation.handles == []
+    assert path.operation.apply()
+    assert {node.z for node in path.new_nodes} == {20}
+
+
+def test_changing_the_shape_keeps_only_the_start(path):
+    path.operation.set_shape(PathShape.LINE)
+    path.click(0, 20)
+
+    path.operation.change_shape(PathShape.ARC)
+
+    assert path.operation.start.x == 0
+    assert path.operation.end is None
+    assert path.operation.handles == []
+
+
 def test_clicks_are_ignored_while_adjusting(path):
     path.operation.set_shape(PathShape.ARC)
     path.click(0, 20)

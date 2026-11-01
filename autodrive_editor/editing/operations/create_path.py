@@ -91,6 +91,22 @@ class CreatePathOperation(EditOperation):
         self.reset()
         self.shape = shape
 
+    def change_shape(self, shape: PathShape):
+        """Keeps start and end; a pending path gets the handles of the new shape."""
+
+        self.shape = shape
+        start, end = self.start, self.end
+
+        if start is None or end is None:
+            self.handles = []
+        else:
+            self.handles = default_handles(
+                shape, (start.x, start.z), (end.x, end.z), self.options.control_points
+            )
+            self.status_changed.emit(tr("Enter creates the path, Esc cancels"))
+
+        self.preview_changed.emit()
+
     def set_options(self, options: PathOptions):
         """A pending Bézier curve gets fresh handles when the number of
         control points changes."""
