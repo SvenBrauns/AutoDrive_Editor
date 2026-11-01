@@ -44,6 +44,7 @@ autodrive_editor/
   measurement/  distance and angle measurement
   network_check/ checks that find problems in the network
   project/      loading XML, map and heightmap
+  game/         game folder and installation, the running game, map mods, files of the companion mod
   rendering/    map drawing
     spatial/    spatial indexes for nodes and connections
     layers/     the network layers (connections, nodes, markers, selection), their tile cache, the sheds and the stations
@@ -51,12 +52,14 @@ autodrive_editor/
     items/      other graphics items (grid, measurement)
   ui/
     main_window.py  main window, assembles all parts
-    file_controller.py  File menu: open, save, autosave
-    map_import_controller.py  map import, first start, missing maps
-    actions/    tool catalog, menus, toolbars
+    file_controller.py  File menu: Open screen, save, save as route, load route, autosave
+    map_import_controller.py  map import when a file opens, first start
+    reload_controller.py  reload in the running game after saving
+    actions/    tool catalog (tools, variants, keys), menus, toolbars, shortcuts
     map_view/   map view with zoom, rotation and area selection
     tools/      mouse handling per tool
-    panels/     tool panel, debug dock, display options
+    panels/     options bar, Open screen, docks (Inspector, Markers, Network check, Debug info), display options
+    dialogs/    dialogs and the Settings pages
     controls/   grid and rotation settings
   settings/     settings kept between sessions, recently opened files
   i18n/         translation of the interface texts (tr(), German catalog)
@@ -73,7 +76,8 @@ packaging/      app icon, license texts and exe version info (version_info.py) f
 - After each change, the command reports a `DataChange`; the `SceneRenderer` then updates only the affected nodes.
 - Nodes, node IDs, connections, markers and the selection are not graphics items. Five layer items paint them straight from the spatial indexes, using drawing data cached per 256 m tile; after an edit only the changed tiles are rebuilt. This keeps networks with over 100,000 nodes responsive. Clicks find nodes through `SceneRenderer.get_node_at()`.
 - Each editing workflow is an `EditOperation` under `editing/operations/`; it gets the shared parts (history, data, selection, view, terrain height, snapping) through one `EditContext`.
-- Each tool is a `MapTool` subclass under `ui/tools/` and is described in `ui/actions/tool_catalog.py` with its icon and shortcut.
+- Each tool is a `MapTool` subclass under `ui/tools/` and is described in `ui/actions/tool_catalog.py` with its icon and shortcut. A tool with variants (Create, Connect, Draw, Marker, Measure) is a `MergedTool`: one button in the tool strip, one `InteractionMode` and key per variant, the variant buttons in the options bar. Generate is one mode; its four tasks (`GENERATE_TASKS`) are its variant buttons.
+- The options bar (`ui/panels/options_bar.py`) shows the active tool's name, its variant buttons and its options widget (`add_options()` per mode); tool options live there, not in menus.
 - Actions whose shortcut can be changed are registered in `MainWindowActions._create_shortcut_registry()` under a fixed name; settings.ini stores only the shortcuts that differ from the defaults, by that name. A new menu entry or tool should be registered there too.
 
 ## Translations
@@ -109,7 +113,7 @@ tr("Marker “{name}” added", name=name)
   ```
 
 - **Flags**: `0` = Regular, `1` = Subprio. The XML IDs are 1-based.
-- **Maps**: for FS22/FS25, `overview.dds` has a middle quarter that must be cropped (4096² → 2048²). The map size (`map_scale` 1/2/4/8 for original/4x/16x/64x) comes from the map configuration, never from the network bounds. For a 16x map: 8192 × 8192 m, world coordinates −4096 to +4096.
+- **Maps**: for FS22/FS25, `overview.dds` has a middle quarter that must be cropped (4096² → 2048²). The map size (`map_scale` 1/2/4/8 for original/4x/16x/64x) comes from the map configuration, never from the network bounds; only a file opened without any map gets a size that fits its network (2/4/8/16 km). For a 16x map: 8192 × 8192 m, world coordinates −4096 to +4096.
 - **Heightmap** (`dem.png`, 16-bit grayscale): `height = raw_value / 65535.0 * 255.0`. Compared with the Y values of a test network with 113,058 nodes, the median difference is 0.02 m; larger differences occur only on bridges, ramps and building platforms.
 - **Angles**: map angle 0° = up, 90° = right; independent of view and grid rotation.
 - **Zoom**: there are no zoom thresholds. Every size in `DisplayStyle` is in metres and grows with the zoom, but stays between a minimum and maximum size on screen. Nodes fade in while they grow from 1.5 to 4 px, and only drawn nodes can be clicked (selected nodes always). Arrows sit in the middle of one-way connections once the connection is long enough on screen; dual connections get one a third from each end, pointing to that end. Marker icons are drawn at every zoom level; their names fade in just below `marker_name_min_zoom` (1.0), and names that would overlap an earlier one are left out. Node IDs are shown from `node_id_min_zoom` (4.0), left out where they would overlap the label of a lower ID.
