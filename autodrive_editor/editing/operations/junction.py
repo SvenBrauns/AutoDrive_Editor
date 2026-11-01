@@ -1,6 +1,5 @@
 import logging
 import math
-import threading
 from collections.abc import Callable
 from dataclasses import dataclass
 from itertools import pairwise
@@ -27,6 +26,7 @@ from autodrive_editor.editing.junction import (
     uses_two_lanes,
 )
 from autodrive_editor.editing.junction_box import BoxPlan, Style, box_command, plan_box
+from autodrive_editor.editing.operations.background_search import BackgroundSearch
 from autodrive_editor.editing.route_finder import RouteFinder, Vehicle
 from autodrive_editor.file_io.navigation_costmap import NavigationCostmap
 from autodrive_editor.i18n import tr
@@ -66,8 +66,6 @@ class JunctionOperation(EditOperation):
     preview_changed = Signal()
     # A search started or ended.
     searching_changed = Signal(bool)
-    # From the search thread: the finished plan, or None if cancelled.
-    _search_done = Signal(object)
 
     def __init__(
         self,
@@ -99,7 +97,7 @@ class JunctionOperation(EditOperation):
         # Back in step 1 after an Undo: the junction follows the mouse without a pressed button.
         self._following = False
         self._running: dict | None = None
-        self._search_done.connect(self._finish)
+        self._background = BackgroundSearch(self)
 
     @property
     def is_searching(self) -> bool:
@@ -225,23 +223,19 @@ class JunctionOperation(EditOperation):
             return self._add(preview)
 
         finder = RouteFinder(costmap, self.vehicle_provider())
-        cancelled = threading.Event()
-        self._running = {"cancelled": cancelled, "preview": preview}
+        planner = self._planner(preview.junction[2], preview.gap)
         logger.debug("Junction: searching %s", preview.plan.missing)
 
-        def search():
+        def search(cancelled):
             def find_route(request):
-                return None if cancelled.is_set() else finder.find(request, cancelled.is_set)
+                return None if cancelled() else finder.find(request, cancelled)
 
-            _, plan = self._plan(preview.junction[2], preview.gap, find_route)
+            _, plan = planner(find_route)
 
-            try:
-                self._search_done.emit(None if cancelled.is_set() else plan)
-            except RuntimeError:
-                # The window was closed during the search.
-                pass
+            return None if cancelled() else plan
 
-        threading.Thread(target=search, daemon=True).start()
+        cancelled = self._background.start(search, self._finish, self._failed)
+        self._running = {"cancelled": cancelled, "preview": preview}
         self.searching_changed.emit(True)
         self.status_changed.emit(tr("Searching the curves that do not fit…"))
 
@@ -306,42 +300,52 @@ class JunctionOperation(EditOperation):
         self.preview = JunctionPreview(plan, junction, stem, gap, tip_id)
         self.preview_changed.emit()
 
-    def _plan(self, heading: float, gap: float, find_route=None) -> tuple[Pose, object]:
+    def _plan(self, heading: float, gap: float) -> tuple[Pose, object]:
         """Where the stem starts, and the box (Box style, where it fits) or the curves."""
 
-        autodrive_data = self.autodrive_data_provider()
-        markers = frozenset(autodrive_data.markers)
+        return self._planner(heading, gap)()
 
-        if self.style_provider() == Style.BOX:
-            box = plan_box(
-                self._lanes,
-                self._foot,
-                heading,
-                gap,
-                self.costmap_provider(),
-                self.vehicle_provider(),
-                markers,
-                self._across,
-                find_route,
-            )
+    def _planner(self, heading: float, gap: float) -> Callable[..., tuple[Pose, object]]:
+        """The planning of _plan with all inputs read now, so it can run on another thread.
+        It takes the function that searches curves that do not fit."""
 
-            if box is not None:
-                return box.junction, box
-
-        junction = self._junction(heading, gap)
-
-        return junction, plan_junction(
-            self._lanes,
-            junction,
-            BOTH,
-            YARD_RADIUS,
+        markers = frozenset(self.autodrive_data_provider().markers)
+        lanes, foot, across = list(self._lanes), self._foot, list(self._across)
+        style, costmap, vehicle = (
+            self.style_provider(),
             self.costmap_provider(),
             self.vehicle_provider(),
-            markers,
-            find_route,
-            gap,
-            self._across,
         )
+        junction = self._junction(heading, gap)
+
+        def plan(find_route=None) -> tuple[Pose, object]:
+            if style == Style.BOX:
+                box = plan_box(
+                    lanes, foot, heading, gap, costmap, vehicle, markers, across, find_route
+                )
+
+                if box is not None:
+                    return box.junction, box
+
+            return junction, plan_junction(
+                lanes,
+                junction,
+                BOTH,
+                YARD_RADIUS,
+                costmap,
+                vehicle,
+                markers,
+                find_route,
+                gap,
+                across,
+            )
+
+        return plan
+
+    def _failed(self):
+        self._running = None
+        self.searching_changed.emit(False)
+        self.status_changed.emit(tr("The junction search failed. Details are in the log file"))
 
     def _finish(self, plan: JunctionPlan | None):
         running, self._running = self._running, None

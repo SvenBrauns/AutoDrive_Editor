@@ -176,6 +176,17 @@ def test_route_through_a_wall_is_marked_and_not_added(qapp):
     assert set(route.data.nodes) == {1, 2}
 
 
+def test_a_failing_search_ends_with_an_error_message(route, monkeypatch):
+    def broken(*args):
+        raise RuntimeError("broken")
+
+    monkeypatch.setattr("autodrive_editor.editing.route_finder.RouteFinder.find", broken)
+
+    assert route.find(1, 2) is None
+    assert not route.operation.is_searching
+    assert route.messages[-1] == "The route search failed. Details are in the log file"
+
+
 def test_waypoints_follow_moved_nodes_and_the_route_is_searched_again(route):
     route.find(1, 2)
 

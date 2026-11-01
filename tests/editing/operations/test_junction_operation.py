@@ -130,6 +130,24 @@ def test_curves_that_do_not_fit_are_searched_then_added(qapp):
     assert fixture.messages[-1].startswith("Junction added")
 
 
+def test_a_failing_search_ends_with_an_error_message(qapp, monkeypatch):
+    def broken(*args):
+        raise RuntimeError("broken")
+
+    monkeypatch.setattr("autodrive_editor.editing.route_finder.RouteFinder.find", broken)
+    costmap = make_costmap(blocked=[(-90, 3, 10, 8), (30, 3, 90, 8)])
+    fixture = Fixture(qapp, costmap)
+    fixture.history.start_plan()
+    fixture.drag(2.0, 30.0)
+
+    assert fixture.operation.finish()
+    fixture.wait()
+
+    assert not fixture.operation.is_searching
+    assert len(fixture.data.nodes) == 13
+    assert fixture.messages[-1] == "The junction search failed. Details are in the log file"
+
+
 def test_cancel_clears_the_preview(qapp):
     fixture = Fixture(qapp)
     fixture.drag(2.0, 20.0)
