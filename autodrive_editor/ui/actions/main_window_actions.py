@@ -10,6 +10,7 @@ from autodrive_editor.measurement.mode import MeasurementMode
 from autodrive_editor.terrain.background_map import Background
 from autodrive_editor.ui.actions.shortcuts import ShortcutRegistry
 from autodrive_editor.ui.actions.tool_catalog import (
+    GENERATE_TASKS,
     GENERATE_TOOL,
     MERGED_TOOLS,
     NAVIGATION_TOOL,
@@ -31,6 +32,7 @@ from autodrive_editor.ui.dialogs.help_dialogs import (
     show_version_history,
 )
 from autodrive_editor.ui.panels.tool_panel import ToolPanel
+from autodrive_editor.ui.tools.generate_tool import GenerateTask
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
 TOOLBAR_ICON_SIZE = QSize(28, 28)
@@ -157,6 +159,8 @@ class MainWindowActions:
         for tool in MERGED_TOOLS:
             self._show_current_variant(tool)
 
+        self.show_generate_task(self.current_generate_task)
+
     def _create_actions(self):
         # One exclusive group for all map tools, so exactly one tool
         # is active. The measuring tools un-check it while measuring.
@@ -203,6 +207,21 @@ class MainWindowActions:
             action.triggered.connect(lambda checked, tool=tool: self._activate_merged_tool(tool))
             self.merged_tool_actions[tool] = action
             self.current_variants[tool] = tool.modes[0]
+
+        # The tasks of the Generate tool: buttons in its options bar and entries of the
+        # Generate menu.
+        self.generate_task_actions: dict[GenerateTask, QAction] = {}
+        self.current_generate_task = GenerateTask.ROUTE
+        task_group = QActionGroup(self.window)
+
+        for task, (icon, description) in GENERATE_TASKS.items():
+            action = QAction(tool_icon(icon), task.display_name, self.window)
+            action.setCheckable(True)
+            action.setToolTip(tool_tooltip(self._generate_task_text(task), "", description))
+            action.setStatusTip(description)
+            action.triggered.connect(lambda checked, task=task: self.window.set_generate_task(task))
+            task_group.addAction(action)
+            self.generate_task_actions[task] = action
 
         self.distance_measurement_action = QAction(tool_icon("measure_distance"), "↔", self.window)
 
@@ -693,6 +712,8 @@ class MainWindowActions:
 
         generate_menu = menu_bar.addMenu(tr("Generate"))
 
+        generate_menu.addActions(list(self.generate_task_actions.values()))
+        generate_menu.addSeparator()
         generate_menu.addAction(self.building_types_action)
 
         help_menu = menu_bar.addMenu(tr("Help"))
@@ -981,6 +1002,21 @@ class MainWindowActions:
         action.setIcon(variant.icon())
         action.setToolTip(variant.toolTip())
         action.setStatusTip(variant.statusTip())
+
+    @staticmethod
+    def _generate_task_text(task: GenerateTask) -> str:
+        return f"{GENERATE_TOOL.text} – {task.display_name}"
+
+    def show_generate_task(self, task: GenerateTask):
+        """Checks the task's button; the Generate button shows the task's icon and tooltip."""
+
+        self.current_generate_task = task
+        self.generate_task_actions[task].setChecked(True)
+        shortcut = self.generate_action.shortcut().toString(QKeySequence.NativeText)
+        self.generate_action.setIcon(self.generate_task_actions[task].icon())
+        self.generate_action.setToolTip(
+            tool_tooltip(self._generate_task_text(task), shortcut, GENERATE_TASKS[task][1])
+        )
 
     def _activate_merged_tool(self, tool: MergedTool):
         self._activate_tool(self.current_variants[tool], True)

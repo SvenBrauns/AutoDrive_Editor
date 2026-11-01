@@ -9,6 +9,7 @@ from PySide6.QtSvg import QSvgRenderer
 
 from autodrive_editor.i18n import tr
 from autodrive_editor.paths import TOOL_ICON_DIRECTORY
+from autodrive_editor.ui.tools.generate_tool import GenerateTask
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
 
@@ -85,12 +86,32 @@ GENERATE_TOOL = ToolDefinition(
     InteractionMode.GENERATE,
     tr("Generate"),
     tr(
-        "Generate routes through waypoints or parking spots in sheds; the arrow picks what. "
+        "Generate routes, junctions, parking spots or station lanes; the options bar picks what. "
         "Starts planning mode"
     ),
-    "generate",
+    "generate_route",
     "G",
 )
+
+# Icon and description of each task of the Generate tool.
+GENERATE_TASKS = {
+    GenerateTask.ROUTE: (
+        "generate_route",
+        tr("Click waypoints; a drivable route is found through them"),
+    ),
+    GenerateTask.JUNCTION: (
+        "generate_junction",
+        tr("Press on a road and drag towards the yard to place a junction, Esc cancels"),
+    ),
+    GenerateTask.PARKING_SPOTS: (
+        "generate_parking",
+        tr("Click a shed to create parking spots in it"),
+    ),
+    GenerateTask.STATIONS: (
+        "generate_stations",
+        tr("Click a station or right-drag a box around several to create their lanes"),
+    ),
+}
 
 MOVE_TOOL = ToolDefinition(
     InteractionMode.MOVE_NODES,

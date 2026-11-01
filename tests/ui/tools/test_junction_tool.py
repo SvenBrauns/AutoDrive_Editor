@@ -138,7 +138,7 @@ def test_the_preview_shows_both_lanes_of_a_two_lane_stem(window):
 
 def test_the_stem_options_are_in_the_options_bar_and_are_saved(window):
     options = window.generate_options
-    options.task_buttons[GenerateTask.JUNCTION].setChecked(True)
+    window.actions.generate_task_actions[GenerateTask.JUNCTION].trigger()
 
     assert window.options_bar.stack.currentWidget() is options
     options.gap_box.setValue(7.0)

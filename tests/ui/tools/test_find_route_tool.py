@@ -120,10 +120,42 @@ def test_discarding_the_plan_removes_routes_and_waypoints(window):
 def test_the_options_pick_what_generate_creates(window):
     window.set_interaction_mode(InteractionMode.SELECT)
 
-    window.generate_options.task_buttons[GenerateTask.PARKING_SPOTS].setChecked(True)
+    window.actions.generate_task_actions[GenerateTask.PARKING_SPOTS].trigger()
 
     assert window.generate_tool.task == GenerateTask.PARKING_SPOTS
     assert window.view.active_tool is window.generate_tool
+
+
+def test_menu_entry_and_button_pick_the_same_task(window):
+    window.set_interaction_mode(InteractionMode.SELECT)
+    menu = next(a.menu() for a in window.menuBar().actions() if a.text() == "Generate")
+    entries = [a for a in menu.actions() if not a.isSeparator()]
+    buttons = window.generate_options.task_buttons
+
+    assert [a.text() for a in entries] == [
+        "Route",
+        "Junction",
+        "Parking spots",
+        "Stations",
+        "Building types…",
+    ]
+
+    entries[3].trigger()
+
+    assert window.generate_tool.task == GenerateTask.STATIONS
+    assert window.view.interaction_mode == InteractionMode.GENERATE
+    assert buttons[GenerateTask.STATIONS].defaultAction() is entries[3]
+    assert buttons[GenerateTask.STATIONS].isChecked()
+
+
+def test_the_generate_button_shows_the_current_task(window):
+    window.set_generate_task(GenerateTask.JUNCTION)
+    generate = window.actions.generate_action
+    junction = window.actions.generate_task_actions[GenerateTask.JUNCTION]
+
+    assert generate.icon().cacheKey() == junction.icon().cacheKey()
+    assert "<b>Generate – Junction</b> (G)" in generate.toolTip()
+    assert junction.isChecked()
 
 
 def test_dragging_the_route_inserts_a_waypoint_there(window):
