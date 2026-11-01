@@ -14,7 +14,7 @@ turn to the right.
 
 import math
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from itertools import pairwise
 
@@ -120,8 +120,9 @@ class Curve:
 @dataclass
 class JunctionPlan:
     curves: list[Curve]
-    # The curves that do not fit, as text for the user.
+    # The curves that do not fit, as text for the user, and as straight lines between their ends.
     missing: list[str]
+    gaps: list[tuple[Point, Point]] = field(default_factory=list)
 
     def paths(self) -> list[tuple[Point, ...]]:
         """Lines for the preview."""
@@ -409,6 +410,7 @@ def plan_junction(
 
             if curve is None:
                 plan.missing.append(_missing_text(lane, kind, pose))
+                plan.gaps.append((pose[:2], foot_on_lane(lane, pose[:2])[:2]))
             else:
                 plan.curves.append(curve)
 
@@ -417,10 +419,17 @@ def plan_junction(
 
         if curve is None:
             plan.missing.append(_missing_across_text(lane, kind, junction))
+            plan.gaps.append(_across_gap(lane, kind, poses[kind]))
         else:
             plan.curves.append(curve)
 
     return plan
+
+
+def _across_gap(lane: RoadLane, kind: CurveKind, pose: Pose) -> tuple[Point, Point]:
+    """Straight line for a missing lane across: from the stem lane to the road's end."""
+
+    return pose[:2], lane.points[0 if kind == CurveKind.OUT else -1]
 
 
 def _straight(

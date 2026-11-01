@@ -98,10 +98,19 @@ class JunctionOperation(EditOperation):
         self._following = False
         self._running: dict | None = None
         self._background = BackgroundSearch(self)
+        # Pieces left out of the junction last added, shown until the next junction or Esc.
+        self._added_gaps: list[tuple[tuple[float, float], tuple[float, float]]] = []
 
     @property
     def is_searching(self) -> bool:
         return self._running is not None
+
+    @property
+    def gaps(self) -> list[tuple[tuple[float, float], tuple[float, float]]]:
+        """Straight lines for the pieces that do not fit in the previewed junction, or that were
+        left out of the junction just added."""
+
+        return self.preview.plan.gaps if self.preview is not None else self._added_gaps
 
     @property
     def is_bending(self) -> bool:
@@ -126,6 +135,7 @@ class JunctionOperation(EditOperation):
         self._lanes = road_lanes(autodrive_data, source_id, target_id)
         self._foot = foot_on_lane(self._lanes[0], (x, z))[:2]
         self._bending = False
+        self._added_gaps = []
         self.preview = None
         logger.debug(
             "Junction started on %d->%d, lanes %s",
@@ -269,6 +279,8 @@ class JunctionOperation(EditOperation):
         self._across = []
         self._bending = False
         self._following = False
+        had_something = had_something or bool(self._added_gaps)
+        self._added_gaps = []
         self.preview = None
         self._released = None
         self.preview_changed.emit()
@@ -387,6 +399,8 @@ class JunctionOperation(EditOperation):
         _log(preview, command)
         self.cancel()
         self.edit_history.push(command)
+        self._added_gaps = list(plan.gaps)
+        self.preview_changed.emit()
 
         details = []
 

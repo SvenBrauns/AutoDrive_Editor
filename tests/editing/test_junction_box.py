@@ -216,6 +216,7 @@ def test_a_far_arm_that_does_not_fit_is_listed_and_left_out():
     plan = plan_box(lanes, FOOT, SOUTH, GAP, costmap, VEHICLE, across=across)
 
     assert plan.missing == ["No straight on to the north", "No straight on from the north"]
+    assert len(plan.gaps) == 2
     assert plan.stem[0][0] == pytest.approx((-2.75, -4))
     assert len(plan.curves) == 2
 

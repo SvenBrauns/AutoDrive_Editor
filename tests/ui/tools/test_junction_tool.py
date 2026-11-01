@@ -46,7 +46,7 @@ def test_release_shows_the_tip_handle_and_enter_adds_the_junction(window):
 
     tool = window.generate_tool.current
     assert tool._item.isVisible() and not tool._item.path().isEmpty()
-    assert not tool._handle.isVisible()
+    assert not tool._handle.isVisible() and not tool._gap_item.isVisible()
 
     drag(window, end, end)
 

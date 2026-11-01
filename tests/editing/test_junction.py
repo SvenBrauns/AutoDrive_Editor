@@ -186,6 +186,8 @@ def test_a_curve_that_does_not_fit_is_listed():
     assert plan.curves == []
     # East-bound lane, junction to the south: a right turn for vehicles from the west.
     assert plan.missing == ["No right turn in from the west"]
+    # Shown as a gap from the junction to the lane.
+    assert plan.gaps == [(JUNCTION[:2], pytest.approx((JUNCTION[0], 0)))]
 
 
 def test_the_route_finder_builds_a_curve_that_does_not_fit():
@@ -639,6 +641,7 @@ def test_straight_lanes_blocked_by_an_island_are_searched_or_listed():
     plan = plan_junction(lanes, JUNCTION, BOTH, 6.0, costmap, VEHICLE, across=across)
 
     assert plan.missing == ["No straight on to the north", "No straight on from the north"]
+    assert len(plan.gaps) == 2
 
     def find_route(request):
         return Route(list(request.waypoints), [0, 1], [False, False])

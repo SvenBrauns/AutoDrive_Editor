@@ -12,7 +12,7 @@ Headings as in junction.py: radians in the x-z plane, a rising heading turns rig
 
 import math
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from itertools import pairwise
 
@@ -29,6 +29,7 @@ from autodrive_editor.editing.junction import (
     CurveKind,
     RoadEnd,
     RoadLane,
+    _across_gap,
     _BlockedCheck,
     _compass,
     _heading,
@@ -90,6 +91,8 @@ class BoxPlan:
     # Pieces that do not fit, and pieces built on blocked ground, as text for the user.
     missing: list[str]
     blocked: list[str]
+    # The pieces that do not fit as straight lines between their ends.
+    gaps: list[tuple[Point, Point]] = field(default_factory=list)
 
     def paths(self) -> list[tuple[Point, ...]]:
         """Lines for the preview."""
@@ -173,6 +176,7 @@ def plan_box(
 
         if curve is None:
             plan.missing.append(_missing_across_text(lane, kind, junction))
+            plan.gaps.append(_across_gap(lane, kind, (*far_edges[index], heading)))
         else:
             far_arm[kind] = curve
 
@@ -206,6 +210,7 @@ def plan_box(
 
         if curve is None:
             plan.missing.append(tr("No {turn}").format(turn=name))
+            plan.gaps.append((start[:2], goal[:2]))
             continue
 
         plan.curves.append(curve)

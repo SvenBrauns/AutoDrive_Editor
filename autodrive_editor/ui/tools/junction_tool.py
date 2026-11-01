@@ -9,6 +9,7 @@ from autodrive_editor.editing.junction import lane_poses
 from autodrive_editor.editing.operations.junction import JunctionOperation
 from autodrive_editor.i18n import tr
 from autodrive_editor.rendering.connections.connection_data import ConnectionData
+from autodrive_editor.ui.tools.find_route_tool import BLOCKED_COLOR
 from autodrive_editor.ui.tools.map_tool import MapTool, is_alive_in_scene
 
 
@@ -43,6 +44,8 @@ class JunctionTool(MapTool):
         self._dragging = False
         self._dragging_tip = False
         self._item: QGraphicsPathItem | None = None
+        # Pieces that do not fit, dashed.
+        self._gap_item: QGraphicsPathItem | None = None
         self._handle: QGraphicsEllipseItem | None = None
 
         operation.preview_changed.connect(self._update_preview)
@@ -201,10 +204,23 @@ class JunctionTool(MapTool):
         color = QColor(*self._color_provider())
         pen = QPen(color, 2.5)
         pen.setCosmetic(True)
-        item = self._path_item()
+        item = self._item = self._path_item(self._item)
         item.setPen(pen)
         item.setPath(path)
         item.setVisible(preview is not None)
+
+        gaps = QPainterPath()
+
+        for a, b in self.operation.gaps:
+            gaps.moveTo(*a)
+            gaps.lineTo(*b)
+
+        gap_pen = QPen(BLOCKED_COLOR, 2.5, Qt.DashLine)
+        gap_pen.setCosmetic(True)
+        self._gap_item = self._path_item(self._gap_item)
+        self._gap_item.setPen(gap_pen)
+        self._gap_item.setPath(gaps)
+        self._gap_item.setVisible(not gaps.isEmpty())
 
         handle = self._handle_item()
         handle.setPen(pen)
@@ -213,14 +229,16 @@ class JunctionTool(MapTool):
         if preview is not None:
             handle.setPos(*preview.stem[-1][:2])
 
-    def _path_item(self) -> QGraphicsPathItem:
-        if not is_alive_in_scene(self._item, self.view.scene()):
-            self._item = QGraphicsPathItem()
-            self._item.setZValue(self._z_value)
-            self._item.setAcceptedMouseButtons(Qt.NoButton)
-            self.view.scene().addItem(self._item)
+    def _path_item(self, item: QGraphicsPathItem | None) -> QGraphicsPathItem:
+        """The item, created again if loading data deleted it."""
 
-        return self._item
+        if not is_alive_in_scene(item, self.view.scene()):
+            item = QGraphicsPathItem()
+            item.setZValue(self._z_value)
+            item.setAcceptedMouseButtons(Qt.NoButton)
+            self.view.scene().addItem(item)
+
+        return item
 
     def _handle_item(self) -> QGraphicsEllipseItem:
         if not is_alive_in_scene(self._handle, self.view.scene()):
