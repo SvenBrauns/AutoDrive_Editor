@@ -56,15 +56,13 @@ def test_without_snapping_positions_are_free(snap_window):
     assert abs(x - 13) < 0.5 and abs(z - 18) < 0.5
 
 
-def test_checkbox_shortcut_and_button_stay_in_sync(snap_window):
+def test_snap_button_is_independent_of_the_grid(snap_window):
     controls = snap_window.actions.grid_controls
-    assert controls.snap_input.isChecked()
     assert controls.isChecked()
     assert snap_window.actions.grid_snap_action.shortcut().toString() == "S"
 
-    controls.snap_input.setChecked(False)
+    snap_window.actions.grid_snap_action.trigger()
 
-    assert not snap_window.actions.grid_snap_action.isChecked()
     assert not snap_window.background_map.grid_snap_enabled
     assert controls.isChecked()
     assert snap_window.status.text() == "Snap off"

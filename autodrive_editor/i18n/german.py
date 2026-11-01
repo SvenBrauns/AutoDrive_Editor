@@ -314,7 +314,6 @@ TEXTS = {
     "Grid": "Raster",
     "Show or hide the grid; the arrow opens the grid settings": "Raster ein- oder ausblenden; der Pfeil öffnet die Rastereinstellungen",
     "Show grid": "Raster anzeigen",
-    "Snap to grid (G)": "Am Raster einrasten (G)",
     "Grid spacing:": "Rasterabstand:",
     "Grid rotation:": "Rasterrotation:",
     "Reset grid": "Raster zurücksetzen",

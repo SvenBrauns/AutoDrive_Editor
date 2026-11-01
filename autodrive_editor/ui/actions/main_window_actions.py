@@ -2,7 +2,7 @@ from dataclasses import replace
 
 from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QAction, QActionGroup, QGuiApplication, QKeySequence
-from PySide6.QtWidgets import QMainWindow, QSizePolicy, QToolBar, QToolButton, QWidget
+from PySide6.QtWidgets import QMainWindow, QMenu, QSizePolicy, QToolBar, QToolButton, QWidget
 
 from autodrive_editor.error_log import set_debug_logging
 from autodrive_editor.i18n import tr
@@ -238,12 +238,12 @@ class MainWindowActions:
         self.link_savegame_action.setEnabled(False)
         self.link_savegame_action.triggered.connect(self.window.savegame_link.choose_link)
 
-        self.open_action = QAction(tr("Open…"), self.window)
+        self.open_action = QAction(tool_icon("open"), tr("Open…"), self.window)
         self.open_action.setShortcut(QKeySequence.Open)
         self.open_action.setStatusTip(tr("Open a route, a savegame or an AutoDrive XML file"))
         self.open_action.triggered.connect(self.window.files.open)
 
-        self.save_xml_action = QAction(tr("Save"), self.window)
+        self.save_xml_action = QAction(tool_icon("save"), tr("Save"), self.window)
         self.save_xml_action.setShortcut(QKeySequence.Save)
         self.save_xml_action.setStatusTip(tr("Save the AutoDrive data into the loaded file"))
         self.save_xml_action.setEnabled(False)
@@ -734,6 +734,10 @@ class MainWindowActions:
 
         self.window.addToolBar(Qt.TopToolBarArea, self.quick_access_toolbar)
 
+        self.quick_access_toolbar.addAction(self.open_action)
+        self.quick_access_toolbar.addAction(self.save_xml_action)
+        self._add_toolbar_gap()
+
         # Icon only: the action text grows to e.g. "Rückgängig: 3 Nodes
         # verschieben", which is shown as tooltip instead.
         for action in (self.undo_action, self.redo_action):
@@ -760,6 +764,16 @@ class MainWindowActions:
 
         self.quick_access_toolbar.addWidget(spacer)
 
+        # The three backgrounds, as in View → Background.
+        self.background_button = QToolButton(self.quick_access_toolbar)
+        self.background_button.setToolTip(tr("Background"))
+        self.background_button.setPopupMode(QToolButton.InstantPopup)
+        background_menu = QMenu(self.background_button)
+        background_menu.addActions(list(self.background_actions.values()))
+        self.background_button.setMenu(background_menu)
+        self._show_as_icon(self.background_button, "background")
+        self.quick_access_toolbar.addWidget(self.background_button)
+
         self.rotation_controls = RotationControls(
             rotation_angle=self.window.view.rotation_angle,
             rotation_step=self.window.view.rotation_step,
@@ -774,8 +788,6 @@ class MainWindowActions:
 
         self._show_as_icon(self.rotation_controls, "view_rotation")
 
-        self.quick_access_toolbar.addWidget(self.rotation_controls)
-
         self.grid_controls = GridControls(
             grid_visible=self.window.background_map.grid_visible,
             grid_spacing=self.window.background_map.grid_spacing,
@@ -789,9 +801,9 @@ class MainWindowActions:
 
         self.quick_access_toolbar.addAction(self.grid_snap_action)
 
-        self.quick_access_toolbar.addAction(self.refresh_picture_action)
+        self.quick_access_toolbar.addWidget(self.rotation_controls)
 
-        self.grid_controls.snap_requested.connect(self.grid_snap_action.setChecked)
+        self.quick_access_toolbar.addAction(self.refresh_picture_action)
 
         # A mode, not a tool: at the far right, apart from the tools.
         self.quick_access_toolbar.addSeparator()
