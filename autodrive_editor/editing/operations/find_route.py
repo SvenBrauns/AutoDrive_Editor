@@ -254,6 +254,10 @@ class FindRouteOperation(EditOperation):
             self.status_changed.emit(tr("The route is still being searched"))
             return False
 
+        if not self.route.is_complete:
+            self.status_changed.emit(self._gap_message(self.route))
+            return False
+
         if not self.route.is_clear:
             self.status_changed.emit(
                 tr("The route crosses obstacles (red). Move or add waypoints first")
@@ -385,6 +389,8 @@ class FindRouteOperation(EditOperation):
             self.status_changed.emit(tr("The route search failed. Details are in the log file"))
         elif route is None:
             self.status_changed.emit(tr("No route found through the waypoints"))
+        elif not route.is_complete:
+            self.status_changed.emit(self._gap_message(route))
         elif not route.is_clear:
             self.status_changed.emit(
                 tr("The route crosses obstacles (red). Move nodes or waypoints until it is clear")
@@ -394,6 +400,21 @@ class FindRouteOperation(EditOperation):
             self.status_changed.emit(". ".join([message, *self.join_warnings()]))
 
         self.preview_changed.emit()
+
+    def _gap_message(self, route: Route) -> str:
+        if route.too_close:
+            return tr(
+                "Waypoints {first} and {second} are too close for the turning radius of {radius} m "
+                "(red dashed). Move them apart",
+                first=route.gap_to,
+                second=route.gap_to + 1,
+                radius=f"{self.vehicle_provider().turning_radius:g}",
+            )
+
+        return tr(
+            "No drivable way found to waypoint {number} (red dashed). Move or add waypoints there",
+            number=route.gap_to + 1,
+        )
 
     def _handle_data_changed(self, _data_change):
         """Waypoints on nodes or connections follow them; waypoints of deleted nodes or

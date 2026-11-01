@@ -62,6 +62,8 @@ class FindRouteTool(MapTool):
 
         self._route_item: QGraphicsPathItem | None = None
         self._blocked_item: QGraphicsPathItem | None = None
+        # Where no drivable connection was found, dashed.
+        self._gap_item: QGraphicsPathItem | None = None
         self._guide_item: QGraphicsPathItem | None = None
         self._handle_items: list[QGraphicsEllipseItem] = []
 
@@ -273,7 +275,7 @@ class FindRouteTool(MapTool):
 
         waypoints = self.operation.waypoints
         route = self.operation.shown_route if len(waypoints) > 1 else None
-        clear_path, blocked_path = QPainterPath(), QPainterPath()
+        clear_path, blocked_path, gap_path = QPainterPath(), QPainterPath(), QPainterPath()
 
         if route is not None:
             for (a, b), blocked in zip(
@@ -283,12 +285,21 @@ class FindRouteTool(MapTool):
                 path.moveTo(*a)
                 path.lineTo(*b)
 
+            if route.gap:
+                gap_path.moveTo(*route.gap[0])
+
+                for point in route.gap[1:]:
+                    gap_path.lineTo(*point)
+
         opacity = 1.0 if self.operation.route is not None else OUTDATED_OPACITY
         self._route_item = self._show(
             self._route_item, clear_path, QPen(QColor(*self._color_provider()), 2.5), opacity
         )
         self._blocked_item = self._show(
             self._blocked_item, blocked_path, QPen(BLOCKED_COLOR, 4.0), opacity
+        )
+        self._gap_item = self._show(
+            self._gap_item, gap_path, QPen(BLOCKED_COLOR, 2.5, Qt.DashLine), opacity
         )
 
         guide = QPainterPath()
@@ -353,7 +364,9 @@ class FindRouteTool(MapTool):
         return item
 
     def _hide_preview(self):
-        for item in (self._route_item, self._blocked_item, self._guide_item, *self._handle_items):
+        items = (self._route_item, self._blocked_item, self._gap_item, self._guide_item)
+
+        for item in (*items, *self._handle_items):
             if self._valid(item) is not None:
                 item.setVisible(False)
 

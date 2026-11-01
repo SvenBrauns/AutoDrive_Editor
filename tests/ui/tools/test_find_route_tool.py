@@ -45,6 +45,21 @@ def test_clicks_on_free_ground_and_nodes_add_waypoints_and_show_the_route(window
     tool = window.generate_tool.current
     assert tool._route_item.isVisible() and not tool._route_item.path().isEmpty()
     assert tool._blocked_item.path().isEmpty()
+    assert tool._gap_item.path().isEmpty()
+
+
+def test_a_gap_is_drawn_where_no_route_was_found(window, monkeypatch):
+    # The search gets stuck at once.
+    monkeypatch.setattr("autodrive_editor.editing.route_finder.MAX_EXPANSIONS", 1)
+    monkeypatch.setattr(
+        "autodrive_editor.editing.route_finder._Search._dubins_end", lambda *a: None
+    )
+    click(window, view_pos(window, 0, 20))
+    click(window, view_pos(window, 40, 20))
+    wait(window)
+
+    tool = window.generate_tool.current
+    assert tool._gap_item.isVisible() and not tool._gap_item.path().isEmpty()
 
 
 def test_dragging_a_node_moves_it_and_adds_no_waypoint(window):

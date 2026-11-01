@@ -678,6 +678,14 @@ TEXTS = {
     "The route crosses obstacles (red). Move or add waypoints first": "Die Route kreuzt Hindernisse (rot). Zuerst Wegpunkte verschieben oder hinzufügen",
     "Route with {count} new nodes added": "Route mit {count} neuen Nodes hinzugefügt",
     "No route found through the waypoints": "Keine Route durch die Wegpunkte gefunden",
+    "Waypoints {first} and {second} are too close for the turning radius of {radius} m (red dashed). Move them apart": (
+        "Die Wegpunkte {first} und {second} liegen zu nah für den Wenderadius von {radius} m "
+        "(rot gestrichelt). Weiter auseinander schieben"
+    ),
+    "No drivable way found to waypoint {number} (red dashed). Move or add waypoints there": (
+        "Kein befahrbarer Weg zu Wegpunkt {number} gefunden (rot gestrichelt). Dort Wegpunkte "
+        "verschieben oder hinzufügen"
+    ),
     "The route search failed. Details are in the log file": (
         "Die Routensuche ist fehlgeschlagen. Details stehen in der Logdatei"
     ),
