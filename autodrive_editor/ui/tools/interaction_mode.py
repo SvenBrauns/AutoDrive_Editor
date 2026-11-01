@@ -31,6 +31,8 @@ class InteractionMode(Enum):
     EDIT_MARKER = auto()
     MOVE_MARKER = auto()
     DELETE_MARKER = auto()
+    MEASURE_DISTANCE = auto()
+    MEASURE_ANGLE = auto()
 
     @property
     def display_name(self) -> str:
@@ -60,6 +62,8 @@ class InteractionMode(Enum):
             InteractionMode.EDIT_MARKER: tr("Edit marker"),
             InteractionMode.MOVE_MARKER: tr("Move marker"),
             InteractionMode.DELETE_MARKER: tr("Delete marker"),
+            InteractionMode.MEASURE_DISTANCE: tr("Measure distance"),
+            InteractionMode.MEASURE_ANGLE: tr("Measure angle"),
         }
 
         return display_names[self]

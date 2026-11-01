@@ -1,21 +1,50 @@
+from collections.abc import Callable
+
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QMouseEvent
 
+from autodrive_editor.i18n import tr
 from autodrive_editor.measurement.coordinator import MeasurementCoordinator
+from autodrive_editor.measurement.mode import MeasurementMode
+from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 from autodrive_editor.ui.tools.map_tool import DragGesture, MapTool
+
+MODES = {
+    InteractionMode.MEASURE_DISTANCE: MeasurementMode.DISTANCE,
+    InteractionMode.MEASURE_ANGLE: MeasurementMode.ANGLE,
+}
 
 
 class MeasureTool(MapTool):
     """Left click sets measurement point A or B. Left dragging a free
     measurement point moves it. Left dragging empty map pans. Esc
-    cancels a point drag, clears the measurement or ends measuring."""
+    cancels a point drag, clears the measurement or calls finish (back to
+    the tool before). One tool for distance and angle."""
 
-    def __init__(self, view, measurement_coordinator: MeasurementCoordinator):
+    def __init__(
+        self, view, measurement_coordinator: MeasurementCoordinator, finish: Callable[[], None]
+    ):
         super().__init__(view)
 
         self.measurement_coordinator = measurement_coordinator
+        self._finish = finish
+        self._active = False
 
         self._point_drag = DragGesture()
+        view.interaction_mode_changed.connect(self._change_mode)
+
+    def activate(self):
+        self._active = True
+        self.measurement_coordinator.set_mode(MODES[self.view.interaction_mode])
+
+    def _change_mode(self, mode: InteractionMode):
+        """The view keeps this tool when only distance/angle changes."""
+
+        if self._active and mode in MODES:
+            self.measurement_coordinator.set_mode(MODES[mode])
+
+    def status_hint(self) -> str | None:
+        return tr("Click point A and point B (node or free ground); drag a point to move it")
 
     def mouse_press(self, event: QMouseEvent) -> bool:
         if event.button() != Qt.LeftButton:
@@ -73,15 +102,17 @@ class MeasureTool(MapTool):
         self._point_drag.reset()
         self._pan.reset()
 
-        self.measurement_coordinator.cancel()
+        if not self.measurement_coordinator.cancel():
+            self._finish()
 
         return True
 
     def deactivate(self):
-        # Ending measuring is done by the coordinator itself, so only
-        # forget the gestures here instead of calling cancel().
+        # Not MapTool.deactivate: its cancel() could call finish.
+        self._active = False
         self._point_drag.reset()
         self._pan.reset()
+        self.measurement_coordinator.set_mode(MeasurementMode.INACTIVE)
 
     def cursor_at(self, view_position: QPoint) -> Qt.CursorShape:
         if self._point_drag.is_dragging:

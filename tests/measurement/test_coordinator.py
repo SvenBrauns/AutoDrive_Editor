@@ -4,14 +4,14 @@ from PySide6.QtCore import QPoint, QPointF
 
 from autodrive_editor.editing.commands.delete_nodes import DeleteNodesCommand
 from autodrive_editor.editing.commands.move_nodes import MoveNodesCommand
-from autodrive_editor.measurement.mode import MeasurementMode
+from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
 FREE = (5, 20)  # map position between the nodes, below the line
 
 
 @pytest.fixture
 def measuring(zoomed_window):
-    zoomed_window.set_measurement_mode(MeasurementMode.DISTANCE)
+    zoomed_window.set_interaction_mode(InteractionMode.MEASURE_DISTANCE)
     return zoomed_window
 
 

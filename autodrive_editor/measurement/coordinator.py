@@ -23,8 +23,6 @@ class MeasurementCoordinator(QObject):
 
     status_changed = Signal(str)
 
-    measurement_mode_changed = Signal(object)
-
     alignment_available_changed = Signal(bool)
 
     # How close to a free point a press grabs it, in pixels.
@@ -80,9 +78,7 @@ class MeasurementCoordinator(QObject):
             else:
                 status = tr("Angle measurement active: set point A")
 
-        self.view.set_measurement_active(self.state.is_active)
         self._update_scene_items()
-        self.measurement_mode_changed.emit(measurement_mode)
         self.status_changed.emit(status)
 
     def handle_press(self, view_position: QPoint, modifiers):
@@ -142,11 +138,12 @@ class MeasurementCoordinator(QObject):
         self._update_scene_items()
         self.status_changed.emit(tr("Point A set"))
 
-    def cancel(self):
-        """Esc: cancels a point drag, else clears the measurement, else ends measuring."""
+    def cancel(self) -> bool:
+        """Esc: cancels a point drag, else clears the measurement. Returns False if there was
+        nothing to cancel."""
 
         if not self.state.is_active:
-            return
+            return False
 
         if self.is_point_dragging:
             self._cancel_drag()
@@ -158,7 +155,9 @@ class MeasurementCoordinator(QObject):
             self.status_changed.emit(tr("Measurement cleared: set point A"))
 
         else:
-            self.set_mode(MeasurementMode.INACTIVE)
+            return False
+
+        return True
 
     def follow_nodes(self, node_ids, nodes: dict[int, NodeData]):
         """After an edit: points bound to moved nodes move along, points of deleted nodes

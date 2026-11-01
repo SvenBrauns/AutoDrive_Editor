@@ -10,7 +10,6 @@ from PySide6.QtCore import QPoint, QRectF, Qt
 from PySide6.QtGui import QPainterPath
 
 from autodrive_editor.editing.commands.move_nodes import MoveNodesCommand
-from autodrive_editor.measurement.mode import MeasurementMode
 from autodrive_editor.ui.main_window import MainWindow
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
@@ -30,8 +29,8 @@ def test_rotation_updates_reset_action(window, qapp):
 
 
 def test_measurement_clicks_create_complete_measurement(window, qapp):
-    window.set_measurement_mode(MeasurementMode.DISTANCE)
-    assert window.view.measurement_active
+    window.set_interaction_mode(InteractionMode.MEASURE_DISTANCE)
+    assert window.view.interaction_mode == InteractionMode.MEASURE_DISTANCE
 
     click(window, QPoint(300, 300))
     click(window, QPoint(450, 380))

@@ -20,7 +20,8 @@ def test_all_menu_and_tool_actions_can_be_changed(clean_window):
     assert entries["redo"].default_keys == tuple(
         key.toString() for key in QKeySequence.keyBindings(QKeySequence.Redo)
     )
-    assert entries["distance_measurement"].text == "Measure the distance between two points"
+    assert entries["tool_measure_distance"].text == "Measure – Distance"
+    assert entries["align_measurement"].text == "Align the measuring line horizontally"
     assert {"save_xml", "check_network", "panel_marker_dock", "show_nodes", "map_scale_2"} <= set(
         entries
     )

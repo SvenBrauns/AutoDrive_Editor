@@ -6,7 +6,6 @@ from PySide6.QtWidgets import QMainWindow, QSizePolicy, QToolBar, QToolButton, Q
 
 from autodrive_editor.error_log import set_debug_logging
 from autodrive_editor.i18n import tr
-from autodrive_editor.measurement.mode import MeasurementMode
 from autodrive_editor.terrain.background_map import Background
 from autodrive_editor.ui.actions.shortcuts import ShortcutRegistry
 from autodrive_editor.ui.actions.tool_catalog import (
@@ -92,10 +91,12 @@ class MainWindowActions:
         for mode, action in self.tool_actions.items():
             self.shortcuts.add(f"tool_{mode.name.lower()}", tools, action)
 
-        # The measuring buttons only show a symbol as text.
-        for name in ("distance_measurement", "angle_measurement", "align_measurement"):
-            action = getattr(self, f"{name}_action")
-            self.shortcuts.add(name, tools, action, action.toolTip())
+        self.shortcuts.add(
+            "align_measurement",
+            tools,
+            self.align_measurement_action,
+            self.align_measurement_action.toolTip(),
+        )
 
         groups = (
             (
@@ -223,31 +224,9 @@ class MainWindowActions:
             task_group.addAction(action)
             self.generate_task_actions[task] = action
 
-        self.distance_measurement_action = QAction(tool_icon("measure_distance"), "↔", self.window)
-
-        self.distance_measurement_action.setCheckable(True)
-
-        self.distance_measurement_action.setToolTip(tr("Measure the distance between two points"))
-
-        self.distance_measurement_action.setStatusTip(
-            tr("Measure the distance between nodes or free map points")
+        self.align_measurement_action = QAction(
+            tool_icon("measure_align"), tr("Align view to line"), self.window
         )
-
-        self.distance_measurement_action.triggered.connect(self._toggle_distance_measurement)
-
-        self.angle_measurement_action = QAction(tool_icon("measure_angle"), "∠", self.window)
-
-        self.angle_measurement_action.setCheckable(True)
-
-        self.angle_measurement_action.setToolTip(tr("Measure the map angle between two points"))
-
-        self.angle_measurement_action.setStatusTip(
-            tr("Measure the direction angle between nodes or free map points")
-        )
-
-        self.angle_measurement_action.triggered.connect(self._toggle_angle_measurement)
-
-        self.align_measurement_action = QAction(tool_icon("measure_align"), "━", self.window)
 
         self.align_measurement_action.setToolTip(tr("Align the measuring line horizontally"))
 
@@ -833,14 +812,6 @@ class MainWindowActions:
 
         self.grid_controls.snap_requested.connect(self.grid_snap_action.setChecked)
 
-        self.quick_access_toolbar.addSeparator()
-
-        self.quick_access_toolbar.addAction(self.distance_measurement_action)
-
-        self.quick_access_toolbar.addAction(self.angle_measurement_action)
-
-        self.quick_access_toolbar.addAction(self.align_measurement_action)
-
         # A mode, not a tool: at the far right, apart from the tools.
         self.quick_access_toolbar.addSeparator()
 
@@ -925,34 +896,6 @@ class MainWindowActions:
         if action is not None:
             action.setChecked(True)
 
-    def set_measurement_mode(self, measurement_mode: MeasurementMode):
-        if not isinstance(measurement_mode, MeasurementMode):
-            raise TypeError("Invalid measurement mode.")
-
-        distance_active = measurement_mode == MeasurementMode.DISTANCE
-
-        angle_active = measurement_mode == MeasurementMode.ANGLE
-
-        measurement_active = distance_active or angle_active
-
-        self.distance_measurement_action.blockSignals(True)
-
-        self.distance_measurement_action.setChecked(distance_active)
-
-        self.distance_measurement_action.blockSignals(False)
-
-        self.angle_measurement_action.blockSignals(True)
-
-        self.angle_measurement_action.setChecked(angle_active)
-
-        self.angle_measurement_action.blockSignals(False)
-
-        if measurement_active:
-            self._check_tool_action(None)
-
-        else:
-            self._restore_interaction_action()
-
     def _check_tool_action(self, interaction_mode: InteractionMode | None):
         """Checks the action of the given tool, or none for None,
         without triggering it."""
@@ -971,12 +914,8 @@ class MainWindowActions:
         for tool, action in self.merged_tool_actions.items():
             action.setChecked(interaction_mode in tool.modes)
 
-    def _restore_interaction_action(self):
-        self._check_tool_action(self.window.view.interaction_mode)
-
     def sync_tool_actions(self):
-        """Checks the button of the active tool, or none while
-        measuring."""
+        """Checks the button of the active tool."""
 
         mode = self.window.view.interaction_mode
         tool = merged_tool_of(mode)
@@ -985,11 +924,7 @@ class MainWindowActions:
             self.current_variants[tool] = mode
             self._show_current_variant(tool)
 
-        if self.window.view.measurement_active:
-            self._check_tool_action(None)
-
-        else:
-            self._restore_interaction_action()
+        self._check_tool_action(mode)
 
     def set_measurement_alignment_enabled(self, enabled: bool):
         self.align_measurement_action.setEnabled(bool(enabled))
@@ -1027,33 +962,4 @@ class MainWindowActions:
         if not checked:
             return
 
-        was_measuring = self.window.view.measurement_active
-
         self.window.set_interaction_mode(interaction_mode)
-
-        # Only end measuring if it was on, so the status bar keeps
-        # showing the newly selected tool otherwise.
-        if was_measuring:
-            self.window.set_measurement_mode(MeasurementMode.INACTIVE)
-
-    def _toggle_distance_measurement(self, checked: bool):
-        if checked:
-            self.angle_measurement_action.setChecked(False)
-
-            self.window.set_measurement_mode(MeasurementMode.DISTANCE)
-
-            return
-
-        if self.window.measurement_coordinator.mode == MeasurementMode.DISTANCE:
-            self.window.set_measurement_mode(MeasurementMode.INACTIVE)
-
-    def _toggle_angle_measurement(self, checked: bool):
-        if checked:
-            self.distance_measurement_action.setChecked(False)
-
-            self.window.set_measurement_mode(MeasurementMode.ANGLE)
-
-            return
-
-        if self.window.measurement_coordinator.mode == MeasurementMode.ANGLE:
-            self.window.set_measurement_mode(MeasurementMode.INACTIVE)

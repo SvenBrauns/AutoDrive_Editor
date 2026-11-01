@@ -4,7 +4,6 @@ import pytest
 from mouse_helpers import click, cursor_shape, drag, hover, press_escape, send_mouse, view_pos
 from PySide6.QtCore import QEvent, QPoint, Qt
 
-from autodrive_editor.measurement.mode import MeasurementMode
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
 EMPTY = (5, 20)  # map position between the nodes, below the line
@@ -31,10 +30,10 @@ def test_switching_mode_switches_active_tool(window):
     window.set_interaction_mode(InteractionMode.MOVE_NODES)
     assert window.view.active_tool is window.view._tools[InteractionMode.MOVE_NODES]
 
-    window.set_measurement_mode(MeasurementMode.DISTANCE)
-    assert window.view.active_tool is window.view._measure_tool
+    window.set_interaction_mode(InteractionMode.MEASURE_DISTANCE)
+    assert window.view.active_tool is window.view._tools[InteractionMode.MEASURE_DISTANCE]
 
-    window.set_measurement_mode(MeasurementMode.INACTIVE)
+    window.end_measuring()
     assert window.view.active_tool is window.view._tools[InteractionMode.MOVE_NODES]
 
 
@@ -189,7 +188,7 @@ def test_move_cursor_is_move_arrow_over_node(zoomed_window):
 
 @pytest.fixture
 def measuring(zoomed_window):
-    zoomed_window.set_measurement_mode(MeasurementMode.DISTANCE)
+    zoomed_window.set_interaction_mode(InteractionMode.MEASURE_DISTANCE)
     return zoomed_window
 
 
@@ -233,12 +232,12 @@ def test_dragging_a_free_point_moves_it(measuring):
     assert measuring.status.text() == "Measuring point moved"
 
 
-def test_escape_clears_measurement_then_ends_measuring(measuring):
+def test_escape_clears_measurement_then_returns_to_the_tool_before(measuring):
     click(measuring, view_pos(measuring, *EMPTY))
 
     press_escape(measuring)
     assert not measuring.measurement_coordinator.state.has_start_point
-    assert measuring.view.measurement_active
+    assert measuring.view.interaction_mode == InteractionMode.MEASURE_DISTANCE
 
     press_escape(measuring)
-    assert not measuring.view.measurement_active
+    assert measuring.view.interaction_mode == InteractionMode.NAVIGATE
