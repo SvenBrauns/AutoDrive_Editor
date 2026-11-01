@@ -2,7 +2,7 @@ from datetime import datetime
 
 from autodrive_editor.editing.commands.delete_nodes import DeleteNodesCommand
 from autodrive_editor.editing.commands.markers import AddMarkerCommand
-from autodrive_editor.file_io.autodrive_xml import AutoDriveXmlReader
+from autodrive_editor.file_io.autodrive_xml import AutoDriveXmlReader, ConfigFormat, ConfigSource
 from autodrive_editor.file_io.autodrive_xml_writer import save_config, write_route_export
 from autodrive_editor.file_io.routes_index import mark_route_saved, read_routes_index
 
@@ -203,3 +203,18 @@ def test_route_export_keeps_the_savegame_precision(write_xml, tmp_path):
     text = target.read_text(encoding="utf-8-sig")
     assert '<routeExport>\n    <waypoints c="3">' in text
     assert "<x>1.235;2.000;3.000</x>" in text
+
+
+def test_missing_savegame_config_is_created(tmp_path):
+    source = tmp_path / "AutoDrive_config.xml"
+    source.write_text(SAVEGAME, encoding="utf-8")
+    data = AutoDriveXmlReader.load(source)
+    target = tmp_path / "savegame2" / "AutoDrive_config.xml"
+    target.parent.mkdir()
+
+    save_config(data, ConfigSource(ConfigFormat.SAVEGAME, target, map_name="LS25_Test"))
+
+    loaded = AutoDriveXmlReader.read(target)
+    assert node_tuples(loaded.data) == node_tuples(data)
+    assert [m.name for m in loaded.data.markers.values()] == ["Silo", "Hof"]
+    assert (loaded.source.map_name, loaded.source.version) == ("LS25_Test", "3.0.1.4")

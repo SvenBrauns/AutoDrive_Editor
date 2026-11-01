@@ -1,3 +1,4 @@
+import html
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
@@ -7,7 +8,7 @@ from PySide6.QtWidgets import QDialog, QFileDialog, QInputDialog, QMessageBox, Q
 
 from autodrive_editor.editing.edit_history import EditHistory
 from autodrive_editor.file_io.routes_index import RouteEntry, find_route_entry, read_routes_index
-from autodrive_editor.game.savegame_info import SavegameInfo, savegames_with_autodrive
+from autodrive_editor.game.savegame_info import SavegameInfo, savegames
 from autodrive_editor.i18n import tr
 from autodrive_editor.project.autosave import AutosaveStore
 from autodrive_editor.project.project_coordinator import ProjectCoordinator
@@ -20,6 +21,7 @@ from autodrive_editor.settings.recent_items import (
 )
 from autodrive_editor.ui.dialogs.messages import APP_TITLE, inform
 from autodrive_editor.ui.dialogs.open_dialog import OpenDialog
+from autodrive_editor.ui.panels.open_screen import OpenLists, OpenScreen, settings_link
 
 
 class FileController(QObject):
@@ -31,9 +33,6 @@ class FileController(QObject):
 
     # Data was saved; the window title shows the new name.
     saved = Signal()
-
-    # The list of recently opened files changed (list[RecentItem]).
-    recent_items_changed = Signal(list)
 
     # The user opened AutoDrive data or an autosave.
     config_opened = Signal()
@@ -55,6 +54,9 @@ class FileController(QObject):
 
         # Asked before saving; False cancels the save.
         self.confirm_save: Callable[[], bool] = lambda: True
+
+        # Opens the settings dialog (the Open screen links to it).
+        self.open_settings: Callable[[], None] = lambda: None
 
         # Asked first before the data would be replaced or the editor closed; False cancels.
         self.confirm_end_plan: Callable[[], bool] = lambda: True
@@ -95,15 +97,24 @@ class FileController(QObject):
             self.status_changed.emit(tr("The heightmap could not be loaded: {error}", error=ex))
 
     def open(self):
-        """File → Open…: a route or savegame from the game folder, or any XML file."""
+        """File → Open…: the Open screen as a dialog."""
 
         if not self.confirm_discard_changes() or not self.confirm_end_capture():
             return
 
-        routes, routes_hint = self._routes()
-        savegames, savegames_hint = self._savegames()
-        choice = self._ask_open(routes, routes_hint, savegames, savegames_hint)
+        self._open_choice(self._ask_open())
 
+    def open_chosen(self, choice):
+        """Opens a savegame or route picked on the Open screen on the map."""
+
+        if self.confirm_discard_changes() and self.confirm_end_capture():
+            self._open_choice(choice)
+
+    def open_other_file(self):
+        if self.confirm_discard_changes() and self.confirm_end_capture():
+            self._browse_xml()
+
+    def _open_choice(self, choice):
         if isinstance(choice, RouteEntry):
             self._open_route(choice)
         elif isinstance(choice, SavegameInfo):
@@ -111,67 +122,64 @@ class FileController(QObject):
         elif choice == OpenDialog.BROWSE:
             self._browse_xml()
 
-    def _routes(self) -> tuple[list[RouteEntry], str]:
-        """The routes of the RoutesManager whose files exist, and the hint
-        above their list, which explains an empty one."""
+    def open_lists(self) -> OpenLists:
+        """The savegames and routes the Open screen offers, with hints for empty lists."""
 
         game_folder = self.settings.game_folder
 
         if game_folder is None or not game_folder.is_valid:
-            return [], self._no_game_folder_hint()
+            hint = settings_link(tr("No valid FS25 game folder is set."))
+            return OpenLists(savegames_hint=hint, routes_hint=hint)
+
+        found = savegames(game_folder)
+        routes, routes_hint = self._routes(game_folder)
+
+        return OpenLists(
+            savegames=found,
+            savegames_hint="" if found else settings_link(tr("No savegames found.")),
+            routes=routes,
+            routes_hint=routes_hint,
+        )
+
+    @staticmethod
+    def _routes(game_folder) -> tuple[list[RouteEntry], str]:
+        """The routes of the RoutesManager whose files exist, and the hint for an empty list."""
+
+        no_routes = tr(
+            "No routes found. Routes are created in the game with AutoDrive's RoutesManager."
+        )
 
         if not game_folder.routes_xml_path.is_file():
-            return [], tr(
-                "No AutoDrive route list was found in the game folder:\n{path}\n\n"
-                "Routes are created in the game with AutoDrive's RoutesManager.",
-                path=game_folder.routes_xml_path,
-            )
+            return [], no_routes
 
         try:
             entries = read_routes_index(game_folder.routes_xml_path)
         except ValueError as ex:
-            return [], str(ex)
+            return [], html.escape(str(ex))
 
         entries = [entry for entry in entries if entry.path.is_file()]
 
-        if not entries:
-            return [], tr("The route list contains no existing routes.")
+        return entries, "" if entries else no_routes
 
-        return entries, tr(
-            "Routes from AutoDrive's RoutesManager. AutoDrive can reload them in a running game."
-        )
+    def _ask_open(self):
+        """The chosen route or savegame, OpenDialog.BROWSE or None."""
 
-    def _savegames(self) -> tuple[list[SavegameInfo], str]:
-        game_folder = self.settings.game_folder
-
-        if game_folder is None or not game_folder.is_valid:
-            return [], self._no_game_folder_hint()
-
-        savegames = savegames_with_autodrive(game_folder)
-
-        if not savegames:
-            return [], tr("No savegame in the game folder contains AutoDrive data.")
-
-        return savegames, tr("Savegames with AutoDrive data (AutoDrive_config.xml).")
-
-    @staticmethod
-    def _no_game_folder_hint() -> str:
-        return tr("No valid FS25 game folder is set.\nPlease set it under File → Settings.")
-
-    def _ask_open(self, routes, routes_hint, savegames, savegames_hint):
-        """The chosen route or savegame, OpenDialog.BROWSE or None. The tab
-        used is shown first next time."""
-
-        dialog = OpenDialog(
-            routes, routes_hint, savegames, savegames_hint, self.settings.open_tab, self.window
+        dialog = OpenDialog(self.open_lists(), self.window)
+        dialog.open_screen.settings_requested.connect(
+            lambda: self._settings_from(dialog.open_screen)
         )
         result = dialog.exec()
-        self.settings.set_open_tab(dialog.tabs.currentIndex())
 
         if result == OpenDialog.BROWSE:
             return OpenDialog.BROWSE
 
         return dialog.chosen_value if result == QDialog.DialogCode.Accepted else None
+
+    def _settings_from(self, screen: OpenScreen):
+        """The settings link of the Open screen; the lists follow a new game folder."""
+
+        self.open_settings()
+        screen.set_lists(self.open_lists())
 
     def _open_route(self, entry: RouteEntry):
         if self._load_config(entry.path, display_name=entry.name, map_name=entry.map_name):
@@ -181,6 +189,14 @@ class FileController(QObject):
 
     def _open_savegame(self, savegame: SavegameInfo):
         path = savegame.autodrive_config_path
+
+        if not savegame.has_autodrive:
+            # Not listed under Open recent until Save has created the file.
+            self.project_coordinator.start_empty_savegame(
+                path, savegame.display_name, savegame.autodrive_map_name
+            )
+            self.config_opened.emit()
+            return
 
         if self._load_config(path, display_name=savegame.display_name):
             self._remember(RecentItem(RecentKind.SAVEGAME, str(path), savegame.display_name))
@@ -266,7 +282,6 @@ class FileController(QObject):
 
     def _set_recent_items(self, items: list[RecentItem]):
         self.settings.set_recent_items(items)
-        self.recent_items_changed.emit(items)
 
     def save_xml(self) -> bool:
         if self.project_coordinator.config_source is None:
@@ -391,7 +406,7 @@ class FileController(QObject):
                 tr(
                     "There is an autosave of “{name}”, but the original file is missing:\n"
                     "{source}\n\n"
-                    "The autosave can be loaded with “Open…” → “Browse file…”:\n{autosave}",
+                    "The autosave can be loaded with “Open…” → “Open other file…”:\n{autosave}",
                     name=info.display_name,
                     source=info.source_path,
                     autosave=self.autosave_store.xml_path,

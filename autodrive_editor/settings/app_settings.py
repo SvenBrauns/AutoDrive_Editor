@@ -66,7 +66,6 @@ class AppSettings:
     DEBUG_LOG_KEY = "app/debug_log"
     NO_SAVEGAME_QUESTION_KEY = "routes/no_savegame_question"
     LINKED_SAVEGAMES_KEY = "routes/linked_savegames"
-    OPEN_TAB_KEY = "app/open_dialog_tab"
     PARKING_TEMPLATES_KEY = "parking/templates"
     # Named after the sheds, which were the first building types that could be hidden.
     HIDDEN_BUILDING_TYPES_KEY = "view/hidden_shed_types"
@@ -401,16 +400,6 @@ class AppSettings:
             return {}
 
         return links if isinstance(links, dict) else {}
-
-    @property
-    def open_tab(self) -> int:
-        """The tab File → Open… shows first: the one used last."""
-
-        return self._settings.value(self.OPEN_TAB_KEY, 0, type=int)
-
-    def set_open_tab(self, tab: int):
-        self._settings.setValue(self.OPEN_TAB_KEY, int(tab))
-        self._settings.sync()
 
     def parking_templates(self, building_file: str) -> dict[str, dict]:
         """Parking spot templates of a shed type (its building file), by name."""

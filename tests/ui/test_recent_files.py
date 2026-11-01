@@ -1,4 +1,4 @@
-"""File → Open recent and the recent list on the welcome screen."""
+"""File → Open recent."""
 
 import shutil
 
@@ -12,10 +12,10 @@ from autodrive_editor.ui.dialogs.open_dialog import OpenDialog
 
 @pytest.fixture
 def open_xml(window, monkeypatch):
-    """Opens a file through File → Open… → Browse file…."""
+    """Opens a file through File → Open… → Open other file…."""
 
     def _open(path):
-        monkeypatch.setattr(window.files, "_ask_open", lambda *args: OpenDialog.BROWSE)
+        monkeypatch.setattr(window.files, "_ask_open", lambda: OpenDialog.BROWSE)
         monkeypatch.setattr(QFileDialog, "getOpenFileName", lambda *args: (str(path), ""))
         window.files.open()
 
@@ -27,19 +27,10 @@ def menu_texts(window):
     return [action.text() for action in window.actions.recent_menu.actions() if action.text()]
 
 
-def welcome_texts(window):
-    panel = window.welcome_panel
-    return [
-        panel.recent_layout.itemAt(i).widget().text() for i in range(panel.recent_layout.count())
-    ]
-
-
-def test_opened_xml_is_listed_in_the_menu_and_on_the_welcome_screen(window, write_xml, open_xml):
+def test_opened_xml_is_listed_in_the_menu(window, write_xml, open_xml):
     open_xml(write_xml())
 
     assert menu_texts(window) == ["route.xml – XML file", "Clear list"]
-    assert welcome_texts(window) == ["route.xml – XML file"]
-    assert window.welcome_panel.recent_list.isVisibleTo(window.welcome_panel)
 
 
 def test_empty_list_shows_a_disabled_hint(window):
@@ -50,7 +41,6 @@ def test_empty_list_shows_a_disabled_hint(window):
         ("No recent files", False),
         ("Clear list", False),
     ]
-    assert not window.welcome_panel.recent_list.isVisibleTo(window.welcome_panel)
 
 
 def test_newest_file_comes_first(window, write_xml, open_xml, tmp_path):
@@ -89,7 +79,7 @@ def test_recent_route_opens_with_its_name_and_map(window, tmp_path):
 
     source = window.project_coordinator.config_source
     assert (source.display_name, source.map_name) == ("NF Marsch", "Map")
-    assert welcome_texts(window) == ["NF Marsch – Route"]
+    assert menu_texts(window)[0] == "NF Marsch – Route"
 
 
 def test_missing_file_is_removed_with_a_message(window, monkeypatch, tmp_path):
@@ -114,13 +104,12 @@ def test_failed_load_is_not_listed(window, open_xml, tmp_path):
     assert window.settings.recent_items == []
 
 
-def test_clear_list_empties_menu_and_welcome_screen(window, write_xml, open_xml):
+def test_clear_list_empties_the_menu(window, write_xml, open_xml):
     open_xml(write_xml())
 
     window.files.clear_recent_items()
 
     assert menu_texts(window) == ["No recent files", "Clear list"]
-    assert welcome_texts(window) == []
 
 
 def test_last_file_opens_at_startup(window, write_xml):

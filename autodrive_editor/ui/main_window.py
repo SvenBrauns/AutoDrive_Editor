@@ -83,10 +83,10 @@ from autodrive_editor.ui.panels.generate_options import GenerateOptionsWidget
 from autodrive_editor.ui.panels.inspector_dock import InspectorDock
 from autodrive_editor.ui.panels.marker_dock import MarkerDock
 from autodrive_editor.ui.panels.node_info_formatter import NodeInfoFormatter
+from autodrive_editor.ui.panels.open_screen import OpenScreen
 from autodrive_editor.ui.panels.options_bar import OptionsBar
 from autodrive_editor.ui.panels.path_options import PathOptionsWidget
 from autodrive_editor.ui.panels.rotate_options import RotateOptionsWidget
-from autodrive_editor.ui.panels.welcome_panel import WelcomePanel
 from autodrive_editor.ui.picture_capture_controller import PictureCaptureController
 from autodrive_editor.ui.planning_controller import PlanningController
 from autodrive_editor.ui.reload_controller import ReloadController
@@ -184,7 +184,7 @@ class MainWindow(QMainWindow):
         self.actions.set_current_map_scale(self.background_map.map_scale)
         self._create_tool_options()
 
-        self._create_welcome_panel()
+        self._create_open_screen()
         self._create_grid_coordinator()
         self._connect_signals()
 
@@ -274,6 +274,9 @@ class MainWindow(QMainWindow):
             self.files.apply_autosave_interval()
             self.actions.apply_shortcuts(self.settings.shortcuts)
             apply_theme(QApplication.instance(), self.settings.theme)
+
+            if not self.open_screen.isHidden():
+                self.open_screen.set_lists(self.files.open_lists())
 
             folder = self.settings.game_folder
 
@@ -679,6 +682,7 @@ class MainWindow(QMainWindow):
             self.edit_history,
             AutosaveStore(user_data_directory() / "autosave"),
         )
+        self.files.open_settings = self.open_settings
 
         self.savegame_link = SavegameLinkController(self, self.settings, self.project_coordinator)
         self.files.config_opened.connect(self.savegame_link.offer_link)
@@ -1108,19 +1112,20 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.view, 1)
         self.setCentralWidget(central)
 
-    def _create_welcome_panel(self):
-        self.welcome_panel = WelcomePanel(
-            [self.actions.open_action],
-            self.view.viewport(),
-        )
+    def _create_open_screen(self):
+        """The Open screen lies on the map while nothing is open."""
+
+        self.open_screen = OpenScreen(self.view.viewport())
+        self.open_screen.setMaximumWidth(960)
 
         layout = QVBoxLayout(self.view.viewport())
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self.welcome_panel)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.addWidget(self.open_screen, alignment=Qt.AlignHCenter)
 
-        self.welcome_panel.set_recent_items(self.settings.recent_items)
-        self.welcome_panel.recent_item_requested.connect(self.files.open_recent)
-        self.files.recent_items_changed.connect(self.welcome_panel.set_recent_items)
+        self.open_screen.set_lists(self.files.open_lists())
+        self.open_screen.chosen.connect(self.files.open_chosen)
+        self.open_screen.browse_requested.connect(self.files.open_other_file)
+        self.open_screen.settings_requested.connect(self.open_settings)
 
     def _create_marker_dock(self):
         self.marker_dock = MarkerDock(self)
@@ -1273,7 +1278,7 @@ class MainWindow(QMainWindow):
 
         self.network_check.network_loaded()
 
-        self.welcome_panel.hide()
+        self.open_screen.hide()
 
         self.setWindowModified(False)
         self.actions.save_xml_action.setEnabled(True)
