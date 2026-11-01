@@ -2,6 +2,7 @@
 
 import json
 import time
+from dataclasses import replace
 from datetime import datetime
 
 import pytest
@@ -10,6 +11,7 @@ from map_mod_helpers import make_single_map_mod
 from PIL import Image
 from PySide6.QtWidgets import QMessageBox
 
+from autodrive_editor.file_io.autodrive_xml import ConfigFormat
 from autodrive_editor.file_io.map_mod import read_map_mod
 from autodrive_editor.game import editor_link
 from autodrive_editor.terrain import game_picture
@@ -122,11 +124,21 @@ def test_start_needs_the_game_with_the_same_map_and_savegame(capture_window):
 
 
 def test_nothing_to_capture_without_an_open_config(capture_window):
-    capture_window.project_coordinator.savegame_directory = None
     capture_window.project_coordinator.config_source = None
     game_status(capture_window)
 
     assert dialog_status(capture_window) == (False, "Open a config of an imported map first.")
+
+
+def test_a_route_alone_has_no_savegame_to_capture(capture_window):
+    coordinator = capture_window.project_coordinator
+    coordinator.config_source = replace(coordinator.config_source, format=ConfigFormat.ROUTE_EXPORT)
+    game_status(capture_window)
+
+    assert dialog_status(capture_window) == (
+        False,
+        "Open a savegame first; a route alone has no savegame.",
+    )
 
 
 def test_whole_capture_shows_progress_and_the_tiles(capture_window):

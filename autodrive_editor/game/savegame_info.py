@@ -100,13 +100,3 @@ def savegames(game_folder: GameFolder) -> list[SavegameInfo]:
     ]
 
     return sorted(infos, key=lambda info: info.modified, reverse=True)
-
-
-def savegames_with_autodrive(game_folder: GameFolder) -> list[SavegameInfo]:
-    """Savegames that contain AutoDrive data, ordered by number."""
-
-    return [
-        read_savegame_info(directory)
-        for directory in game_folder.savegame_directories()
-        if (directory / AUTODRIVE_CONFIG_NAME).is_file()
-    ]

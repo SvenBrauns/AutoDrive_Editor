@@ -55,15 +55,10 @@ def test_loaded_savegame_shows_its_sheds_and_notes_unreadable_buildings(game):
     assert game.status.text().endswith(" – 1 buildings could not be read (see log file)")
 
 
-def test_route_shows_the_sheds_of_the_linked_savegame_only(game):
-    coordinator = game.project_coordinator
-    coordinator.load_xml_file(game.route_path)
-    assert shed_ids(game) == []
+def test_route_opened_alone_shows_no_sheds(game):
+    game.project_coordinator.load_xml_file(game.savegame / "AutoDrive_config.xml")
+    game.project_coordinator.load_xml_file(game.route_path)
 
-    coordinator.set_savegame(game.savegame)
-    assert shed_ids(game) == ["a"]
-
-    coordinator.set_savegame(None)
     assert shed_ids(game) == []
 
 

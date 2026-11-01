@@ -191,7 +191,7 @@ class PictureCaptureController(QObject):
         savegame_folder = self.project_coordinator.savegame_folder()
 
         if savegame_folder is None:
-            return None, tr("Link a savegame to the route first (File → Link savegame…).")
+            return None, tr("Open a savegame first; a route alone has no savegame.")
 
         savegame = read_savegame_info(savegame_folder)
         directory = cached.directory / PICTURE_FOLDER / str(savegame.number)

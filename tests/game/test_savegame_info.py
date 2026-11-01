@@ -4,11 +4,7 @@ from datetime import datetime
 from game_folder_helpers import add_savegame, make_game_folder
 
 from autodrive_editor.game.game_folder import GameFolder
-from autodrive_editor.game.savegame_info import (
-    read_savegame_info,
-    savegames,
-    savegames_with_autodrive,
-)
+from autodrive_editor.game.savegame_info import read_savegame_info, savegames
 
 
 def test_reads_name_map_and_date(tmp_path):
@@ -30,17 +26,6 @@ def test_savegame_without_career_file_gets_a_default_name(tmp_path):
     directory.mkdir()
 
     assert read_savegame_info(directory).display_name == "Savegame 7"
-
-
-def test_only_savegames_with_autodrive_are_listed(tmp_path):
-    folder = make_game_folder(tmp_path / "fs")
-    add_savegame(folder, 10, "Zehn", "Map", "Map_A")
-    add_savegame(folder, 2, "Zwei", "Map", "Map_B")
-    add_savegame(folder, 1, "Ohne AutoDrive", "Map", "", with_autodrive=False)
-
-    listed = savegames_with_autodrive(GameFolder(folder))
-
-    assert [info.name for info in listed] == ["Zwei", "Zehn"]
 
 
 def test_autodrive_map_name_is_the_name_routes_xml_uses(tmp_path):

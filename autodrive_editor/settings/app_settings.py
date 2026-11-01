@@ -1,7 +1,6 @@
 """Settings that are kept between editor sessions."""
 
 import json
-import os
 from dataclasses import fields
 from pathlib import Path
 
@@ -64,8 +63,6 @@ class AppSettings:
     CHECK_UPDATES_KEY = "app/check_updates"
     REOPEN_LAST_KEY = "app/reopen_last"
     DEBUG_LOG_KEY = "app/debug_log"
-    NO_SAVEGAME_QUESTION_KEY = "routes/no_savegame_question"
-    LINKED_SAVEGAMES_KEY = "routes/linked_savegames"
     PARKING_TEMPLATES_KEY = "parking/templates"
     # Named after the sheds, which were the first building types that could be hidden.
     HIDDEN_BUILDING_TYPES_KEY = "view/hidden_shed_types"
@@ -344,63 +341,6 @@ class AppSettings:
         )
         self._settings.sync()
 
-    def asks_for_savegame(self, route_path) -> bool:
-        """Whether loading this route without a linked savegame asks for one."""
-
-        return _route_key(route_path) not in self._no_savegame_question_routes()
-
-    def set_asks_for_savegame(self, route_path, asks: bool):
-        routes = [
-            route
-            for route in self._no_savegame_question_routes()
-            if route != _route_key(route_path)
-        ]
-
-        if not asks:
-            routes.append(_route_key(route_path))
-
-        self._settings.setValue(self.NO_SAVEGAME_QUESTION_KEY, json.dumps(routes))
-        self._settings.sync()
-
-    def _no_savegame_question_routes(self) -> list[str]:
-        try:
-            routes = json.loads(self._settings.value(self.NO_SAVEGAME_QUESTION_KEY, "[]"))
-        except (TypeError, ValueError):
-            return []
-
-        return (
-            [route for route in routes if isinstance(route, str)]
-            if isinstance(routes, list)
-            else []
-        )
-
-    def linked_savegame(self, route_path) -> Path | None:
-        """The savegame folder linked to this route, if it still exists."""
-
-        stored = self._linked_savegames().get(_route_key(route_path))
-
-        return Path(stored) if isinstance(stored, str) and Path(stored).is_dir() else None
-
-    def set_linked_savegame(self, route_path, savegame_directory):
-        """Links a savegame folder to the route, or removes the link (None)."""
-
-        links = self._linked_savegames()
-        links.pop(_route_key(route_path), None)
-
-        if savegame_directory is not None:
-            links[_route_key(route_path)] = str(Path(savegame_directory).resolve())
-
-        self._settings.setValue(self.LINKED_SAVEGAMES_KEY, json.dumps(links))
-        self._settings.sync()
-
-    def _linked_savegames(self) -> dict:
-        try:
-            links = json.loads(self._settings.value(self.LINKED_SAVEGAMES_KEY, "{}"))
-        except (TypeError, ValueError):
-            return {}
-
-        return links if isinstance(links, dict) else {}
-
     def parking_templates(self, building_file: str) -> dict[str, dict]:
         """Parking spot templates of a shed type (its building file), by name."""
 
@@ -604,7 +544,3 @@ class AppSettings:
                 self.set_game_folder(detected.path)
 
         return self.game_folder
-
-
-def _route_key(route_path) -> str:
-    return os.path.normcase(str(Path(route_path).resolve()))
