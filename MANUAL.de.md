@@ -79,7 +79,7 @@ Der Editor liest die Gebäude eines Savegames: die Hallen zum Parken und die Sta
 
 Der Planungsknopf am rechten Ende der Werkzeugleiste (`Bearbeiten → Planungsmodus`, `Strg+P`) beginnt einen Plan. Alle Werkzeuge arbeiten wie gewohnt, die Änderungen werden aber im Plan gesammelt: Ein blauer Balken über der Karte zeigt, wie viele Nodes der Plan geändert hat, und diese Nodes bekommen einen blauen Hof. Rückgängig und Wiederholen arbeiten innerhalb des Plans und halten an seinem Anfang. `Plan übernehmen` fügt den ganzen Plan als einen Rückgängig-Schritt in den Verlauf ein; `Plan verwerfen` nimmt ihn vollständig zurück. Ein weiterer Klick auf den Planungsknopf, das Öffnen einer anderen Datei oder das Schließen des Editors fragt, ob der Plan übernommen oder verworfen werden soll. Solange ein Plan offen ist, kann nicht gespeichert werden und die automatische Sicherung pausiert.
 
-Das Werkzeug Erzeugen (`G`) startet den Planungsmodus und erzeugt, was hinter seinem Pfeil gewählt ist: eine Route, die Parkplätze einer Halle oder die Spuren von Stationen.
+Das Werkzeug Erzeugen (`G`) startet den Planungsmodus und erzeugt, was hinter seinem Pfeil gewählt ist: eine Route, eine Einmündung, die Parkplätze einer Halle oder die Spuren von Stationen.
 
 ### Route finden
 
@@ -88,6 +88,17 @@ Hinter dem Pfeil des Werkzeugs Erzeugen `Route` wählen, dann Nodes, Connections
 Routen, die schon im Plan sind, werden mitbenutzt: Eine Route in derselben Richtung schließt sich ihnen an. Der Rückweg (die Nodes andersherum auswählen) bekommt eine eigene Spur, wo Platz ist; wo nicht, teilt er sich die Spur, die dort Dual wird. Ist gar kein Platz zum Wenden, meldet der Editor, dass keine befahrbare Route gefunden wurde.
 
 Die Routensuche nutzt die Befahrbarkeitskarte des Spiels, die der Landwirtschafts-Simulator bei jedem Speichern in den Spielstand schreibt (`vehicleNavigationCostmap.dat`). Eine Route braucht dafür ein verknüpftes Savegame. Nach dem Platzieren von Gebäuden erneut im Spiel speichern, damit die Karte sie kennt. `Ansicht → Anzeigen → Befahrbarkeitskarte` zeichnet sie: gesperrter Boden rot (in Wäldern blau), unwegsamer Boden orange, Gras gelb, Felder grün; Straßen und Höfe bleiben frei.
+
+### Einmündungen
+
+Hinter dem Pfeil des Werkzeugs Erzeugen `Einmündung` wählen, um eine Hofzufahrt an eine Straße anzuschließen. Auf die Straße drücken und zum Hof ziehen: Die Einmündung wandert mit der Maus an der Straße entlang, und die Zufahrt verlässt die Straße im rechten Winkel so weit, wie die Maus reicht. Nach dem Loslassen sitzt ein Griff an der Spitze der Zufahrt; ihn ziehen, um die Zufahrt zu biegen, oder auf einem Node ablegen, um die Zufahrt dort anzuschließen. `Enter` oder ein Klick neben den Griff fügt die Einmündung dem Plan hinzu, `Esc` bricht ab. Rückgängig beim Zeichnen macht zuerst eine gebogene Zufahrt wieder gerade, geht dann zum Setzen der Einmündung zurück und bricht danach ab.
+
+Die Optionen hinter dem Pfeil legen fest, wie die Einmündung gebaut wird, und bleiben für das nächste Mal gespeichert:
+
+- **Bauart**: *Box* (Standard) baut eine kompakte Kreuzungsbox, wo eine Straße aus zwei Einbahnspuren auf eine Zufahrt mit zwei Spuren trifft: Die Spuren teilen sich einen Node, wo sie sich kreuzen, ein Mittel-Node nimmt das Linksabbiegen und Wenden auf, kurze Kurven das Rechtsabbiegen. Die Stücke von den Kreuzungen bis zum Rand der Box fahren in beide Richtungen, damit AutoDrive-Fahrer sich in der Box sehen. *Kurven* baut stattdessen für jede Richtung eine Einbahn-Abbiegekurve. Haben Straße oder Zufahrt keine zwei Einbahnspuren, werden Kurven gebaut, und die Statusleiste sagt das.
+- **Zufahrt**: *Automatisch* (Standard) nimmt zwei Spuren an einer Straße aus zwei Einbahnspuren und eine Spur in beide Richtungen an einer Straße in beide Richtungen oder an einer solchen Straße an der Spitze der Zufahrt. *Beide Richtungen* oder *Zwei Spuren* wählen es direkt; **Spurabstand** ist der Abstand der beiden Spuren (Standard 5,5 m).
+
+Geht auf der anderen Seite eine Straße weiter, kommen Spuren geradeaus hinüber dazu. Kurven oder Spuren, die nach der Befahrbarkeitskarte nicht passen, sucht die Routensuche; was dann noch gesperrt ist, wird weggelassen und in der Statusleiste genannt (z. B. „Kein Linksabbiegen in den Hof aus Richtung Norden“), ebenso Teile einer Box auf gesperrtem Boden.
 
 ### Parkplätze in Hallen
 
@@ -109,7 +120,7 @@ Beim Rückwärts-Einparken zeigt die Seitenansicht darunter die Linie eines Stel
 
 ### Stationsspuren
 
-Hinter dem Pfeil des Werkzeugs Erzeugen `Stationen` wählen. Einen Haltestellenpfeil oder die Fläche zwischen den Pfeilen eines Gebäudes mit links anklicken, um alle seine Haltestellen zu wählen, oder mit rechts einen Rahmen ziehen (`Umschalt`: Lasso), um alle Haltestellen darin zu wählen; zeigt der Mauszeiger auf eine Station, erscheint ihr Name. Der Dialog listet die Haltestellen mit Häkchen, Art, Fruchtsorten, Markername und Gruppe (z. B. „Getreidelager (Verkaufsstelle)“ in „Verkaufsstellen“), Spurwinkel und einem Hinweis (keine KI-Stelle im Gebäude, ein vorhandener Node, wo die Spur hinkommt). Die Spurlänge vor und nach der Haltestelle (Standard 10 m) und der Knotenabstand bleiben für das nächste Mal gespeichert. Die Spuren werden auf der Karte gezeichnet; den Ring am vorderen Ende einer Spur ziehen, um sie um ihre Haltestelle zu drehen (`Umschalt`: 15°-Schritte), oder den Winkel eintippen. `Anlegen` fügt je gewählter Haltestelle eine gerade Einbahnspur aus Subprio-Nodes mit dem Marker auf dem Node an der Haltestelle in den Plan ein, als ein Rückgängig-Schritt. Danach sind die Spurenden ausgewählt, um sie ans Netz anzuschließen.
+Hinter dem Pfeil des Werkzeugs Erzeugen `Stationen` wählen. Einen Haltestellenpfeil oder die Fläche zwischen den Pfeilen eines Gebäudes mit links anklicken, um alle seine Haltestellen zu wählen, oder mit rechts einen Rahmen ziehen (`Umschalt`: Lasso), um alle Haltestellen darin zu wählen; zeigt der Mauszeiger auf eine Station, erscheint ihr Name. Der Dialog listet die Haltestellen mit Häkchen, Art, Fruchtsorten, Markername und Gruppe (z. B. „Getreidelager (Verkaufsstelle)“ in „Verkaufsstellen“), Spurwinkel und einem Hinweis (keine KI-Stelle im Gebäude, ein vorhandener Node, wo die Spur hinkommt). Der Marker sitzt ein Stück hinter der Haltestelle (Standard 8 m), denn der Traktor hält am Marker, und der Anhänger steht dann über dem Abladepunkt. Die Spurlänge vor der Haltestelle und nach dem Marker (Standard je 10 m), der Markerabstand und der Knotenabstand bleiben für das nächste Mal gespeichert. Die Spuren werden auf der Karte gezeichnet; den Ring am vorderen Ende einer Spur ziehen, um sie um ihre Haltestelle zu drehen (`Umschalt`: 15°-Schritte), oder den Winkel eintippen. `Anlegen` fügt je gewählter Haltestelle eine gerade Einbahnspur aus Subprio-Nodes mit dem Marker auf dem Node an der Haltestelle in den Plan ein, als ein Rückgängig-Schritt. Danach sind die Spurenden ausgewählt, um sie ans Netz anzuschließen.
 
 ## Netz prüfen
 
