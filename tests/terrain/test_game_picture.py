@@ -64,6 +64,16 @@ def test_tiles_in_a_rectangle():
     assert grid.tiles_in(4, -100, -100, 100, 100) == [(0, 0)]
 
 
+def test_tile_at_a_world_point():
+    grid = PictureGrid(8192, 0.5)
+
+    assert grid.tile_at(-4096, -4096) == (0, 0)
+    assert grid.tile_at(-3097, -3095) == (0, 1)
+    assert grid.tile_at(4095, 4095) == (8, 8)
+    assert grid.tile_at(4096, 0) is None
+    assert grid.tile_at(0, -4097) is None
+
+
 def test_added_tile_is_stored_cut_and_listed(small_tiles, tmp_path):
     picture = GamePicture.create(tmp_path / "1", small_tiles)
     picture.add_tile(2, 0, Image.new("RGBA", (10, 10), RED + (255,)), "2026-11-01T12:00:00")

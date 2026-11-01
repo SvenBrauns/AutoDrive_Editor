@@ -66,6 +66,16 @@ class PictureGrid:
         start = -self.map_size / 2
         return start + (col + 0.5) * self.edge, start + (row + 0.5) * self.edge
 
+    def tile_at(self, x: float, z: float) -> tuple[int, int] | None:
+        """Column and row of the level 0 tile at world x, z; None outside the map."""
+
+        half = self.map_size / 2
+
+        if not (-half <= x < half and -half <= z < half):
+            return None
+
+        return int((x + half) // self.edge), int((z + half) // self.edge)
+
     def tile_size(self, level: int, col: int, row: int) -> tuple[int, int]:
         """Pixel size of a tile, smaller at the map's east and south border."""
 
