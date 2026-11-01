@@ -1,3 +1,5 @@
+from enum import StrEnum
+
 from PySide6.QtCore import QPointF
 from PySide6.QtGui import QTransform
 from PySide6.QtWidgets import QGraphicsPixmapItem, QGraphicsScene
@@ -6,13 +8,22 @@ from autodrive_editor.file_io.background_image import load_background_pixmap
 from autodrive_editor.file_io.ground_map import Field
 from autodrive_editor.i18n import tr
 from autodrive_editor.rendering.items.field_outline_item import FieldOutlineItem
+from autodrive_editor.rendering.items.game_picture_item import GamePictureItem
 from autodrive_editor.rendering.items.map_grid_item import MapGridItem
 from autodrive_editor.terrain.background_transform import BackgroundTransform
+from autodrive_editor.terrain.game_picture import GamePicture
+
+
+class Background(StrEnum):
+    OVERVIEW = "overview"
+    GROUND = "ground"
+    PICTURE = "picture"
 
 
 class BackgroundMap:
     """The map image (overview.dds) under the network, scaled to the map size, plus the grid.
-    An imported map can show its ground map with the field outlines instead."""
+    An imported map can show its ground map with the field outlines instead, or the game picture
+    over the map image."""
 
     def __init__(self, scene: QGraphicsScene, map_scale: int = 1):
         self.scene = scene
@@ -22,10 +33,12 @@ class BackgroundMap:
         self.background_item = None
         self.grid_item = None
         self.field_item = None
+        self.picture_item = None
 
         self.ground_path = None
         self.fields: list[Field] = []
-        self.ground_visible = False
+        self.picture: GamePicture | None = None
+        self.background = Background.OVERVIEW
 
         self.grid_visible = True
         self.grid_spacing = 10.0
@@ -43,6 +56,7 @@ class BackgroundMap:
         self.file_path = file_path
         self.ground_path = None
         self.fields = []
+        self.picture = None
 
         self._replace_background(pixmap)
 
@@ -55,17 +69,38 @@ class BackgroundMap:
         if self.showing_ground():
             self.restore()
 
-    def set_ground_visible(self, visible: bool):
-        """Shows the ground map instead of the map image, where there is one."""
+    def set_picture(self, picture: GamePicture | None):
+        """The game picture of the loaded map; None if it has none."""
 
-        was_showing = self.showing_ground()
-        self.ground_visible = bool(visible)
+        was_showing = self.showing_picture()
+        self.picture = picture
 
-        if self.showing_ground() != was_showing:
+        if was_showing or self.showing_picture():
             self.restore()
 
+    def set_background(self, background: Background):
+        """Shows the chosen background where the map has it, otherwise the map image."""
+
+        shown = (self.showing_ground(), self.showing_picture())
+        self.background = Background(background)
+
+        if (self.showing_ground(), self.showing_picture()) != shown:
+            self.restore()
+
+    def available(self, background: Background) -> bool:
+        if background == Background.GROUND:
+            return self.ground_path is not None
+
+        if background == Background.PICTURE:
+            return self.picture is not None
+
+        return True
+
     def showing_ground(self) -> bool:
-        return self.ground_visible and self.ground_path is not None
+        return self.background == Background.GROUND and self.ground_path is not None
+
+    def showing_picture(self) -> bool:
+        return self.background == Background.PICTURE and self.picture is not None
 
     def restore(self):
         """
@@ -117,10 +152,19 @@ class BackgroundMap:
 
             self.field_item = None
 
+        if self.picture_item is not None:
+            self.picture_item.close()
+
+            if self.picture_item.scene() is self.scene:
+                self.scene.removeItem(self.picture_item)
+
+            self.picture_item = None
+
         if not preserve_file_path:
             self.file_path = None
             self.ground_path = None
             self.fields = []
+            self.picture = None
 
     def has_background(self):
         return self.background_item is not None
@@ -140,6 +184,10 @@ class BackgroundMap:
         if self.showing_ground() and self.fields:
             self.field_item = FieldOutlineItem(self.fields)
             self.scene.addItem(self.field_item)
+
+        if self.showing_picture():
+            self.picture_item = GamePictureItem(self.picture)
+            self.scene.addItem(self.picture_item)
 
         self._apply_transform()
         self._create_grid_item()

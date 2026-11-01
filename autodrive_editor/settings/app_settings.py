@@ -18,6 +18,7 @@ from autodrive_editor.model.connections import ConnectionType
 from autodrive_editor.paths import user_data_directory
 from autodrive_editor.rendering.visibility import Visibility
 from autodrive_editor.settings.recent_items import RecentItem
+from autodrive_editor.terrain.background_map import Background
 
 
 class AppSettings:
@@ -27,6 +28,8 @@ class AppSettings:
     INSTALL_FOLDER_KEY = "game/install_folder"
     SETUP_DONE_KEY = "app/setup_done"
     MARKER_NAMES_KEY = "view/marker_names"
+    BACKGROUND_KEY = "view/background"
+    # Before the background choice there was only a ground map switch.
     GROUND_MAP_KEY = "view/ground_map"
     VISIBILITY_PREFIX = "view/show_"
     AUTOSAVE_MINUTES_KEY = "app/autosave_minutes"
@@ -113,11 +116,20 @@ class AppSettings:
         self._settings.sync()
 
     @property
-    def ground_map_visible(self) -> bool:
-        return self._settings.value(self.GROUND_MAP_KEY, False, type=bool)
+    def background(self) -> Background:
+        old = (
+            Background.GROUND
+            if self._settings.value(self.GROUND_MAP_KEY, False, type=bool)
+            else Background.OVERVIEW
+        )
 
-    def set_ground_map_visible(self, visible: bool):
-        self._settings.setValue(self.GROUND_MAP_KEY, bool(visible))
+        try:
+            return Background(self._settings.value(self.BACKGROUND_KEY, old))
+        except ValueError:
+            return Background.OVERVIEW
+
+    def set_background(self, background: Background):
+        self._settings.setValue(self.BACKGROUND_KEY, Background(background).value)
         self._settings.sync()
 
     @property

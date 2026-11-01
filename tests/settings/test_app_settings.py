@@ -13,6 +13,7 @@ from autodrive_editor.model.connections import ConnectionType
 from autodrive_editor.rendering.visibility import Visibility
 from autodrive_editor.settings import app_settings
 from autodrive_editor.settings.app_settings import AppSettings
+from autodrive_editor.terrain.background_map import Background
 
 pytestmark = pytest.mark.usefixtures("isolated_user_data")
 
@@ -316,12 +317,26 @@ def test_unknown_building_groups_are_ignored():
     assert settings.building_groups == {"b.xml": BuildingGroup.OTHER}
 
 
-def test_ground_map_switch_is_kept_between_sessions():
-    assert AppSettings().ground_map_visible is False
+def test_background_choice_is_kept_between_sessions():
+    assert AppSettings().background == Background.OVERVIEW
 
-    AppSettings().set_ground_map_visible(True)
+    AppSettings().set_background(Background.PICTURE)
 
-    assert AppSettings().ground_map_visible is True
+    assert AppSettings().background == Background.PICTURE
+
+
+def test_old_ground_map_switch_becomes_the_ground_map_background():
+    settings = AppSettings()
+    settings._settings.setValue(settings.GROUND_MAP_KEY, True)
+
+    assert AppSettings().background == Background.GROUND
+
+
+def test_unknown_background_falls_back_to_the_map_image():
+    settings = AppSettings()
+    settings._settings.setValue(settings.BACKGROUND_KEY, "satellite")
+
+    assert AppSettings().background == Background.OVERVIEW
 
 
 def test_last_file_is_reopened_until_turned_off():

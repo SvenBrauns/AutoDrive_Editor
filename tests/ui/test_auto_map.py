@@ -5,6 +5,8 @@ from game_folder_helpers import add_routes, add_savegame, make_game_folder
 from map_mod_helpers import heightmap_png, make_single_map_mod
 
 from autodrive_editor.file_io.map_mod import read_map_mod
+from autodrive_editor.terrain.background_map import Background
+from autodrive_editor.terrain.game_picture import PICTURE_FOLDER, GamePicture, PictureGrid
 from autodrive_editor.terrain.map_cache import MapCache
 
 MAP_NAME = "LS25_Testkarte_2_0"  # AutoDrive name of "LS25 Testkarte 2.0"
@@ -110,7 +112,7 @@ def test_without_map_name_nothing_is_detected(map_window, write_xml):
 
 def test_ground_map_can_be_switched_on_for_an_imported_map(map_window):
     cached = import_test_map(map_window)
-    action = map_window.actions.ground_map_action
+    action = map_window.actions.background_ground_action
     assert not action.isEnabled()
 
     open_route(map_window, MAP_NAME)
@@ -121,7 +123,7 @@ def test_ground_map_can_be_switched_on_for_an_imported_map(map_window):
     assert map_window.background_map.showing_ground()
     assert map_window.background_map.ground_path == cached.ground_path
     assert map_window.background_map.field_item is not None
-    assert map_window.settings.ground_map_visible
+    assert map_window.settings.background == Background.GROUND
 
 
 def test_ground_map_is_unavailable_for_maps_imported_before(map_window):
@@ -130,18 +132,63 @@ def test_ground_map_is_unavailable_for_maps_imported_before(map_window):
 
     open_route(map_window, MAP_NAME)
 
-    assert not map_window.actions.ground_map_action.isEnabled()
+    assert not map_window.actions.background_ground_action.isEnabled()
 
 
 def test_importing_the_shown_map_again_offers_its_ground_map(map_window):
     cached = import_test_map(map_window)
     (cached.directory / "ground.png").unlink()
     open_route(map_window, MAP_NAME)
-    assert not map_window.actions.ground_map_action.isEnabled()
+    assert not map_window.actions.background_ground_action.isEnabled()
 
     mod_path = map_window.tmp / "mods" / "FS25_Testkarte.zip"
     map_mod = read_map_mod(mod_path)
     map_window.map_import._import_maps([(map_mod, map_mod.maps[0])])
 
-    assert map_window.actions.ground_map_action.isEnabled()
+    assert map_window.actions.background_ground_action.isEnabled()
     assert map_window.background_map.ground_path == cached.ground_path
+
+
+def add_picture(cached, savegame):
+    return GamePicture.create(cached.directory / PICTURE_FOLDER / savegame, PictureGrid(4096, 0.5))
+
+
+def test_game_picture_of_the_loaded_savegame_is_offered(map_window):
+    cached = import_test_map(map_window)
+    add_picture(cached, "2")
+    add_picture(cached, "1")
+    savegame = add_savegame(map_window.folder, 2, "Spielstand", "LS25 Testkarte 2.0", MAP_NAME)
+    action = map_window.actions.background_picture_action
+
+    map_window.project_coordinator.load_xml_file(savegame / "AutoDrive_config.xml")
+    assert action.isEnabled()
+
+    action.setChecked(True)
+
+    assert map_window.background_map.showing_picture()
+    assert map_window.background_map.picture.directory.name == "2"
+    assert map_window.settings.background == Background.PICTURE
+
+
+def test_a_route_gets_the_newest_game_picture(map_window):
+    cached = import_test_map(map_window)
+    add_picture(cached, "3")
+
+    open_route(map_window, MAP_NAME)
+
+    assert map_window.background_map.picture.directory.name == "3"
+
+
+def test_a_background_the_map_lacks_resets_the_choice_to_the_overview(map_window):
+    cached = import_test_map(map_window)
+    add_picture(cached, "1")
+    open_route(map_window, MAP_NAME)
+    map_window.actions.background_picture_action.setChecked(True)
+
+    for path in (cached.directory / PICTURE_FOLDER / "1").iterdir():
+        path.unlink()
+    open_route(map_window, MAP_NAME)
+
+    assert not map_window.actions.background_picture_action.isEnabled()
+    assert map_window.actions.background_overview_action.isChecked()
+    assert map_window.settings.background == Background.OVERVIEW
