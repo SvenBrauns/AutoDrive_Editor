@@ -229,13 +229,14 @@ class MainWindowActions:
         self.save_xml_action.setEnabled(False)
         self.save_xml_action.triggered.connect(self.window.files.save_xml)
 
-        self.save_xml_as_action = QAction(tr("Save as…"), self.window)
-        self.save_xml_as_action.setShortcut(QKeySequence.SaveAs)
+        # Named save_xml_as, so shortcuts stored for "Save as…" still apply.
+        self.save_xml_as_action = QAction(tr("Save as route…"), self.window)
+        self.save_xml_as_action.setShortcut(QKeySequence("Ctrl+Shift+S"))
         self.save_xml_as_action.setStatusTip(
-            tr("Save routes as a new route in the RoutesManager, anything else into another file")
+            tr("Keep a version of the network as a route in the RoutesManager")
         )
         self.save_xml_as_action.setEnabled(False)
-        self.save_xml_as_action.triggered.connect(self.window.files.save_xml_as)
+        self.save_xml_as_action.triggered.connect(self.window.files.save_as_route)
 
         self.settings_action = QAction(tr("Settings…"), self.window)
 

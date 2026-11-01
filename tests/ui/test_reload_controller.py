@@ -1,11 +1,9 @@
-"""Reload in game (proof of concept), with the companion mod played by the test."""
+"""Save on a savegame reloads it in the game, with the companion mod played by the test."""
 
 from datetime import datetime
 
 import pytest
 from game_folder_helpers import add_savegame, make_game_folder
-from PySide6.QtGui import QKeySequence
-from PySide6.QtWidgets import QWidget
 
 from autodrive_editor.file_io.autodrive_xml import AutoDriveXmlReader
 from autodrive_editor.game import editor_link
@@ -15,8 +13,8 @@ MAP_ID = "FS25_Test.SampleModMap"
 
 
 @pytest.fixture
-def reload_window(window, tmp_path):
-    """Savegame 1 is open; status messages are collected."""
+def reload_window(window, tmp_path, monkeypatch):
+    """Savegame 1 is open; status lines and message boxes are collected."""
 
     folder = make_game_folder(tmp_path / "FarmingSimulator2025")
     window.settings.set_game_folder(folder)
@@ -26,7 +24,9 @@ def reload_window(window, tmp_path):
     window.link = editor_link.link_directory(folder)
     window.link.mkdir(parents=True)
     window.messages = []
+    window.boxes = []
     window.reload.status_changed.connect(window.messages.append)
+    monkeypatch.setattr(window.reload, "_inform", window.boxes.append)
     return window
 
 
@@ -44,31 +44,15 @@ def mod_result(window, body='<result format="1" status="done" message=""/>'):
     (window.link / f"{name}.done").write_bytes(b"")
 
 
-def test_shortcut_is_on_the_window(reload_window):
-    action = reload_window.reload.action
-
-    assert action.shortcut() == QKeySequence("Ctrl+Alt+Shift+R")
-    # MainWindow.actions is the editor's action set, so Qt's list is asked directly.
-    assert action in QWidget.actions(reload_window)
+def test_no_hidden_shortcut_any_more(reload_window):
+    assert not hasattr(reload_window.reload, "action")
 
 
-def test_refused_while_the_game_runs_another_savegame(reload_window):
-    game_status(reload_window, savegame=2)
-
-    reload_window.reload.reload()
-
-    assert reload_window.reload.request_id is None
-    assert not (reload_window.link / "request.xml").exists()
-    assert reload_window.messages == [
-        "Reload in game: The game runs savegame 2, the editor shows savegame 1."
-    ]
-
-
-def test_sends_the_open_network_and_shows_the_answer(reload_window):
+def test_save_reloads_the_savegame_the_game_runs(reload_window):
     game_status(reload_window)
     controller = reload_window.reload
 
-    controller.reload()
+    assert reload_window.files.save_xml()
 
     request_id = controller.request_id
     request = (reload_window.link / "request.xml").read_text(encoding="utf-8")
@@ -76,12 +60,8 @@ def test_sends_the_open_network_and_shows_the_answer(reload_window):
     network = AutoDriveXmlReader.load(
         reload_window.link / editor_link.network_file_name(request_id)
     )
-    data = reload_window.project_coordinator.autodrive_data
-    assert len(network.nodes) == len(data.nodes)
-    assert controller.timer.isActive()
-
-    controller._poll()
-    assert controller.request_id == request_id
+    assert len(network.nodes) == len(reload_window.project_coordinator.autodrive_data.nodes)
+    assert reload_window.messages[-1] == "Saved · reloading in game…"
 
     mod_result(
         reload_window,
@@ -92,29 +72,54 @@ def test_sends_the_open_network_and_shows_the_answer(reload_window):
 
     assert controller.request_id is None
     assert not controller.timer.isActive()
-    assert reload_window.messages[-1].startswith(
-        "Reloaded in game: 3 nodes, 1 markers, 1 groups · export "
-    )
-    assert "read 0.25 s, upload 0.50 s" in reload_window.messages[-1]
+    assert reload_window.messages[-1].startswith("Saved · reloaded in game (3 nodes, ")
     assert [path.name for path in reload_window.link.iterdir()] == ["status.xml"]
 
 
-def test_error_of_the_game_is_shown(reload_window):
+def test_no_reload_while_the_game_runs_another_savegame(reload_window):
+    game_status(reload_window, savegame=2)
+
+    reload_window.files.save_xml()
+
+    assert reload_window.reload.request_id is None
+    assert not (reload_window.link / "request.xml").exists()
+    assert reload_window.boxes == []
+
+
+def test_error_of_the_game_is_shown_in_a_box(reload_window):
     game_status(reload_window)
-    reload_window.reload.reload()
+    reload_window.files.save_xml()
 
     mod_result(reload_window, '<result format="1" status="error" message="AutoDrive not found"/>')
     reload_window.reload._poll()
 
-    assert reload_window.messages[-1] == "Reload in game failed: AutoDrive not found"
+    assert reload_window.messages[-1] == "Saved"
+    assert reload_window.boxes[0].startswith("Saved, but not reloaded in the game: AutoDrive not")
+    assert "overwrites the file on its next save" in reload_window.boxes[0]
 
 
-def test_gives_up_without_an_answer(reload_window, monkeypatch):
+def test_no_answer_is_shown_in_a_box(reload_window, monkeypatch):
     monkeypatch.setattr(reload_controller, "TIMEOUT_SEC", 0)
     game_status(reload_window)
-    reload_window.reload.reload()
+    reload_window.files.save_xml()
 
     reload_window.reload._poll()
 
     assert reload_window.reload.request_id is None
-    assert reload_window.messages[-1] == "Reload in game: no answer after 0 s."
+    assert "did not answer within 0 s" in reload_window.boxes[0]
+
+
+def test_game_without_the_mod_is_warned_about_once(reload_window, monkeypatch):
+    monkeypatch.setattr(reload_controller, "game_is_running", lambda: True)
+
+    reload_window.files.save_xml()
+    reload_window.files.save_xml()
+
+    assert len(reload_window.boxes) == 1
+    assert "exit the game without saving, or install the mod" in reload_window.boxes[0]
+
+
+def test_no_warning_when_the_game_is_closed(reload_window):
+    reload_window.files.save_xml()
+
+    assert reload_window.boxes == []

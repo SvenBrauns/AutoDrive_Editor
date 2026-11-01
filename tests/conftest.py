@@ -42,6 +42,15 @@ def no_installed_game(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def no_running_game(monkeypatch):
+    """A game the developer runs while testing is not seen; tests that need one set this."""
+
+    from autodrive_editor.ui import reload_controller
+
+    monkeypatch.setattr(reload_controller, "game_is_running", lambda: False)
+
+
+@pytest.fixture(autouse=True)
 def no_recent_items():
     """Every test starts with an empty list of recently opened files."""
     from autodrive_editor.settings.app_settings import AppSettings
@@ -134,6 +143,8 @@ def window(qapp, tmp_path):
     main_window.map_import._ask_map_not_found = lambda map_name: None
     # Closing at the end of a test drops unsaved edits without asking.
     main_window.files._ask_save_changes = lambda: QMessageBox.Discard
+    # A taken route name is not replaced unless a test says so.
+    main_window.files._confirm_replace_route = lambda name: False
     main_window.planning._ask_end_plan = lambda: QMessageBox.Discard
     # Saving a network with problems saves without asking.
     main_window.network_check._ask_save_anyway = lambda count: True

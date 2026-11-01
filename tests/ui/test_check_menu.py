@@ -193,6 +193,7 @@ def test_ignored_problems_do_not_stop_saving(check_window):
 
 def test_cancelled_save_as_asks_for_no_name(check_window):
     check_window.network_check._ask_save_anyway = lambda count: False
-    check_window.files._ask_save_path = lambda path: pytest.fail("asked for a path")
+    check_window.files._routes_xml_for = lambda source: source.path.with_name("routes.xml")
+    check_window.files._ask_route_name = lambda name: pytest.fail("asked for a name")
 
-    assert not check_window.files.save_xml_as()
+    assert not check_window.files.save_as_route()

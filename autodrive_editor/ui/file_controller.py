@@ -7,7 +7,13 @@ from PySide6.QtCore import QObject, QTimer, Signal
 from PySide6.QtWidgets import QDialog, QFileDialog, QInputDialog, QMessageBox, QWidget
 
 from autodrive_editor.editing.edit_history import EditHistory
-from autodrive_editor.file_io.routes_index import RouteEntry, find_route_entry, read_routes_index
+from autodrive_editor.file_io.autodrive_xml import ConfigFormat
+from autodrive_editor.file_io.routes_index import (
+    RouteEntry,
+    find_route_entry,
+    read_routes_index,
+    routes_index_for,
+)
 from autodrive_editor.game.savegame_info import SavegameInfo, savegames
 from autodrive_editor.i18n import tr
 from autodrive_editor.project.autosave import AutosaveStore
@@ -51,6 +57,9 @@ class FileController(QObject):
         self.settings = settings
         self.project_coordinator = project_coordinator
         self.edit_history = edit_history
+
+        # Suggested by Save as route…: the route last saved or opened in this session.
+        self.last_route_name: str | None = None
 
         # Asked before saving; False cancels the save.
         self.confirm_save: Callable[[], bool] = lambda: True
@@ -155,6 +164,7 @@ class FileController(QObject):
 
     def _open_route(self, entry: RouteEntry):
         if self._load_config(entry.path, display_name=entry.name, map_name=entry.map_name):
+            self.last_route_name = entry.name
             self._remember(
                 RecentItem(RecentKind.ROUTE, str(entry.path), entry.name, entry.map_name)
             )
@@ -273,9 +283,9 @@ class FileController(QObject):
 
         return True
 
-    def save_xml_as(self) -> bool:
-        """Routes from the RoutesManager are saved as a new route there,
-        everything else into a file chosen in a dialog."""
+    def save_as_route(self) -> bool:
+        """File → Save as route…: keeps a version of the network in the RoutesManager. A route
+        of the RoutesManager is saved next to it, anything else into the game folder's."""
 
         source = self.project_coordinator.config_source
 
@@ -283,33 +293,71 @@ class FileController(QObject):
             self.status_changed.emit(tr("Load an AutoDrive XML first"))
             return False
 
+        routes_xml_path = self._routes_xml_for(source)
+
+        if routes_xml_path is None:
+            self._inform(tr("No valid FS25 game folder is set."))
+            return False
+
         if not self.confirm_save():
             return False
 
-        affected_vehicles = []
+        name = self._ask_route_name(self._suggested_route_name(source))
+
+        if not name:
+            return False
+
+        if self._route_exists(routes_xml_path, name) and not self._confirm_replace_route(name):
+            return False
 
         try:
-            if find_route_entry(source.path) is not None:
-                name = self._ask_route_name(source.display_name)
-
-                if not name:
-                    return False
-
-                self.project_coordinator.save_as_route(name, source.map_name or "")
-            else:
-                target = self._ask_save_path(source.path)
-
-                if target is None:
-                    return False
-
-                affected_vehicles = self.project_coordinator.save_as_file(target)
+            self.project_coordinator.save_as_route(name, routes_xml_path)
         except Exception as ex:
             self._inform(tr("The AutoDrive data could not be saved:\n{error}", error=ex))
             return False
 
-        self._after_save(affected_vehicles)
+        self.last_route_name = name
+
+        # A savegame stays open with its own unsaved state.
+        if source.format != ConfigFormat.SAVEGAME:
+            self._after_save([])
 
         return True
+
+    def _routes_xml_for(self, source) -> Path | None:
+        if find_route_entry(source.path) is not None:
+            return routes_index_for(source.path)
+
+        game_folder = self.settings.game_folder
+
+        return (
+            game_folder.routes_xml_path
+            if game_folder is not None and game_folder.is_valid
+            else None
+        )
+
+    def _suggested_route_name(self, source) -> str:
+        """The route last saved or opened, else the map name."""
+
+        return self.last_route_name or source.map_name or ""
+
+    @staticmethod
+    def _route_exists(routes_xml_path: Path, name: str) -> bool:
+        if not routes_xml_path.is_file():
+            return False
+
+        return any(entry.name == name for entry in read_routes_index(routes_xml_path))
+
+    def _confirm_replace_route(self, name: str) -> bool:
+        answer = QMessageBox.question(
+            self.window,
+            APP_TITLE,
+            tr("Replace route “{name}”? It gets a new revision.", name=name),
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+
+        return answer == QMessageBox.Yes
 
     def _after_save(self, affected_vehicles: list[str]):
         self.edit_history.mark_clean()
@@ -326,22 +374,12 @@ class FileController(QObject):
                 + "\n".join(affected_vehicles)
             )
 
-    def _ask_route_name(self, default_name: str | None) -> str | None:
+    def _ask_route_name(self, default_name: str) -> str | None:
         name, accepted = QInputDialog.getText(
-            self.window, tr("Save as new route"), tr("Name of the route:"), text=default_name or ""
+            self.window, tr("Save as route"), tr("Name of the route:"), text=default_name
         )
 
         return name.strip() if accepted else None
-
-    def _ask_save_path(self, current_path: Path) -> Path | None:
-        filename, _ = QFileDialog.getSaveFileName(
-            self.window, tr("Save as"), str(current_path), tr("AutoDrive XML (*.xml)")
-        )
-
-        if not filename:
-            return None
-
-        return Path(filename if filename.lower().endswith(".xml") else filename + ".xml")
 
     def autosave(self):
         """Backs up unsaved changes into the editor's data folder."""
