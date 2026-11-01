@@ -11,13 +11,17 @@ from autodrive_editor.terrain.background_map import Background
 from autodrive_editor.ui.actions.shortcuts import ShortcutRegistry
 from autodrive_editor.ui.actions.tool_catalog import (
     GENERATE_TOOL,
+    MERGED_TOOLS,
     NAVIGATION_TOOL,
     SELECTION_TOOL,
     TOOL_GROUPS,
+    MergedTool,
     ToolDefinition,
     history_icon,
+    merged_tool_of,
     tool_icon,
     tool_tooltip,
+    variant_text,
 )
 from autodrive_editor.ui.controls.grid_controls import GridControls
 from autodrive_editor.ui.controls.rotation_controls import RotationControls
@@ -146,10 +150,12 @@ class MainWindowActions:
         self.shortcuts.apply(changed)
 
         for mode, definition in self.tool_definitions.items():
-            shortcut = self.tool_actions[mode].shortcut().toString(QKeySequence.NativeText)
-            self.tool_actions[mode].setToolTip(
-                tool_tooltip(definition.text, shortcut, definition.description)
-            )
+            action = self.tool_actions[mode]
+            shortcut = action.shortcut().toString(QKeySequence.NativeText)
+            action.setToolTip(tool_tooltip(action.text(), shortcut, definition.description))
+
+        for tool in MERGED_TOOLS:
+            self._show_current_variant(tool)
 
     def _create_actions(self):
         # One exclusive group for all map tools, so exactly one tool
@@ -165,9 +171,13 @@ class MainWindowActions:
 
         for _, rows in TOOL_GROUPS:
             for row in rows:
-                for definition in row:
-                    if definition is not None:
-                        self._create_tool_action(definition)
+                for entry in row:
+                    if isinstance(entry, MergedTool):
+                        for variant in entry.variants:
+                            self._create_tool_action(variant, variant_text(entry, variant))
+
+                    elif entry is not None:
+                        self._create_tool_action(entry)
 
         self.interaction_action_group = QActionGroup(self.window)
 
@@ -181,6 +191,18 @@ class MainWindowActions:
             )
 
         self.navigation_action.setChecked(True)
+
+        # One strip button per merged tool: it shows the current variant and activates it.
+        # The variant actions themselves are the buttons in the options bar.
+        self.merged_tool_actions: dict[MergedTool, QAction] = {}
+        self.current_variants: dict[MergedTool, InteractionMode] = {}
+
+        for tool in MERGED_TOOLS:
+            action = QAction(tool.text, self.window)
+            action.setCheckable(True)
+            action.triggered.connect(lambda checked, tool=tool: self._activate_merged_tool(tool))
+            self.merged_tool_actions[tool] = action
+            self.current_variants[tool] = tool.modes[0]
 
         self.distance_measurement_action = QAction(tool_icon("measure_distance"), "↔", self.window)
 
@@ -432,8 +454,8 @@ class MainWindowActions:
     UNDO_TEXT = tr("Undo")
     REDO_TEXT = tr("Redo")
 
-    def _create_tool_action(self, definition: ToolDefinition) -> QAction:
-        action = QAction(tool_icon(definition.icon), definition.text, self.window)
+    def _create_tool_action(self, definition: ToolDefinition, text: str | None = None) -> QAction:
+        action = QAction(tool_icon(definition.icon), text or definition.text, self.window)
 
         action.setCheckable(True)
 
@@ -833,10 +855,12 @@ class MainWindowActions:
                 group_title,
                 [
                     tuple(
-                        self.tool_actions[definition.interaction_mode]
-                        if definition is not None
-                        else None
-                        for definition in row
+                        None
+                        if entry is None
+                        else self.merged_tool_actions[entry]
+                        if isinstance(entry, MergedTool)
+                        else self.tool_actions[entry.interaction_mode]
+                        for entry in row
                     )
                     for row in rows
                 ],
@@ -923,12 +947,22 @@ class MainWindowActions:
 
         self.interaction_action_group.setExclusive(True)
 
+        for tool, action in self.merged_tool_actions.items():
+            action.setChecked(interaction_mode in tool.modes)
+
     def _restore_interaction_action(self):
         self._check_tool_action(self.window.view.interaction_mode)
 
     def sync_tool_actions(self):
         """Checks the button of the active tool, or none while
         measuring."""
+
+        mode = self.window.view.interaction_mode
+        tool = merged_tool_of(mode)
+
+        if tool is not None:
+            self.current_variants[tool] = mode
+            self._show_current_variant(tool)
 
         if self.window.view.measurement_active:
             self._check_tool_action(None)
@@ -938,6 +972,20 @@ class MainWindowActions:
 
     def set_measurement_alignment_enabled(self, enabled: bool):
         self.align_measurement_action.setEnabled(bool(enabled))
+
+    def _show_current_variant(self, tool: MergedTool):
+        """The strip button of a merged tool shows the icon and tooltip of its current variant."""
+
+        variant = self.tool_actions[self.current_variants[tool]]
+        action = self.merged_tool_actions[tool]
+        action.setIcon(variant.icon())
+        action.setToolTip(variant.toolTip())
+        action.setStatusTip(variant.statusTip())
+
+    def _activate_merged_tool(self, tool: MergedTool):
+        self._activate_tool(self.current_variants[tool], True)
+        # A click on the active tool un-checks its button; check it again.
+        self.sync_tool_actions()
 
     def _activate_tool(self, interaction_mode: InteractionMode, checked: bool):
         if not checked:

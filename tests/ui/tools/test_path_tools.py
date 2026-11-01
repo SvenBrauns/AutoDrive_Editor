@@ -63,6 +63,23 @@ def test_bezier_handle_drag_and_enter_creates_the_curve(zoomed_window):
     assert not operation.is_adjusting
 
 
+def test_switching_the_draw_variant_keeps_the_pending_path(zoomed_window):
+    window = tool_window(zoomed_window, InteractionMode.DRAW_ARC)
+    operation = window.create_path_operation
+
+    click(window, view_pos(window, 0, 20))
+    click(window, view_pos(window, 20, 20))
+    window.actions.tool_actions[InteractionMode.DRAW_BEZIER].trigger()
+
+    assert operation.is_adjusting
+    assert len(operation.handles) == 2
+
+    window.set_interaction_mode(InteractionMode.MOVE_NODES)
+
+    assert not operation.is_adjusting
+    assert operation.start is None
+
+
 def test_escape_cancels_the_pending_curve(zoomed_window):
     window = tool_window(zoomed_window, InteractionMode.DRAW_ARC)
 

@@ -4,6 +4,12 @@ from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QToolButton
 
 from autodrive_editor.measurement.mode import MeasurementMode
+from autodrive_editor.ui.actions.tool_catalog import (
+    CONNECT_TOOL,
+    CREATE_TOOL,
+    DRAW_TOOL,
+    MARKER_TOOL,
+)
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
 
@@ -195,3 +201,82 @@ def test_every_tool_explains_itself_in_the_status_bar(window, mode):
     text = window.status.text()
     assert text.startswith(f"Mode: {mode.display_name} – ")
     assert len(text) > len(f"Mode: {mode.display_name} – ") + 10
+
+
+# --- merged tools: one strip button, variants in the options bar ----
+
+
+def strip_action(window, tool):
+    return window.actions.merged_tool_actions[tool]
+
+
+def test_merged_tool_button_shows_the_current_variant(window):
+    create = strip_action(window, CREATE_TOOL)
+
+    assert "<b>Create – Regular</b> (E)" in create.toolTip()
+
+    window.set_interaction_mode(InteractionMode.CREATE_SUBPRIO_NODES)
+    subprio = window.actions.tool_actions[InteractionMode.CREATE_SUBPRIO_NODES]
+
+    assert create.isChecked()
+    assert create.icon().cacheKey() == subprio.icon().cacheKey()
+    assert "<b>Create – Subprio</b> (Shift+E)" in create.toolTip()
+
+
+def test_merged_tool_button_activates_the_last_variant(window):
+    window.set_interaction_mode(InteractionMode.CONNECT_DUAL)
+    window.set_interaction_mode(InteractionMode.MOVE_NODES)
+
+    assert not strip_action(window, CONNECT_TOOL).isChecked()
+
+    tool_button(window, "Connect").click()
+
+    assert window.view.interaction_mode == InteractionMode.CONNECT_DUAL
+    assert strip_action(window, CONNECT_TOOL).isChecked()
+
+
+def test_clicking_the_active_merged_tool_keeps_it_checked(window):
+    tool_button(window, "Draw").click()
+    tool_button(window, "Draw").click()
+
+    assert window.view.interaction_mode == InteractionMode.DRAW_LINE
+    assert strip_action(window, DRAW_TOOL).isChecked()
+
+
+def test_merged_tool_button_is_unchecked_while_measuring(window):
+    tool_button(window, "Marker").click()
+    window.actions.distance_measurement_action.trigger()
+
+    assert not strip_action(window, MARKER_TOOL).isChecked()
+
+
+@pytest.mark.parametrize(
+    ("key", "modifiers", "tool", "mode"),
+    [
+        (Qt.Key_E, Qt.NoModifier, CREATE_TOOL, InteractionMode.CREATE_NODES),
+        (Qt.Key_E, Qt.ShiftModifier, CREATE_TOOL, InteractionMode.CREATE_SUBPRIO_NODES),
+        (Qt.Key_3, Qt.NoModifier, CONNECT_TOOL, InteractionMode.CONNECT_REVERSE),
+        (Qt.Key_I, Qt.NoModifier, DRAW_TOOL, InteractionMode.DRAW_LINE),
+        (Qt.Key_K, Qt.NoModifier, DRAW_TOOL, InteractionMode.DRAW_ARC),
+        (Qt.Key_B, Qt.NoModifier, DRAW_TOOL, InteractionMode.DRAW_BEZIER),
+        (Qt.Key_M, Qt.NoModifier, MARKER_TOOL, InteractionMode.ADD_MARKER),
+        (Qt.Key_M, Qt.ShiftModifier, MARKER_TOOL, InteractionMode.EDIT_MARKER),
+        (Qt.Key_M, Qt.ControlModifier, MARKER_TOOL, InteractionMode.MOVE_MARKER),
+        (
+            Qt.Key_M,
+            Qt.ControlModifier | Qt.ShiftModifier,
+            MARKER_TOOL,
+            InteractionMode.DELETE_MARKER,
+        ),
+    ],
+)
+def test_variant_keys_pick_tool_and_variant(window, qapp, key, modifiers, tool, mode):
+    window.activateWindow()
+    window.view.setFocus()
+
+    QTest.keyClick(window.view, key, modifiers)
+    qapp.processEvents()
+
+    assert window.view.interaction_mode == mode
+    assert strip_action(window, tool).isChecked()
+    assert window.actions.current_variants[tool] == mode

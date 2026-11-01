@@ -8,6 +8,7 @@ from autodrive_editor.editing.operations.create_path import CreatePathOperation
 from autodrive_editor.editing.path_shapes import PathShape
 from autodrive_editor.i18n import tr
 from autodrive_editor.model.connections import ConnectionType
+from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 from autodrive_editor.ui.tools.map_tool import MapTool, is_alive_in_scene
 
 HINTS = {
@@ -30,7 +31,7 @@ class PathTool(MapTool):
         self,
         view,
         operation: CreatePathOperation,
-        shape: PathShape,
+        shapes: dict[InteractionMode, PathShape],
         color_provider: Callable[[ConnectionType], tuple[int, int, int]],
         node_diameter: float,
         z_value: float,
@@ -38,7 +39,7 @@ class PathTool(MapTool):
         super().__init__(view)
 
         self.operation = operation
-        self.shape = shape
+        self.shapes = shapes
         self._color_provider = color_provider
         self._node_diameter = node_diameter
         self._z_value = z_value
@@ -52,10 +53,21 @@ class PathTool(MapTool):
         self._handle_items: list[QGraphicsEllipseItem] = []
 
         operation.preview_changed.connect(self._update_preview)
+        view.interaction_mode_changed.connect(self._change_shape)
+
+    @property
+    def shape(self) -> PathShape:
+        return self.shapes[self.view.interaction_mode]
 
     def activate(self):
         self._active = True
         self.operation.set_shape(self.shape)
+
+    def _change_shape(self, mode: InteractionMode):
+        """The view keeps this tool when only the shape changes; the path stays."""
+
+        if self._active and mode in self.shapes:
+            self.operation.change_shape(self.shapes[mode])
 
     def deactivate(self):
         super().deactivate()

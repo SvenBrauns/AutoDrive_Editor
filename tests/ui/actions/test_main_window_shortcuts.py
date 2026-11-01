@@ -26,6 +26,21 @@ def test_all_menu_and_tool_actions_can_be_changed(clean_window):
     )
 
 
+def test_each_variant_key_is_its_own_entry(clean_window):
+    entries = clean_window.actions.shortcuts.entries
+
+    assert entries["tool_create_nodes"].text == "Create – Regular"
+    assert entries["tool_create_subprio_nodes"].text == "Create – Subprio"
+    assert entries["tool_draw_arc"].text == "Draw – Arc"
+
+
+def test_a_changed_variant_key_shows_in_the_strip_tooltip(clean_window):
+    clean_window.actions.apply_shortcuts({"tool_create_nodes": ["Q"]})
+    strip = clean_window.actions.merged_tool_actions
+
+    assert any("<b>Create – Regular</b> (Q)" in a.toolTip() for a in strip.values())
+
+
 def test_settings_apply_changed_shortcuts_and_tooltips(clean_window, monkeypatch):
     clean_window.settings.set_shortcuts({"tool_move_nodes": ["M"], "save_xml": []})
     monkeypatch.setattr(SettingsDialog, "exec", lambda dialog: True)

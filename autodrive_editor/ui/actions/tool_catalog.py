@@ -102,7 +102,7 @@ MOVE_TOOL = ToolDefinition(
 
 CREATE_REGULAR_TOOL = ToolDefinition(
     InteractionMode.CREATE_NODES,
-    tr("Create (Regular)"),
+    tr("Regular"),
     tr("Left-click on free ground to create a regular node"),
     "create_regular",
     "E",
@@ -110,7 +110,7 @@ CREATE_REGULAR_TOOL = ToolDefinition(
 
 CREATE_SUBPRIO_TOOL = ToolDefinition(
     InteractionMode.CREATE_SUBPRIO_NODES,
-    tr("Create (Subprio)"),
+    tr("Subprio"),
     tr("Left-click on free ground to create a subprio node"),
     "create_subprio",
     "Shift+E",
@@ -164,7 +164,7 @@ DELETE_TOOL = ToolDefinition(
 
 CONNECT_REGULAR_TOOL = ToolDefinition(
     InteractionMode.CONNECT_REGULAR,
-    tr("Connect (Regular)"),
+    tr("Regular"),
     tr("Click nodes one after another to connect them with regular connections"),
     "connect_regular",
     "1",
@@ -172,7 +172,7 @@ CONNECT_REGULAR_TOOL = ToolDefinition(
 
 CONNECT_DUAL_TOOL = ToolDefinition(
     InteractionMode.CONNECT_DUAL,
-    tr("Connect (Dual)"),
+    tr("Dual"),
     tr("Click nodes one after another to connect them with dual connections"),
     "connect_dual",
     "2",
@@ -180,7 +180,7 @@ CONNECT_DUAL_TOOL = ToolDefinition(
 
 CONNECT_REVERSE_TOOL = ToolDefinition(
     InteractionMode.CONNECT_REVERSE,
-    tr("Connect (Reverse)"),
+    tr("Reverse"),
     tr("Click nodes one after another to connect them with reverse connections"),
     "connect_reverse",
     "3",
@@ -229,7 +229,7 @@ LINE_TOOL = ToolDefinition(
 
 BEZIER_TOOL = ToolDefinition(
     InteractionMode.DRAW_BEZIER,
-    tr("Bézier curve"),
+    tr("Bézier"),
     tr("Click start and end, drag the handles, press Enter to create"),
     "draw_bezier",
     "B",
@@ -245,7 +245,7 @@ ARC_TOOL = ToolDefinition(
 
 ADD_MARKER_TOOL = ToolDefinition(
     InteractionMode.ADD_MARKER,
-    tr("Add marker"),
+    tr("Add"),
     tr("Click a node and enter the name and group of the new marker"),
     "marker_add",
     "M",
@@ -253,7 +253,7 @@ ADD_MARKER_TOOL = ToolDefinition(
 
 EDIT_MARKER_TOOL = ToolDefinition(
     InteractionMode.EDIT_MARKER,
-    tr("Edit marker"),
+    tr("Edit"),
     tr("Click a node with a marker to change its name and group"),
     "marker_edit",
     "Shift+M",
@@ -261,7 +261,7 @@ EDIT_MARKER_TOOL = ToolDefinition(
 
 MOVE_MARKER_TOOL = ToolDefinition(
     InteractionMode.MOVE_MARKER,
-    tr("Move marker"),
+    tr("Move"),
     tr("Click a node with a marker, then the target node; name, group and number stay"),
     "marker_move",
     "Ctrl+M",
@@ -269,29 +269,57 @@ MOVE_MARKER_TOOL = ToolDefinition(
 
 DELETE_MARKER_TOOL = ToolDefinition(
     InteractionMode.DELETE_MARKER,
-    tr("Delete marker"),
+    tr("Delete"),
     tr("Click a node with a marker to delete the marker; the node stays"),
     "marker_delete",
     "Ctrl+Shift+M",
 )
 
 
-# Title of the tool group that also holds the path options.
-LINES_GROUP = tr("Lines")
+@dataclass(frozen=True)
+class MergedTool:
+    """One tool with variants, e.g. Create with Regular and Subprio. Each variant keeps its own
+    mode and key; the variant buttons sit in the options bar."""
 
-# Tool groups in the left tool panel. Each row holds two tools:
-# node actions on the left, connection actions on the right.
+    text: str
+    variants: tuple[ToolDefinition, ...]
+
+    @property
+    def modes(self) -> tuple[InteractionMode, ...]:
+        return tuple(variant.interaction_mode for variant in self.variants)
+
+
+CREATE_TOOL = MergedTool(tr("Create"), (CREATE_REGULAR_TOOL, CREATE_SUBPRIO_TOOL))
+CONNECT_TOOL = MergedTool(
+    tr("Connect"), (CONNECT_REGULAR_TOOL, CONNECT_DUAL_TOOL, CONNECT_REVERSE_TOOL)
+)
+DRAW_TOOL = MergedTool(tr("Draw"), (LINE_TOOL, ARC_TOOL, BEZIER_TOOL))
+MARKER_TOOL = MergedTool(
+    tr("Marker"), (ADD_MARKER_TOOL, EDIT_MARKER_TOOL, MOVE_MARKER_TOOL, DELETE_MARKER_TOOL)
+)
+MERGED_TOOLS = (CREATE_TOOL, CONNECT_TOOL, DRAW_TOOL, MARKER_TOOL)
+
+
+def merged_tool_of(mode: InteractionMode) -> MergedTool | None:
+    return next((tool for tool in MERGED_TOOLS if mode in tool.modes), None)
+
+
+def variant_text(tool: MergedTool, variant: ToolDefinition) -> str:
+    """The name of a variant with its tool, e.g. "Create – Regular"."""
+
+    return f"{tool.text} – {variant.text}"
+
+
+# Tool groups in the left tool panel. Each row holds two tools (a tool or a merged tool).
 # None leaves a cell empty.
 TOOL_GROUPS = (
     (
         tr("Nodes"),
         (
-            (MOVE_TOOL, CONNECT_REGULAR_TOOL),
-            (CREATE_REGULAR_TOOL, CONNECT_DUAL_TOOL),
-            (CREATE_SUBPRIO_TOOL, CONNECT_REVERSE_TOOL),
+            (MOVE_TOOL, CREATE_TOOL),
+            (CONNECT_TOOL, DELETE_TOOL),
             (TOGGLE_TYPE_TOOL, REVERSE_DIRECTION_TOOL),
-            (ROTATE_TOOL, DELETE_TOOL),
-            (NODE_POSITION_TOOL, None),
+            (ROTATE_TOOL, NODE_POSITION_TOOL),
         ),
     ),
     (
@@ -301,18 +329,6 @@ TOOL_GROUPS = (
             (ALIGN_HEIGHT_TOOL, HEIGHT_FROM_TERRAIN_TOOL),
         ),
     ),
-    (
-        LINES_GROUP,
-        (
-            (LINE_TOOL, BEZIER_TOOL),
-            (ARC_TOOL, None),
-        ),
-    ),
-    (
-        tr("Markers"),
-        (
-            (ADD_MARKER_TOOL, EDIT_MARKER_TOOL),
-            (MOVE_MARKER_TOOL, DELETE_MARKER_TOOL),
-        ),
-    ),
+    (tr("Draw"), ((DRAW_TOOL, None),)),
+    (tr("Markers"), ((MARKER_TOOL, None),)),
 )

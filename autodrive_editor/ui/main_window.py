@@ -59,6 +59,7 @@ from autodrive_editor.terrain.background_map import Background, BackgroundMap
 from autodrive_editor.terrain.heightmap import Heightmap
 from autodrive_editor.terrain.map_cache import MapCache
 from autodrive_editor.ui.actions.main_window_actions import MainWindowActions
+from autodrive_editor.ui.actions.tool_catalog import MERGED_TOOLS
 from autodrive_editor.ui.controls.grid_coordinator import GridCoordinator
 from autodrive_editor.ui.dialogs.building_types_dialog import BuildingTypesDialog
 from autodrive_editor.ui.dialogs.marker_dialog import MarkerDialog
@@ -800,28 +801,27 @@ class MainWindow(QMainWindow):
 
     def _register_path_tools(self):
         display_style = self.scene_renderer.display_style
+        shapes = {
+            InteractionMode.DRAW_LINE: PathShape.LINE,
+            InteractionMode.DRAW_BEZIER: PathShape.BEZIER,
+            InteractionMode.DRAW_ARC: PathShape.ARC,
+        }
+        # One tool for the three shapes, so switching the shape keeps a half drawn path.
+        path_tool = PathTool(
+            self.view,
+            self.create_path_operation,
+            shapes,
+            color_provider=(
+                lambda connection_type: getattr(
+                    self.scene_renderer.display_style, f"{connection_type.value}_connection_color"
+                )
+            ),
+            node_diameter=display_style.node_diameter,
+            z_value=display_style.selected_node_z + 1,
+        )
 
-        for interaction_mode, shape in (
-            (InteractionMode.DRAW_LINE, PathShape.LINE),
-            (InteractionMode.DRAW_BEZIER, PathShape.BEZIER),
-            (InteractionMode.DRAW_ARC, PathShape.ARC),
-        ):
-            self.view.register_tool(
-                interaction_mode,
-                PathTool(
-                    self.view,
-                    self.create_path_operation,
-                    shape,
-                    color_provider=(
-                        lambda connection_type: getattr(
-                            self.scene_renderer.display_style,
-                            f"{connection_type.value}_connection_color",
-                        )
-                    ),
-                    node_diameter=display_style.node_diameter,
-                    z_value=display_style.selected_node_z + 1,
-                ),
-            )
+        for interaction_mode in shapes:
+            self.view.register_tool(interaction_mode, path_tool)
 
     def _register_generate_tool(self):
         display_style = self.scene_renderer.display_style
@@ -889,7 +889,13 @@ class MainWindow(QMainWindow):
         self.set_interaction_mode(InteractionMode.GENERATE)
 
     def _create_tool_options(self):
-        """The options of the Rotate, Generate and Draw tools in the options bar."""
+        """The variant buttons of the merged tools and the options of the Rotate, Generate and
+        Draw tools in the options bar."""
+
+        for tool in MERGED_TOOLS:
+            self.options_bar.add_variants(
+                {mode: self.actions.tool_actions[mode] for mode in tool.modes}
+            )
 
         rotate_options = RotateOptionsWidget(self.rotate_selection_operation.snap_angle)
 
