@@ -206,27 +206,7 @@ class PictureCaptureController(QObject):
         if target is None:
             return False, problem
 
-        status = editor_link.read_status(target.link)
-        savegame = target.savegame
-
-        if status is None or not status.is_fresh(datetime.now()):
-            return False, tr(
-                "The game is not running, or the mod FS25_AutoDriveEditorLink is not active."
-            )
-
-        if status.map_id != savegame.map_id:
-            return False, tr("The game runs another map: {map}.", map=status.map_id)
-
-        if status.savegame != str(savegame.number):
-            return False, tr(
-                "The game runs savegame {game}, the editor shows savegame {editor}.",
-                game=status.savegame,
-                editor=savegame.number,
-            )
-
-        return True, tr(
-            "Connected: {map}, savegame {number}", map=savegame.map_title, number=savegame.number
-        )
+        return check_game(target.link, target.savegame)
 
     def _shown_picture(self, target: CaptureTarget) -> GamePicture | None:
         """The target's picture, put into the background unless it is shown already."""
@@ -348,3 +328,28 @@ class PictureCaptureController(QObject):
 
     def _inform(self, message: str):
         inform(self.window, message)
+
+
+def check_game(link: Path, savegame: SavegameInfo) -> tuple[bool, str]:
+    """Whether the game runs the savegame's map and savegame, and a line saying so."""
+
+    status = editor_link.read_status(link)
+
+    if status is None or not status.is_fresh(datetime.now()):
+        return False, tr(
+            "The game is not running, or the mod FS25_AutoDriveEditorLink is not active."
+        )
+
+    if status.map_id != savegame.map_id:
+        return False, tr("The game runs another map: {map}.", map=status.map_id)
+
+    if status.savegame != str(savegame.number):
+        return False, tr(
+            "The game runs savegame {game}, the editor shows savegame {editor}.",
+            game=status.savegame,
+            editor=savegame.number,
+        )
+
+    return True, tr(
+        "Connected: {map}, savegame {number}", map=savegame.map_title, number=savegame.number
+    )
