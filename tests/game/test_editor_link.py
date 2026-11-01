@@ -108,19 +108,18 @@ def test_result_of_another_format_is_an_error(tmp_path):
     assert editor_link.read_result(tmp_path, 17).status == "error"
 
 
-def test_clean_up_removes_answer_cancel_and_leftover_tiles(tmp_path):
+def test_clean_up_keeps_only_the_status(tmp_path):
     editor_link.write_cancel(tmp_path, 17)
-    assert (tmp_path / "cancel_17").is_file()
-
-    folder = editor_link.pictures_directory(tmp_path, 17)
-    folder.mkdir()
-    (folder / "tile_0_0.dds").write_bytes(b"")
-    for name in ("result_17.xml", "result_17.done", "request.xml"):
+    for request_id in (16, 17):
+        folder = editor_link.pictures_directory(tmp_path, request_id)
+        folder.mkdir()
+        (folder / "tile_0_0.dds").write_bytes(b"")
+    for name in ("result_16.xml", "result_17.done", "request.xml", "request.xml.tmp", "status.xml"):
         (tmp_path / name).write_bytes(b"")
 
-    editor_link.clean_up(tmp_path, 17)
+    editor_link.clean_up(tmp_path)
 
-    assert [path.name for path in tmp_path.iterdir()] == ["request.xml"]
+    assert [path.name for path in tmp_path.iterdir()] == ["status.xml"]
 
 
 def test_tiles_of_the_mod_are_read_like_pillow_reads_them(tmp_path):

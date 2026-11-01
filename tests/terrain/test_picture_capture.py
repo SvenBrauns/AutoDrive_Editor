@@ -90,10 +90,12 @@ def test_estimate_of_a_16x_map():
 
 
 def test_start_writes_the_request(link, picture):
+    (link / "result_16.xml").write_bytes(b"")
     capture = start(link, picture)
     root = ET.parse(link / "request.xml").getroot()
 
     assert root.get("id") == str(capture.request_id)
+    assert not (link / "result_16.xml").exists()
     assert root.find("pictures").get("res") == "10"
     assert root.find("pictures").get("waitMs") == "400"
     assert len(root.find("pictures")) == 9
@@ -130,7 +132,7 @@ def test_the_result_finishes_the_capture_and_cleans_up(link, picture):
     assert capture.finished and capture.result.status == "done"
     assert capture.converted == 9
     assert near(color(picture, 2, 0, 0), RED)
-    assert sorted(path.name for path in link.iterdir()) == ["request.xml", "status.xml"]
+    assert [path.name for path in link.iterdir()] == ["status.xml"]
 
 
 def test_cancelled_capture_keeps_old_tiles_and_rebuilds_above_the_new(link, picture):

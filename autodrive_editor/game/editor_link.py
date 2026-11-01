@@ -10,6 +10,7 @@
 
 import os
 import re
+import shutil
 import struct
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
@@ -176,20 +177,21 @@ def write_cancel(directory: Path, request_id: int):
     _write_atomic(Path(directory) / f"cancel_{request_id}", "")
 
 
-def clean_up(directory: Path, request_id: int):
-    """Deletes the request's answer, cancel file and leftover tiles."""
+def clean_up(directory: Path):
+    """Deletes every exchanged file but the status: requests, answers, cancel files and tiles,
+    also those left by earlier captures. The request goes too, or the mod would capture it
+    again in the next game session once its answer is gone."""
 
     directory = Path(directory)
-    folder = pictures_directory(directory, request_id)
-    paths = [directory / f"result_{request_id}.{ext}" for ext in ("xml", "done")]
-    paths.append(directory / f"cancel_{request_id}")
-    paths += list(folder.glob("*")) if folder.is_dir() else []
 
-    for path in paths:
-        path.unlink(missing_ok=True)
+    if not directory.is_dir():
+        return
 
-    if folder.is_dir():
-        folder.rmdir()
+    for path in directory.iterdir():
+        if path.is_dir() and path.name.startswith("pictures_"):
+            shutil.rmtree(path, ignore_errors=True)
+        elif path.name.startswith(("request.xml", "result_", "cancel_")):
+            path.unlink(missing_ok=True)
 
 
 def _write_atomic(path: Path, text: str):

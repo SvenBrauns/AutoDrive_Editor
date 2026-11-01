@@ -58,6 +58,7 @@ class PictureCapture:
 
         request_id = editor_link.new_request_id(datetime.now())
         grid = picture.grid
+        editor_link.clean_up(link)
         editor_link.write_request(
             link,
             request_id,
@@ -100,7 +101,7 @@ class PictureCapture:
                 self._close()
 
         if self.finished:
-            editor_link.clean_up(self.link, self.request_id)
+            editor_link.clean_up(self.link)
 
         return written
 
