@@ -828,4 +828,12 @@ TEXTS = {
     "The game stopped answering.": "Das Spiel antwortet nicht mehr.",
     "The game mod has another version; please update the editor and the mod.": "Der Spiel-Mod hat eine andere Version; bitte Editor und Mod aktualisieren.",
     "The game's answer could not be read.": "Die Antwort des Spiels konnte nicht gelesen werden.",
+    "Refresh game picture tiles": "Spielbild-Kacheln erneuern",
+    "Mark tiles of the game picture and let the game render them again": "Kacheln des Spielbilds markieren und das Spiel sie neu rendern lassen",
+    "Capture the whole map first (Map → Capture game picture…).": "Zuerst die ganze Karte aufnehmen (Karte → Spielbild aufnehmen…).",
+    "Game picture refreshed: {count} tiles": "Spielbild erneuert: {count} Kacheln",
+    "{count} tiles marked · about {minutes} min · Enter refreshes, Esc clears": "{count} Kacheln markiert · etwa {minutes} Min. · Enter erneuert, Esc löscht",
+    "Click a tile or right-drag a box to mark tiles for a refresh, Ctrl+right-drag unmarks, Esc ends": "Klick auf eine Kachel oder mit rechts einen Rahmen ziehen, um Kacheln zu markieren, Strg+Rechtsziehen hebt die Markierung auf, Esc beendet",
+    "Tile {col}, {row} · captured {date}": "Kachel {col}, {row} · aufgenommen {date}",
+    "Tile {col}, {row} · not captured": "Kachel {col}, {row} · nicht aufgenommen",
 }

@@ -1,5 +1,6 @@
-"""Map → Capture game picture: asks the companion mod for the whole map, shows the progress in
-the status bar and puts the tiles into the shown picture as they arrive."""
+"""Map → Capture game picture: asks the companion mod for the whole map, or with the refresh
+tool for the marked tiles, shows the progress in the status bar and puts the tiles into the
+shown picture as they arrive."""
 
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -19,6 +20,7 @@ from autodrive_editor.terrain.game_picture import PICTURE_FOLDER, GamePicture, P
 from autodrive_editor.terrain.picture_capture import PictureCapture, estimate, whole_map_tiles
 from autodrive_editor.ui.dialogs.messages import APP_TITLE, inform
 from autodrive_editor.ui.dialogs.picture_capture_dialog import PictureCaptureDialog, minutes
+from autodrive_editor.ui.tools.picture_refresh_tool import PictureRefreshTool
 
 # Conversion and level builds; more do not help, the game delivers a tile every ~0.6 s.
 WORKERS = 3
@@ -37,6 +39,7 @@ class PictureCaptureController(QObject):
     # A new picture is shown; the window switches the background to it.
     picture_shown = Signal()
     running_changed = Signal(bool)
+    refresh_active_changed = Signal(bool)
 
     def __init__(self, window, settings, project_coordinator, background_map):
         super().__init__(window)
@@ -49,6 +52,9 @@ class PictureCaptureController(QObject):
         self.executor: ThreadPoolExecutor | None = None
         self.started_at = 0.0
         self.wait_ms = 0
+        self.refreshing = False
+        self.refresh_tool: PictureRefreshTool | None = None
+        self.refresh_target: CaptureTarget | None = None
 
         self.timer = QTimer(self)
         self.timer.setInterval(1000)
@@ -87,7 +93,49 @@ class PictureCaptureController(QObject):
             return
 
         self.settings.set_picture_wait_ms(dialog.wait_ms)
-        self._start(target, dialog.m_per_px, dialog.wait_ms)
+        grid = PictureGrid(target.map_size, dialog.m_per_px)
+        picture = GamePicture.open_or_create(target.picture_directory, grid)
+        self.background_map.set_picture(picture)
+        self.picture_shown.emit()
+        self._start(target, picture, whole_map_tiles(grid), dialog.wait_ms)
+
+    def set_refresh_active(self, active: bool):
+        """Turns the refresh tool on or off. On, it shows the grid of the linked savegame's
+        picture; it stays off if there is none or a capture runs."""
+
+        if active == (self.refresh_tool is not None):
+            return
+
+        if not active:
+            self.refresh_tool = self.refresh_target = None
+            self.window.view.set_overlay_tool(None)
+            self.refresh_active_changed.emit(False)
+            return
+
+        target, problem = self._target()
+        picture = self._shown_picture(target) if target else None
+
+        if self.running or picture is None:
+            if not self.running:
+                self._inform(
+                    problem or tr("Capture the whole map first (Map → Capture game picture…).")
+                )
+
+            self.refresh_active_changed.emit(False)
+            return
+
+        self.picture_shown.emit()
+        self.refresh_target = target
+        self.refresh_tool = PictureRefreshTool(
+            self.window.view,
+            picture,
+            self.settings.picture_wait_ms,
+            self._refresh,
+            lambda: self.set_refresh_active(False),
+            self.status_changed.emit,
+        )
+        self.window.view.set_overlay_tool(self.refresh_tool)
+        self.refresh_active_changed.emit(True)
 
     def cancel(self):
         if not self.running:
@@ -100,6 +148,8 @@ class PictureCaptureController(QObject):
     def confirm_stop(self) -> bool:
         """Before the editor closes or loads another file: asks whether to cancel a running
         capture. Returns whether to go on."""
+
+        self.set_refresh_active(False)
 
         if not self.running:
             return True
@@ -178,17 +228,46 @@ class PictureCaptureController(QObject):
             "Connected: {map}, savegame {number}", map=savegame.map_title, number=savegame.number
         )
 
-    def _start(self, target: CaptureTarget, m_per_px: float, wait_ms: int):
-        grid = PictureGrid(target.map_size, m_per_px)
-        picture = GamePicture.open_or_create(target.picture_directory, grid)
-        self.background_map.set_picture(picture)
-        self.picture_shown.emit()
+    def _shown_picture(self, target: CaptureTarget) -> GamePicture | None:
+        """The target's picture, put into the background unless it is shown already."""
 
+        shown = self.background_map.picture
+
+        if shown is not None and shown.directory == target.picture_directory:
+            return shown
+
+        picture = GamePicture.open(target.picture_directory)
+
+        if picture is not None:
+            self.background_map.set_picture(picture)
+
+        return picture
+
+    def _refresh(self, tiles: list[tuple[int, int]]):
+        ready, text = self._check(self.refresh_target, "")
+
+        if not ready:
+            self._inform(text)
+            return
+
+        target, picture = self.refresh_target, self.refresh_tool.picture
+        self.set_refresh_active(False)
+        self._start(target, picture, tiles, self.settings.picture_wait_ms, refreshing=True)
+
+    def _start(
+        self,
+        target: CaptureTarget,
+        picture: GamePicture,
+        tiles: list[tuple[int, int]],
+        wait_ms: int,
+        refreshing: bool = False,
+    ):
+        self.refreshing = refreshing
         self.executor = ThreadPoolExecutor(max_workers=WORKERS)
         self.capture = PictureCapture.start(
             target.link,
             picture,
-            whole_map_tiles(grid),
+            tiles,
             self.executor,
             target.savegame.map_id,
             str(target.savegame.number),
@@ -251,7 +330,9 @@ class PictureCaptureController(QObject):
 
         result, done, total = capture.result, capture.converted, len(capture.tiles)
 
-        if result.status == "done":
+        if result.status == "done" and self.refreshing:
+            self.status_changed.emit(tr("Game picture refreshed: {count} tiles", count=done))
+        elif result.status == "done":
             self.status_changed.emit(tr("Game picture captured: {count} tiles", count=done))
         elif result.status == "cancelled":
             self.status_changed.emit(

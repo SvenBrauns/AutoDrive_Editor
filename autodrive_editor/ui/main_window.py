@@ -241,6 +241,9 @@ class MainWindow(QMainWindow):
         self._set_status(tr("Rotation reset"))
 
     def set_measurement_mode(self, measurement_mode: MeasurementMode):
+        if measurement_mode != MeasurementMode.INACTIVE:
+            self.picture_capture.set_refresh_active(False)
+
         self.measurement_coordinator.set_mode(measurement_mode)
 
     def undo(self):
@@ -291,6 +294,19 @@ class MainWindow(QMainWindow):
 
         if not self.background_map.available(self.background_map.background):
             self.actions.background_actions[Background.OVERVIEW].setChecked(True)
+
+        self._update_refresh_action()
+
+    def _update_refresh_action(self):
+        self.actions.refresh_picture_action.setEnabled(
+            self.background_map.available(Background.PICTURE) and not self.picture_capture.running
+        )
+
+    def _handle_refresh_active(self, active: bool):
+        self.actions.refresh_picture_action.setChecked(active)
+
+        if active:
+            self.set_measurement_mode(MeasurementMode.INACTIVE)
 
     def _show_captured_picture(self):
         self._update_background_choices()
@@ -1198,6 +1214,8 @@ class MainWindow(QMainWindow):
         self.picture_capture.running_changed.connect(
             lambda running: self.actions.capture_picture_action.setEnabled(not running)
         )
+        self.picture_capture.running_changed.connect(self._update_refresh_action)
+        self.picture_capture.refresh_active_changed.connect(self._handle_refresh_active)
 
         for operation in self.edit_operations:
             operation.status_changed.connect(self._set_status)

@@ -38,6 +38,9 @@ class MapView(QGraphicsView):
         self._measure_tool: MapTool | None = None
         self._measurement_active = False
 
+        # Above measuring, e.g. the refresh tool of the game picture.
+        self._overlay_tool: MapTool | None = None
+
         # Replaces every other tool while set, e.g. while a dialog is open beside the map.
         self._override_tool: MapTool | None = None
 
@@ -91,6 +94,9 @@ class MapView(QGraphicsView):
     def active_tool(self) -> MapTool:
         if self._override_tool is not None:
             return self._override_tool
+
+        if self._overlay_tool is not None:
+            return self._overlay_tool
 
         if self._measurement_active and self._measure_tool is not None:
             return self._measure_tool
@@ -151,6 +157,9 @@ class MapView(QGraphicsView):
             return
 
         self._switch_tool(lambda: setattr(self, "_measurement_active", active))
+
+    def set_overlay_tool(self, tool: MapTool | None):
+        self._switch_tool(lambda: setattr(self, "_overlay_tool", tool))
 
     def set_override_tool(self, tool: MapTool | None):
         self._switch_tool(lambda: setattr(self, "_override_tool", tool))

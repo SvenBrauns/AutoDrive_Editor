@@ -186,3 +186,77 @@ def test_closing_during_a_capture_asks_and_cancels(capture_window, monkeypatch):
     assert capture_window.picture_capture.confirm_stop()
     assert not capture_window.picture_capture.running
     assert (capture_window.link / f"cancel_{capture.request_id}").is_file()
+
+
+def captured_picture(window):
+    capture = start(window)
+    mod_tiles(capture, [(0, 0), (1, 0), (0, 1), (1, 1)])
+    mod_result(capture)
+    poll_until_finished(window)
+    return capture.picture
+
+
+def test_refresh_needs_a_captured_picture(capture_window):
+    assert not capture_window.actions.refresh_picture_action.isEnabled()
+
+    capture_window.picture_capture.set_refresh_active(True)
+
+    assert capture_window.messages == ["Capture the whole map first (Map → Capture game picture…)."]
+    assert capture_window.picture_capture.refresh_tool is None
+    assert not capture_window.actions.refresh_picture_action.isChecked()
+
+
+def test_refresh_captures_the_marked_tiles(capture_window):
+    picture = captured_picture(capture_window)
+    action = capture_window.actions.refresh_picture_action
+    assert action.isEnabled()
+
+    action.setChecked(True)
+    tool = capture_window.picture_capture.refresh_tool
+    assert capture_window.view.active_tool is tool
+    assert tool.picture is capture_window.background_map.picture is picture
+
+    tool._set_marked({(1, 0)})
+    tool.confirm()
+
+    capture = capture_window.picture_capture.capture
+    assert capture.tiles == [(1, 0)]
+    assert capture.picture is picture
+    assert capture_window.picture_capture.refresh_tool is None
+    assert not action.isChecked() and not action.isEnabled()
+
+    mod_tiles(capture, [(1, 0)])
+    mod_result(capture)
+    poll_until_finished(capture_window)
+
+    assert capture_window.status.text() == "Game picture refreshed: 1 tiles"
+    assert action.isEnabled()
+
+
+def test_refresh_waits_for_the_game(capture_window):
+    captured_picture(capture_window)
+    capture_window.actions.refresh_picture_action.setChecked(True)
+    tool = capture_window.picture_capture.refresh_tool
+    game_status(capture_window, time=datetime(2026, 1, 1))
+
+    tool._set_marked({(1, 0)})
+    tool.confirm()
+
+    assert capture_window.messages == [
+        "The game is not running, or the mod FS25_AutoDriveEditorLink is not active."
+    ]
+    assert not capture_window.picture_capture.running
+    assert capture_window.picture_capture.refresh_tool is tool and tool.marked == {(1, 0)}
+
+
+def test_refresh_and_measuring_end_each_other(capture_window):
+    captured_picture(capture_window)
+    actions = capture_window.actions
+
+    actions.distance_measurement_action.trigger()
+    actions.refresh_picture_action.setChecked(True)
+    assert not actions.distance_measurement_action.isChecked()
+
+    actions.distance_measurement_action.trigger()
+    assert not actions.refresh_picture_action.isChecked()
+    assert capture_window.picture_capture.refresh_tool is None

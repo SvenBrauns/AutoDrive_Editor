@@ -73,6 +73,8 @@ While capturing, the game is set to 12:00 and sun and stays so (its clock keeps 
 
 **Show.** `View → Background → Game picture` shows the picture; it is chosen automatically after a capture. Where nothing was captured, the map image shows through. The picture of a savegame is kept when the savegame is deleted.
 
+**Refresh tiles.** After changing something on the map, `Map → Refresh game picture tiles` (also in the toolbar) captures just the affected tiles again. It needs a captured picture and the game connected as for a capture. The tool shows the tile grid: click a tile or right-drag a box to mark tiles, `Ctrl` + right-drag unmarks, left-drag pans. The status bar shows the number of marked tiles and the time needed; `Enter` starts the capture, `Esc` clears the marks and then ends the tool. The new tiles replace the old ones as they arrive.
+
 ## Buildings of the savegame
 
 The editor reads the buildings of a savegame: the sheds to park in and the stations where vehicles load and unload. The Generate tool builds on them.

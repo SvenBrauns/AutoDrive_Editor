@@ -341,6 +341,16 @@ class MainWindowActions:
         )
         self.capture_picture_action.triggered.connect(self.window.picture_capture.open_dialog)
 
+        self.refresh_picture_action = QAction(
+            tool_icon("picture_refresh"), tr("Refresh game picture tiles"), self.window
+        )
+        self.refresh_picture_action.setCheckable(True)
+        self.refresh_picture_action.setEnabled(False)
+        self.refresh_picture_action.setStatusTip(
+            tr("Mark tiles of the game picture and let the game render them again")
+        )
+        self.refresh_picture_action.toggled.connect(self.window.picture_capture.set_refresh_active)
+
         self.select_background_action = QAction(tr("Choose DDS"), self.window)
 
         self.select_background_action.triggered.connect(self.window.files.select_background)
@@ -636,6 +646,7 @@ class MainWindowActions:
         map_menu.addAction(self.import_map_mod_action)
 
         map_menu.addAction(self.capture_picture_action)
+        map_menu.addAction(self.refresh_picture_action)
 
         map_menu.addSeparator()
 
@@ -774,6 +785,8 @@ class MainWindowActions:
         self.quick_access_toolbar.addWidget(self.grid_controls)
 
         self.quick_access_toolbar.addAction(self.grid_snap_action)
+
+        self.quick_access_toolbar.addAction(self.refresh_picture_action)
 
         self.grid_controls.snap_requested.connect(self.grid_snap_action.setChecked)
 
