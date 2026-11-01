@@ -25,8 +25,6 @@ class GridControls(QToolButton):
 
     reset_requested = Signal()
 
-    snap_requested = Signal(bool)
-
     def __init__(
         self,
         grid_visible: bool = True,
@@ -61,10 +59,6 @@ class GridControls(QToolButton):
         self.visibility_input = QCheckBox(tr("Show grid"))
 
         self.visibility_input.toggled.connect(self._emit_visibility)
-
-        self.snap_input = QCheckBox(tr("Snap to grid (G)"))
-
-        self.snap_input.toggled.connect(self._emit_snap)
 
         self.spacing_input = QDoubleSpinBox()
 
@@ -110,8 +104,6 @@ class GridControls(QToolButton):
 
         content_layout.addWidget(self.visibility_input)
 
-        content_layout.addWidget(self.snap_input)
-
         content_layout.addLayout(form_layout)
 
         content_layout.addWidget(reset_button)
@@ -143,16 +135,6 @@ class GridControls(QToolButton):
         self.visibility_input.blockSignals(False)
 
         self._update_button_state()
-
-    def set_grid_snap(self, enabled: bool):
-        self.snap_input.blockSignals(True)
-
-        self.snap_input.setChecked(bool(enabled))
-
-        self.snap_input.blockSignals(False)
-
-    def _emit_snap(self, enabled: bool):
-        self.snap_requested.emit(enabled)
 
     def set_grid_spacing(self, spacing: float):
         self.spacing_input.blockSignals(True)

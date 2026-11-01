@@ -63,8 +63,6 @@ class GridCoordinator(QObject):
     def set_grid_snap_enabled(self, enabled: bool):
         self.background_map.set_grid_snap_enabled(enabled)
 
-        self.grid_controls.set_grid_snap(self.background_map.grid_snap_enabled)
-
         self.status_changed.emit(
             tr("Snap to grid on") if self.background_map.grid_snap_enabled else tr("Snap off")
         )
