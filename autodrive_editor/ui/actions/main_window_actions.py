@@ -131,10 +131,14 @@ class MainWindowActions:
                 self.shortcuts.add(name, group, getattr(self, f"{name}_action"))
 
         view = tr("View")
-        docks = (self.window.marker_dock, self.window.check_dock)
+        docks = (self.window.inspector_dock, self.window.marker_dock, self.window.check_dock)
 
-        for dock in docks + (self.window.debug_dock,):
+        for dock in docks:
             self.shortcuts.add(f"panel_{dock.objectName()}", view, dock.toggleViewAction())
+
+        self.shortcuts.add(
+            "panel_debug_dock", tr("Help"), self.window.debug_dock.toggleViewAction()
+        )
 
         self.shortcuts.add("show_marker_names", view, self.marker_names_action)
 
@@ -623,11 +627,11 @@ class MainWindowActions:
 
         view_menu.addSeparator()
 
+        view_menu.addAction(self.window.inspector_dock.toggleViewAction())
+
         view_menu.addAction(self.window.marker_dock.toggleViewAction())
 
         view_menu.addAction(self.window.check_dock.toggleViewAction())
-
-        view_menu.addAction(self.window.debug_dock.toggleViewAction())
 
         view_menu.addSeparator()
 
@@ -690,8 +694,10 @@ class MainWindowActions:
 
         help_menu.addAction(self.check_updates_action)
 
-        help_menu.addAction(self.open_log_folder_action)
+        help_menu.addSeparator()
+        help_menu.addAction(self.window.debug_dock.toggleViewAction())
         help_menu.addAction(self.debug_log_action)
+        help_menu.addAction(self.open_log_folder_action)
 
         help_menu.addSeparator()
 

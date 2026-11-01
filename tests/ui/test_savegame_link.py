@@ -122,4 +122,4 @@ def test_debug_info_shows_the_marker_number(link_window):
 
     link_window.node_selection.replace([1], 1)
 
-    assert "Number: 1" in link_window.debug_dock.node_info_value.text()
+    assert "Number: 1" in link_window.inspector_dock.node_info_value.text()

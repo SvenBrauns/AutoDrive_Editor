@@ -80,6 +80,7 @@ from autodrive_editor.ui.panels.debug_dock import DebugDock
 from autodrive_editor.ui.panels.debug_dock_coordinator import DebugDockCoordinator
 from autodrive_editor.ui.panels.display_options_dialog import DisplayOptionsDialog
 from autodrive_editor.ui.panels.generate_options import GenerateOptionsWidget
+from autodrive_editor.ui.panels.inspector_dock import InspectorDock
 from autodrive_editor.ui.panels.marker_dock import MarkerDock
 from autodrive_editor.ui.panels.node_info_formatter import NodeInfoFormatter
 from autodrive_editor.ui.panels.options_bar import OptionsBar
@@ -129,7 +130,6 @@ class MainWindow(QMainWindow):
     INITIAL_HEIGHT = 900
 
     NO_FILE_STATUS = tr("No file loaded")
-    NO_SELECTION_INFO = tr("No node selected")
 
     DEFAULT_MAP_SCALE = 1
 
@@ -169,6 +169,7 @@ class MainWindow(QMainWindow):
         self._create_status_widgets()
         self._create_central_widget()
         self._create_marker_dock()
+        self._create_inspector_dock()
         self._create_check_dock()
         self._create_debug_dock()
 
@@ -1164,9 +1165,15 @@ class MainWindow(QMainWindow):
 
         self.addDockWidget(Qt.RightDockWidgetArea, self.debug_dock)
 
-        self.debug_dock.set_node_info(self.NO_SELECTION_INFO)
-
         self.debug_dock.hide()
+
+    def _create_inspector_dock(self):
+        """Tabbed with the Markers dock, on top."""
+
+        self.inspector_dock = InspectorDock(self)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.inspector_dock)
+        self.tabifyDockWidget(self.marker_dock, self.inspector_dock)
+        self.inspector_dock.raise_()
 
     def _connect_signals(self):
         self.view.rotation_changed.connect(self._handle_rotation_changed)
@@ -1179,7 +1186,7 @@ class MainWindow(QMainWindow):
             self.actions.set_measurement_alignment_enabled
         )
 
-        self.selection_coordinator.selection_info_changed.connect(self.debug_dock.set_node_info)
+        self.selection_coordinator.selection_info_changed.connect(self.inspector_dock.set_node_info)
 
         self.project_coordinator.status_changed.connect(self._set_status)
 

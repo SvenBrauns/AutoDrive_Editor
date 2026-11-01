@@ -6,7 +6,7 @@ from autodrive_editor.ui.tools.interaction_mode import InteractionMode
 
 
 class DebugDock(QDockWidget):
-    """Dock with view, renderer and selection details for debugging."""
+    """Dock with view and renderer numbers for debugging."""
 
     EMPTY_VALUE = "-"
 
@@ -48,14 +48,6 @@ class DebugDock(QDockWidget):
 
         self.cached_tiles_value = QLabel("0")
 
-        self.node_info_value = QLabel(tr("No node selected"))
-
-        self.node_info_value.setWordWrap(True)
-
-        self.node_info_value.setTextInteractionFlags(Qt.TextSelectableByMouse)
-
-        self.node_info_value.setAlignment(Qt.AlignTop)
-
         form_layout = QFormLayout()
 
         form_layout.addRow(tr("Interaction mode:"), self.interaction_mode_value)
@@ -82,19 +74,9 @@ class DebugDock(QDockWidget):
 
         runtime_group.setLayout(form_layout)
 
-        selection_layout = QVBoxLayout()
-
-        selection_layout.addWidget(self.node_info_value)
-
-        selection_group = QGroupBox(tr("Selection"))
-
-        selection_group.setLayout(selection_layout)
-
         content_layout = QVBoxLayout()
 
         content_layout.addWidget(runtime_group)
-
-        content_layout.addWidget(selection_group)
 
         content_layout.addStretch(1)
 
@@ -138,9 +120,3 @@ class DebugDock(QDockWidget):
         self.drawn_arrows_value.setText(str(debug_state["drawn_arrows"]))
 
         self.cached_tiles_value.setText(str(debug_state["cached_tiles"]))
-
-    def set_node_info(self, node_info_text: str | None):
-        if not node_info_text:
-            node_info_text = tr("No node selected")
-
-        self.node_info_value.setText(node_info_text)

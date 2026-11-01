@@ -16,7 +16,7 @@ class SelectionCoordinator(QObject):
     the node info up to date.
     """
 
-    NO_SELECTION_INFO = tr("No node selected")
+    NO_SELECTION_INFO = tr("Nothing selected")
 
     selection_info_changed = Signal(str)
 

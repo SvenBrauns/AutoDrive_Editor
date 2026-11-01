@@ -175,7 +175,8 @@ TEXTS = {
     " – map “{name}” is not imported (Map → Scan maps)": " – Karte „{name}“ ist nicht importiert (Karte → Karten scannen)",
     # rendering, selection, terrain
     "The grid spacing must be greater than 0.": "Der Rasterabstand muss größer als 0 sein.",
-    "No node selected": "Keine Node ausgewählt",
+    "Nothing selected": "Nichts ausgewählt",
+    "Inspector": "Inspektor",
     "{count} nodes selected": "{count} Nodes ausgewählt",
     "{count} nodes selected\nPrimary selection: {node}": "{count} Nodes ausgewählt\nPrimäre Auswahl: {node}",
     "The image file contains no readable image.": "Die Bilddatei enthält kein lesbares Bild.",
