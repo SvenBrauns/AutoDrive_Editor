@@ -287,6 +287,10 @@ class MapView(QGraphicsView):
             event.accept()
             return
 
+        if event.key() == Qt.Key_Delete and self.active_tool.remove_hovered():
+            event.accept()
+            return
+
         super().keyPressEvent(event)
 
     def _switch_tool(self, change_state):

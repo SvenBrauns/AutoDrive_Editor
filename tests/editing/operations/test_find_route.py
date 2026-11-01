@@ -137,7 +137,7 @@ def test_route_through_the_corridor_is_one_undo_step_in_the_plan(route):
     assert set(route.data.nodes) == {1, 2}
 
 
-def test_free_waypoints_become_nodes_and_the_last_starts_the_next_route(route):
+def test_free_waypoints_become_nodes_and_the_tool_starts_empty(route):
     route.start_plan()
     route.find((-60, 20), 1, (60, -20))
 
@@ -147,7 +147,8 @@ def test_free_waypoints_become_nodes_and_the_last_starts_the_next_route(route):
     last = next(n for n in route.data.nodes.values() if (n.x, n.z) == (60, -20))
     path = route.path_from(first.node_id, last.node_id)
     assert path is not None and 1 in path
-    assert route.operation.waypoints == [Waypoint(60, -20, last.node_id)]
+    assert route.operation.waypoints == []
+    assert not route.operation.can_undo_waypoints
 
 
 def test_way_back_through_the_narrow_corridor_shares_the_lane_as_dual(route):
@@ -207,6 +208,33 @@ def test_removing_waypoints(route):
     assert route.operation.clear()
     assert route.operation.route is None
     assert not route.operation.clear()
+
+
+def test_ctrl_z_takes_back_waypoint_changes_one_by_one(route):
+    route.find(1, (0, 0))
+    route.operation.remember_waypoints()
+    route.operation.move_waypoint(1, 5, 5)
+    route.operation.remove_last()
+    route.operation.clear()
+
+    positions = []
+    while route.operation.undo_waypoints():
+        positions.append([(w.x, w.z) for w in route.operation.waypoints])
+
+    start = route.data.nodes[1]
+    first = (start.x, start.z)
+    # Before: clear, remove last, move, add (0, 0), add node 1.
+    assert positions == [[first], [first, (5, 5)], [first, (0, 0)], [first], []]
+    assert route.operation.waypoints == []
+
+
+def test_reset_drops_waypoints_and_their_undo(route):
+    route.find(1, (0, 0))
+
+    route.operation.reset()
+
+    assert route.operation.waypoints == []
+    assert not route.operation.undo_waypoints()
 
 
 def test_leg_at_a_point_of_the_route_and_inserting_a_waypoint_there(route):

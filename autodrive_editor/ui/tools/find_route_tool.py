@@ -14,6 +14,9 @@ from autodrive_editor.ui.tools.map_tool import DragGesture, MapTool, is_alive_in
 
 BLOCKED_COLOR = QColor(230, 30, 30)
 GUIDE_COLOR = QColor(90, 90, 90)
+HANDLE_COLOR = QColor(30, 30, 30)
+# The waypoint under the pointer, which Delete removes.
+HOVER_COLOR = QColor(230, 30, 30)
 # The route is drawn faded while a newer one is searched.
 OUTDATED_OPACITY = 0.45
 
@@ -22,8 +25,9 @@ class FindRouteTool(MapTool):
     """Left click on a node or free ground adds a waypoint. Left dragging a free waypoint moves
     it, left dragging a node moves the node. Pressing on the route inserts a waypoint there,
     which a drag moves at once. Left dragging elsewhere pans. Right click on a
-    waypoint removes it, Backspace the last one. Esc removes all waypoints, Enter adds the
-    route to the plan."""
+    waypoint or Delete on the waypoint under the pointer removes it, Backspace the last one. Esc
+    removes all waypoints, Ctrl+Z takes back the last waypoint change, Enter adds the route to the
+    plan and starts empty."""
 
     RIGHT_CLICK_CANCELS = False
 
@@ -51,6 +55,8 @@ class FindRouteTool(MapTool):
 
         self._active = False
         self._dragged_waypoint: int | None = None
+        # The waypoint under the pointer, drawn highlighted; Delete removes it.
+        self._hovered: int | None = None
         self._node_drag = DragGesture()
         self._pressed_node_id: int | None = None
 
@@ -69,7 +75,8 @@ class FindRouteTool(MapTool):
         super().deactivate()
 
         self._active = False
-        self.operation.clear()
+        self._hovered = None
+        self.operation.reset()
 
     def mouse_press(self, event: QMouseEvent) -> bool:
         position = event.position().toPoint()
@@ -90,6 +97,7 @@ class FindRouteTool(MapTool):
         self._dragged_waypoint = self._waypoint_at(position, free_only=True)
 
         if self._dragged_waypoint is not None:
+            self.operation.remember_waypoints()
             return True
 
         node = self._node_at(position)
@@ -128,7 +136,13 @@ class FindRouteTool(MapTool):
                 )
             return True
 
+        if not event.buttons():
+            self._set_hovered(self._waypoint_at(position))
+
         return self._continue_pan(event)
+
+    def mouse_leave(self):
+        self._set_hovered(None)
 
     def mouse_release(self, event: QMouseEvent) -> bool:
         if event.button() != Qt.LeftButton:
@@ -184,17 +198,27 @@ class FindRouteTool(MapTool):
         return self.operation.apply()
 
     def remove_last(self) -> bool:
-        if not self.operation.waypoints:
+        return self.operation.remove_last()
+
+    def remove_hovered(self) -> bool:
+        if self._hovered is None or self._hovered >= len(self.operation.waypoints):
             return False
 
-        self.operation.remove_waypoint(len(self.operation.waypoints) - 1)
+        index, self._hovered = self._hovered, None
+        self.operation.remove_waypoint(index)
 
         return True
+
+    def _set_hovered(self, index: int | None):
+        if index != self._hovered:
+            self._hovered = index
+            self._update_handles()
 
     def status_hint(self) -> str | None:
         return self.operation.missing_costmap_message() or tr(
             "Click nodes, connections or free ground as waypoints; drag waypoints or nodes to "
-            "change the route. Right-click or Backspace removes waypoints, Enter adds the route"
+            "change the route. Delete or right-click removes the waypoint under the pointer, "
+            "Backspace the last one, Ctrl+Z undoes a waypoint change, Enter adds the route"
         )
 
     def cursor_at(self, view_position: QPoint) -> Qt.CursorShape:
@@ -294,6 +318,8 @@ class FindRouteTool(MapTool):
                 # Free waypoints are filled white, waypoints on nodes or connections only ringed.
                 filled = waypoint.is_free
                 item.setBrush(QBrush(QColor(255, 255, 255)) if filled else QBrush(Qt.NoBrush))
+                hovered = index == self._hovered
+                item.setPen(QPen(HOVER_COLOR if hovered else HANDLE_COLOR, 3.0 if hovered else 1.5))
 
     def _new_handle_item(self) -> QGraphicsEllipseItem:
         radius = self.HANDLE_RADIUS
@@ -301,7 +327,6 @@ class FindRouteTool(MapTool):
 
         # Same size on screen at every zoom level.
         item.setFlag(QGraphicsItem.ItemIgnoresTransformations)
-        item.setPen(QPen(QColor(30, 30, 30), 1.5))
         item.setZValue(self._z_value + 1)
         item.setAcceptedMouseButtons(Qt.NoButton)
         self.view.scene().addItem(item)

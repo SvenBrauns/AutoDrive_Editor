@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Find route: the waypoint under the pointer is highlighted and `Delete` removes it (the selection stays); the options bar has `Remove last (Backspace)` and `Clear (Esc)`. `Ctrl+Z` first takes back waypoint changes (add, move, remove) of the route being built, then the plan's edits. After `Enter` the tool starts empty
 - Capture game picture: afterwards the game gets its weather back and its time continues from the old time (old time plus the capture's duration), also after Cancel or an error. Needs the updated companion mod
 - `File → Load route into savegame…` (savegame open): replaces the network with a RoutesManager route of the savegame's map (Name, Revision, Date, newest first), as one undo step; Save then writes it and reloads it in the game. If no route holds the current network, it first offers to save it as a route. Vehicles keep their targets at markers with the same name and group
 - Save on a savegame the game is running reloads it in the game through the companion mod (status `Saved · reloaded in game`); if the game reports an error or does not answer within 30 s a message says the game will overwrite the file on its next save. If the game runs without the mod, a warning says so (once per savegame and session). `File → Save as…` became `Save as route…` (`Ctrl+Shift+S`): it keeps a version of the network in the RoutesManager, suggests the last route's name, and asks before replacing a route of the same name (its revision goes up); a savegame stays open. The hidden test shortcut `Ctrl+Alt+Shift+R` is gone

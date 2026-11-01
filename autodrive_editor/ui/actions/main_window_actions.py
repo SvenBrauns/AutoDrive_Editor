@@ -413,14 +413,21 @@ class MainWindowActions:
             text_changed=undo_group.undoTextChanged,
         )
 
-        # A junction being drawn can be undone even with nothing in the history.
+        # A junction being drawn and Find route waypoints can be undone even with nothing in the
+        # history.
         junction = self.window.junction_operation
+        find_route = self.window.find_route_operation
 
         def update_undo():
-            self.undo_action.setEnabled(undo_group.canUndo() or junction.preview is not None)
+            self.undo_action.setEnabled(
+                undo_group.canUndo()
+                or junction.preview is not None
+                or find_route.can_undo_waypoints
+            )
 
         undo_group.canUndoChanged.connect(update_undo)
         junction.preview_changed.connect(update_undo)
+        find_route.preview_changed.connect(update_undo)
 
         self.redo_action = self._create_history_action(
             icon="redo",

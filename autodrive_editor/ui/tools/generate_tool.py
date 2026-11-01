@@ -91,6 +91,9 @@ class GenerateTool(MapTool):
     def remove_last(self) -> bool:
         return self.current.remove_last()
 
+    def remove_hovered(self) -> bool:
+        return self.current.remove_hovered()
+
     def status_hint(self) -> str | None:
         return self.current.status_hint()
 
