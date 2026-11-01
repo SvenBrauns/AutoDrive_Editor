@@ -553,6 +553,21 @@ class ProjectCoordinator(QObject):
         self.background_map.set_picture(find_picture(cached.directory, savegame))
         self.backgrounds_changed.emit()
 
+    def loaded_map(self):
+        """The imported map of the loaded config; None if it has none."""
+
+        source = self.config_source
+
+        if self.map_cache is None or source is None or not source.map_name:
+            return None
+
+        return self.map_cache.find(source.map_name)
+
+    def savegame_folder(self) -> Path | None:
+        """The savegame of the loaded config: linked, or the one it was loaded from."""
+
+        return self._savegame_folder(self.config_source) if self.config_source else None
+
     def _savegame_folder(self, source: ConfigSource) -> Path | None:
         """The linked savegame, or the one the config was loaded from."""
 

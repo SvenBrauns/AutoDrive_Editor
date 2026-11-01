@@ -397,3 +397,11 @@ def test_junction_stem_defaults_to_auto_with_a_lane_gap_of_5_5_and_is_kept():
     AppSettings().set_junction_stem(Stem.TWO_LANES, 7.0)
 
     assert AppSettings().junction_stem == (Stem.TWO_LANES, 7.0)
+
+
+def test_picture_wait_defaults_to_500_ms_and_is_kept():
+    assert AppSettings().picture_wait_ms == 500
+
+    AppSettings().set_picture_wait_ms(300)
+
+    assert AppSettings().picture_wait_ms == 300

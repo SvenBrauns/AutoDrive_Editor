@@ -58,6 +58,7 @@ class FileController(QObject):
 
         # Asked first before the data would be replaced or the editor closed; False cancels.
         self.confirm_end_plan: Callable[[], bool] = lambda: True
+        self.confirm_end_capture: Callable[[], bool] = lambda: True
 
         # Unsaved changes are backed up here regularly.
         self.autosave_store = autosave_store
@@ -96,7 +97,7 @@ class FileController(QObject):
     def open(self):
         """File → Open…: a route or savegame from the game folder, or any XML file."""
 
-        if not self.confirm_discard_changes():
+        if not self.confirm_discard_changes() or not self.confirm_end_capture():
             return
 
         routes, routes_hint = self._routes()
@@ -226,7 +227,7 @@ class FileController(QObject):
         """Opens a file from the recent list. A file that is gone is removed
         from the list."""
 
-        if not self.confirm_discard_changes():
+        if not self.confirm_discard_changes() or not self.confirm_end_capture():
             return
 
         if not Path(item.path).is_file():
