@@ -34,6 +34,7 @@ from autodrive_editor.editing.operations.rotate_selection import RotateSelection
 from autodrive_editor.editing.operations.stations import StationOperation
 from autodrive_editor.editing.path_shapes import PathShape
 from autodrive_editor.error_log import set_debug_logging
+from autodrive_editor.file_io.autodrive_xml import ConfigFormat
 from autodrive_editor.file_io.game_files import GameFiles
 from autodrive_editor.i18n import tr
 from autodrive_editor.measurement.coordinator import MeasurementCoordinator
@@ -1257,6 +1258,10 @@ class MainWindow(QMainWindow):
         self.setWindowModified(False)
         self.actions.save_xml_action.setEnabled(True)
         self.actions.save_xml_as_action.setEnabled(True)
+        source = self.project_coordinator.config_source
+        self.actions.load_route_action.setEnabled(
+            source is not None and source.format == ConfigFormat.SAVEGAME
+        )
         self.planning.action.setEnabled(True)
 
         self._update_window_title()

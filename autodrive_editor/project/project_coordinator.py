@@ -31,7 +31,7 @@ from autodrive_editor.file_io.savegame_vehicles import (
 )
 from autodrive_editor.i18n import tr
 from autodrive_editor.measurement.coordinator import MeasurementCoordinator
-from autodrive_editor.model.autodrive_data import AutoDriveData
+from autodrive_editor.model.autodrive_data import AutoDriveData, MarkerData
 from autodrive_editor.project.autosave import AutosaveInfo, AutosaveStore
 from autodrive_editor.rendering.scene_renderer import SceneRenderer
 from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
@@ -183,7 +183,7 @@ class ProjectCoordinator(QObject):
             self._show_without_map(data)
 
         self.scene_renderer.render(self.autodrive_data)
-        self._show_parking()
+        self.show_parking()
         self._show_buildings()
 
         self.selection_coordinator.synchronize()
@@ -282,17 +282,7 @@ class ProjectCoordinator(QObject):
         return affected_vehicles
 
     def _renumber_vehicle_markers(self, vehicles_path: Path) -> list[str]:
-        """Markers are recognised by object, so moved and renamed markers
-        keep their identity."""
-
-        positions = {
-            id(marker): number
-            for number, marker in enumerate(self.autodrive_data.markers.values(), start=1)
-        }
-        new_numbers = {
-            number: positions.get(id(marker))
-            for number, marker in enumerate(self._file_markers, start=1)
-        }
+        new_numbers = self._marker_numbers()
 
         if not vehicles_path.is_file() or all(old == new for old, new in new_numbers.items()):
             return []
@@ -300,6 +290,33 @@ class ProjectCoordinator(QObject):
         self._back_up(vehicles_path)
 
         return renumber_vehicle_markers(vehicles_path, new_numbers)
+
+    def _marker_numbers(self) -> dict[int, int | None]:
+        """Number in the file on disk → number now (None: deleted). Markers are recognised by
+        object, so moved and renamed markers keep their identity. A marker that is gone, e.g.
+        after Load route into savegame, is matched by name and group if exactly one marker has
+        them."""
+
+        markers = list(self.autodrive_data.markers.values())
+        positions = {id(marker): number for number, marker in enumerate(markers, start=1)}
+        by_key: dict[tuple[str, str], list[int]] = {}
+
+        for number, marker in enumerate(markers, start=1):
+            by_key.setdefault((marker.name, marker.group), []).append(number)
+
+        numbers = {}
+
+        for number, marker in enumerate(self._file_markers, start=1):
+            new = positions.get(id(marker))
+
+            # Placeholders of an autosave stand for markers deleted before it.
+            if new is None and isinstance(marker, MarkerData):
+                matches = by_key.get((marker.name, marker.group), [])
+                new = matches[0] if len(matches) == 1 else None
+
+            numbers[number] = new
+
+        return numbers
 
     def save_as_route(self, name: str, routes_xml_path: Path) -> Path:
         """Writes the network as a route of the RoutesManager; a route of the same name is
@@ -368,20 +385,23 @@ class ProjectCoordinator(QObject):
                 file_markers[number - 1] = marker
 
         self._file_markers = file_markers
-        self._show_parking()
+        self.show_parking()
 
-    def _show_parking(self):
+    def show_parking(self):
         """Marks the markers the vehicles of the loaded savegame park at, numbered in the order
-        of the file on disk."""
+        of the file on disk. After the network was replaced the matching new markers are marked
+        too; only markers in the network are drawn."""
 
         numbers = set()
 
         if self._vehicles_path is not None and self._vehicles_path.is_file():
             numbers = read_park_destinations(self._vehicles_path)
 
-        self.scene_renderer.set_parking_markers(
-            marker for number, marker in enumerate(self._file_markers, start=1) if number in numbers
-        )
+        markers = list(self.autodrive_data.markers.values()) if self.autodrive_data else []
+        now = self._marker_numbers() if self.autodrive_data else {}
+        parked = [m for number, m in enumerate(self._file_markers, start=1) if number in numbers]
+        parked += [markers[now[number] - 1] for number in numbers if now.get(number)]
+        self.scene_renderer.set_parking_markers({id(m): m for m in parked}.values())
 
     def _show_buildings(self):
         """Shows the sheds and stations of the buildings in the loaded savegame."""
