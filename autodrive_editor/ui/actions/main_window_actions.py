@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QMainWindow, QSizePolicy, QToolBar, QToolButton, Q
 from autodrive_editor.error_log import set_debug_logging
 from autodrive_editor.i18n import tr
 from autodrive_editor.measurement.mode import MeasurementMode
+from autodrive_editor.terrain.background_map import Background
 from autodrive_editor.ui.actions.shortcuts import ShortcutRegistry
 from autodrive_editor.ui.actions.tool_catalog import (
     GENERATE_TOOL,
@@ -102,7 +103,14 @@ class MainWindowActions:
             ),
             (
                 tr("View"),
-                ("display_options", "ground_map", "tool_labels") + ("reset_view", "reset_rotation"),
+                (
+                    "display_options",
+                    "background_overview",
+                    "background_ground",
+                    "background_picture",
+                )
+                + ("tool_labels",)
+                + ("reset_view", "reset_rotation"),
             ),
             (
                 tr("Map"),
@@ -282,18 +290,28 @@ class MainWindowActions:
 
         self.building_types_action.triggered.connect(self.window.open_building_types)
 
-        self.ground_map_action = QAction(tr("Ground map"), self.window)
-        self.ground_map_action.setCheckable(True)
-        self.ground_map_action.setChecked(self.window.settings.ground_map_visible)
-        # Enabled once a map with a ground map is loaded.
-        self.ground_map_action.setEnabled(False)
-        self.ground_map_action.setStatusTip(
+        self.background_action_group = QActionGroup(self.window)
+        self.background_overview_action = self._background_action(
+            Background.OVERVIEW, tr("Overview"), tr("Show the map image of the map mod")
+        )
+        self.background_ground_action = self._background_action(
+            Background.GROUND,
+            tr("Ground map"),
             tr(
                 "Show the map drawn from its ground textures, with the fields, instead of the "
                 "map image. Maps imported with an older version need to be imported again."
-            )
+            ),
         )
-        self.ground_map_action.toggled.connect(self.window.set_ground_map_visible)
+        self.background_picture_action = self._background_action(
+            Background.PICTURE,
+            tr("Game picture"),
+            tr("Show the map as the game draws it from above, captured with the companion mod"),
+        )
+        self.background_actions = {
+            Background.OVERVIEW: self.background_overview_action,
+            Background.GROUND: self.background_ground_action,
+            Background.PICTURE: self.background_picture_action,
+        }
 
         self.reset_view_action = QAction(tr("Reset view"), self.window)
 
@@ -354,6 +372,20 @@ class MainWindowActions:
         self._create_map_scale_actions()
 
         self.planning_mode_action = self.window.planning.action
+
+    def _background_action(self, background: Background, label: str, tip: str) -> QAction:
+        action = QAction(label, self.window)
+        action.setCheckable(True)
+        action.setChecked(background == self.window.settings.background)
+        # The others are enabled once a map that has them is loaded.
+        action.setEnabled(background == Background.OVERVIEW)
+        action.setStatusTip(tip)
+        action.toggled.connect(
+            lambda checked: self.window.set_background(background) if checked else None
+        )
+        self.background_action_group.addAction(action)
+
+        return action
 
     def _set_debug_log(self, enabled: bool):
         self.window.settings.set_debug_log(enabled)
@@ -546,7 +578,10 @@ class MainWindowActions:
 
         view_menu.addAction(self.display_options_action)
 
-        view_menu.addAction(self.ground_map_action)
+        background_menu = view_menu.addMenu(tr("Background"))
+
+        for action in self.background_actions.values():
+            background_menu.addAction(action)
 
         view_menu.addSeparator()
 

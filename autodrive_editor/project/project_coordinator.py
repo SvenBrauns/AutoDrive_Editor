@@ -35,6 +35,7 @@ from autodrive_editor.project.autosave import AutosaveInfo, AutosaveStore
 from autodrive_editor.rendering.scene_renderer import SceneRenderer
 from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
 from autodrive_editor.terrain.background_map import BackgroundMap
+from autodrive_editor.terrain.game_picture import find_picture, savegame_key
 from autodrive_editor.terrain.heightmap import Heightmap
 from autodrive_editor.terrain.map_cache import MapCache
 from autodrive_editor.ui.map_view.map_view import MapView
@@ -56,8 +57,8 @@ class ProjectCoordinator(QObject):
 
     heightmap_path_changed = Signal(object)
 
-    # Whether the loaded map image has a ground map to switch to.
-    ground_map_available = Signal(bool)
+    # The backgrounds the loaded map has (ground map, game picture) changed.
+    backgrounds_changed = Signal()
 
     autodrive_data_loaded = Signal(object)
 
@@ -122,7 +123,7 @@ class ProjectCoordinator(QObject):
 
     def load_background_file(self, file_path):
         self.background_map.load(file_path)
-        self.ground_map_available.emit(False)
+        self.backgrounds_changed.emit()
 
         self.update_scene_rect()
 
@@ -411,6 +412,7 @@ class ProjectCoordinator(QObject):
 
         if cached is not None:
             self._load_map_heightmap(source, cached)
+            self._load_map_picture(source, cached)
 
         self._show_parking()
         self._show_buildings()
@@ -521,7 +523,7 @@ class ProjectCoordinator(QObject):
 
         self.background_map.load(str(cached.overview_path))
         self.background_map.set_ground(cached.ground_path, cached.fields())
-        self.ground_map_available.emit(cached.ground_path is not None)
+        self._load_map_picture(source, cached)
 
         self._load_map_heightmap(source, cached)
 
@@ -532,10 +534,7 @@ class ProjectCoordinator(QObject):
         A savegame's own heightmap includes terrain changes made in game."""
 
         heightmap_path = cached.heightmap_path
-        savegame = self.savegame_directory
-
-        if savegame is None and source.format == ConfigFormat.SAVEGAME:
-            savegame = source.path.parent
+        savegame = self._savegame_folder(source)
 
         if savegame is not None and (savegame / SAVEGAME_HEIGHTMAP_NAME).is_file():
             heightmap_path = savegame / SAVEGAME_HEIGHTMAP_NAME
@@ -546,6 +545,21 @@ class ProjectCoordinator(QObject):
         else:
             self.heightmap.clear()
             self._set_heightmap_path(None)
+
+    def _load_map_picture(self, source: ConfigSource, cached):
+        """The game picture of the loaded or linked savegame, else the map's newest one."""
+
+        savegame = savegame_key(self._savegame_folder(source))
+        self.background_map.set_picture(find_picture(cached.directory, savegame))
+        self.backgrounds_changed.emit()
+
+    def _savegame_folder(self, source: ConfigSource) -> Path | None:
+        """The linked savegame, or the one the config was loaded from."""
+
+        if self.savegame_directory is None and source.format == ConfigFormat.SAVEGAME:
+            return source.path.parent
+
+        return self.savegame_directory
 
     def _set_heightmap_path(self, file_path):
         self.current_heightmap_path = str(file_path) if file_path is not None else None

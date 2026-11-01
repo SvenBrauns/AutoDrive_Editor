@@ -56,6 +56,13 @@ def test_tiles_are_drawn_once_loaded(qapp, scene):
     assert {level for level, _, _ in scene.item.pixmaps} == {0}
 
 
+def test_only_tiles_in_view_are_loaded(qapp, scene):
+    paint_scene(scene, (-7.5, -7.5), scale=10, size=40)
+    wait_loaded(qapp, scene.item)
+
+    assert set(scene.item.pixmaps) == {(0, 0, 0)}
+
+
 def test_zoomed_out_uses_a_coarser_level(qapp, scene):
     paint_scene(scene, (0, 0), scale=0.25)
     wait_loaded(qapp, scene.item)

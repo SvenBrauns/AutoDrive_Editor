@@ -57,7 +57,7 @@ from autodrive_editor.rendering.visibility import Visibility
 from autodrive_editor.selection.node_selection import NodeSelection
 from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
 from autodrive_editor.settings.app_settings import AppSettings
-from autodrive_editor.terrain.background_map import BackgroundMap
+from autodrive_editor.terrain.background_map import Background, BackgroundMap
 from autodrive_editor.terrain.heightmap import Heightmap
 from autodrive_editor.terrain.map_cache import MapCache
 from autodrive_editor.ui.actions.main_window_actions import MainWindowActions
@@ -170,7 +170,7 @@ class MainWindow(QMainWindow):
         self._create_debug_dock()
 
         self.scene_renderer.set_marker_names_visible(self.settings.marker_names_visible)
-        self.background_map.set_ground_visible(self.settings.ground_map_visible)
+        self.background_map.set_background(self.settings.background)
         self.scene_renderer.set_visibility(self.settings.visibility)
         self.scene_renderer.set_building_types(
             self.settings.building_groups, self.settings.hidden_building_types
@@ -269,9 +269,18 @@ class MainWindow(QMainWindow):
         self.scene_renderer.set_marker_names_visible(visible)
         self.settings.set_marker_names_visible(visible)
 
-    def set_ground_map_visible(self, visible: bool):
-        self.background_map.set_ground_visible(visible)
-        self.settings.set_ground_map_visible(visible)
+    def set_background(self, background: Background):
+        self.background_map.set_background(background)
+        self.settings.set_background(background)
+
+    def _update_background_choices(self):
+        """Offers the backgrounds the loaded map has; a chosen one it lacks becomes the overview."""
+
+        for background, action in self.actions.background_actions.items():
+            action.setEnabled(self.background_map.available(background))
+
+        if not self.background_map.available(self.background_map.background):
+            self.actions.background_actions[Background.OVERVIEW].setChecked(True)
 
     def set_visibility(self, visibility: Visibility):
         self.scene_renderer.set_visibility(visibility)
@@ -1107,9 +1116,7 @@ class MainWindow(QMainWindow):
 
         self.project_coordinator.heightmap_path_changed.connect(self._handle_heightmap_path_changed)
 
-        self.project_coordinator.ground_map_available.connect(
-            self.actions.ground_map_action.setEnabled
-        )
+        self.project_coordinator.backgrounds_changed.connect(self._update_background_choices)
 
         self.project_coordinator.autodrive_data_loaded.connect(self._handle_autodrive_data_loaded)
 

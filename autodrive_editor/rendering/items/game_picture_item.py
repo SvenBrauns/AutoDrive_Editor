@@ -51,7 +51,9 @@ class GamePictureItem(QGraphicsObject):
 
         grid = self.picture.grid
         level = grid.level_for(1 / screen_px_per_m)
-        exposed = option.exposedRect
+        # Rendering into an image exposes the whole item; only the part on the device is needed.
+        on_device = transform.inverted()[0].mapRect(QRectF(painter.device().rect()))
+        exposed = option.exposedRect.intersected(on_device)
         painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
 
         for col, row in grid.tiles_in(
