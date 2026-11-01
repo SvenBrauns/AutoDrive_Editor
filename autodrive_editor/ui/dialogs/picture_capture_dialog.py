@@ -76,7 +76,7 @@ class PictureCaptureDialog(QDialog):
 
         note = QLabel(
             tr(
-                "The game is set to 12:00 and sun and stays so; its clock keeps running. "
+                "The game is set to 12:00 and sun; afterwards the old weather and time come back. "
                 "The game freezes briefly for each tile. The editor stays usable, the tiles "
                 "appear as they arrive."
             ),
