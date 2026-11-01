@@ -3,7 +3,7 @@ from datetime import datetime
 from autodrive_editor.editing.commands.delete_nodes import DeleteNodesCommand
 from autodrive_editor.editing.commands.markers import AddMarkerCommand
 from autodrive_editor.file_io.autodrive_xml import AutoDriveXmlReader
-from autodrive_editor.file_io.autodrive_xml_writer import save_config
+from autodrive_editor.file_io.autodrive_xml_writer import save_config, write_route_export
 from autodrive_editor.file_io.routes_index import mark_route_saved, read_routes_index
 
 SAVEGAME = """<?xml version="1.0" encoding="utf-8" standalone="no"?>
@@ -175,3 +175,31 @@ def test_route_not_in_routes_xml_is_not_marked(tmp_path):
     (tmp_path / "routes.xml").write_text("<autoDriveRoutesManager/>", encoding="utf-8")
 
     assert not mark_route_saved(tmp_path / "routes" / "abc_autosave_1.xml", datetime.now())
+
+
+def test_route_export_of_a_savegame_reads_back_the_same(tmp_path):
+    source = tmp_path / "AutoDrive_config.xml"
+    source.write_text(SAVEGAME, encoding="utf-8")
+    before = AutoDriveXmlReader.load(source)
+    target = tmp_path / "network.xml"
+
+    write_route_export(before, target)
+
+    after = AutoDriveXmlReader.load(target)
+    assert node_tuples(after) == node_tuples(before)
+    assert [(m.node_id, m.name, m.group) for m in after.markers.values()] == [
+        (3, "Silo", "All"),
+        (1, "Hof", "Felder"),
+    ]
+    assert {g.name for g in after.marker_groups} == {"All", "Felder"}
+
+
+def test_route_export_keeps_the_savegame_precision(write_xml, tmp_path):
+    data = AutoDriveXmlReader.load(write_xml(x="1.23456;2;3"))
+    target = tmp_path / "network.xml"
+
+    write_route_export(data, target)
+
+    text = target.read_text(encoding="utf-8-sig")
+    assert '<routeExport>\n    <waypoints c="3">' in text
+    assert "<x>1.235;2.000;3.000</x>" in text
