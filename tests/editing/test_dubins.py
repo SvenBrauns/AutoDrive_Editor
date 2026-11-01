@@ -34,3 +34,9 @@ def test_every_path_ends_at_the_goal_pose():
 def test_advance_on_a_left_arc():
     # A quarter circle to the left with radius 10, starting towards +x.
     assert advance((0, 0, 0), 0.1, math.pi * 5) == pytest.approx((10, 10, math.pi / 2))
+
+
+def test_a_quarter_circle_at_exactly_the_radius_is_one_arc():
+    path = shortest_path((-9.75, 0.0, 0.0), (-2.75, 7.0, math.pi / 2), 7.0)
+
+    assert path.length == pytest.approx(7.0 * math.pi / 2)

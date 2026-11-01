@@ -1,21 +1,23 @@
 """Lanes and markers for the stops of stations.
 
-Each chosen stop gets a straight one-way lane along its heading, with a node exactly at the stop
-that carries the marker. The default heading comes from the drivability map: the lane axis with
-the most free room through the stop (for a stop with an AI node: its axis or the one across it),
-driven so that all stops of a building circle it the same way and one route can pass them all.
+Each chosen stop gets a straight one-way lane along its heading, with the marker node a little
+past the stop, so the trailer stands over the trigger when the tractor stops. The default
+heading comes from the drivability map: the lane axis with the most free room through the stop
+(for a stop with an AI node: its axis or the one across it), driven so that all stops of a
+building circle it the same way and one route can pass them all.
 The lane's nodes are subprio, so vehicles only drive over the trigger when it is their
 destination. Connecting the lane ends to the network comes later.
 """
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from autodrive_editor.editing.path_shapes import spaced_points
+from autodrive_editor.editing.planned_piece import PlannedPiece
 from autodrive_editor.file_io.navigation_costmap import BLOCKED_VALUE, NavigationCostmap
 from autodrive_editor.file_io.savegame_stations import Stop, StopKind
 from autodrive_editor.i18n import tr
-from autodrive_editor.model.autodrive_data import NodeData
+from autodrive_editor.model.autodrive_data import SUBPRIO_FLAG, NodeData
 
 Point = tuple[float, float, float]
 
@@ -38,11 +40,14 @@ MIN_RADIUS = 2.0
 
 @dataclass(frozen=True)
 class StationSettings:
-    """Lane length before and after the stop and the node spacing, in metres."""
+    """Lane length before the stop and after the marker, the node spacing and how far past the
+    stop the marker sits, in metres. The tractor stops at the marker, so the offset puts the
+    trailer over the trigger."""
 
     before: float = 10.0
     after: float = 10.0
     spacing: float = 5.0
+    marker: float = 8.0
 
 
 @dataclass(frozen=True)
@@ -53,17 +58,6 @@ class StopChoice:
     name: str
     group: str
     heading: float
-
-
-@dataclass
-class StationNetwork:
-    """Nodes as (x, y, z), one-way connections between their indices, markers as
-    (index, name, group), and the lane ends that still need a connection to the network."""
-
-    points: list[Point] = field(default_factory=list)
-    connections: list[tuple[int, int]] = field(default_factory=list)
-    markers: list[tuple[int, str, str]] = field(default_factory=list)
-    open_ends: list[int] = field(default_factory=list)
 
 
 def default_marker_name(stop: Stop) -> str:
@@ -96,34 +90,36 @@ def unique_name(name: str, group: str, taken: set[tuple[str, str]]) -> str:
 
 
 def lane_points(stop: Stop, settings: StationSettings, heading: float) -> tuple[list, int]:
-    """The lane's nodes in driving direction and the index of the node at the stop."""
+    """The lane's nodes in driving direction and the index of the marker node, which lies
+    settings.marker past the stop."""
 
     dx, dz = direction(heading)
     x, y, z = stop.position
     start = (x - dx * settings.before, z - dz * settings.before)
-    end = (x + dx * settings.after, z + dz * settings.after)
+    mx, mz = x + dx * settings.marker, z + dz * settings.marker
+    end = (mx + dx * settings.after, mz + dz * settings.after)
+    length = settings.before + settings.marker
 
-    before = spaced_points([start, (x, z)], settings.spacing) if settings.before > 0 else [(x, z)]
-    after = spaced_points([(x, z), end], settings.spacing)[1:] if settings.after > 0 else []
-    # The stop node exactly at the stop, not where the spacing would put it.
-    points = [(px, y, pz) for px, pz in before[:-1]] + [(x, y, z)]
+    before = spaced_points([start, (mx, mz)], settings.spacing) if length > 0 else [(mx, mz)]
+    after = spaced_points([(mx, mz), end], settings.spacing)[1:] if settings.after > 0 else []
+    # The marker node exactly at its place, not where the spacing would put it.
+    points = [(px, y, pz) for px, pz in before[:-1]] + [(mx, y, mz)]
     points += [(px, y, pz) for px, pz in after]
 
     return points, len(before) - 1
 
 
-def plan_stations(choices: list[StopChoice], settings: StationSettings) -> StationNetwork:
-    network = StationNetwork()
+def plan_stations(choices: list[StopChoice], settings: StationSettings) -> PlannedPiece:
+    piece = PlannedPiece()
 
     for choice in choices:
-        points, stop_index = lane_points(choice.stop, settings, choice.heading)
-        first = len(network.points)
-        network.points += points
-        network.connections += [(first + i, first + i + 1) for i in range(len(points) - 1)]
-        network.markers.append((first + stop_index, choice.name, choice.group))
-        network.open_ends += [first, first + len(points) - 1]
+        points, marker_index = lane_points(choice.stop, settings, choice.heading)
+        lane = [piece.add(*point, flag=SUBPRIO_FLAG) for point in points]
+        piece.chain(lane)
+        piece.markers.append((lane[marker_index], choice.name, choice.group))
+        piece.open_ends += [lane[0], lane[-1]]
 
-    return network
+    return piece
 
 
 def occupied(points: list[Point], nodes: list[NodeData], distance=OCCUPIED_DISTANCE) -> bool:

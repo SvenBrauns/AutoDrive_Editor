@@ -24,6 +24,7 @@ from autodrive_editor.editing.operations.create_nodes import CreateNodesOperatio
 from autodrive_editor.editing.operations.create_path import CreatePathOperation
 from autodrive_editor.editing.operations.delete_nodes import DeleteNodesOperation
 from autodrive_editor.editing.operations.find_route import FindRouteOperation
+from autodrive_editor.editing.operations.junction import JunctionOperation
 from autodrive_editor.editing.operations.markers import MarkerOperation
 from autodrive_editor.editing.operations.move_nodes import MoveNodesOperation
 from autodrive_editor.editing.operations.network_check import NetworkCheckOperation
@@ -95,6 +96,7 @@ from autodrive_editor.ui.tools.delete_nodes_tool import DeleteNodesTool
 from autodrive_editor.ui.tools.find_route_tool import FindRouteTool
 from autodrive_editor.ui.tools.generate_tool import GenerateTask, GenerateTool
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
+from autodrive_editor.ui.tools.junction_tool import JunctionTool
 from autodrive_editor.ui.tools.lane_handle_tool import LaneHandleTool
 from autodrive_editor.ui.tools.map_tool import MapTool
 from autodrive_editor.ui.tools.measure_tool import MeasureTool
@@ -239,6 +241,13 @@ class MainWindow(QMainWindow):
 
     def set_measurement_mode(self, measurement_mode: MeasurementMode):
         self.measurement_coordinator.set_mode(measurement_mode)
+
+    def undo(self):
+        """Undoes the last edit; a junction still being drawn is undone instead (see
+        JunctionOperation.undo)."""
+
+        if not self.junction_operation.undo():
+            self.edit_history.undo()
 
     def delete_selection(self):
         self.delete_nodes_operation.delete_selection()
@@ -574,6 +583,17 @@ class MainWindow(QMainWindow):
             parent=self,
         )
 
+        self.junction_operation = JunctionOperation(
+            context,
+            costmap_provider=lambda: self.scene_renderer.costmap,
+            vehicle_provider=lambda: self.settings.vehicle,
+            spacing_provider=lambda: self.create_path_operation.options.spacing,
+            height_for_new_node=self.create_nodes_operation.height_for_new_node,
+            stem_provider=lambda: self.settings.junction_stem,
+            style_provider=lambda: self.settings.junction_style,
+            parent=self,
+        )
+
         self.edit_operations = [
             self.move_nodes_operation,
             self.delete_nodes_operation,
@@ -591,6 +611,7 @@ class MainWindow(QMainWindow):
             self.marker_operation,
             self.network_check_operation,
             self.find_route_operation,
+            self.junction_operation,
         ]
 
     def _create_project_coordinator(self):
@@ -813,10 +834,20 @@ class MainWindow(QMainWindow):
             is_target=lambda view_position: bool(self._get_station_stops_at(view_position)),
             hover_text=self._get_station_name_at,
         )
+        junction_tool = JunctionTool(
+            self.view,
+            self.junction_operation,
+            connection_at=self._get_connection_at,
+            node_at=self._get_node_id_at,
+            color_provider=lambda: self.scene_renderer.display_style.regular_connection_color,
+            missing_costmap_message=self.find_route_operation.missing_costmap_message,
+            z_value=display_style.selected_node_z + 1,
+        )
         self.generate_tool = GenerateTool(
             self.view,
             {
                 GenerateTask.ROUTE: route_tool,
+                GenerateTask.JUNCTION: junction_tool,
                 GenerateTask.PARKING_SPOTS: parking_tool,
                 GenerateTask.STATIONS: station_tool,
             },
@@ -845,7 +876,9 @@ class MainWindow(QMainWindow):
         rotate_options.snap_angle_changed.connect(apply_snap_angle)
 
         # The Generate button is on the quick access bar: same arrow as on the tool panel.
-        self.generate_options = GenerateOptionsWidget(self.generate_tool.task)
+        self.generate_options = GenerateOptionsWidget(
+            self.generate_tool.task, *self.settings.junction_stem, self.settings.junction_style
+        )
         button = self.actions.quick_access_toolbar.widgetForAction(self.actions.generate_action)
         menu = QMenu(button)
         widget_action = QWidgetAction(menu)
@@ -855,6 +888,16 @@ class MainWindow(QMainWindow):
         button.setPopupMode(QToolButton.MenuButtonPopup)
         self.generate_options.task_changed.connect(self.set_generate_task)
         self.generate_options.task_changed.connect(menu.close)
+
+        # Bound now: both names are used again below.
+        def refit_menu(menu=menu, widget_action=widget_action):
+            # The task's options may have appeared or disappeared: measure the menu again.
+            menu.removeAction(widget_action)
+            menu.addAction(widget_action)
+
+        menu.aboutToShow.connect(refit_menu)
+        self.generate_options.stem_changed.connect(self.settings.set_junction_stem)
+        self.generate_options.style_changed.connect(self.settings.set_junction_style)
         tool_panel.set_tool_options(tool_actions[InteractionMode.ROTATE_SELECTION], rotate_options)
 
         # One options widget per path tool; changing one updates the others.
@@ -1004,6 +1047,11 @@ class MainWindow(QMainWindow):
         stops = self._get_station_stops_at(view_position)
 
         return stops[0].name.strip() if stops else ""
+
+    def _get_node_id_at(self, view_position) -> int | None:
+        node = self.selection_coordinator.get_node_at(view_position)
+
+        return None if node is None else node.node_id
 
     def _get_connection_at(self, view_position):
         scene_position = self.view.mapToScene(view_position)

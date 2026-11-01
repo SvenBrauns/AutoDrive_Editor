@@ -41,7 +41,7 @@ def test_unchecked_stops_are_left_out_and_angles_are_passed_on(qapp):
 
 
 def test_notes_name_a_missing_ai_node_and_an_existing_node_on_the_lane(qapp):
-    station_dialog = dialog(nodes=[NodeData(1, 5, 0, 0)])
+    station_dialog = dialog(nodes=[NodeData(1, 8, 0, 0)])
 
     assert station_dialog.table.item(0, NOTE).text() == "existing node on the lane"
     assert station_dialog.table.item(1, NOTE).toolTip() == "no AI node"
@@ -49,12 +49,17 @@ def test_notes_name_a_missing_ai_node_and_an_existing_node_on_the_lane(qapp):
 
 def test_handles_sit_at_the_front_end_of_the_chosen_lanes(qapp):
     station_dialog = dialog()
+    station_dialog.marker_input.setValue(0)
     station_dialog.after_input.setValue(2)
 
     (sell, buy) = station_dialog.handles()
     # At least 5 m from the stop, so short lanes can still be grabbed.
     assert sell == pytest.approx((0, 5, 0, 0, 0))
     assert buy == pytest.approx((1, -5, 30, 0, 30))
+
+    # The lane goes on past the marker.
+    station_dialog.marker_input.setValue(8)
+    assert station_dialog.handles()[0] == pytest.approx((0, 10, 0, 0, 0))
 
     station_dialog.table.item(0, STOP).setCheckState(Qt.Unchecked)
     assert [handle[0] for handle in station_dialog.handles()] == [1]
@@ -87,16 +92,17 @@ def test_preview_follows_the_choices_and_settings_are_kept(qapp):
     station_dialog.plan_changed.connect(lambda network, points: plans.append((network, points)))
 
     station_dialog.before_input.setValue(5)
+    station_dialog.marker_input.setValue(0)
     station_dialog.after_input.setValue(5)
     station_dialog.spacing_input.setValue(5)
 
     network, points = plans[-1]
     assert len(points) == 6
-    assert [index for index, _ in network.markers] == [1, 4]
+    assert [index for index, *_ in network.markers] == [1, 4]
 
     station_dialog.set_heading(0, 180)
     assert plans[-1][1][0] == pytest.approx((0, -5))
 
     station_dialog.accept()
 
-    assert AppSettings().station_settings == StationSettings(5, 5, 5)
+    assert AppSettings().station_settings == StationSettings(5, 5, 5, 0)

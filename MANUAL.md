@@ -79,7 +79,7 @@ The editor reads the buildings of a savegame: the sheds to park in and the stati
 
 The planning button at the right end of the toolbar (`Edit → Planning mode`, `Ctrl+P`) starts a plan. All tools work as usual, but the edits are collected in the plan: a blue bar above the map shows how many nodes the plan changed, and those nodes get a blue halo. Undo and Redo work inside the plan and stop at its start. `Apply plan` adds the whole plan to the history as one undo step; `Discard plan` reverts all of it. Clicking the planning button again, opening another file or closing the editor asks whether to apply or discard the plan. While a plan is open, saving is not possible and autosave pauses.
 
-The Generate tool (`G`) starts planning mode and creates what is picked behind its arrow: a route, the parking spots of a shed or the lanes of stations.
+The Generate tool (`G`) starts planning mode and creates what is picked behind its arrow: a route, a junction, the parking spots of a shed or the lanes of stations.
 
 ### Find route
 
@@ -88,6 +88,17 @@ Choose `Route` behind the arrow of the Generate tool, then click nodes, connecti
 Routes already in the plan are reused: a route in the same direction joins them. The way back (select the nodes the other way round) gets its own lane where there is room; where there is not, it shares the lane, which becomes dual there. If there is no room to turn at all, the editor reports that no drivable route was found.
 
 The route finder uses the game's drivability map, which Farming Simulator writes into the savegame (`vehicleNavigationCostmap.dat`) on every save. A route needs a linked savegame for it. Save the game again after placing buildings, so the map knows them. `View → Show → Drivability map` draws it: blocked ground red (blue in forests), rough ground orange, grass yellow, fields green; roads and yards are clear.
+
+### Junctions
+
+Choose `Junction` behind the arrow of the Generate tool to connect a yard road to a road. Press on the road and drag towards the yard: the junction moves along the road with the mouse, and the stem leaves the road at a right angle as far as the mouse reaches. After releasing, a handle sits at the stem's tip; drag it to bend the stem, or drop it on a node to join the stem there. `Enter` or a click away from the handle adds the junction to the plan, `Esc` cancels. Undo while drawing first straightens a bent stem, then goes back to placing the junction, then cancels.
+
+The options behind the arrow set how the junction is built, and are kept for next time:
+
+- **Style**: *Box* (default) builds a compact crossing box where a road of two one-way lanes meets a stem of two lanes: the lanes share a node where they cross, a centre node takes the left turns and U-turns, and short curves take the right turns. The pieces from the crossings out to the box edge are two-way, so AutoDrive drivers see each other inside the box. *Curves* builds a one-way turn curve for each direction instead. If road or stem do not have two one-way lanes, curves are built and the status bar says so.
+- **Stem**: *Auto* (default) uses two lanes at a road of two one-way lanes and one two-way lane at a two-way road, or at a two-way road at the stem's tip. *Two-way* or *Two lanes* choose it directly; **Lane gap** is the distance between the two lanes (default 5.5 m).
+
+Where a road continues on the other side, lanes straight across are added too. Curves or lanes that do not fit on the drivability map are searched with the route finder; those still blocked are left out and listed in the status bar (e.g. "No left turn in from the north"), as are pieces of a box on blocked ground.
 
 ### Parking spots in sheds
 
@@ -109,7 +120,7 @@ When backing in, the side view below shows the line of one bay, which all bays u
 
 ### Station lanes
 
-Choose `Stations` behind the arrow of the Generate tool. Left-click a stop arrow or the space between the arrows of a building to pick all its stops, or right-drag a box (`Shift`: a lasso) to pick all stops inside it; pointing at a station shows its name. The dialog lists the stops with a check box, type, fill types, marker name and group (e.g. "Grain store (Selling point)" in "Selling points"), the lane angle and a note (no AI spot in the building, an existing node where the lane goes). The lane length before and after the stop (default 10 m) and the node spacing are kept for next time. The lanes are drawn on the map; drag the ring at the front end of a lane to turn it around its stop (`Shift`: 15° steps), or type the angle. `Create` adds a straight one-way lane of subprio nodes per chosen stop with the marker on the node at the stop, into the plan as one undo step. The lane ends are selected afterwards, to connect them to the network.
+Choose `Stations` behind the arrow of the Generate tool. Left-click a stop arrow or the space between the arrows of a building to pick all its stops, or right-drag a box (`Shift`: a lasso) to pick all stops inside it; pointing at a station shows its name. The dialog lists the stops with a check box, type, fill types, marker name and group (e.g. "Grain store (Selling point)" in "Selling points"), the lane angle and a note (no AI spot in the building, an existing node where the lane goes). The marker sits a set distance past the stop (default 8 m), since the tractor stops at the marker and the trailer then stands over the trigger. The lane length before the stop and after the marker (default 10 m each), the marker distance and the node spacing are kept for next time. The lanes are drawn on the map; drag the ring at the front end of a lane to turn it around its stop (`Shift`: 15° steps), or type the angle. `Create` adds a straight one-way lane of subprio nodes per chosen stop with the marker on the node at the stop, into the plan as one undo step. The lane ends are selected afterwards, to connect them to the network.
 
 ## Checking the network
 

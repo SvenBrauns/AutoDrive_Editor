@@ -21,24 +21,27 @@ def mod2pi(angle: float) -> float:
 
 def _lsl(a, b, d):
     p2 = 2 + d * d - 2 * math.cos(a - b) + 2 * d * (math.sin(a) - math.sin(b))
-    if p2 < 0:
+    if p2 < -1e-9:
         return None
+    p2 = max(p2, 0.0)
     angle = math.atan2(math.cos(b) - math.cos(a), d + math.sin(a) - math.sin(b))
     return mod2pi(angle - a), math.sqrt(p2), mod2pi(b - angle)
 
 
 def _rsr(a, b, d):
     p2 = 2 + d * d - 2 * math.cos(a - b) + 2 * d * (math.sin(b) - math.sin(a))
-    if p2 < 0:
+    if p2 < -1e-9:
         return None
+    p2 = max(p2, 0.0)
     angle = math.atan2(math.cos(a) - math.cos(b), d - math.sin(a) + math.sin(b))
     return mod2pi(a - angle), math.sqrt(p2), mod2pi(angle - b)
 
 
 def _lsr(a, b, d):
     p2 = -2 + d * d + 2 * math.cos(a - b) + 2 * d * (math.sin(a) + math.sin(b))
-    if p2 < 0:
+    if p2 < -1e-9:
         return None
+    p2 = max(p2, 0.0)
     p = math.sqrt(p2)
     angle = math.atan2(-math.cos(a) - math.cos(b), d + math.sin(a) + math.sin(b)) - math.atan2(
         -2, p
@@ -48,8 +51,9 @@ def _lsr(a, b, d):
 
 def _rsl(a, b, d):
     p2 = d * d - 2 + 2 * math.cos(a - b) - 2 * d * (math.sin(a) + math.sin(b))
-    if p2 < 0:
+    if p2 < -1e-9:
         return None
+    p2 = max(p2, 0.0)
     p = math.sqrt(p2)
     angle = math.atan2(math.cos(a) + math.cos(b), d - math.sin(a) - math.sin(b)) - math.atan2(2, p)
     return mod2pi(a - angle), p, mod2pi(b - angle)

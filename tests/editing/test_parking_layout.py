@@ -91,7 +91,7 @@ def test_back_in_bay_line():
     network = plan_parking(frame, settings(bays=1, gaps=(), back_offset=1.0))
 
     marker = network.markers[0][0]
-    assert network.markers == [(marker, "Shed 3")]
+    assert network.markers == [(marker, "Shed 3", "G")]
     assert network.points[marker] == (15.0, 14.0)
 
     # The dual line runs from the marker straight out of the shed.
@@ -125,7 +125,7 @@ def test_back_in_lines_connect_all_bays_in_travel_order():
     frame = ShedFrame.from_area(SHED, "front")
     network = plan_parking(frame, settings(exit_left_to_right=False))
 
-    assert [name for _, name in network.markers] == ["Shed 3", "Shed 4", "Shed 5", "Shed 6"]
+    assert [name for _, name, _ in network.markers] == ["Shed 3", "Shed 4", "Shed 5", "Shed 6"]
     assert len(network.open_ends) == 4
 
     entry_start, entry_end, exit_start, exit_end = network.open_ends
@@ -283,8 +283,8 @@ def test_drive_through_positions_lie_in_a_row_numbered_from_the_exit():
     values = settings(mode=ParkingMode.DRIVE_THROUGH, back_offset=1.0, positions=3)
     network = plan_parking(frame, replace(values, position_spacing=6.0))
 
-    assert [name for _, name in network.markers][:4] == ["Shed 3", "Shed 4", "Shed 5", "Shed 6"]
-    first_bay = [network.points[index] for index, _ in network.markers[:3]]
+    assert [name for _, name, _ in network.markers][:4] == ["Shed 3", "Shed 4", "Shed 5", "Shed 6"]
+    first_bay = [network.points[index] for index, *_ in network.markers[:3]]
     assert [d for _, d in first_bay] == pytest.approx([14.0, 8.0, 2.0])
     assert len({a for a, _ in first_bay}) == 1
     assert len(network.markers) == 12

@@ -5,7 +5,10 @@ only and no tighter than the turning radius, so a vehicle with a trailer can dri
 Close to each waypoint it tries a Dubins path, which ends exactly at the waypoint, and at the goal
 heading at the last one. All waypoints are passed in one search, so the heading at a waypoint is
 the one that suits the next leg too. The search is guided by the cheapest way from each cell to the
-next waypoint, found on the cells alone first.
+next waypoint, found on the cells alone first. Changing from a left to a right turn costs extra,
+and afterwards stretches of the route are replaced by Dubins paths (straight where the poses line
+up) where these are no longer and no dearer, and lie on no worse ground and no closer to blocked
+cells, so routes do not swerve.
 
 - Blocked cells cost so much that routes go a long way round them. Where there is no way round,
   the route crosses them and the crossing points are marked, so the editor can show where nodes
@@ -14,6 +17,8 @@ next waypoint, found on the cells alone first.
   the map shows only about 3 m wide for a 4 m gate.
 - Each metre costs by the kind of ground (roads and yards 1, grass 4, fields 8, …), so routes
   keep to roads and yards.
+- Each metre off the line between two waypoints costs a little extra, so where that line is clear
+  the route runs along it and turns around the waypoints, as drawn by hand.
 - Lanes already planned are cheap in their direction, so routes join them. Against their
   direction they cost more, so a way back gets its own lane where there is room and only shares
   the lane where there is not.
@@ -28,7 +33,7 @@ import time
 from dataclasses import dataclass, field
 from itertools import pairwise
 
-from autodrive_editor.editing.dubins import Pose, advance, shortest_path
+from autodrive_editor.editing.dubins import TURNS, DubinsPath, Pose, advance, shortest_path
 from autodrive_editor.file_io.navigation_costmap import BLOCKED_VALUE, ROAD_VALUE, NavigationCostmap
 
 logger = logging.getLogger(__name__)
@@ -44,6 +49,15 @@ HEADING_BINS = 72
 STATE_CELL = 1.0
 # Extra cost per metre of turning, so straight pieces are preferred.
 TURN_COST = 0.1
+# Extra cost of changing from a left to a right turn or back, so routes do not swerve from side
+# to side.
+SWERVE_COST = 1.0
+# Extra cost per metre for each metre off the line between the two waypoints of a leg, counted up
+# to CHORD_REACH, so routes keep to that line where it is clear. Not within CHORD_FREE turning
+# radii of the waypoints, where the route turns.
+CHORD_COST = 0.1
+CHORD_REACH = 4.0
+CHORD_FREE = 1.5
 # Cost factor of planned lanes driven in their direction and against it.
 SAME_LANE = 0.5
 AGAINST_LANE = 1.5
@@ -62,6 +76,9 @@ ANY_HEADINGS = tuple(math.tau * index / 16 for index in range(16))
 # Dubins paths are tried this close to a waypoint, in turning radii plus metres.
 DUBINS_RADII = 4
 DUBINS_EXTRA = 20.0
+# There, paths onto the line between the waypoints are tried too, joining it this many turning
+# radii further on.
+LINE_JOINS = (1.0, 2.0, 3.0, 4.0)
 # Area around the waypoints that is searched first, and how often it grows.
 WINDOW_MARGIN = 60.0
 WINDOW_GROWTH = (1, 3, 6)
@@ -94,6 +111,8 @@ class RouteRequest:
     # blocked cells can be driven on.
     free_radius: float = 3.0
     free_length: float = 20.0
+    # Tightest turn of this search, e.g. the yard radius; None for the vehicle's.
+    turning_radius: float | None = None
 
     @property
     def start(self) -> Point:
@@ -277,12 +296,13 @@ class RouteFinder:
 
         logger.debug(
             "Route search through %s (cell values %s), start headings %s, goal headings %s, "
-            "%d planned lanes, %s",
+            "%d planned lanes, turning radius %s, %s",
             ", ".join(_rounded(point) for point in request.waypoints),
             ", ".join(str(self.costmap.value_at(*point)) for point in request.waypoints),
             degrees(request.start_headings),
             degrees(request.goal_headings),
             len(request.lanes),
+            request.turning_radius or "of the vehicle",
             self.vehicle,
         )
 
@@ -291,7 +311,7 @@ class _Search:
     def __init__(self, finder: RouteFinder, request: RouteRequest, margin: float):
         costmap, vehicle = finder.costmap, finder.vehicle
         self.request = request
-        self.radius = vehicle.turning_radius
+        self.radius = request.turning_radius or vehicle.turning_radius
 
         xs = [x for x, _ in request.waypoints]
         zs = [z for _, z in request.waypoints]
@@ -319,7 +339,7 @@ class _Search:
         request = self.request
         waypoints = request.waypoints
         legs = len(waypoints) - 1
-        self.to_goal = [self._costs_to(waypoint) for waypoint in waypoints[1:]]
+        self.to_goal = [self._costs_to(leg) for leg in range(legs)]
         # Cheapest cost over the cells from the end of each leg to the goal.
         self.remaining = [0.0] * legs
 
@@ -437,6 +457,9 @@ class _Search:
         return node, start_index
 
     def _found(self, end: _Node, outcome: str, direct_from: int | None = None) -> Route:
+        if direct_from is None:
+            end = self._straighten(end)
+
         route = self._route(end, direct_from)
         length = sum(math.dist(a, b) for a, b in pairwise(route.points))
         crossing = "" if route.is_clear else ", crosses blocked cells"
@@ -448,17 +471,10 @@ class _Search:
         """The route to the node. Points from `direct_from` on were not searched, so there the
         safety distance to blocked cells counts as blocked too."""
 
-        nodes = []
-        node = end
-
-        while node is not None:
-            nodes.append(node)
-            node = node.parent
-
         points: list[Point] = []
         waypoint_indices = []
 
-        for node in reversed(nodes):
+        for node in _chain(end):
             points += node.points
 
             if node.at_waypoint:
@@ -468,6 +484,142 @@ class _Search:
         blocked = [self._is_blocked(point, index >= searched) for index, point in enumerate(points)]
 
         return Route(points, waypoint_indices, blocked)
+
+    def _straighten(self, end: _Node) -> _Node:
+        """The route to the node with stretches replaced by Dubins paths, which run straight
+        where the poses line up. A replacement is no longer and costs no more than the stretch,
+        lies on no worse ground and no closer to blocked cells, and passes no waypoint."""
+
+        nodes = _chain(end)
+        lengths = [0.0]
+
+        for previous, node in pairwise(nodes):
+            points = [previous.pose[:2], *node.points]
+            lengths.append(lengths[-1] + sum(math.dist(a, b) for a, b in pairwise(points)))
+
+        worst = [self._worst_ground(node.points) for node in nodes]
+        result = nodes[0]
+        index = 0
+
+        while index < len(nodes) - 1:
+            limit = index + 1
+
+            while limit < len(nodes) - 1 and not nodes[limit].at_waypoint:
+                limit += 1
+
+            # The furthest good shortcut: doubling the reach until one fails, then halving.
+            found, good, bad, span = None, index, limit + 1, 1
+
+            while good < limit:
+                target = min(index + span, limit)
+                candidate = self._shortcut(nodes, lengths, worst, index, target)
+
+                if candidate is None:
+                    bad = target
+                    break
+
+                found, good, span = candidate, target, span * 2
+
+            while bad - good > 1:
+                target = (good + bad) // 2
+                candidate = self._shortcut(nodes, lengths, worst, index, target)
+
+                if candidate is None:
+                    bad = target
+                else:
+                    found, good = candidate, target
+
+            if found is None:
+                good = index + 1
+                node = nodes[good]
+                cost = result.cost + node.cost - nodes[index].cost
+                points, curvature = node.points, node.curvature
+            else:
+                cost, points, curvature = result.cost + found[0], found[1], found[2]
+                node = nodes[good]
+
+            result = _Node(node.pose, cost, result, points, curvature, node.leg, node.at_waypoint)
+            index = good
+
+        return result
+
+    def _shortcut(
+        self,
+        nodes: list[_Node],
+        lengths: list[float],
+        worst: list[tuple[int, float]],
+        first: int,
+        last: int,
+    ) -> tuple[float, list[Point], float] | None:
+        """Cost, points and last curvature of the Dubins path from node `first` to node `last` if
+        it may replace the stretch between them (see _straighten), else None. `lengths` holds
+        the route length up to each node, `worst` its worst ground (see _worst_ground)."""
+
+        start, end = nodes[first], nodes[last]
+        length = lengths[last] - lengths[first]
+        worst = worst[first + 1 : last + 1]
+        path = shortest_path(start.pose, end.pose, self.radius)
+
+        if path is None or path.length > length + 1e-6:
+            return None
+
+        most_blocked = max(blocked for blocked, _ in worst)
+        worst_ground = max(ground for _, ground in worst)
+        limit = end.cost - start.cost + 1e-6
+        cost = _turning_cost(path, start.curvature, self.radius)
+        points = []
+        previous = start.pose
+
+        for pose in path.sample(SAMPLE)[1:]:
+            blocked, ground = self._ground_class(pose)
+            piece = self._piece_cost(pose, start.leg)
+
+            if piece is None or blocked > most_blocked or ground > worst_ground:
+                return None
+
+            cost += piece * math.dist(previous[:2], pose[:2])
+
+            if cost > limit:
+                return None
+
+            points.append(pose[:2])
+            previous = pose
+
+        curvature = next(
+            (
+                TURNS[letter] / self.radius
+                for letter, part in zip(reversed(path.word), reversed(path.lengths), strict=True)
+                if part > 1e-9
+            ),
+            0.0,
+        )
+
+        return cost, points, curvature
+
+    def _worst_ground(self, points: list[Point]) -> tuple[int, float]:
+        """Highest blocked class and ground class of the points (see _ground_class)."""
+
+        classes = [self._ground_class(point) for point in points] or [(0, 0.0)]
+
+        return max(blocked for blocked, _ in classes), max(ground for _, ground in classes)
+
+    def _ground_class(self, position) -> tuple[int, float]:
+        """How blocked the cell is (0 free, 1 within the safety distance, 2 blocked; free zones
+        count as free) and the base cost of its kind of ground, without the slope."""
+
+        index = self.grid.index(position[0], position[1])
+
+        if index is None:
+            return 2, math.inf
+
+        value = self.grid.cells[index]
+        band = min(max(0, value - ROAD_VALUE) // BAND_WIDTH, len(BAND_COSTS) - 1)
+        blocked = 0
+
+        if self.grid.blocked[index] and not self._in_free_zone(position[0], position[1]):
+            blocked = 2 if value >= BLOCKED_VALUE else 1
+
+        return blocked, BAND_COSTS[band]
 
     def _is_blocked(self, point: Point, with_safety_distance: bool = False) -> bool:
         index = self.grid.index(*point)
@@ -496,10 +648,10 @@ class _Search:
 
         return math.inf if index is None else self.to_goal[leg][index] + self.remaining[leg]
 
-    def _costs_to(self, target: Point) -> list[float]:
-        """Cheapest cost from each cell to the target over the cells, ignoring the turning radius.
-        Dijkstra over the 8 neighbours of each cell; planned lanes count in the driving direction
-        of each step."""
+    def _costs_to(self, leg: int) -> list[float]:
+        """Cheapest cost from each cell to the end of the leg over the cells, ignoring the turning
+        radius. Dijkstra over the 8 neighbours of each cell; planned lanes count in the driving
+        direction of each step, and the distance to the leg's line counts as on the route."""
 
         grid = self.grid
         columns = grid.columns
@@ -507,9 +659,9 @@ class _Search:
         if self._cell_costs is None:
             self._cell_costs = [self._ground_cost(index) for index in range(len(grid.cells))]
 
-        cell_costs = self._cell_costs
+        cell_costs = self._with_chord_costs(self._cell_costs, leg)
         costs = [math.inf] * len(cell_costs)
-        goal = grid.index(*target)
+        goal = grid.index(*self.request.waypoints[leg + 1])
 
         if goal is None:
             return costs
@@ -556,6 +708,38 @@ class _Search:
                     heapq.heappush(queue, (new_cost, other))
 
         return costs
+
+    def _with_chord_costs(self, cell_costs: list[float], leg: int) -> list[float]:
+        """The cell costs plus the chord cost of each cell on the leg (see _chord_cost). Only
+        cells near the leg's line are measured; the rest get the full chord cost."""
+
+        grid = self.grid
+        a, b = self.request.waypoints[leg : leg + 2]
+        costs = [cost + CHORD_COST * CHORD_REACH for cost in cell_costs]
+        margin = max(CHORD_REACH, CHORD_FREE * self.radius)
+        xs = range(math.floor(min(a[0], b[0]) - margin), math.ceil(max(a[0], b[0]) + margin) + 1)
+        zs = range(math.floor(min(a[1], b[1]) - margin), math.ceil(max(a[1], b[1]) + margin) + 1)
+
+        for z in zs:
+            for x in xs:
+                index = grid.index(x + 0.5, z + 0.5)
+
+                if index is not None:
+                    costs[index] = cell_costs[index] + self._chord_cost(*grid.center(index), leg)
+
+        return costs
+
+    def _chord_cost(self, x: float, z: float, leg: int) -> float:
+        """Extra cost per metre off the line between the leg's waypoints. None near the
+        waypoints, where the route turns."""
+
+        a, b = self.request.waypoints[leg : leg + 2]
+        free = CHORD_FREE * self.radius
+
+        if math.hypot(x - a[0], z - a[1]) < free or math.hypot(x - b[0], z - b[1]) < free:
+            return 0.0
+
+        return CHORD_COST * min(_distance_to_segment((x, z), a, b), CHORD_REACH)
 
     def _ground_cost(self, index: int, x: float | None = None, z: float | None = None) -> float:
         """Cost per metre of the cell's ground; inf if it cannot be driven on."""
@@ -606,7 +790,7 @@ class _Search:
 
         for _ in range(count):
             pose = advance(pose, curvature, SAMPLE)
-            piece = self._piece_cost(pose)
+            piece = self._piece_cost(pose, node.leg)
 
             if piece is None:
                 return None
@@ -617,10 +801,13 @@ class _Search:
         if curvature:
             cost += TURN_COST * STEP
 
+        if curvature * node.curvature < 0:
+            cost += SWERVE_COST
+
         return _Node(pose, cost, node, points, curvature, node.leg)
 
-    def _piece_cost(self, pose: Pose) -> float | None:
-        """Cost per metre at the pose, None if it cannot be driven on."""
+    def _piece_cost(self, pose: Pose, leg: int) -> float | None:
+        """Cost per metre at the pose on the leg, None if it cannot be driven on."""
 
         x, z, heading = pose
         index = self.grid.index(x, z)
@@ -636,7 +823,7 @@ class _Search:
         if index in self.lanes:
             cost *= self._lane_factor(index, math.cos(heading), math.sin(heading))
 
-        return cost
+        return cost + self._chord_cost(x, z, leg)
 
     def _in_free_zone(self, x: float, z: float) -> bool:
         radius = self.request.free_radius
@@ -650,32 +837,38 @@ class _Search:
         )
 
     def _dubins_end(self, node: _Node) -> _Node | None:
-        """The next waypoint reached from the node by a Dubins path, if there is one. The given
-        goal headings count only at the goal."""
+        """The next waypoint reached from the node by a Dubins path, or by one onto the line
+        between the leg's waypoints and along it, whichever is cheaper. The given goal headings
+        count only at the goal."""
 
         leg = node.leg + 1
-        goal_x, goal_z = self.request.waypoints[leg]
+        waypoints = self.request.waypoints
+        goal_x, goal_z = waypoints[leg]
         x, z, _ = node.pose
         headings = None
 
-        if leg == len(self.request.waypoints) - 1:
+        if leg == len(waypoints) - 1:
             headings = self.request.goal_headings
 
-        headings = headings or (math.atan2(goal_z - z, goal_x - x),)
-        best = None
+        candidates = []
 
-        for heading in headings:
+        for heading in headings or (math.atan2(goal_z - z, goal_x - x),):
             path = shortest_path(node.pose, (goal_x, goal_z, heading), self.radius)
 
-            if path is None or (best is not None and path.length >= best[0].length):
-                continue
+            if path is not None:
+                candidates.append((heading, path.sample(SAMPLE)[1:]))
 
-            poses = path.sample(SAMPLE)[1:]
+        if not headings:
+            candidates += self._onto_line(node)
+
+        best = None
+
+        for heading, poses in candidates:
             cost = node.cost
             previous = node.pose
 
             for pose in poses:
-                piece = self._piece_cost(pose)
+                piece = self._piece_cost(pose, node.leg)
 
                 if piece is None:
                     break
@@ -683,14 +876,86 @@ class _Search:
                 cost += piece * math.dist(previous[:2], pose[:2])
                 previous = pose
             else:
-                best = (path, cost, [pose[:2] for pose in poses], heading)
+                if best is None or cost < best[0]:
+                    best = (cost, heading, [pose[:2] for pose in poses])
 
         if best is None:
             return None
 
-        _, cost, points, heading = best
+        cost, heading, points = best
 
         return _Node((goal_x, goal_z, heading), cost, node, points, leg=leg, at_waypoint=True)
+
+    def _onto_line(self, node: _Node) -> list[tuple[float, list[Pose]]]:
+        """For each of LINE_JOINS: the heading of the line between the leg's waypoints and the
+        poses of a Dubins path from the node onto that line, that many turning radii further on,
+        then along it to the next waypoint. Only joins before the waypoint."""
+
+        (ax, az), (bx, bz) = self.request.waypoints[node.leg : node.leg + 2]
+        length = math.hypot(bx - ax, bz - az)
+        x, z, _ = node.pose
+
+        if length < 1e-6:
+            return []
+
+        dx, dz = (bx - ax) / length, (bz - az) / length
+        heading = math.atan2(dz, dx)
+        candidates = []
+
+        for join in LINE_JOINS:
+            along = (x - ax) * dx + (z - az) * dz + join * self.radius
+
+            if along >= length:
+                break
+
+            goal = (ax + along * dx, az + along * dz, heading)
+            path = shortest_path(node.pose, goal, self.radius)
+
+            if path is None:
+                continue
+
+            rest = length - along
+            count = max(1, math.ceil(rest / SAMPLE))
+            straight = [
+                (bx - rest * (1 - k / count) * dx, bz - rest * (1 - k / count) * dz, heading)
+                for k in range(1, count + 1)
+            ]
+            candidates.append((heading, path.sample(SAMPLE)[1:] + straight))
+
+        return candidates
+
+
+def _chain(end: _Node) -> list[_Node]:
+    """The nodes from the start to the node."""
+
+    nodes = []
+
+    while end is not None:
+        nodes.append(end)
+        end = end.parent
+
+    return nodes[::-1]
+
+
+def _turning_cost(path: DubinsPath, curvature: float, radius: float) -> float:
+    """Turning and swerving costs of the path as the search counts them, coming from a piece
+    with the given curvature."""
+
+    cost = 0.0
+
+    for letter, length in zip(path.word, path.lengths, strict=True):
+        if length <= 1e-9:
+            continue
+
+        part = TURNS[letter] / radius
+        if part * curvature < 0:
+            cost += SWERVE_COST
+
+        if part:
+            cost += TURN_COST * length
+            curvature = part
+
+    return cost
 
 
 def _free_corridors(request: RouteRequest) -> list[Lane]:

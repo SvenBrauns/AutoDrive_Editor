@@ -10,7 +10,7 @@ from autodrive_editor.model.connections import ConnectionType, get_connection_ty
 from autodrive_editor.selection.node_selection import NodeSelection
 
 STOP = Stop("store.xml", "7", "Store", StopKind.SELL, ("WHEAT",), (100, 5, 200), 90.0, True)
-SETTINGS = StationSettings(5, 5, 5)
+SETTINGS = StationSettings(5, 5, 5, 0)
 
 
 @pytest.fixture

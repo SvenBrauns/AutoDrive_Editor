@@ -443,10 +443,19 @@ class MainWindowActions:
             icon="undo",
             base_text=self.UNDO_TEXT,
             shortcut=QKeySequence.Undo,
-            trigger=edit_history.undo,
+            trigger=self.window.undo,
             can_run_changed=undo_group.canUndoChanged,
             text_changed=undo_group.undoTextChanged,
         )
+
+        # A junction being drawn can be undone even with nothing in the history.
+        junction = self.window.junction_operation
+
+        def update_undo():
+            self.undo_action.setEnabled(undo_group.canUndo() or junction.preview is not None)
+
+        undo_group.canUndoChanged.connect(update_undo)
+        junction.preview_changed.connect(update_undo)
 
         self.redo_action = self._create_history_action(
             icon="redo",
