@@ -142,3 +142,13 @@ def test_field_outline_is_drawn(qapp):
     # Antialiasing blends the thin line with the white image.
     assert QColor(painted.color_at(100, 70)).blue() < 200
     assert painted.color_at(50, 70) == "#ffffff"
+
+
+def test_changed_picture_tiles_reach_the_shown_picture(background, picture):
+    background.set_picture(picture)
+    background.picture_tiles_changed([(0, 0, 0)])
+
+    background.set_background(Background.PICTURE)
+    background.picture_tiles_changed([(0, 0, 0)])
+
+    assert picture_items(background)[0].versions == {(0, 0, 0): 1}

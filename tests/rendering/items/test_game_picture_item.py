@@ -3,6 +3,7 @@ import time
 import pytest
 from drawing_helpers import paint_scene
 from PIL import Image
+from PySide6.QtGui import QImage
 from PySide6.QtWidgets import QGraphicsScene
 
 from autodrive_editor.rendering.items import game_picture_item
@@ -88,3 +89,26 @@ def test_only_some_tiles_stay_cached(qapp, scene, monkeypatch):
     wait_loaded(qapp, scene.item)
 
     assert len(scene.item.pixmaps) == 1
+
+
+def test_a_rewritten_tile_is_loaded_again(qapp, scene):
+    paint_scene(scene, (0, 0), scale=4)
+    wait_loaded(qapp, scene.item)
+    scene.item.picture.add_tile(0, 0, Image.new("RGB", (10, 10), (0, 0, 255)))
+
+    scene.item.tiles_changed([(0, 0, 0)])
+    paint_scene(scene, (0, 0), scale=4)
+    wait_loaded(qapp, scene.item)
+
+    assert near(paint_scene(scene, (0, 0), scale=4).color_at(-7.5, -7.5), BLUE)
+
+
+def test_a_load_started_before_a_rewrite_is_dropped(scene):
+    old = QImage(10, 10, QImage.Format_RGB32)
+    scene.item.tiles_changed([(0, 0, 0)])
+
+    scene.item._store((0, 0, 0), 0, old)
+    assert (0, 0, 0) not in scene.item.pixmaps
+
+    scene.item._store((0, 0, 0), 1, old)
+    assert (0, 0, 0) in scene.item.pixmaps

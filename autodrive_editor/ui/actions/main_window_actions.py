@@ -335,6 +335,12 @@ class MainWindowActions:
         )
         self.scan_map_mods_action.triggered.connect(self.window.map_import.scan_map_mods)
 
+        self.capture_picture_action = QAction(tr("Capture game picture…"), self.window)
+        self.capture_picture_action.setStatusTip(
+            tr("Let the game render the whole map from above, with the companion mod")
+        )
+        self.capture_picture_action.triggered.connect(self.window.picture_capture.open_dialog)
+
         self.select_background_action = QAction(tr("Choose DDS"), self.window)
 
         self.select_background_action.triggered.connect(self.window.files.select_background)
@@ -628,6 +634,8 @@ class MainWindowActions:
         map_menu.addAction(self.scan_map_mods_action)
 
         map_menu.addAction(self.import_map_mod_action)
+
+        map_menu.addAction(self.capture_picture_action)
 
         map_menu.addSeparator()
 

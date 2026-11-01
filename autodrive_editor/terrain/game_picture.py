@@ -131,6 +131,15 @@ class GamePicture:
         return picture
 
     @classmethod
+    def open_or_create(cls, directory: Path, grid: PictureGrid) -> "GamePicture":
+        """The picture stored there if it has this grid, otherwise a new one."""
+
+        picture = cls.open(directory)
+        return (
+            picture if picture is not None and picture.grid == grid else cls.create(directory, grid)
+        )
+
+    @classmethod
     def open(cls, directory: Path) -> "GamePicture | None":
         try:
             meta = json.loads((Path(directory) / META_FILE).read_text(encoding="utf-8"))
@@ -162,6 +171,12 @@ class GamePicture:
         """Stores a captured tile, cut at the map border. The levels above are not rebuilt;
         call build_levels with all added tiles."""
 
+        self.save_tile(col, row, image)
+        self.record_tile(col, row, captured)
+
+    def save_tile(self, col: int, row: int, image: Image.Image):
+        """Writes the tile's file only; may run in a worker thread. record_tile adds it."""
+
         width, height = self.grid.tile_size(0, col, row)
         path = self.tile_path(0, col, row)
         path.parent.mkdir(exist_ok=True)
@@ -170,6 +185,7 @@ class GamePicture:
             path, quality=WEBP_QUALITY, method=WEBP_METHOD
         )
 
+    def record_tile(self, col: int, row: int, captured: str | None = None):
         self.captured[(col, row)] = captured or datetime.now().isoformat(timespec="seconds")
         self._write_meta()
 
@@ -180,9 +196,9 @@ class GamePicture:
             changed = {(col // 2, row // 2) for col, row in changed}
 
             for col, row in changed:
-                self._build_tile(level, col, row)
+                self.build_tile(level, col, row)
 
-    def _build_tile(self, level: int, col: int, row: int):
+    def build_tile(self, level: int, col: int, row: int):
         """One tile from the 2×2 tiles below it; transparent where none was captured."""
 
         below = level - 1

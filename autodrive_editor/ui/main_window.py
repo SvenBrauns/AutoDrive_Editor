@@ -87,6 +87,7 @@ from autodrive_editor.ui.panels.node_info_formatter import NodeInfoFormatter
 from autodrive_editor.ui.panels.path_options import PathOptionsWidget
 from autodrive_editor.ui.panels.rotate_options import RotateOptionsWidget
 from autodrive_editor.ui.panels.welcome_panel import WelcomePanel
+from autodrive_editor.ui.picture_capture_controller import PictureCaptureController
 from autodrive_editor.ui.planning_controller import PlanningController
 from autodrive_editor.ui.savegame_link_controller import SavegameLinkController
 from autodrive_editor.ui.theme import apply_theme
@@ -204,7 +205,7 @@ class MainWindow(QMainWindow):
             self._set_status(tr("The map size could not be changed: {error}", error=ex))
 
     def closeEvent(self, event):
-        if self.files.confirm_discard_changes():
+        if self.files.confirm_discard_changes() and self.picture_capture.confirm_stop():
             event.accept()
         else:
             event.ignore()
@@ -290,6 +291,10 @@ class MainWindow(QMainWindow):
 
         if not self.background_map.available(self.background_map.background):
             self.actions.background_actions[Background.OVERVIEW].setChecked(True)
+
+    def _show_captured_picture(self):
+        self._update_background_choices()
+        self.actions.background_actions[Background.PICTURE].setChecked(True)
 
     def set_visibility(self, visibility: Visibility):
         self.scene_renderer.set_visibility(visibility)
@@ -659,6 +664,11 @@ class MainWindow(QMainWindow):
         )
 
         self.updates = UpdateController(self, self.settings)
+
+        self.picture_capture = PictureCaptureController(
+            self, self.settings, self.project_coordinator, self.background_map
+        )
+        self.files.confirm_end_capture = self.picture_capture.confirm_stop
 
     def _create_planning(self):
         self.planning = PlanningController(
@@ -1182,6 +1192,12 @@ class MainWindow(QMainWindow):
         self.savegame_link.status_changed.connect(self._set_status)
 
         self.map_import.status_changed.connect(self._set_status)
+
+        self.picture_capture.status_changed.connect(self._set_status)
+        self.picture_capture.picture_shown.connect(self._show_captured_picture)
+        self.picture_capture.running_changed.connect(
+            lambda running: self.actions.capture_picture_action.setEnabled(not running)
+        )
 
         for operation in self.edit_operations:
             operation.status_changed.connect(self._set_status)

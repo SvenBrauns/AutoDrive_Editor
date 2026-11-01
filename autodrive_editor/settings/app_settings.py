@@ -51,6 +51,7 @@ class AppSettings:
         "marker": "stations/marker_offset",
     }
     ROTATE_SNAP_KEY = "rotate/snap_angle"
+    PICTURE_WAIT_KEY = "picture/wait_ms"
     JUNCTION_STEM_KEY = "junction/stem"
     JUNCTION_GAP_KEY = "junction/lane_gap"
     JUNCTION_STYLE_KEY = "junction/style"
@@ -516,6 +517,16 @@ class AppSettings:
 
     def set_rotate_snap_angle(self, angle: float):
         self._settings.setValue(self.ROTATE_SNAP_KEY, float(angle))
+        self._settings.sync()
+
+    @property
+    def picture_wait_ms(self) -> int:
+        """The game's wait per tile when capturing the game picture."""
+
+        return self._settings.value(self.PICTURE_WAIT_KEY, 500, type=int)
+
+    def set_picture_wait_ms(self, wait_ms: int):
+        self._settings.setValue(self.PICTURE_WAIT_KEY, int(wait_ms))
         self._settings.sync()
 
     @property

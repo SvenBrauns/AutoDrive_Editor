@@ -63,6 +63,16 @@ Also available: Undo and Redo (`Ctrl+Z` / `Ctrl+Y`), Copy, Cut and Paste (`Ctrl+
 
 **Ground map.** `View → Ground map` replaces the map image with a map drawn from the map's ground textures: asphalt, concrete, gravel, grass, mud, forest, rock and sand each in their own color, with the field outlines and field numbers on top. It shows the map as the game paints it, which helps where the map image is out of date. Maps imported with an older version of the editor have no ground map; import them again to get one. Importing a large map takes a little longer for this (about 15 seconds for a 16x map).
 
+## Game picture
+
+The game picture is the map as the game draws it from above, sharper and more current than the map image: roads, yards, buildings and fields as they are in your savegame. The companion mod `FS25_AutoDriveEditorLink` renders it in the running game; the editor stores it per map and savegame and shows it as a background.
+
+**Capture.** Start the game with the mod active, load the savegame the route is linked to and open that route in the editor (`File → Link savegame…` if it has no link). Then choose `Map → Capture game picture…`. The dialog says at the top whether the game is connected; `Start` works only then. Choose the resolution, 0.25 m/px (sharper) or 0.5 m/px (faster, smaller), each with the number of tiles, the time and the disk space it needs. Capturing at the other resolution replaces the current picture. `Wait per tile` is the time the game gets to load a place before it renders it; raise it if tiles come out with holes.
+
+While capturing, the game is set to 12:00 and sun and stays so (its clock keeps running), and it freezes briefly for each tile. Do not move the camera or open menus in the game. The editor stays usable: the status bar shows `Game picture 37/289 · 4 min left` with a `Cancel` button, and the tiles appear on the map as they arrive. Cancelled or finished, the tiles captured so far are kept. Opening another file or closing the editor during a capture asks whether to cancel it.
+
+**Show.** `View → Background → Game picture` shows the picture; it is chosen automatically after a capture. Where nothing was captured, the map image shows through. The picture of a savegame is kept when the savegame is deleted.
+
 ## Buildings of the savegame
 
 The editor reads the buildings of a savegame: the sheds to park in and the stations where vehicles load and unload. The Generate tool builds on them.

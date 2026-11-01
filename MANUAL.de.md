@@ -63,6 +63,16 @@ Außerdem: Rückgängig und Wiederholen (`Strg+Z` / `Strg+Y`), Kopieren, Ausschn
 
 **Bodenkarte.** `Ansicht → Bodenkarte` ersetzt das Kartenbild durch eine Karte, die aus den Bodentexturen der Karte gezeichnet ist: Asphalt, Beton, Schotter, Gras, Matsch, Wald, Fels und Sand je in einer eigenen Farbe, darüber die Feldgrenzen und Feldnummern. Sie zeigt die Karte so, wie das Spiel sie bemalt, was hilft, wo das Kartenbild veraltet ist. Mit einer älteren Version des Editors importierte Karten haben keine Bodenkarte; dafür die Karte neu importieren. Der Import einer großen Karte dauert dadurch etwas länger (etwa 15 Sekunden bei einer 16x-Karte).
 
+## Spielbild
+
+Das Spielbild ist die Karte, wie das Spiel sie von oben zeichnet, schärfer und aktueller als das Kartenbild: Straßen, Höfe, Gebäude und Felder so, wie sie in deinem Savegame sind. Der Begleit-Mod `FS25_AutoDriveEditorLink` rendert es im laufenden Spiel; der Editor speichert es pro Karte und Savegame und zeigt es als Hintergrund.
+
+**Aufnehmen.** Das Spiel mit aktivem Mod starten, das Savegame laden, mit dem die Route verknüpft ist, und diese Route im Editor öffnen (`Datei → Savegame verknüpfen…`, falls sie keine Verknüpfung hat). Dann `Karte → Spielbild aufnehmen…` wählen. Oben im Dialog steht, ob das Spiel verbunden ist; nur dann geht `Start`. Man wählt die Auflösung, 0,25 m/px (schärfer) oder 0,5 m/px (schneller, kleiner), jeweils mit Kachelzahl, Zeit und Speicherplatz. Eine Aufnahme in der anderen Auflösung ersetzt das aktuelle Bild. `Wartezeit pro Kachel` ist die Zeit, die das Spiel bekommt, um einen Ort zu laden, bevor es ihn rendert; bei Kacheln mit Löchern erhöhen.
+
+Während der Aufnahme wird das Spiel auf 12:00 Uhr und Sonne gestellt und bleibt so (seine Uhr läuft weiter), und es friert für jede Kachel kurz ein. Im Spiel weder die Kamera bewegen noch Menüs öffnen. Der Editor bleibt bedienbar: Die Statusleiste zeigt `Spielbild 37/289 · noch 4 Min.` mit einer Schaltfläche `Abbrechen`, und die Kacheln erscheinen auf der Karte, sobald sie ankommen. Ob abgebrochen oder fertig, die bis dahin aufgenommenen Kacheln bleiben. Beim Öffnen einer anderen Datei oder beim Schließen des Editors während einer Aufnahme fragt der Editor, ob sie abgebrochen werden soll.
+
+**Anzeigen.** `Ansicht → Hintergrund → Spielbild` zeigt das Bild; nach einer Aufnahme wird es automatisch gewählt. Wo nichts aufgenommen wurde, scheint das Kartenbild durch. Das Bild eines Savegames bleibt erhalten, auch wenn das Savegame gelöscht wird.
+
 ## Gebäude des Savegames
 
 Der Editor liest die Gebäude eines Savegames: die Hallen zum Parken und die Stationen, an denen Fahrzeuge laden und abladen. Das Werkzeug Erzeugen baut darauf auf.
