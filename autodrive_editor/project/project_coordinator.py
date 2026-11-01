@@ -205,11 +205,28 @@ class ProjectCoordinator(QObject):
             display_name=display_name or xml_path.stem,
         )
 
+        self._show_loaded(loaded.data, source)
+
+    def start_empty_savegame(self, config_path, display_name: str, map_name: str):
+        """Opens a savegame that has no AutoDrive data yet with an empty network. Save creates
+        its AutoDrive_config.xml."""
+
+        source = ConfigSource(
+            ConfigFormat.SAVEGAME,
+            Path(config_path).resolve(),
+            map_name=map_name or None,
+            display_name=display_name,
+        )
+        self._show_loaded(AutoDriveData(), source)
+
+    def _show_loaded(self, data: AutoDriveData, source: ConfigSource):
+        xml_path = source.path
+
         self.clear_scene_content()
 
-        self.autodrive_data = loaded.data
+        self.autodrive_data = data
         self.config_source = source
-        self._file_markers = list(loaded.data.markers.values())
+        self._file_markers = list(data.markers.values())
         self.savegame_directory = None
         self._vehicles_path = (
             xml_path.parent / "vehicles.xml" if source.format == ConfigFormat.SAVEGAME else None
@@ -476,7 +493,7 @@ class ProjectCoordinator(QObject):
         self.scene_renderer.set_costmap(costmap)
 
     def _back_up(self, path: Path):
-        if path in self._backed_up_paths:
+        if path in self._backed_up_paths or not path.is_file():
             return
 
         shutil.copy2(path, path.with_name(path.name + ".bak"))

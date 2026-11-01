@@ -4,6 +4,9 @@ The existing file is edited, so everything the editor does not know
 (e.g. the settings in a savegame config) stays as it was. Only the
 waypoints and markers are replaced.
 
+A savegame without AutoDrive data gets a new config with only version, map name, waypoints and
+markers; AutoDrive adds its settings on its next save.
+
 Node ids are written without gaps from 1, in the order of the editor's
 ids; connections and markers are renumbered to match.
 """
@@ -17,14 +20,21 @@ from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
 
 XML_DECLARATION = '<?xml version="1.0" encoding="utf-8" standalone="no"?>\n'
 
+# The AutoDrive version written into a new savegame config (the FS25 release of 2025/26).
+NEW_CONFIG_VERSION = "3.0.1.4"
+
 # Same precision as the files AutoDrive writes.
 _DECIMALS = {ConfigFormat.ROUTE_EXPORT: 2, ConfigFormat.SAVEGAME: 3}
 
 
 def save_config(data: AutoDriveData, source: ConfigSource):
-    """Writes the data into source.path in the format it was loaded from."""
+    """Writes the data into source.path in the format it was loaded from. A savegame config
+    that does not exist yet is created."""
 
-    root = ET.parse(source.path).getroot()
+    is_new = not source.path.is_file()
+    root = (
+        _new_savegame_config(source.map_name or "") if is_new else ET.parse(source.path).getroot()
+    )
     nodes = data.get_sorted_nodes()
     new_ids = {node.node_id: new_id for new_id, node in enumerate(nodes, start=1)}
 
@@ -35,7 +45,19 @@ def save_config(data: AutoDriveData, source: ConfigSource):
         _write_savegame_waypoints(root, nodes, new_ids)
         _write_savegame_markers(root, data, new_ids)
 
+    if is_new:
+        ET.indent(root, space="    ")
+
     write_xml(source.path, root)
+
+
+def _new_savegame_config(map_name: str) -> ET.Element:
+    root = ET.Element("AutoDrive")
+    ET.SubElement(root, "version").text = NEW_CONFIG_VERSION
+    ET.SubElement(root, "MapName").text = map_name
+    ET.SubElement(root, "waypoints")
+
+    return root
 
 
 def write_route_export(data: AutoDriveData, path: Path):

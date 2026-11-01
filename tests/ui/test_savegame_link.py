@@ -30,11 +30,13 @@ def link_window(window, tmp_path, monkeypatch):
 
     window.settings.set_game_folder(folder)
     window.open_savegame = False
-    monkeypatch.setattr(
-        window.files,
-        "_ask_open",
-        lambda routes, _, savegames, __: savegames[-1] if window.open_savegame else routes[0],
-    )
+
+    def ask_open():
+        lists = window.files.open_lists()
+        mein_hof = next(info for info in lists.savegames if info.name == "Mein Hof")
+        return mein_hof if window.open_savegame else lists.routes[0]
+
+    monkeypatch.setattr(window.files, "_ask_open", ask_open)
 
     window.dialogs = []
     window.route_path = folder / "modSettings/FS25_AutoDrive/routesManager/routes/route.xml"

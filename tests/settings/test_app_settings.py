@@ -260,14 +260,6 @@ def test_linked_savegame_that_is_gone_counts_as_not_linked(tmp_path):
     assert AppSettings().linked_savegame(tmp_path / "a.xml") is None
 
 
-def test_open_dialog_tab_is_kept_between_sessions():
-    assert AppSettings().open_tab == 0
-
-    AppSettings().set_open_tab(1)
-
-    assert AppSettings().open_tab == 1
-
-
 def test_parking_templates_are_kept_per_shed_type():
     AppSettings().save_parking_template("a.xml", "Big", {"bays": 2})
     AppSettings().save_parking_template("a.xml", "Small", {"bays": 5})

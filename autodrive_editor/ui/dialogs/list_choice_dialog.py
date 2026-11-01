@@ -38,13 +38,21 @@ class ChoiceTable(QTreeWidget):
             self.header().setSortIndicator(-1, Qt.SortOrder.AscendingOrder)
 
         self.setSortingEnabled(True)
+        self.set_rows(rows, sort_column, newest_first)
+
+    def set_rows(
+        self, rows: list[tuple[list[str], Any]], sort_column: int | None, newest_first: bool
+    ):
+        """Replaces the rows; the first row is selected."""
+
+        self.clear()
 
         for texts, value in rows:
             item = QTreeWidgetItem(texts)
             item.setData(0, Qt.ItemDataRole.UserRole, value)
             self.addTopLevelItem(item)
 
-        for column in range(len(columns)):
+        for column in range(self.columnCount()):
             self.resizeColumnToContents(column)
 
         if sort_column is not None:

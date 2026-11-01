@@ -12,6 +12,7 @@
 
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 from autodrive_editor.file_io.map_mod import autodrive_map_name
@@ -28,6 +29,23 @@ class SavegameInfo:
     map_title: str = ""
     map_id: str = ""
     save_date: str = ""
+
+    # When the game last saved it (time of careerSavegame.xml), 0 if unknown.
+    modified: float = 0.0
+
+    @property
+    def has_autodrive(self) -> bool:
+        return self.autodrive_config_path.is_file()
+
+    @property
+    def saved_text(self) -> str:
+        """The save time, sortable as text."""
+
+        return (
+            datetime.fromtimestamp(self.modified).strftime("%Y-%m-%d %H:%M")
+            if self.modified
+            else ""
+        )
 
     @property
     def autodrive_config_path(self) -> Path:
@@ -67,7 +85,21 @@ def read_savegame_info(directory: Path) -> SavegameInfo:
         map_title=text("mapTitle"),
         map_id=text("mapId"),
         save_date=text("saveDateFormatted"),
+        modified=career.stat().st_mtime,
     )
+
+
+def savegames(game_folder: GameFolder) -> list[SavegameInfo]:
+    """All savegames of the game folder, with or without AutoDrive data, newest first. Empty
+    slots (no careerSavegame.xml) are left out."""
+
+    infos = [
+        read_savegame_info(directory)
+        for directory in game_folder.savegame_directories()
+        if (directory / "careerSavegame.xml").is_file()
+    ]
+
+    return sorted(infos, key=lambda info: info.modified, reverse=True)
 
 
 def savegames_with_autodrive(game_folder: GameFolder) -> list[SavegameInfo]:
