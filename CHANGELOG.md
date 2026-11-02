@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Savegames open faster: the buildings read from the map and from the game's and mods' building files are kept in `%APPDATA%\AutoDrive Editor\cache` and read again only when those files change
+- When a file opens and its map's mod was updated since the map was imported, the editor offers to import it again: `Import`, `Not now` (asked again at the next start) or `Not for this version` (asked again after the next update). Maps imported with an older version are noticed from their next update on
+- Maps are imported in the background: the window keeps painting, and `Cancel` stops after the map being imported. `File → Settings → Maps` can re-import several selected maps at once (`Ctrl`/`Shift`+click), and the selected rows are clearly marked
 - Savegames are named by folder first, e.g. "savegame1 – Mein Spielstand", in the window title, status bar, `Open recent`, loading text and dialogs, so savegames with the game's default name can be told apart. The Open screen list keeps the plain name next to its number
 - While a file loads, the map shows "Loading …" and the pointer waits; at startup the window appears first, gray with the app logo instead of white. The window keeps its size, position and docks between starts, and each recent file opens where its view (position, zoom, rotation) was left. `View → Show whole map` (`Home`) replaces the unused `Reset view`
 - Save warns when the network in the file was changed since it was opened or saved, usually by the game: `Save anyway`, `Reload (my changes are lost)` or `Cancel`. A game save with the same network does not warn. `File → Reload` (`F5`) loads the open file again from disk and keeps the view; with unsaved changes it asks first
