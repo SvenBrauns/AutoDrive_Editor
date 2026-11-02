@@ -142,6 +142,7 @@ def write_xml(tmp_path):
 
 @pytest.fixture
 def window(qapp, tmp_path):
+    from PySide6.QtCore import QEvent
     from PySide6.QtWidgets import QMessageBox
 
     from autodrive_editor.project.autosave import AutosaveStore
@@ -165,6 +166,9 @@ def window(qapp, tmp_path):
 
     main_window.close()
     main_window.deleteLater()
+    # processEvents() leaves deleteLater() undone; without this, the windows of all earlier
+    # tests pile up and are deleted by the next test that runs its own event loop.
+    qapp.sendPostedEvents(None, QEvent.Type.DeferredDelete)
     qapp.processEvents()
 
 
