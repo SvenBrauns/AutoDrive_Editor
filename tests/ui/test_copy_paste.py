@@ -109,3 +109,16 @@ def test_shortcuts_are_the_usual_ones(paste_window):
     assert actions.cut_action.shortcut().toString() == "Ctrl+X"
     assert actions.paste_action.shortcut().toString() == "Ctrl+V"
     assert actions.paste_at_original_action.shortcut().toString() == "Ctrl+Shift+V"
+
+
+@pytest.mark.parametrize("keep_heights", [False, True])
+def test_keep_heights_skips_the_terrain_height(paste_window, keep_heights):
+    paste_window.clipboard_operation.terrain_height_at = lambda x, z: 42.0
+    paste_window.node_selection.replace({1})
+    paste_window.actions.copy_action.trigger()
+
+    paste_window.actions.keep_heights_action.setChecked(keep_heights)
+    paste_window.actions.paste_action.trigger()
+
+    assert paste_window.data.nodes[4].y == (paste_window.data.nodes[1].y if keep_heights else 42)
+    assert paste_window.settings.keep_paste_heights == keep_heights

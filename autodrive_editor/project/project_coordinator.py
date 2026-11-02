@@ -30,6 +30,7 @@ from autodrive_editor.file_io.savegame_buildings import SavegameBuildings, read_
 from autodrive_editor.file_io.savegame_vehicles import (
     read_park_destinations,
     renumber_vehicle_markers,
+    vehicles_losing_markers,
 )
 from autodrive_editor.i18n import tr
 from autodrive_editor.measurement.coordinator import MeasurementCoordinator
@@ -358,6 +359,14 @@ class ProjectCoordinator(QObject):
         )
 
         return affected_vehicles
+
+    def vehicles_losing_markers(self) -> list[str]:
+        """The vehicles of the loaded savegame whose marker would be deleted by saving."""
+
+        if self._vehicles_path is None or not self._vehicles_path.is_file():
+            return []
+
+        return vehicles_losing_markers(self._vehicles_path, self._marker_numbers())
 
     def _renumber_vehicle_markers(self, vehicles_path: Path) -> list[str]:
         new_numbers = self._marker_numbers()

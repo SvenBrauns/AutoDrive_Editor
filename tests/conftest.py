@@ -159,6 +159,8 @@ def window(qapp, tmp_path):
     main_window.planning._ask_end_plan = lambda: QMessageBox.Discard
     # Saving a network with problems saves without asking.
     main_window.network_check._ask_save_anyway = lambda count: True
+    # Vehicles that lose their marker target do not stop saving.
+    main_window.files._ask_save_vehicle_targets = lambda vehicles: True
     main_window.show()
     qapp.processEvents()
 

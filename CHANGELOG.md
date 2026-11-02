@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Save names the vehicles whose target marker was deleted (they would go to marker 1, a parking target is removed) and asks `Save` or `Cancel` before writing, instead of telling afterwards
+- `Edit → Keep heights when pasting` (off by default, remembered): pasted nodes keep their copied heights, e.g. on a bridge or ramp; off, they get the terrain height at the new place
+- Starting a plan backs up the edits made before it, so a crash in a long plan loses at most the plan; the plan's own edits are not backed up
 - Closing the editor while a route or junction is being searched no longer can crash it
 - Savegames open faster: the buildings read from the map and from the game's and mods' building files are kept in `%APPDATA%\AutoDrive Editor\cache` and read again only when those files change
 - When a file opens and its map's mod was updated since the map was imported, the editor offers to import it again: `Import`, `Not now` (asked again at the next start) or `Not for this version` (asked again after the next update). Maps imported with an older version are noticed from their next update on

@@ -248,6 +248,8 @@ TEXTS = {
     "Cut": "Ausschneiden",
     "Paste": "Einfügen",
     "Paste at original position": "An Originalposition einfügen",
+    "Keep heights when pasting": "Beim Einfügen Höhen beibehalten",
+    "Pasted nodes keep their copied heights, e.g. on a bridge or ramp": "Eingefügte Nodes behalten ihre kopierten Höhen, z. B. auf einer Brücke oder Rampe",
     "Draw": "Zeichnen",
     "Connect": "Verbinden",
     "Selection": "Auswahl",
@@ -465,7 +467,8 @@ TEXTS = {
     "The autosave could not be loaded:\n{error}": "Die automatische Sicherung konnte nicht geladen werden:\n{error}",
     "No game folder set": "Kein Spielordner gesetzt",
     "Not imported:": "Nicht importiert:",
-    "These vehicles had a deleted marker as their target. The target is now marker 1, a parking target was removed:": "Diese Fahrzeuge hatten einen gelöschten Marker als Ziel. Das Ziel ist jetzt Marker 1, ein Parkziel wurde entfernt:",
+    "These vehicles have a deleted marker as their target. Saving sets the target to marker 1 and removes a parking target:": "Diese Fahrzeuge haben einen gelöschten Marker als Ziel. Beim Speichern wird das Ziel auf Marker 1 gesetzt und ein Parkziel entfernt:",
+    "Save anyway?": "Trotzdem speichern?",
     "Game folder: {path}": "Spielordner: {path}",
     "The game folder is not an FS25 user folder: {path}": "Spielordner ist kein FS25-Benutzerordner: {path}",
     # ui/map_view

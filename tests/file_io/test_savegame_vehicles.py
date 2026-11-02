@@ -1,6 +1,7 @@
 from autodrive_editor.file_io.savegame_vehicles import (
     read_park_destinations,
     renumber_vehicle_markers,
+    vehicles_losing_markers,
 )
 
 VEHICLES = (
@@ -45,6 +46,13 @@ def test_deleted_marker_resets_targets_and_removes_park_destination(tmp_path):
     text = path.read_text(encoding="utf-8-sig")
     assert 'firstMarker="2" secondMarker="1" driverName="1050 Vario"' in text
     assert "<AutoDrive/>" in text
+
+
+def test_vehicles_losing_markers_are_named_without_changing_the_file(tmp_path):
+    path = write_vehicles(tmp_path)
+
+    assert vehicles_losing_markers(path, {1: 1, 2: 2, 3: None}) == ["1050 Vario", "wagonGrainEU"]
+    assert path.read_bytes() == VEHICLES.encode("utf-8")
 
 
 def test_unchanged_numbers_leave_the_file_alone(tmp_path):

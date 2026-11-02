@@ -91,6 +91,7 @@ class FileController(QObject):
         self.autosave_timer = QTimer(self)
         self.autosave_timer.timeout.connect(self.autosave)
         self.apply_autosave_interval()
+        edit_history.planning_changed.connect(self._handle_planning_changed)
 
     def open(self):
         """File → Open…: the Open screen as a dialog."""
@@ -315,13 +316,18 @@ class FileController(QObject):
         if not self.confirm_save():
             return False
 
+        vehicles = self.project_coordinator.vehicles_losing_markers()
+
+        if vehicles and not self._ask_save_vehicle_targets(vehicles):
+            return False
+
         try:
-            affected_vehicles = self.project_coordinator.save_xml_file()
+            self.project_coordinator.save_xml_file()
         except Exception as ex:
             self._inform(tr("The AutoDrive data could not be saved:\n{error}", error=ex))
             return False
 
-        self._after_save(affected_vehicles)
+        self._after_save()
 
         return True
 
@@ -426,7 +432,7 @@ class FileController(QObject):
 
         # A savegame stays open with its own unsaved state.
         if source.format != ConfigFormat.SAVEGAME:
-            self._after_save([])
+            self._after_save()
 
         return True
 
@@ -541,20 +547,27 @@ class FileController(QObject):
 
         return answer == QMessageBox.Yes
 
-    def _after_save(self, affected_vehicles: list[str]):
+    def _after_save(self):
         self.edit_history.mark_clean()
         self.autosave_store.clear()
         self.saved.emit()
 
-        if affected_vehicles:
-            self._inform(
-                tr(
-                    "These vehicles had a deleted marker as their target. The target is now "
-                    "marker 1, a parking target was removed:"
-                )
-                + "\n\n"
-                + "\n".join(affected_vehicles)
+    def _ask_save_vehicle_targets(self, vehicles: list[str]) -> bool:
+        text = (
+            tr(
+                "These vehicles have a deleted marker as their target. Saving sets the target "
+                "to marker 1 and removes a parking target:"
             )
+            + "\n\n"
+            + "\n".join(vehicles)
+            + "\n\n"
+            + tr("Save anyway?")
+        )
+        answer = QMessageBox.question(
+            self.window, APP_TITLE, text, QMessageBox.Save | QMessageBox.Cancel, QMessageBox.Cancel
+        )
+
+        return answer == QMessageBox.Save
 
     def _ask_route_name(self, default_name: str) -> str | None:
         name, accepted = QInputDialog.getText(
@@ -564,16 +577,19 @@ class FileController(QObject):
         return name.strip() if accepted else None
 
     def autosave(self):
-        """Backs up unsaved changes into the editor's data folder."""
+        """Backs up unsaved changes into the editor's data folder. The edits of an open plan
+        are left out: the timer waits while planning, the edits before the plan were backed
+        up when it started."""
 
-        # Paused while a plan is open: only applied plans are backed up.
-        history = self.edit_history
+        if not self.edit_history.is_planning:
+            self._write_autosave()
 
-        if (
-            self.project_coordinator.config_source is None
-            or history.is_clean
-            or history.is_planning
-        ):
+    def _handle_planning_changed(self, planning: bool):
+        if planning and self.autosave_timer.isActive():
+            self._write_autosave()
+
+    def _write_autosave(self):
+        if self.project_coordinator.config_source is None or self.edit_history.is_clean:
             return
 
         try:
