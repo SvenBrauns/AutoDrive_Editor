@@ -1,9 +1,21 @@
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 
-from PySide6.QtCore import QPoint, QRectF, Qt, Signal
-from PySide6.QtGui import QCursor, QKeyEvent, QMouseEvent, QResizeEvent, QWheelEvent
-from PySide6.QtWidgets import QGraphicsView
+from PySide6.QtCore import QPoint, QRect, QRectF, Qt, Signal
+from PySide6.QtGui import (
+    QColor,
+    QCursor,
+    QIcon,
+    QKeyEvent,
+    QMouseEvent,
+    QPainter,
+    QResizeEvent,
+    QWheelEvent,
+)
+from PySide6.QtWidgets import QApplication, QGraphicsView, QWidget
 
+from autodrive_editor.paths import APP_ICON_PATH
+from autodrive_editor.settings.view_state import ViewState
 from autodrive_editor.ui.map_view.rotation_controller import ViewRotationController
 from autodrive_editor.ui.map_view.zoom_controller import ViewZoomController
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
@@ -15,6 +27,15 @@ class MapView(QGraphicsView):
     """The map. Zooming with the wheel and rotating with the middle
     button work for every tool. Everything else is forwarded to the
     active MapTool."""
+
+    # Shown while nothing is loaded: the app logo, faded, on gray. Widgets on the map, such as
+    # the Open screen, hide the logo.
+    EMPTY_COLOR = QColor(80, 80, 80)
+    LOGO_SIZE = 192
+    LOGO_OPACITY = 0.3
+
+    NOTICE_COLOR = QColor(0, 0, 0, 170)
+    NOTICE_PIXEL_SIZE = 16
 
     zoom_changed = Signal(float)
 
@@ -45,6 +66,13 @@ class MapView(QGraphicsView):
         self._node_finder: Callable[[QPoint], object | None] = lambda view_position: None
 
         self._configure_view()
+
+        # Until a file is shown.
+        self.logo_visible = True
+        self._logo = QIcon(str(APP_ICON_PATH))
+
+        # Drawn in the middle of the map while a file loads.
+        self.notice_text = ""
 
         self._zoom_controller = ViewZoomController(view=self, parent=self)
 
@@ -103,6 +131,94 @@ class MapView(QGraphicsView):
 
         if interaction_mode == self._interaction_mode:
             tool.activate()
+
+    def view_state(self) -> ViewState:
+        center = self.mapToScene(self.viewport().rect().center())
+
+        return ViewState(center.x(), center.y(), self.zoom_level, self.rotation_angle)
+
+    def show_view_state(self, state: ViewState):
+        self.set_exact_rotation_angle(state.rotation)
+        self.set_zoom_level(state.zoom)
+        self.centerOn(state.x, state.z)
+
+    def set_logo_visible(self, visible: bool):
+        self.logo_visible = visible
+        self.viewport().update()
+
+    @contextmanager
+    def busy(self, text: str) -> Iterator[None]:
+        """Wait cursor and the text in the middle of the map while the block runs. The window
+        is painted first, because the block keeps it from painting."""
+
+        self.notice_text = text
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        self.window().repaint()
+        # The window's repaint brings only part of the map to the screen.
+        self.viewport().repaint()
+
+        try:
+            yield
+        finally:
+            QApplication.restoreOverrideCursor()
+            self.notice_text = ""
+            self.viewport().update()
+
+    def _logo_shown(self) -> bool:
+        children = self.viewport().findChildren(QWidget, options=Qt.FindDirectChildrenOnly)
+        covered = any(child.isVisible() for child in children)
+
+        return self.logo_visible and not covered
+
+    def _logo_rect(self) -> QRect:
+        rect = QRect(0, 0, self.LOGO_SIZE, self.LOGO_SIZE)
+        rect.moveCenter(self.viewport().rect().center())
+        return rect
+
+    def _draw_notice(self, painter: QPainter):
+        """A dark box with the text, below the logo or in the middle of the map."""
+
+        font = painter.font()
+        font.setPixelSize(self.NOTICE_PIXEL_SIZE)
+        painter.setFont(font)
+
+        rect = painter.fontMetrics().boundingRect(self.notice_text).adjusted(-20, -12, 20, 12)
+        rect.moveCenter(self.viewport().rect().center())
+
+        if self._logo_shown():
+            rect.moveTop(self._logo_rect().bottom() + 24)
+
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(self.NOTICE_COLOR)
+        painter.drawRoundedRect(rect, 6, 6)
+        painter.setPen(Qt.white)
+        painter.drawText(rect, Qt.AlignCenter, self.notice_text)
+
+    def drawBackground(self, painter: QPainter, rect: QRectF):
+        if not self.logo_visible:
+            super().drawBackground(painter, rect)
+            return
+
+        painter.fillRect(rect, self.EMPTY_COLOR)
+
+        if not self._logo_shown():
+            return
+
+        painter.save()
+        painter.resetTransform()
+        painter.setOpacity(self.LOGO_OPACITY)
+        self._logo.paint(painter, self._logo_rect())
+        painter.restore()
+
+    def drawForeground(self, painter: QPainter, rect: QRectF):
+        super().drawForeground(painter, rect)
+
+        if self.notice_text:
+            painter.save()
+            painter.resetTransform()
+            self._draw_notice(painter)
+            painter.restore()
 
     def set_zoom_level(self, zoom_level):
         self._zoom_controller.set_zoom_level(zoom_level)
@@ -198,6 +314,9 @@ class MapView(QGraphicsView):
         self.translate(delta.x(), delta.y())
 
         self._zoom_controller.schedule_viewport_update()
+
+        if self.logo_visible:
+            self.viewport().update()
 
     def mousePressEvent(self, event: QMouseEvent):
         mouse_position = event.position().toPoint()

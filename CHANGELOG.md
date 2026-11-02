@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- While a file loads, the map shows "Loading …" and the pointer waits; at startup the window appears first, gray with the app logo instead of white. The window keeps its size, position and docks between starts, and each recent file opens where its view (position, zoom, rotation) was left. `View → Show whole map` (`Home`) replaces the unused `Reset view`
 - Save warns when the network in the file was changed since it was opened or saved, usually by the game: `Save anyway`, `Reload (my changes are lost)` or `Cancel`. A game save with the same network does not warn. `File → Reload` (`F5`) loads the open file again from disk and keeps the view; with unsaved changes it asks first
 - Find route: the waypoint under the pointer is highlighted and `Delete` removes it (the selection stays); the options bar has `Remove last (Backspace)` and `Clear (Esc)`. `Ctrl+Z` first takes back waypoint changes (add, move, remove) of the route being built, then the plan's edits. After `Enter` the tool starts empty
 - Capture game picture: afterwards the game gets its weather back and its time continues from the old time (old time plus the capture's duration), also after Cancel or an error. Needs the updated companion mod

@@ -44,6 +44,8 @@ Doppelklick auf einen Eintrag oder `Öffnen` öffnet ihn. Ohne Spielordner oder 
 - **Fenster** rechts: `Inspektor` (die ausgewählte Node: Typ, Koordinaten, Marker, Höhe aus der Datei und aus der Heightmap; sonst „Nichts ausgewählt“) und `Marker` (alle Markergruppen; Doppelklick zentriert einen Marker) teilen sich einen Platz als Reiter. Das Fenster `Netzprüfung` öffnet sich mit `Prüfen → Netz prüfen`. `Ansicht` blendet die Fenster ein und aus; `Hilfe → Debuganzeige` zeigt Laufzeitwerte.
 - **Statusleiste** unten: was das aktive Werkzeug als Nächstes erwartet, und die Ergebnisse von Speichern und Prüfen.
 
+**Gemerkt.** Das Fenster behält Größe, Position und Fenster rechts zwischen den Starts. Jede Datei unter `Datei → Zuletzt geöffnet` öffnet dort, wo ihre Ansicht zuletzt war (Position, Zoom, Drehung); eine zum ersten Mal geöffnete Datei zeigt das ganze Netz. `Ansicht → Ganze Karte anzeigen` (`Pos1`) passt das Netz ins Fenster ein und setzt die Drehung zurück. Während eine Datei lädt, zeigt die Karte „… wird geladen…“ und der Mauszeiger wartet.
+
 Maus: Das **Mausrad** zoomt, **linkes Ziehen** auf freier Fläche verschiebt die Karte in jedem Werkzeug, **mittleres Ziehen** dreht die Ansicht. **Rechtsklick** oder **Esc** bricht den aktuellen Schritt eines Werkzeugs ab; **Enter** bestätigt ihn (zum Beispiel bei Kurven).
 
 ## Werkzeuge

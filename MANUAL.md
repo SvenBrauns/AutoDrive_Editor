@@ -44,6 +44,8 @@ Double-click an entry or press `Open`. Without a game folder or savegames the sc
 - **Docks** at the right: `Inspector` (the selected node: type, coordinates, marker, height from the file and from the heightmap; "Nothing selected" otherwise) and `Markers` (all marker groups; double-click centers a marker) share one place as tabs. The `Network check` dock opens with `Check → Check network`. `View` switches the docks on and off; `Help → Debug info` shows runtime numbers.
 - **Status bar** at the bottom: what the active tool expects next, and the results of saving and checking.
 
+**Remembered.** The window keeps its size, position and docks between starts. Each file in `File → Open recent` opens where its view was left (position, zoom, rotation); a file opened for the first time shows the whole network. `View → Show whole map` (`Home`) fits the network into the window and resets the rotation. While a file loads, the map shows "Loading …" and the pointer waits.
+
 Mouse: the **wheel** zooms, **left drag** on free ground moves the map in every tool, **middle drag** rotates the view. **Right click** or **Esc** cancels the current step of a tool; **Enter** confirms it (for example for curves).
 
 ## Tools

@@ -105,7 +105,7 @@ class MainWindowActions:
                     "background_ground",
                     "background_picture",
                 )
-                + ("reset_view", "reset_rotation"),
+                + ("show_whole_map", "reset_rotation"),
             ),
             (tr("Check"), ("check_network",)),
             (tr("Generate"), ("building_types",)),
@@ -322,9 +322,10 @@ class MainWindowActions:
             Background.PICTURE: self.background_picture_action,
         }
 
-        self.reset_view_action = QAction(tr("Reset view"), self.window)
-
-        self.reset_view_action.setEnabled(False)
+        self.show_whole_map_action = QAction(tr("Show whole map"), self.window)
+        self.show_whole_map_action.setShortcut(QKeySequence("Home"))
+        self.show_whole_map_action.setEnabled(False)
+        self.show_whole_map_action.triggered.connect(self.window.project_coordinator.show_whole_map)
 
         self.reset_rotation_action = QAction(tr("Reset rotation"), self.window)
 
@@ -598,7 +599,7 @@ class MainWindowActions:
 
         view_menu.addSeparator()
 
-        view_menu.addAction(self.reset_view_action)
+        view_menu.addAction(self.show_whole_map_action)
 
         view_menu.addAction(self.reset_rotation_action)
 

@@ -1,5 +1,6 @@
 import html
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import AbstractContextManager, contextmanager, nullcontext
 from datetime import datetime
 from pathlib import Path
 
@@ -80,6 +81,9 @@ class FileController(QObject):
         # Asked first before the data would be replaced or the editor closed; False cancels.
         self.confirm_end_plan: Callable[[], bool] = lambda: True
         self.confirm_end_capture: Callable[[], bool] = lambda: True
+
+        # Shows a text on the map and a wait cursor while the block runs.
+        self.busy: Callable[[str], AbstractContextManager] = lambda text: nullcontext()
 
         # Unsaved changes are backed up here regularly.
         self.autosave_store = autosave_store
@@ -209,7 +213,8 @@ class FileController(QObject):
 
     def _load_xml(self, filename):
         try:
-            self.project_coordinator.load_xml_file(filename)
+            with self._loading(Path(filename).name):
+                self.project_coordinator.load_xml_file(filename)
 
         except Exception as ex:
             self.status_changed.emit(tr("The XML could not be loaded: {error}", error=ex))
@@ -221,15 +226,28 @@ class FileController(QObject):
 
     def _load_config(self, path, display_name=None, map_name=None) -> bool:
         try:
-            self.project_coordinator.load_xml_file(
-                path, display_name=display_name, map_name=map_name
-            )
+            with self._loading(display_name or Path(path).name):
+                self.project_coordinator.load_xml_file(
+                    path, display_name=display_name, map_name=map_name
+                )
         except Exception as ex:
             self._inform(tr("The AutoDrive data could not be loaded:\n{error}", error=ex))
             return False
 
         self.config_opened.emit()
         return True
+
+    @contextmanager
+    def _loading(self, name: str) -> Iterator[None]:
+        text = tr("Loading “{name}”…", name=name)
+        self.status_changed.emit(text)
+
+        try:
+            with self.busy(text):
+                yield
+        except Exception:
+            self.status_changed.emit(tr("“{name}” could not be loaded", name=name))
+            raise
 
     def open_recent(self, item: RecentItem):
         """Opens a file from the recent list. A file that is gone is removed
@@ -358,7 +376,8 @@ class FileController(QObject):
 
     def _reload(self):
         try:
-            self.project_coordinator.reload_file()
+            with self._loading(self.project_coordinator.config_source.display_name):
+                self.project_coordinator.reload_file()
         except Exception as ex:
             self._inform(tr("The AutoDrive data could not be loaded:\n{error}", error=ex))
             return
@@ -587,7 +606,8 @@ class FileController(QObject):
             return
 
         try:
-            self.project_coordinator.restore_autosave(self.autosave_store, info)
+            with self._loading(info.display_name):
+                self.project_coordinator.restore_autosave(self.autosave_store, info)
         except Exception as ex:
             self._inform(tr("The autosave could not be loaded:\n{error}", error=ex))
             return

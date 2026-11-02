@@ -5,7 +5,7 @@ import os
 from dataclasses import fields
 from pathlib import Path
 
-from PySide6.QtCore import QSettings
+from PySide6.QtCore import QByteArray, QSettings
 
 from autodrive_editor.editing.junction import LANE_GAP, Stem
 from autodrive_editor.editing.junction_box import Style
@@ -20,6 +20,7 @@ from autodrive_editor.model.connections import ConnectionType
 from autodrive_editor.paths import user_data_directory
 from autodrive_editor.rendering.visibility import Visibility
 from autodrive_editor.settings.recent_items import RecentItem
+from autodrive_editor.settings.view_state import ViewState
 from autodrive_editor.terrain.background_map import Background
 
 
@@ -56,6 +57,9 @@ class AppSettings:
     JUNCTION_GAP_KEY = "junction/lane_gap"
     JUNCTION_STYLE_KEY = "junction/style"
     RECENT_ITEMS_KEY = "app/recent_items"
+    WINDOW_GEOMETRY_KEY = "window/geometry"
+    WINDOW_STATE_KEY = "window/state"
+    FILE_VIEWS_KEY = "view/file_views"
     LANGUAGE_KEY = "app/language"
     CHECK_OVERLAP_KEY = "check/overlap_tolerance"
     CHECK_HEIGHT_KEY = "check/max_height_difference"
@@ -342,6 +346,57 @@ class AppSettings:
             self.RECENT_ITEMS_KEY, json.dumps([item.to_dict() for item in items])
         )
         self._settings.sync()
+
+    @property
+    def window_layout(self) -> tuple[QByteArray, QByteArray]:
+        """Window size and position, and the panels and toolbars; empty until first saved."""
+
+        geometry = self._settings.value(self.WINDOW_GEOMETRY_KEY, QByteArray())
+        state = self._settings.value(self.WINDOW_STATE_KEY, QByteArray())
+
+        return (
+            geometry if isinstance(geometry, QByteArray) else QByteArray(),
+            state if isinstance(state, QByteArray) else QByteArray(),
+        )
+
+    def set_window_layout(self, geometry: QByteArray, state: QByteArray):
+        self._settings.setValue(self.WINDOW_GEOMETRY_KEY, geometry)
+        self._settings.setValue(self.WINDOW_STATE_KEY, state)
+        self._settings.sync()
+
+    def file_view(self, path) -> ViewState | None:
+        """Where the view of this file was when it was last left."""
+
+        try:
+            return ViewState.from_dict(self._json_dict(self.FILE_VIEWS_KEY)[_file_key(path)])
+        except (KeyError, TypeError, ValueError):
+            return None
+
+    def set_file_view(self, path, view: ViewState):
+        """Keeps the view of this file. Views are kept only for files in the recent list."""
+
+        recent = {_file_key(item.path) for item in self.recent_items}
+        views = {
+            key: value
+            for key, value in self._json_dict(self.FILE_VIEWS_KEY).items()
+            if key in recent
+        }
+
+        key = _file_key(path)
+
+        if key in recent:
+            views[key] = view.to_dict()
+
+        self._settings.setValue(self.FILE_VIEWS_KEY, json.dumps(views))
+        self._settings.sync()
+
+    def _json_dict(self, key: str) -> dict:
+        try:
+            values = json.loads(self._settings.value(key, "{}"))
+        except (TypeError, ValueError):
+            return {}
+
+        return values if isinstance(values, dict) else {}
 
     def file_map(self, path) -> str | None:
         """The map chosen with "Use this map for the open file" for this file (AutoDrive name)."""

@@ -134,7 +134,16 @@ class MapImportController(QObject):
         if not name or self.map_cache.find(name) is not None or name in self.declined_missing_maps:
             return
 
-        found = self._find_map(source) or self._ask_map_not_found(name)
+        found = self._find_map(source)
+
+        if found is None:
+            # The question comes while the file loads, under its wait cursor.
+            QApplication.setOverrideCursor(Qt.ArrowCursor)
+
+            try:
+                found = self._ask_map_not_found(name)
+            finally:
+                QApplication.restoreOverrideCursor()
 
         if found is None:
             self.declined_missing_maps.add(name)

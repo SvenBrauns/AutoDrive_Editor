@@ -36,6 +36,7 @@ from autodrive_editor.model.autodrive_data import AutoDriveData, MarkerData
 from autodrive_editor.project.autosave import AutosaveInfo, AutosaveStore
 from autodrive_editor.rendering.scene_renderer import SceneRenderer
 from autodrive_editor.selection.selection_coordinator import SelectionCoordinator
+from autodrive_editor.settings.view_state import ViewState
 from autodrive_editor.terrain.background_map import BackgroundMap, map_scale_for_extent
 from autodrive_editor.terrain.game_picture import find_picture, savegame_key
 from autodrive_editor.terrain.heightmap import Heightmap
@@ -97,6 +98,10 @@ class ProjectCoordinator(QObject):
 
         # Called with the source of a file about to be shown; imports its map if it is missing.
         self.prepare_map: Callable[[ConfigSource], None] = lambda source: None
+
+        # Where the view of a file was when it was last left, and keeping it.
+        self.view_for_file: Callable[[Path], ViewState | None] = lambda path: None
+        self.keep_view: Callable[[Path, ViewState], None] = lambda path, view: None
 
         self.autodrive_data: AutoDriveData | None = None
 
@@ -229,6 +234,7 @@ class ProjectCoordinator(QObject):
     def _show_loaded(self, data: AutoDriveData, source: ConfigSource):
         xml_path = source.path
 
+        self.remember_view()
         self.clear_scene_content()
 
         self.autodrive_data = data
@@ -252,7 +258,12 @@ class ProjectCoordinator(QObject):
         self.selection_coordinator.synchronize()
 
         self.update_scene_rect()
-        self.fit_scene_in_view()
+        view = self.view_for_file(xml_path)
+
+        if view is None:
+            self.fit_scene_in_view()
+        else:
+            self.view.show_view_state(view)
 
         self.measurement_coordinator.restore_scene_items()
 
@@ -522,6 +533,16 @@ class ProjectCoordinator(QObject):
         scene_rect = self.scene.itemsBoundingRect()
 
         self.scene.setSceneRect(scene_rect)
+
+    def remember_view(self):
+        """Keeps where the view of the open file is, so the file opens there next time."""
+
+        if self.config_source is not None:
+            self.keep_view(self.config_source.path, self.view.view_state())
+
+    def show_whole_map(self):
+        self.view.reset_view_rotation()
+        self.fit_scene_in_view()
 
     def fit_scene_in_view(self):
         scene_rect = self.scene.sceneRect()

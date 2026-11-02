@@ -1,3 +1,6 @@
+from collections.abc import Iterator
+from contextlib import contextmanager
+
 from PySide6.QtCore import QEventLoop, Qt
 from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import (
@@ -190,8 +193,33 @@ class MainWindow(QMainWindow):
         # dock reads the renderer state after it has been updated.
         self._create_debug_dock_coordinator()
 
+        self._restore_layout()
+
+    @contextmanager
+    def _loading(self, text: str) -> Iterator[None]:
+        """The Open screen makes room for the loading text; it comes back if loading fails."""
+
+        open_screen_visible = self.open_screen.isVisible()
+        self.open_screen.hide()
+
+        try:
+            with self.view.busy(text):
+                yield
+        except Exception:
+            self.open_screen.setVisible(open_screen_visible)
+            raise
+
+    def _restore_layout(self):
+        """Size, position and panels as they were when the window was last closed."""
+
+        geometry, state = self.settings.window_layout
+        self.restoreGeometry(geometry)
+        self.restoreState(state)
+
     def closeEvent(self, event):
         if self.files.confirm_discard_changes() and self.picture_capture.confirm_stop():
+            self.settings.set_window_layout(self.saveGeometry(), self.saveState())
+            self.project_coordinator.remember_view()
             event.accept()
         else:
             event.ignore()
@@ -648,6 +676,8 @@ class MainWindow(QMainWindow):
             game_files=self._game_files,
             parent=self,
         )
+        self.project_coordinator.view_for_file = self.settings.file_view
+        self.project_coordinator.keep_view = self.settings.set_file_view
 
     def _plan_node_ids(self) -> set[int]:
         changes = self.planning.changes
@@ -672,6 +702,7 @@ class MainWindow(QMainWindow):
             AutosaveStore(user_data_directory() / "autosave"),
         )
         self.files.open_settings = self.open_settings
+        self.files.busy = self._loading
 
         self.map_import = MapImportController(
             self, self.settings, self.map_cache, self.project_coordinator
@@ -1261,6 +1292,8 @@ class MainWindow(QMainWindow):
 
         self.setWindowModified(False)
         self.actions.reload_action.setEnabled(True)
+        self.actions.show_whole_map_action.setEnabled(True)
+        self.view.set_logo_visible(False)
         self.actions.save_xml_action.setEnabled(True)
         self.actions.save_xml_as_action.setEnabled(True)
         source = self.project_coordinator.config_source

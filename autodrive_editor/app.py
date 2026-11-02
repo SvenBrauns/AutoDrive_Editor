@@ -48,6 +48,8 @@ def run() -> int:
 
     window = MainWindow()
     window.show()
+    # Puts the window on screen now: the file opened at startup keeps it from painting.
+    app.processEvents()
 
     # After the window is visible, so the setup dialog appears on top of it.
     QTimer.singleShot(0, window.map_import.run_first_start)
