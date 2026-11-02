@@ -1,3 +1,6 @@
+from collections.abc import Iterator
+from contextlib import contextmanager
+
 from PySide6.QtCore import QEventLoop, Qt
 from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import (
@@ -191,6 +194,20 @@ class MainWindow(QMainWindow):
         self._create_debug_dock_coordinator()
 
         self._restore_layout()
+
+    @contextmanager
+    def _loading(self, text: str) -> Iterator[None]:
+        """The Open screen makes room for the loading text; it comes back if loading fails."""
+
+        open_screen_visible = self.open_screen.isVisible()
+        self.open_screen.hide()
+
+        try:
+            with self.view.busy(text):
+                yield
+        except Exception:
+            self.open_screen.setVisible(open_screen_visible)
+            raise
 
     def _restore_layout(self):
         """Size, position and panels as they were when the window was last closed."""
@@ -685,7 +702,7 @@ class MainWindow(QMainWindow):
             AutosaveStore(user_data_directory() / "autosave"),
         )
         self.files.open_settings = self.open_settings
-        self.files.busy = self.view.busy
+        self.files.busy = self._loading
 
         self.map_import = MapImportController(
             self, self.settings, self.map_cache, self.project_coordinator

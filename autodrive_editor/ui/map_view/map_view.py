@@ -12,7 +12,7 @@ from PySide6.QtGui import (
     QResizeEvent,
     QWheelEvent,
 )
-from PySide6.QtWidgets import QApplication, QGraphicsView, QLabel
+from PySide6.QtWidgets import QApplication, QGraphicsView, QWidget
 
 from autodrive_editor.paths import APP_ICON_PATH
 from autodrive_editor.settings.view_state import ViewState
@@ -28,15 +28,14 @@ class MapView(QGraphicsView):
     button work for every tool. Everything else is forwarded to the
     active MapTool."""
 
-    # Shown while nothing is loaded: the app logo, faded, on gray.
+    # Shown while nothing is loaded: the app logo, faded, on gray. Widgets on the map, such as
+    # the Open screen, hide the logo.
     EMPTY_COLOR = QColor(80, 80, 80)
     LOGO_SIZE = 192
     LOGO_OPACITY = 0.3
 
-    NOTICE_STYLE = (
-        "background: rgba(0, 0, 0, 170); color: white; font-size: 16px;"
-        "padding: 12px 20px; border-radius: 6px;"
-    )
+    NOTICE_COLOR = QColor(0, 0, 0, 170)
+    NOTICE_PIXEL_SIZE = 16
 
     zoom_changed = Signal(float)
 
@@ -72,9 +71,8 @@ class MapView(QGraphicsView):
         self.logo_visible = True
         self._logo = QIcon(str(APP_ICON_PATH))
 
-        self._notice = QLabel(self.viewport())
-        self._notice.setStyleSheet(self.NOTICE_STYLE)
-        self._notice.hide()
+        # Drawn in the middle of the map while a file loads.
+        self.notice_text = ""
 
         self._zoom_controller = ViewZoomController(view=self, parent=self)
 
@@ -153,32 +151,49 @@ class MapView(QGraphicsView):
         """Wait cursor and the text in the middle of the map while the block runs. The window
         is painted first, because the block keeps it from painting."""
 
-        self._notice.setText(text)
-        self._notice.adjustSize()
-        self._place_notice()
-        self._notice.show()
+        self.notice_text = text
         QApplication.setOverrideCursor(Qt.WaitCursor)
         self.window().repaint()
+        # The window's repaint brings only part of the map to the screen.
+        self.viewport().repaint()
 
         try:
             yield
         finally:
             QApplication.restoreOverrideCursor()
-            self._notice.hide()
+            self.notice_text = ""
+            self.viewport().update()
+
+    def _logo_shown(self) -> bool:
+        children = self.viewport().findChildren(QWidget, options=Qt.FindDirectChildrenOnly)
+        covered = any(child.isVisible() for child in children)
+
+        return self.logo_visible and not covered
 
     def _logo_rect(self) -> QRect:
         rect = QRect(0, 0, self.LOGO_SIZE, self.LOGO_SIZE)
         rect.moveCenter(self.viewport().rect().center())
         return rect
 
-    def _place_notice(self):
-        rect = self._notice.rect()
+    def _draw_notice(self, painter: QPainter):
+        """A dark box with the text, below the logo or in the middle of the map."""
+
+        font = painter.font()
+        font.setPixelSize(self.NOTICE_PIXEL_SIZE)
+        painter.setFont(font)
+
+        rect = painter.fontMetrics().boundingRect(self.notice_text).adjusted(-20, -12, 20, 12)
         rect.moveCenter(self.viewport().rect().center())
 
-        if self.logo_visible:
+        if self._logo_shown():
             rect.moveTop(self._logo_rect().bottom() + 24)
 
-        self._notice.move(rect.topLeft())
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(self.NOTICE_COLOR)
+        painter.drawRoundedRect(rect, 6, 6)
+        painter.setPen(Qt.white)
+        painter.drawText(rect, Qt.AlignCenter, self.notice_text)
 
     def drawBackground(self, painter: QPainter, rect: QRectF):
         if not self.logo_visible:
@@ -186,11 +201,24 @@ class MapView(QGraphicsView):
             return
 
         painter.fillRect(rect, self.EMPTY_COLOR)
+
+        if not self._logo_shown():
+            return
+
         painter.save()
         painter.resetTransform()
         painter.setOpacity(self.LOGO_OPACITY)
         self._logo.paint(painter, self._logo_rect())
         painter.restore()
+
+    def drawForeground(self, painter: QPainter, rect: QRectF):
+        super().drawForeground(painter, rect)
+
+        if self.notice_text:
+            painter.save()
+            painter.resetTransform()
+            self._draw_notice(painter)
+            painter.restore()
 
     def set_zoom_level(self, zoom_level):
         self._zoom_controller.set_zoom_level(zoom_level)

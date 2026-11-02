@@ -14,13 +14,11 @@ def test_logo_is_shown_until_a_file_is_loaded(window, write_xml, qapp):
 
 
 def test_busy_shows_the_text_and_a_wait_cursor_during_the_block(window):
-    notice = window.view._notice
-
     with window.view.busy("Loading “a”…"):
-        assert notice.isVisible() and notice.text() == "Loading “a”…"
+        assert window.view.notice_text == "Loading “a”…"
         assert QApplication.overrideCursor().shape() == Qt.WaitCursor
 
-    assert not notice.isVisible()
+    assert window.view.notice_text == ""
     assert QApplication.overrideCursor() is None
 
 
@@ -28,5 +26,5 @@ def test_busy_ends_when_the_block_fails(window):
     with pytest.raises(ValueError), window.view.busy("Loading"):
         raise ValueError
 
-    assert not window.view._notice.isVisible()
+    assert window.view.notice_text == ""
     assert QApplication.overrideCursor() is None
