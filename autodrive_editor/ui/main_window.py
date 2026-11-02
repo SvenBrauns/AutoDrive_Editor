@@ -1237,6 +1237,7 @@ class MainWindow(QMainWindow):
         self.files.saved.connect(self._update_window_title)
 
         self.map_import.status_changed.connect(self._set_status)
+        self.files.config_opened.connect(self.map_import.offer_update)
 
         self.picture_capture.status_changed.connect(self._set_status)
         self.reload.status_changed.connect(self._set_status)

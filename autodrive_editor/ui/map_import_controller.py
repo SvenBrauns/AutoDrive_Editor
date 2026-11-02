@@ -4,7 +4,7 @@ from PySide6.QtCore import QObject, Qt, Signal
 from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox, QProgressDialog, QWidget
 
 from autodrive_editor.file_io.autodrive_xml import ConfigFormat, ConfigSource
-from autodrive_editor.file_io.base_game_maps import read_base_game_maps
+from autodrive_editor.file_io.base_game_maps import open_mod_archive, read_base_game_maps
 from autodrive_editor.file_io.map_mod import MapMod, read_map_mod
 from autodrive_editor.game.map_source import (
     READ_ERRORS,
@@ -18,7 +18,7 @@ from autodrive_editor.i18n import tr
 from autodrive_editor.project.project_coordinator import ProjectCoordinator
 from autodrive_editor.settings.app_settings import AppSettings
 from autodrive_editor.terrain.game_picture import PICTURE_FOLDER
-from autodrive_editor.terrain.map_cache import CachedMap, MapCache, folder_size
+from autodrive_editor.terrain.map_cache import CachedMap, MapCache, folder_size, map_stamp
 from autodrive_editor.ui.dialogs.first_start_dialog import FirstStartDialog
 from autodrive_editor.ui.dialogs.messages import APP_TITLE, inform
 
@@ -45,6 +45,8 @@ class MapImportController(QObject):
 
         # Missing maps that were not found or not imported in this session; not asked again.
         self.declined_missing_maps = set()
+        # Imported maps whose mod update was not imported now (source_key); not asked again.
+        self.postponed_updates = set()
 
     def import_map_mod(self):
         map_mod = self._choose_map_mod()
@@ -77,6 +79,66 @@ class MapImportController(QObject):
             return False
 
         return bool(self._import_maps([found]))
+
+    def offer_update(self):
+        """After a file was opened: offers to import its map again if the map's mod changed
+        since it was imported."""
+
+        cached = self.project_coordinator.loaded_map()
+
+        if cached is None or cached.source_key in self.postponed_updates:
+            return
+
+        game_folder = self.settings.game_folder
+        mods = game_folder.mods_directory if game_folder is not None else None
+        found = find_import_source(cached, mods, self._read_base_game_maps())
+
+        if found is None:
+            return
+
+        try:
+            with open_mod_archive(found[0]) as archive:
+                stamp = map_stamp(archive, found[1])
+        except READ_ERRORS:
+            return
+
+        if stamp is None or stamp in (cached.source_stamp, cached.declined_stamp):
+            return
+
+        # Imported before the editor stored the stamp: from now on an update is noticed.
+        if cached.source_stamp is None:
+            self.map_cache.record_stamp(cached, stamp)
+            return
+
+        answer = self._ask_update(cached.title)
+
+        if answer == "import":
+            self._import_maps([found])
+        elif answer == "later":
+            self.postponed_updates.add(cached.source_key)
+        else:
+            self.map_cache.decline_update(cached, stamp)
+
+    def _ask_update(self, title: str) -> str:
+        """ "import", "later" or "never" (not for this version of the mod)."""
+
+        box = QMessageBox(self.window)
+        box.setWindowTitle(APP_TITLE)
+        box.setIcon(QMessageBox.Icon.Question)
+        box.setText(
+            tr("The mod of the map “{name}” has changed since it was imported.", name=title)
+        )
+        box.setInformativeText(tr("Import the map image, heightmap, ground map and fields again?"))
+        import_button = box.addButton(tr("Import"), QMessageBox.ButtonRole.AcceptRole)
+        later_button = box.addButton(tr("Not now"), QMessageBox.ButtonRole.RejectRole)
+        box.addButton(tr("Not for this version"), QMessageBox.ButtonRole.DestructiveRole)
+        box.setDefaultButton(import_button)
+        box.exec()
+
+        if box.clickedButton() is import_button:
+            return "import"
+
+        return "later" if box.clickedButton() is later_button else "never"
 
     def remove(self, cached: CachedMap) -> bool:
         """Settings → Maps → Remove: deletes the imported map with its game picture, after
