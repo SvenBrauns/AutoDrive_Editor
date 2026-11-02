@@ -6,16 +6,19 @@
         <placeable isPreplaced="true" uniqueId="preplaced_stable01_23d4…"/>
 
 Placed buildings have their position and rotation here; the map's own buildings are found in the
-map scene (see building_definitions.read_preplaced). Each building file is read once.
+map scene (see building_definitions.read_preplaced). Each building file is read once; what was
+read is kept in a BuildingCache.
 """
 
 import xml.etree.ElementTree as ET
 from collections import Counter
 from dataclasses import dataclass, field, replace
 from enum import StrEnum
+from functools import partial
 from pathlib import Path
 
 from autodrive_editor.error_log import logger
+from autodrive_editor.file_io.building_cache import BuildingCache
 from autodrive_editor.file_io.building_definitions import (
     READ_ERRORS,
     BuildingScene,
@@ -30,7 +33,7 @@ from autodrive_editor.file_io.building_definitions import (
 from autodrive_editor.file_io.game_files import GameFiles, locate
 from autodrive_editor.file_io.savegame_sheds import IndoorArea, local_areas, placed_area
 from autodrive_editor.file_io.savegame_stations import TRIGGERS, Stop, local_stops, placed_stop
-from autodrive_editor.i18n import tr
+from autodrive_editor.i18n import current_language, tr
 
 # Shop categories of buildings only the player's character uses; their types are in Other.
 CHARACTER_CATEGORIES = {"farmhouses"}
@@ -79,8 +82,11 @@ class SavegameBuildings:
     failed: list[str] = field(default_factory=list)
 
 
-def read_savegame_buildings(savegame_directory: Path, files: GameFiles) -> SavegameBuildings:
-    placed, failed = placed_buildings(savegame_directory, files)
+def read_savegame_buildings(
+    savegame_directory: Path, files: GameFiles, cache: BuildingCache | None = None
+) -> SavegameBuildings:
+    cache = cache or BuildingCache()
+    placed, failed = placed_buildings(savegame_directory, files, cache)
     # Type, indoor areas and stops by building file; None if not readable or of no use.
     definitions: dict[str, tuple | None] = {}
     counts = Counter()
@@ -89,7 +95,12 @@ def read_savegame_buildings(savegame_directory: Path, files: GameFiles) -> Saveg
     for building_file, unique_id, placement in placed:
         if building_file not in definitions:
             try:
-                definitions[building_file] = read_definition(building_file, files)
+                # The building's name is in the editor's language.
+                definitions[building_file] = cache.get(
+                    ("definition", building_file, current_language()),
+                    files.stamp(*locate(building_file)),
+                    partial(read_definition, building_file, files),
+                )
             except READ_ERRORS as error:
                 logger.warning("Building %s could not be read: %s", building_file, error)
                 definitions[building_file] = None
@@ -120,7 +131,7 @@ def read_savegame_buildings(savegame_directory: Path, files: GameFiles) -> Saveg
 
 
 def placed_buildings(
-    savegame_directory: Path, files: GameFiles
+    savegame_directory: Path, files: GameFiles, cache: BuildingCache | None = None
 ) -> tuple[list[tuple[str, str, Transform]], list[str]]:
     """(building file, unique id, placement) of the savegame's placed and preplaced buildings,
     and the savegame files that could not be read."""
@@ -142,7 +153,12 @@ def placed_buildings(
 
     if any(placeable.get("isPreplaced") == "true" for placeable in placeables):
         try:
-            preplaced = read_preplaced(files.read(*map_scene(savegame_directory, files)))
+            scene = map_scene(savegame_directory, files)
+            preplaced = (cache or BuildingCache()).get(
+                ("preplaced", *scene),
+                files.stamp(*scene),
+                lambda: read_preplaced(files.read(*scene)),
+            )
         except READ_ERRORS as error:
             logger.warning("The map of %s could not be read: %s", savegame_directory, error)
             failed.append(str(Path(savegame_directory) / "careerSavegame.xml"))

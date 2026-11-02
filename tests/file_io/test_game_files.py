@@ -41,3 +41,26 @@ def test_missing_folders_and_mods_raise_file_not_found(tmp_path):
 
     with GameFiles(None, tmp_path) as files, pytest.raises(FileNotFoundError):
         files.read("FS25_Missing", "a.xml")
+
+
+def test_stamp_is_that_of_the_file_or_of_the_mod_zip(tmp_path):
+    (tmp_path / "game/data").mkdir(parents=True)
+    (tmp_path / "game/data/a.xml").write_bytes(b"game")
+    (tmp_path / "mods").mkdir()
+    with zipfile.ZipFile(tmp_path / "mods/FS25_Zip.zip", "w") as archive:
+        archive.writestr("c.xml", "zip")
+
+    with GameFiles(tmp_path / "game", tmp_path / "mods") as files:
+        assert files.stamp(None, "data/a.xml") == (
+            4,
+            (tmp_path / "game/data/a.xml").stat().st_mtime_ns,
+        )
+        assert (
+            files.stamp("FS25_Zip", "c.xml")[0] == (tmp_path / "mods/FS25_Zip.zip").stat().st_size
+        )
+        assert files.stamp(None, "data/missing.xml") is None
+        assert files.stamp("FS25_Missing", "a.xml") is None
+
+    with GameFiles(None, None) as files:
+        assert files.stamp(None, "data/a.xml") is None
+        assert files.stamp("FS25_Zip", "c.xml") is None

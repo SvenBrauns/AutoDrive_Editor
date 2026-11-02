@@ -7,6 +7,7 @@
 A name without prefix inside a mod's file is relative to that mod.
 """
 
+import zipfile
 from pathlib import Path
 
 from autodrive_editor.file_io.mod_archive import ModArchive
@@ -48,6 +49,26 @@ class GameFiles:
             raise FileNotFoundError(tr("The FS25 install folder is not set"))
 
         return (self.install_directory / path).read_bytes()
+
+    def stamp(self, mod: str | None, path: str) -> tuple[int, ...] | None:
+        """Size and modification time of a file, for a zipped mod those of the zip; None if it is
+        missing. See ModArchive.stamp."""
+
+        if mod is not None:
+            try:
+                return self._archive(mod).stamp([path])
+            except (OSError, zipfile.BadZipFile):
+                return None
+
+        if self.install_directory is None:
+            return None
+
+        try:
+            info = (self.install_directory / path).stat()
+        except OSError:
+            return None
+
+        return info.st_size, info.st_mtime_ns
 
     def _archive(self, mod: str) -> ModArchive:
         if mod not in self._archives:

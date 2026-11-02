@@ -2,6 +2,8 @@ import zipfile
 
 import pytest
 
+from autodrive_editor.file_io import savegame_buildings
+from autodrive_editor.file_io.building_cache import BuildingCache
 from autodrive_editor.file_io.building_definitions import category_label, read_preplaced
 from autodrive_editor.file_io.game_files import GameFiles
 from autodrive_editor.file_io.savegame_buildings import read_savegame_buildings
@@ -295,3 +297,37 @@ def test_category_label(category, label):
 
 def test_category_label_is_translated(german):
     assert category_label("sheds") == "Fahrzeughallen"
+
+
+def test_map_buildings_and_definitions_are_read_again_only_when_their_file_changes(
+    game, monkeypatch
+):
+    base_game_map(game)
+    (game / "savegame1/placeables.xml").write_text(
+        f"<placeables>{PREPLACED}{placeable()}</placeables>", encoding="utf-8"
+    )
+    calls = []
+
+    for name in ["read_preplaced", "read_definition"]:
+        original = getattr(savegame_buildings, name)
+        monkeypatch.setattr(
+            savegame_buildings,
+            name,
+            lambda *args, original=original, name=name: calls.append(name) or original(*args),
+        )
+
+    def read():
+        cache = BuildingCache(game / "cache.pickle")
+        with GameFiles(game / "game", None) as files:
+            areas = read_savegame_buildings(game / "savegame1", files, cache).areas
+        cache.save()
+        return areas
+
+    first = read()
+    second = read()
+    (game / "game/data/placeables/shed/shed.xml").write_text(SHED_XML + " ", encoding="utf-8")
+    read()
+
+    assert second == first and len(first) == 2
+    # The map's shed and the placed one name the file differently ($data/…, data/…).
+    assert calls == ["read_preplaced"] + ["read_definition"] * 4

@@ -14,6 +14,7 @@ from autodrive_editor.file_io.autodrive_xml import (
     ConfigSource,
 )
 from autodrive_editor.file_io.autodrive_xml_writer import save_config, write_route_export
+from autodrive_editor.file_io.building_cache import BuildingCache
 from autodrive_editor.file_io.disk_state import DiskState, file_stamp, network_fingerprint
 from autodrive_editor.file_io.game_files import GameFiles
 from autodrive_editor.file_io.navigation_costmap import CostmapError, costmap_path, read_costmap
@@ -72,6 +73,7 @@ class ProjectCoordinator(QObject):
         measurement_coordinator: MeasurementCoordinator,
         map_cache: MapCache | None = None,
         game_files: Callable[[], GameFiles] | None = None,
+        building_cache: BuildingCache | None = None,
         parent=None,
     ):
         super().__init__(parent)
@@ -92,6 +94,7 @@ class ProjectCoordinator(QObject):
 
         # Opens the game and mod files the savegame's buildings are read from.
         self.game_files = game_files
+        self.building_cache = building_cache or BuildingCache()
 
         # The map chosen for a file under Settings → Maps (AutoDrive name), None if none.
         self.map_for_file: Callable[[Path], str | None] = lambda path: None
@@ -488,7 +491,9 @@ class ProjectCoordinator(QObject):
 
         if directory is not None and self.game_files is not None:
             with self.game_files() as files:
-                buildings = read_savegame_buildings(directory, files)
+                buildings = read_savegame_buildings(directory, files, self.building_cache)
+
+            self.building_cache.save()
 
         self.scene_renderer.set_buildings(buildings)
         self._show_costmap(directory)
