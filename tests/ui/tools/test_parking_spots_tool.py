@@ -61,8 +61,8 @@ def test_click_beside_the_shed_does_not_ask(parking_window):
 
 
 def hover_label(window):
-    label = window.view.viewport().findChild(QLabel)
-    return label if label is not None and label.isVisible() else None
+    labels = window.view.viewport().findChildren(QLabel)
+    return next((label for label in labels if label.isVisible()), None)
 
 
 def test_hovering_a_shed_shows_its_name_beside_the_pointer(parking_window):

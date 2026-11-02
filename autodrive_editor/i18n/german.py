@@ -449,6 +449,8 @@ TEXTS = {
     "The mod could not be read:\n{error}": "Der Mod konnte nicht gelesen werden:\n{error}",
     "The XML could not be loaded: {error}": "XML konnte nicht geladen werden: {error}",
     "The AutoDrive data could not be loaded:\n{error}": "Die AutoDrive-Daten konnten nicht geladen werden:\n{error}",
+    "Loading “{name}”…": "„{name}“ wird geladen…",
+    "“{name}” could not be loaded": "„{name}“ konnte nicht geladen werden",
     "The AutoDrive data could not be saved:\n{error}": "Die AutoDrive-Daten konnten nicht gespeichert werden:\n{error}",
     "“{name}” was changed by someone else since it was opened or saved, probably by the game. Saving overwrites these changes.": "„{name}“ wurde seit dem Öffnen oder Speichern von jemand anderem geändert, vermutlich vom Spiel. Speichern überschreibt diese Änderungen.",
     "Save anyway": "Trotzdem speichern",

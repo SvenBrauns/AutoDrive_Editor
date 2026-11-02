@@ -1,9 +1,20 @@
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 
-from PySide6.QtCore import QPoint, QRectF, Qt, Signal
-from PySide6.QtGui import QCursor, QKeyEvent, QMouseEvent, QResizeEvent, QWheelEvent
-from PySide6.QtWidgets import QGraphicsView
+from PySide6.QtCore import QPoint, QRect, QRectF, Qt, Signal
+from PySide6.QtGui import (
+    QColor,
+    QCursor,
+    QIcon,
+    QKeyEvent,
+    QMouseEvent,
+    QPainter,
+    QResizeEvent,
+    QWheelEvent,
+)
+from PySide6.QtWidgets import QApplication, QGraphicsView, QLabel
 
+from autodrive_editor.paths import APP_ICON_PATH
 from autodrive_editor.settings.view_state import ViewState
 from autodrive_editor.ui.map_view.rotation_controller import ViewRotationController
 from autodrive_editor.ui.map_view.zoom_controller import ViewZoomController
@@ -16,6 +27,16 @@ class MapView(QGraphicsView):
     """The map. Zooming with the wheel and rotating with the middle
     button work for every tool. Everything else is forwarded to the
     active MapTool."""
+
+    # Shown while nothing is loaded: the app logo, faded, on gray.
+    EMPTY_COLOR = QColor(80, 80, 80)
+    LOGO_SIZE = 192
+    LOGO_OPACITY = 0.3
+
+    NOTICE_STYLE = (
+        "background: rgba(0, 0, 0, 170); color: white; font-size: 16px;"
+        "padding: 12px 20px; border-radius: 6px;"
+    )
 
     zoom_changed = Signal(float)
 
@@ -46,6 +67,14 @@ class MapView(QGraphicsView):
         self._node_finder: Callable[[QPoint], object | None] = lambda view_position: None
 
         self._configure_view()
+
+        # Until a file is shown.
+        self.logo_visible = True
+        self._logo = QIcon(str(APP_ICON_PATH))
+
+        self._notice = QLabel(self.viewport())
+        self._notice.setStyleSheet(self.NOTICE_STYLE)
+        self._notice.hide()
 
         self._zoom_controller = ViewZoomController(view=self, parent=self)
 
@@ -114,6 +143,54 @@ class MapView(QGraphicsView):
         self.set_exact_rotation_angle(state.rotation)
         self.set_zoom_level(state.zoom)
         self.centerOn(state.x, state.z)
+
+    def set_logo_visible(self, visible: bool):
+        self.logo_visible = visible
+        self.viewport().update()
+
+    @contextmanager
+    def busy(self, text: str) -> Iterator[None]:
+        """Wait cursor and the text in the middle of the map while the block runs. The window
+        is painted first, because the block keeps it from painting."""
+
+        self._notice.setText(text)
+        self._notice.adjustSize()
+        self._place_notice()
+        self._notice.show()
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        self.window().repaint()
+
+        try:
+            yield
+        finally:
+            QApplication.restoreOverrideCursor()
+            self._notice.hide()
+
+    def _logo_rect(self) -> QRect:
+        rect = QRect(0, 0, self.LOGO_SIZE, self.LOGO_SIZE)
+        rect.moveCenter(self.viewport().rect().center())
+        return rect
+
+    def _place_notice(self):
+        rect = self._notice.rect()
+        rect.moveCenter(self.viewport().rect().center())
+
+        if self.logo_visible:
+            rect.moveTop(self._logo_rect().bottom() + 24)
+
+        self._notice.move(rect.topLeft())
+
+    def drawBackground(self, painter: QPainter, rect: QRectF):
+        if not self.logo_visible:
+            super().drawBackground(painter, rect)
+            return
+
+        painter.fillRect(rect, self.EMPTY_COLOR)
+        painter.save()
+        painter.resetTransform()
+        painter.setOpacity(self.LOGO_OPACITY)
+        self._logo.paint(painter, self._logo_rect())
+        painter.restore()
 
     def set_zoom_level(self, zoom_level):
         self._zoom_controller.set_zoom_level(zoom_level)
@@ -209,6 +286,9 @@ class MapView(QGraphicsView):
         self.translate(delta.x(), delta.y())
 
         self._zoom_controller.schedule_viewport_update()
+
+        if self.logo_visible:
+            self.viewport().update()
 
     def mousePressEvent(self, event: QMouseEvent):
         mouse_position = event.position().toPoint()

@@ -3,6 +3,8 @@
 import pytest
 from game_folder_helpers import add_routes, add_savegame, make_game_folder
 from map_mod_helpers import make_single_map_mod
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication
 
 from autodrive_editor.terrain.map_cache import MapCache
 
@@ -79,3 +81,15 @@ def test_without_a_map_the_size_follows_the_network(import_window):
     assert not import_window.background_map.has_background()
     assert not import_window.heightmap.has_heightmap()
     assert import_window.background_map.map_scale == 1
+
+
+def test_map_not_found_is_asked_with_a_normal_cursor_while_loading(import_window):
+    cursors = []
+    import_window.map_import._ask_map_not_found = lambda name: cursors.append(
+        QApplication.overrideCursor().shape()
+    )
+
+    with import_window.view.busy("Loading"):
+        open_route(import_window)
+
+    assert cursors == [Qt.ArrowCursor]

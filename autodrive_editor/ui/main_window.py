@@ -685,6 +685,7 @@ class MainWindow(QMainWindow):
             AutosaveStore(user_data_directory() / "autosave"),
         )
         self.files.open_settings = self.open_settings
+        self.files.busy = self.view.busy
 
         self.map_import = MapImportController(
             self, self.settings, self.map_cache, self.project_coordinator
@@ -1275,6 +1276,7 @@ class MainWindow(QMainWindow):
         self.setWindowModified(False)
         self.actions.reload_action.setEnabled(True)
         self.actions.show_whole_map_action.setEnabled(True)
+        self.view.set_logo_visible(False)
         self.actions.save_xml_action.setEnabled(True)
         self.actions.save_xml_as_action.setEnabled(True)
         source = self.project_coordinator.config_source
