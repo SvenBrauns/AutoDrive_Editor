@@ -91,6 +91,7 @@ class FileController(QObject):
         self.autosave_timer = QTimer(self)
         self.autosave_timer.timeout.connect(self.autosave)
         self.apply_autosave_interval()
+        edit_history.planning_changed.connect(self._handle_planning_changed)
 
     def open(self):
         """File → Open…: the Open screen as a dialog."""
@@ -564,16 +565,19 @@ class FileController(QObject):
         return name.strip() if accepted else None
 
     def autosave(self):
-        """Backs up unsaved changes into the editor's data folder."""
+        """Backs up unsaved changes into the editor's data folder. The edits of an open plan
+        are left out: the timer waits while planning, the edits before the plan were backed
+        up when it started."""
 
-        # Paused while a plan is open: only applied plans are backed up.
-        history = self.edit_history
+        if not self.edit_history.is_planning:
+            self._write_autosave()
 
-        if (
-            self.project_coordinator.config_source is None
-            or history.is_clean
-            or history.is_planning
-        ):
+    def _handle_planning_changed(self, planning: bool):
+        if planning and self.autosave_timer.isActive():
+            self._write_autosave()
+
+    def _write_autosave(self):
+        if self.project_coordinator.config_source is None or self.edit_history.is_clean:
             return
 
         try:

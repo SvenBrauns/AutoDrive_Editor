@@ -4,6 +4,7 @@ from PySide6.QtWidgets import QMessageBox
 
 from autodrive_editor.editing.commands.delete_nodes import DeleteNodesCommand
 from autodrive_editor.editing.commands.move_nodes import MoveNodesCommand
+from autodrive_editor.file_io.autodrive_xml import AutoDriveXmlReader
 
 
 def move_node(window, node_id, x):
@@ -118,18 +119,18 @@ def test_closing_or_opening_asks_about_the_plan_first(loaded_window):
     assert node_x(window, 2) == 10
 
 
-def test_autosave_pauses_while_planning(loaded_window):
+def test_autosave_keeps_the_edits_before_an_open_plan(loaded_window):
     window = loaded_window
     store = window.files.autosave_store
     move_node(window, 1, 5)
     window.planning.action.trigger()
+    move_node(window, 2, 123)
 
     window.files.autosave()
-    assert store.read() is None
+    autosaved = AutoDriveXmlReader.load(store.xml_path)
 
-    window.planning.apply_button.click()
-    window.files.autosave()
-    assert store.read() is not None
+    assert autosaved.nodes[1].x == 5
+    assert autosaved.nodes[2].x != 123
 
 
 def test_the_map_stays_still_when_the_bar_shows_and_hides(loaded_window, qapp):
