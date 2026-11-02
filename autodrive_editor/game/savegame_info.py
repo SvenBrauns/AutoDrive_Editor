@@ -59,7 +59,12 @@ class SavegameInfo:
 
     @property
     def display_name(self) -> str:
-        return self.name or f"Savegame {self.number}"
+        """The folder first, because the game names every savegame "Mein Spielstand" (or
+        "My savegame") until it is renamed."""
+
+        folder = self.directory.name
+
+        return f"{folder} – {self.name}" if self.name else folder
 
 
 def read_savegame_info(directory: Path) -> SavegameInfo:

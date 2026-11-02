@@ -1,6 +1,7 @@
 import html
 from collections.abc import Callable, Iterator
 from contextlib import AbstractContextManager, contextmanager, nullcontext
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 
@@ -23,7 +24,7 @@ from autodrive_editor.file_io.routes_index import (
     read_routes_index,
     routes_index_for,
 )
-from autodrive_editor.game.savegame_info import SavegameInfo, savegames
+from autodrive_editor.game.savegame_info import SavegameInfo, read_savegame_info, savegames
 from autodrive_editor.i18n import tr
 from autodrive_editor.project.autosave import AutosaveStore
 from autodrive_editor.project.project_coordinator import ProjectCoordinator
@@ -278,6 +279,10 @@ class FileController(QObject):
             self._open_item(items[0])
 
     def _open_item(self, item: RecentItem):
+        if item.kind == RecentKind.SAVEGAME:
+            # The name may have changed in the game, and older entries lack the folder.
+            item = replace(item, name=read_savegame_info(Path(item.path).parent).display_name)
+
         if item.kind == RecentKind.XML:
             self._load_xml(item.path)
 

@@ -28,7 +28,7 @@ def game_window(window, tmp_path, monkeypatch):
         def ask():
             window.offered = window.files.open_lists()
             names = {entry.name: entry for entry in window.offered.routes}
-            names.update({info.display_name: info for info in window.offered.savegames})
+            names.update({info.name: info for info in window.offered.savegames})
             return names.get(name)
 
         monkeypatch.setattr(window.files, "_ask_open", ask)
@@ -90,8 +90,9 @@ def test_open_loads_the_autodrive_config_of_a_savegame(game_window):
     source = game_window.project_coordinator.config_source
     assert source.format == ConfigFormat.SAVEGAME
     assert source.map_name == "LS25_X"
-    assert source.display_name == "Mein Spielstand"
-    assert game_window.windowTitle() == "AutoDrive FS25 Editor – Mein Spielstand (Savegame)[*]"
+    assert source.display_name == "savegame1 – Mein Spielstand"
+    title = "AutoDrive FS25 Editor – savegame1 – Mein Spielstand (Savegame)[*]"
+    assert game_window.windowTitle() == title
 
 
 def test_savegame_without_autodrive_opens_empty_and_save_creates_the_config(game_window):
