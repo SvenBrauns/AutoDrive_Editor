@@ -226,7 +226,7 @@ TEXTS = {
     "Game picture": "Spielbild",
     "Show the map as the game draws it from above, captured with the companion mod": "Die Karte so zeigen, wie das Spiel sie von oben zeichnet, aufgenommen mit dem Begleit-Mod",
     "Show the map drawn from its ground textures, with the fields, instead of the map image. Maps imported with an older version need to be imported again.": "Statt des Kartenbilds die aus den Bodentexturen gezeichnete Karte mit den Feldern zeigen. Mit einer älteren Version importierte Karten müssen neu importiert werden.",
-    "Reset view": "Ansicht zurücksetzen",
+    "Show whole map": "Ganze Karte anzeigen",
     "Reset rotation": "Rotation zurücksetzen",
     "Snap to grid": "Am Raster einrasten",
     "Delete selection": "Auswahl löschen",

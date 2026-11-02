@@ -16,6 +16,8 @@ from autodrive_editor.model.connections import ConnectionType
 from autodrive_editor.rendering.visibility import Visibility
 from autodrive_editor.settings import app_settings
 from autodrive_editor.settings.app_settings import AppSettings
+from autodrive_editor.settings.recent_items import RecentItem, RecentKind
+from autodrive_editor.settings.view_state import ViewState
 from autodrive_editor.terrain.background_map import Background
 
 pytestmark = pytest.mark.usefixtures("isolated_user_data")
@@ -379,3 +381,31 @@ def test_window_layout_is_empty_until_saved_and_then_kept():
     AppSettings().set_window_layout(QByteArray(b"geometry"), QByteArray(b"state"))
 
     assert AppSettings().window_layout == (QByteArray(b"geometry"), QByteArray(b"state"))
+
+
+def recent(path) -> RecentItem:
+    return RecentItem(RecentKind.XML, str(path), path.name)
+
+
+def test_view_of_a_recent_file_is_kept(tmp_path):
+    settings = AppSettings()
+    settings.set_recent_items([recent(tmp_path / "a.xml")])
+    view = ViewState(10.0, -20.0, 2.5, 45.0)
+
+    settings.set_file_view(tmp_path / "a.xml", view)
+
+    assert AppSettings().file_view(tmp_path / "a.xml") == view
+    assert AppSettings().file_view(tmp_path / "b.xml") is None
+
+
+def test_views_are_kept_only_for_files_in_the_recent_list(tmp_path):
+    settings = AppSettings()
+    settings.set_recent_items([recent(tmp_path / "a.xml")])
+    settings.set_file_view(tmp_path / "a.xml", ViewState(1, 2, 3, 4))
+
+    settings.set_file_view(tmp_path / "b.xml", ViewState(1, 2, 3, 4))
+    assert settings.file_view(tmp_path / "b.xml") is None
+
+    settings.set_recent_items([recent(tmp_path / "b.xml")])
+    settings.set_file_view(tmp_path / "b.xml", ViewState(1, 2, 3, 4))
+    assert settings.file_view(tmp_path / "a.xml") is None

@@ -4,6 +4,7 @@ from PySide6.QtCore import QPoint, QRectF, Qt, Signal
 from PySide6.QtGui import QCursor, QKeyEvent, QMouseEvent, QResizeEvent, QWheelEvent
 from PySide6.QtWidgets import QGraphicsView
 
+from autodrive_editor.settings.view_state import ViewState
 from autodrive_editor.ui.map_view.rotation_controller import ViewRotationController
 from autodrive_editor.ui.map_view.zoom_controller import ViewZoomController
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
@@ -103,6 +104,16 @@ class MapView(QGraphicsView):
 
         if interaction_mode == self._interaction_mode:
             tool.activate()
+
+    def view_state(self) -> ViewState:
+        center = self.mapToScene(self.viewport().rect().center())
+
+        return ViewState(center.x(), center.y(), self.zoom_level, self.rotation_angle)
+
+    def show_view_state(self, state: ViewState):
+        self.set_exact_rotation_angle(state.rotation)
+        self.set_zoom_level(state.zoom)
+        self.centerOn(state.x, state.z)
 
     def set_zoom_level(self, zoom_level):
         self._zoom_controller.set_zoom_level(zoom_level)

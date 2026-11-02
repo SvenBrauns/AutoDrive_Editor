@@ -202,6 +202,7 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         if self.files.confirm_discard_changes() and self.picture_capture.confirm_stop():
             self.settings.set_window_layout(self.saveGeometry(), self.saveState())
+            self.project_coordinator.remember_view()
             event.accept()
         else:
             event.ignore()
@@ -658,6 +659,8 @@ class MainWindow(QMainWindow):
             game_files=self._game_files,
             parent=self,
         )
+        self.project_coordinator.view_for_file = self.settings.file_view
+        self.project_coordinator.keep_view = self.settings.set_file_view
 
     def _plan_node_ids(self) -> set[int]:
         changes = self.planning.changes
@@ -1271,6 +1274,7 @@ class MainWindow(QMainWindow):
 
         self.setWindowModified(False)
         self.actions.reload_action.setEnabled(True)
+        self.actions.show_whole_map_action.setEnabled(True)
         self.actions.save_xml_action.setEnabled(True)
         self.actions.save_xml_as_action.setEnabled(True)
         source = self.project_coordinator.config_source
