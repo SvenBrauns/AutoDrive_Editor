@@ -14,6 +14,7 @@ from autodrive_editor.file_io.autodrive_xml import (
     ConfigSource,
 )
 from autodrive_editor.file_io.autodrive_xml_writer import save_config, write_route_export
+from autodrive_editor.file_io.disk_state import DiskState, file_stamp, network_fingerprint
 from autodrive_editor.file_io.game_files import GameFiles
 from autodrive_editor.file_io.navigation_costmap import CostmapError, costmap_path, read_costmap
 from autodrive_editor.file_io.routes_index import (
@@ -118,6 +119,9 @@ class ProjectCoordinator(QObject):
         # Files backed up as .bak in this session.
         self._backed_up_paths: set[Path] = set()
 
+        # The open file as last read or written, to notice changes by the game.
+        self._disk_state: DiskState | None = None
+
     def load_xml_file(self, file_path, display_name=None, map_name=None, original_path=None):
         """Loads a route file or savegame config. Route files do not contain
         their map name; it comes from the caller or from routes.xml. The
@@ -127,6 +131,7 @@ class ProjectCoordinator(QObject):
         original_path is set when an autosave copy is restored: the data
         then counts as loaded from that file and is saved there."""
 
+        stamp = file_stamp(Path(file_path))
         loaded = AutoDriveXmlReader.read(Path(file_path).resolve())
 
         xml_path = Path(original_path or file_path).resolve()
@@ -150,6 +155,63 @@ class ProjectCoordinator(QObject):
         self.prepare_map(source)
         self._show_loaded(loaded.data, source)
 
+        if original_path is None:
+            self._disk_state = DiskState(stamp, network_fingerprint(loaded.data, source.format))
+        else:
+            # A restored autosave: the original file counts as it is now.
+            self._disk_state = self._state_on_disk()
+
+    def reload_file(self):
+        """Loads the open file again from disk. The view keeps its position and zoom."""
+
+        source = self.config_source
+        transform = self.view.transform()
+        center = self.view.mapToScene(self.view.viewport().rect().center())
+
+        self.load_xml_file(source.path, display_name=source.display_name, map_name=source.map_name)
+
+        self.view.setTransform(transform)
+        self.view.centerOn(center)
+
+    def file_changed_on_disk(self) -> bool:
+        """Whether someone else (usually the game) changed the network in the open file since
+        the editor opened or saved it. A file that cannot be read counts as changed, a file that
+        is gone does not."""
+
+        state, source = self._disk_state, self.config_source
+
+        if state is None or source is None:
+            return False
+
+        stamp = file_stamp(source.path)
+
+        if stamp is None or stamp == state.stamp:
+            return False
+
+        try:
+            on_disk = self._state_on_disk()
+        except Exception:
+            return True
+
+        if on_disk.fingerprint != state.fingerprint:
+            return True
+
+        # Rewritten with the same network, e.g. by a save of the game.
+        self._disk_state = on_disk
+        return False
+
+    def _remember_disk_state(self):
+        source = self.config_source
+        fingerprint = network_fingerprint(self.autodrive_data, source.format)
+        self._disk_state = DiskState(file_stamp(source.path), fingerprint)
+
+    def _state_on_disk(self) -> DiskState:
+        source = self.config_source
+        stamp = file_stamp(source.path)
+        data = AutoDriveXmlReader.read(source.path).data
+
+        return DiskState(stamp, network_fingerprint(data, source.format))
+
     def start_empty_savegame(self, config_path, display_name: str, map_name: str):
         """Opens a savegame that has no AutoDrive data yet with an empty network. Save creates
         its AutoDrive_config.xml."""
@@ -162,6 +224,7 @@ class ProjectCoordinator(QObject):
         )
         self.prepare_map(source)
         self._show_loaded(AutoDriveData(), source)
+        self._remember_disk_state()
 
     def _show_loaded(self, data: AutoDriveData, source: ConfigSource):
         xml_path = source.path
@@ -261,6 +324,7 @@ class ProjectCoordinator(QObject):
 
         self._back_up(source.path)
         save_config(self.autodrive_data, source)
+        self._remember_disk_state()
 
         affected_vehicles = []
 
@@ -349,6 +413,7 @@ class ProjectCoordinator(QObject):
             )
             self._file_markers = list(self.autodrive_data.markers.values())
             self._vehicles_path = None
+            self._remember_disk_state()
 
         self.status_changed.emit(tr("Route “{name}” saved", name=name))
 

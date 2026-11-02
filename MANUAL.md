@@ -161,6 +161,8 @@ Saving runs the check first. If it finds problems that are not ignored, the dock
 
 `File → Save` (`Ctrl+S`) writes to the file you opened. Before the first overwrite, the editor creates a backup copy (`.bak`).
 
+**Changed by the game.** If the network in the file was changed since the editor opened or last saved it, usually because the game saved it, Save warns first: `Save anyway` overwrites the game's changes, `Reload (my changes are lost)` loads the file again, `Cancel` does nothing. A game save that leaves the network as it was does not warn. `File → Reload` (`F5`) loads the open file again from disk at any time and keeps the view; with unsaved changes it asks first.
+
 **Savegame.** Save writes the savegame's `AutoDrive_config.xml` and updates the marker targets of its vehicles in `vehicles.xml`. If the game is running this savegame with the companion mod `FS25_AutoDriveEditorLink`, the editor then reloads the network in the game: the status bar shows `Saved · reloaded in game`, and AutoDrive drives on the new network right away. Network edits made in the game since the file was opened are replaced by the reload. If the game reports an error or does not answer within 30 seconds, a message says that the file is saved but not reloaded, and that the game will overwrite it on its next save. If the game runs without the mod, a warning says the same once per savegame and session: exit the game without saving, or install the mod. With the game closed, the new network is simply there the next time the savegame is loaded.
 
 **Route.** Save on an open route writes only the route file. To use it in a running game, press `Import` in AutoDrive's RoutesManager and save in the game.

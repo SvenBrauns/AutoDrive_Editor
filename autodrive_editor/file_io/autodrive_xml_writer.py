@@ -24,7 +24,7 @@ XML_DECLARATION = '<?xml version="1.0" encoding="utf-8" standalone="no"?>\n'
 NEW_CONFIG_VERSION = "3.0.1.4"
 
 # Same precision as the files AutoDrive writes.
-_DECIMALS = {ConfigFormat.ROUTE_EXPORT: 2, ConfigFormat.SAVEGAME: 3}
+DECIMALS = {ConfigFormat.ROUTE_EXPORT: 2, ConfigFormat.SAVEGAME: 3}
 
 
 def save_config(data: AutoDriveData, source: ConfigSource):
@@ -67,7 +67,7 @@ def write_route_export(data: AutoDriveData, path: Path):
     root = ET.Element("routeExport")
     nodes = data.get_sorted_nodes()
     new_ids = {node.node_id: new_id for new_id, node in enumerate(nodes, start=1)}
-    _write_route_waypoints(root, nodes, new_ids, _DECIMALS[ConfigFormat.SAVEGAME])
+    _write_route_waypoints(root, nodes, new_ids, DECIMALS[ConfigFormat.SAVEGAME])
     _write_route_markers(root, data, new_ids)
     ET.indent(root, space="    ")
 
@@ -89,7 +89,7 @@ def _write_route_waypoints(
     root,
     nodes: list[NodeData],
     new_ids: dict[int, int],
-    decimals=_DECIMALS[ConfigFormat.ROUTE_EXPORT],
+    decimals=DECIMALS[ConfigFormat.ROUTE_EXPORT],
 ):
     waypoints = root.find("waypoints")
 
@@ -103,7 +103,7 @@ def _write_route_waypoints(
 def _write_savegame_waypoints(root, nodes: list[NodeData], new_ids: dict[int, int]):
     waypoints = root.find("waypoints")
     _set_child(waypoints, "id", ",".join(str(new_ids[node.node_id]) for node in nodes))
-    _write_lists(waypoints, nodes, new_ids, ",", "incoming", _DECIMALS[ConfigFormat.SAVEGAME])
+    _write_lists(waypoints, nodes, new_ids, ",", "incoming", DECIMALS[ConfigFormat.SAVEGAME])
 
 
 def _write_lists(waypoints, nodes, new_ids, separator: str, incoming_tag: str, decimals: int):
