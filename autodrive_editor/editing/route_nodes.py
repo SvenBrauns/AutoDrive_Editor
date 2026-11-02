@@ -9,7 +9,6 @@ import math
 from dataclasses import dataclass
 from itertools import pairwise
 
-from autodrive_editor.editing.path_shapes import spaced_points
 from autodrive_editor.editing.route_finder import Point
 from autodrive_editor.model.autodrive_data import AutoDriveData
 from autodrive_editor.model.connections import (
@@ -23,6 +22,20 @@ SNAP_DISTANCE = 1.5
 SNAP_ALIGNMENT = 0.9
 # Shorter stretches along a lane get their own nodes.
 MIN_SHARED_LENGTH = 3.0
+# AutoDrive's recording rule: how far a new node may lie from the last one, by how many degrees
+# the direction turns from the last connection (below the angle, metres). Routes are walked in
+# RECORDING_STEP steps like the recorder samples a drive.
+RECORDING_LIMITS = (
+    (0.5, 12.0),
+    (1, 6.0),
+    (2, 4.0),
+    (4, 3.0),
+    (7, 2.0),
+    (14, 1.0),
+    (27, 0.5),
+    (math.inf, 0.25),
+)
+RECORDING_STEP = 0.25
 
 
 @dataclass(frozen=True)
@@ -258,7 +271,66 @@ def _add_free(chain: list, free_points: list[Point], end: Point, spacing: float)
     if len(polyline) < 2:
         return
 
-    chain.extend(spaced_points(polyline, spacing)[1:-1])
+    chain.extend(_recorded(polyline, spacing)[1:-1])
+
+
+def _recorded(polyline: list[Point], spacing: float) -> list[Point]:
+    """Points along the polyline, both ends included, the way AutoDrive records a drive: up to
+    `spacing` apart where the line runs straight, closer the more it turns. The last point
+    before the end moves back where it would be less than half its gap from the end."""
+
+    dense = [polyline[0]]
+
+    for a, b in pairwise(polyline):
+        count = max(1, math.ceil(math.dist(a, b) / RECORDING_STEP))
+        dense += [_lerp(a, b, i / count) for i in range(1, count + 1)]
+
+    points, indices = [dense[0]], [0]
+    heading = _heading(polyline[0], polyline[1])
+
+    for index in range(1, len(dense)):
+        last, point = points[-1], dense[index]
+        distance = math.dist(last, point)
+
+        if distance < 1e-9:
+            continue
+
+        turn = abs(math.degrees(_turn(heading, _heading(last, point))))
+        limit = min(spacing, next(metres for angle, metres in RECORDING_LIMITS if turn < angle))
+
+        if distance >= limit and index < len(dense) - 1:
+            # Back to where the distance is the limit, between the dense points.
+            before = math.dist(last, dense[index - 1])
+            fraction = max(0.0, (limit - before) / (distance - before))
+            points.append(_lerp(dense[index - 1], point, fraction))
+            indices.append(index)
+            heading = _heading(last, points[-1])
+
+    points.append(dense[-1])
+
+    if len(points) > 2:
+        previous_gap = math.dist(points[-3], points[-2])
+
+        if math.dist(points[-2], points[-1]) < previous_gap / 2:
+            between = dense[indices[-2] : -1]
+            points[-2] = min(
+                between,
+                key=lambda p: abs(math.dist(points[-3], p) - math.dist(p, points[-1])),
+            )
+
+    return points
+
+
+def _heading(a: Point, b: Point) -> float:
+    return math.atan2(b[1] - a[1], b[0] - a[0])
+
+
+def _turn(a: float, b: float) -> float:
+    return (b - a + math.pi) % math.tau - math.pi
+
+
+def _lerp(a: Point, b: Point, fraction: float) -> Point:
+    return a[0] + (b[0] - a[0]) * fraction, a[1] + (b[1] - a[1]) * fraction
 
 
 def _project(point: Point, a: Point, b: Point) -> tuple[float, float]:

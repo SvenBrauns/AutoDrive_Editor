@@ -1,4 +1,5 @@
 import math
+from itertools import pairwise
 
 import pytest
 
@@ -48,6 +49,36 @@ def test_free_route_gets_evenly_spaced_new_nodes():
 
     assert chain[0] == 1 and chain[-1] == 2
     assert chain[1:-1] == pytest.approx([(5, 0), (10, 0), (15, 0)])
+
+
+def gaps(chain, positions):
+    """The distances between the chain's nodes, each with the start of its connection."""
+
+    points = [positions[item] if isinstance(item, int) else item for item in chain]
+
+    return [(math.dist(a, b), a) for a, b in pairwise(points)]
+
+
+def test_free_nodes_are_spaced_like_autodrive_records_a_drive():
+    # 30 m east, then a quarter circle of 6 m radius to the north.
+    angles = [i / 40 * math.pi / 2 for i in range(1, 41)]
+    arc = [(30 + 6 * math.sin(a), 6 - 6 * math.cos(a)) for a in angles]
+    positions = {1: (0, 0), 2: arc[-1]}
+
+    chain = route_nodes(line((0, 0), (30, 0)) + arc, 1, 2, positions, [], 20.0)
+
+    straight = [gap for gap, start in gaps(chain, positions) if start[0] < 30]
+    curve = [gap for gap, start in gaps(chain, positions) if start[0] > 30]
+    assert max(straight) == pytest.approx(12)
+    assert curve and 0.5 <= min(curve) and max(curve) <= 1.5
+
+
+def test_the_last_free_node_is_not_squeezed_against_the_end():
+    positions = {1: (0, 0), 2: (22, 0)}
+
+    chain = route_nodes(line((0, 0), (22, 0)), 1, 2, positions, [], 5.0)
+
+    assert all(2.5 <= gap <= 5 + 1e-9 for gap, _ in gaps(chain, positions))
 
 
 def test_route_along_a_lane_uses_its_nodes():
