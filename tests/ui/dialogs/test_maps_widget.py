@@ -53,3 +53,18 @@ def test_removed_map_leaves_the_list(maps_window, monkeypatch):
     widget.remove_button.click()
 
     assert widget.table.topLevelItemCount() == 0
+
+
+def test_several_maps_can_be_reimported_but_only_one_removed(maps_window, tmp_path, monkeypatch):
+    mod = make_single_map_mod(tmp_path / "mods", name="FS25_B", title="Karte B")
+    maps_window.map_cache.import_map(mod, read_map_mod(mod).maps[0])
+    reimported = []
+    monkeypatch.setattr(maps_window.map_import, "reimport", reimported.append)
+    widget = MapsWidget(maps_window.map_import)
+
+    widget.table.selectAll()
+
+    assert widget.reimport_button.isEnabled()
+    assert not widget.remove_button.isEnabled()
+    widget.reimport_button.click()
+    assert [cached.title for cached in reimported[0]] == ["Karte A", "Karte B"]

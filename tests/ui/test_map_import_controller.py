@@ -10,6 +10,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication
 
 from autodrive_editor.terrain.map_cache import MapCache
+from autodrive_editor.ui.map_import_controller import run_in_background
 
 MAP_NAME = "LS25_Testkarte_2_0"  # AutoDrive name of "LS25 Testkarte 2.0"
 
@@ -184,3 +185,10 @@ def test_update_is_offered_after_a_file_was_opened(update_window):
     update_window.files._load_config(update_window.project_coordinator.config_source.path)
 
     assert update_window.asked == ["LS25 Testkarte 2.0"]
+
+
+def test_run_in_background_returns_the_result_or_raises():
+    assert run_in_background(lambda a, b: a + b, 1, 2) == 3
+
+    with pytest.raises(ZeroDivisionError):
+        run_in_background(lambda: 1 / 0)
