@@ -316,13 +316,18 @@ class FileController(QObject):
         if not self.confirm_save():
             return False
 
+        vehicles = self.project_coordinator.vehicles_losing_markers()
+
+        if vehicles and not self._ask_save_vehicle_targets(vehicles):
+            return False
+
         try:
-            affected_vehicles = self.project_coordinator.save_xml_file()
+            self.project_coordinator.save_xml_file()
         except Exception as ex:
             self._inform(tr("The AutoDrive data could not be saved:\n{error}", error=ex))
             return False
 
-        self._after_save(affected_vehicles)
+        self._after_save()
 
         return True
 
@@ -427,7 +432,7 @@ class FileController(QObject):
 
         # A savegame stays open with its own unsaved state.
         if source.format != ConfigFormat.SAVEGAME:
-            self._after_save([])
+            self._after_save()
 
         return True
 
@@ -542,20 +547,27 @@ class FileController(QObject):
 
         return answer == QMessageBox.Yes
 
-    def _after_save(self, affected_vehicles: list[str]):
+    def _after_save(self):
         self.edit_history.mark_clean()
         self.autosave_store.clear()
         self.saved.emit()
 
-        if affected_vehicles:
-            self._inform(
-                tr(
-                    "These vehicles had a deleted marker as their target. The target is now "
-                    "marker 1, a parking target was removed:"
-                )
-                + "\n\n"
-                + "\n".join(affected_vehicles)
+    def _ask_save_vehicle_targets(self, vehicles: list[str]) -> bool:
+        text = (
+            tr(
+                "These vehicles have a deleted marker as their target. Saving sets the target "
+                "to marker 1 and removes a parking target:"
             )
+            + "\n\n"
+            + "\n".join(vehicles)
+            + "\n\n"
+            + tr("Save anyway?")
+        )
+        answer = QMessageBox.question(
+            self.window, APP_TITLE, text, QMessageBox.Save | QMessageBox.Cancel, QMessageBox.Cancel
+        )
+
+        return answer == QMessageBox.Save
 
     def _ask_route_name(self, default_name: str) -> str | None:
         name, accepted = QInputDialog.getText(

@@ -71,12 +71,12 @@ def test_original_is_backed_up_once_per_session(route_window):
     assert (route_window.route_file.parent.parent / "routes.xml.bak").exists()
 
 
-def test_savegame_save_renumbers_vehicle_markers(window, tmp_path, monkeypatch):
+def test_savegame_save_renumbers_vehicle_markers(window, tmp_path):
     (tmp_path / "AutoDrive_config.xml").write_text(SAVEGAME, encoding="utf-8")
     vehicles = tmp_path / "vehicles.xml"
     vehicles.write_text(VEHICLES, encoding="utf-8")
-    messages = []
-    monkeypatch.setattr(window.files, "_inform", messages.append)
+    asked = []
+    window.files._ask_save_vehicle_targets = lambda vehicles: asked.append(vehicles) or True
     window.project_coordinator.load_xml_file(tmp_path / "AutoDrive_config.xml")
     data = window.project_coordinator.autodrive_data
 
@@ -86,7 +86,7 @@ def test_savegame_save_renumbers_vehicle_markers(window, tmp_path, monkeypatch):
     text = vehicles.read_text(encoding="utf-8-sig")
     assert 'firstMarker="1" secondMarker="2"' in text
     assert "<AutoDrive/>" in text
-    assert "trailer" in messages[0]
+    assert asked == [["trailer"]]
     assert (tmp_path / "vehicles.xml.bak").read_text(encoding="utf-8") == VEHICLES
 
     # Saved again without changes, the numbers stay.
@@ -263,6 +263,17 @@ def test_discarding_changes_drops_the_autosave(route_window):
     assert route_window.files.autosave_store.read() is None
 
 
+def test_cancelled_vehicle_question_saves_nothing(savegame_window):
+    savegame_window.files._ask_save_vehicle_targets = lambda vehicles: False
+    config = savegame_window.savegame / "AutoDrive_config.xml"
+    delete_marker(savegame_window, 2)
+
+    assert not savegame_window.files.save_xml()
+    assert config.read_text(encoding="utf-8") == SAVEGAME
+    assert (savegame_window.savegame / "vehicles.xml").read_text(encoding="utf-8") == VEHICLES
+    assert savegame_window.isWindowModified()
+
+
 def test_restored_autosave_saves_into_the_original_savegame(savegame_window):
     # Marker 2 of 3 deleted: vehicles' marker 3 becomes 2, park destination 2 goes.
     delete_marker(savegame_window, 2)
@@ -339,10 +350,14 @@ def test_replaced_network_keeps_vehicle_targets_by_marker_name(savegame_window):
     new.add_marker(MarkerData(2, "A", "All"))
     data = savegame_window.project_coordinator.autodrive_data
     savegame_window.edit_history.push(ReplaceNetworkCommand(data, new, "Load route"))
+    asked = []
+    savegame_window.files._ask_save_vehicle_targets = lambda vehicles: (
+        asked.append(vehicles) or True
+    )
 
     savegame_window.files.save_xml()
 
     vehicles = (savegame_window.savegame / "vehicles.xml").read_text(encoding="utf-8")
     assert 'firstMarker="2"' in vehicles
     assert 'secondMarker="1"' in vehicles
-    assert savegame_window.messages  # marker B, a parking target, is gone
+    assert asked == [["trailer"]]  # marker B, a parking target, is gone

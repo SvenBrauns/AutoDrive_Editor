@@ -30,6 +30,14 @@ def read_park_destinations(vehicles_path: Path) -> set[int]:
         return {int(number) for number in _PARK_DESTINATION.findall(file.read())}
 
 
+def vehicles_losing_markers(vehicles_path: Path, new_numbers: dict[int, int | None]) -> list[str]:
+    """The names of the vehicles renumber_vehicle_markers would reset, without changing the
+    file."""
+
+    with open(vehicles_path, encoding="utf-8-sig", newline="") as file:
+        return _renumber(file.read(), new_numbers)[1]
+
+
 def renumber_vehicle_markers(vehicles_path: Path, new_numbers: dict[int, int | None]) -> list[str]:
     """Rewrites the marker numbers by new_numbers (old number -> new number,
     None for a deleted marker). Targets of deleted markers go to marker 1,
@@ -39,6 +47,20 @@ def renumber_vehicle_markers(vehicles_path: Path, new_numbers: dict[int, int | N
     with open(vehicles_path, encoding="utf-8-sig", newline="") as file:
         text = file.read()
 
+    new_text, affected = _renumber(text, new_numbers)
+
+    if new_text != text:
+        temporary = vehicles_path.with_name(vehicles_path.name + ".tmp")
+
+        with open(temporary, "w", encoding="utf-8-sig", newline="") as file:
+            file.write(new_text)
+
+        os.replace(temporary, vehicles_path)
+
+    return affected
+
+
+def _renumber(text: str, new_numbers: dict[int, int | None]) -> tuple[str, list[str]]:
     affected = []
     vehicle_name = ""
 
@@ -72,17 +94,7 @@ def renumber_vehicle_markers(vehicles_path: Path, new_numbers: dict[int, int | N
 
         return tag
 
-    new_text = _TAG.sub(replace_tag, text)
-
-    if new_text != text:
-        temporary = vehicles_path.with_name(vehicles_path.name + ".tmp")
-
-        with open(temporary, "w", encoding="utf-8-sig", newline="") as file:
-            file.write(new_text)
-
-        os.replace(temporary, vehicles_path)
-
-    return affected
+    return _TAG.sub(replace_tag, text), affected
 
 
 def _attribute(tag: str, name: str) -> str:
