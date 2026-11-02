@@ -1,5 +1,8 @@
 """Route finder: a drivable route over the game's drivability map (see navigation_costmap).
 
+Each leg between two waypoints is first built from straight pieces and arcs (see route_pipeline);
+only a leg that cannot be built that way is searched as described below.
+
 Hybrid A*: the search moves in short arcs and straight pieces over position and heading, forward
 only and no tighter than the turning radius, so a vehicle with a trailer can drive the route.
 Close to each waypoint it tries a Dubins path, which ends exactly at the waypoint, and at the goal
@@ -38,6 +41,7 @@ from dataclasses import dataclass, field
 from itertools import pairwise
 
 from autodrive_editor.editing.dubins import TURNS, DubinsPath, Pose, advance, shortest_path
+from autodrive_editor.editing.route_pipeline import LegBuilder, bisector
 from autodrive_editor.file_io.navigation_costmap import BLOCKED_VALUE, ROAD_VALUE, NavigationCostmap
 
 logger = logging.getLogger(__name__)
@@ -291,6 +295,87 @@ class RouteFinder:
             logger.debug("Waypoints %d and %d too close for the radius", leg + 1, leg + 2)
             gap = list(request.waypoints[leg : leg + 2])
             return Route([], [], [], gap, leg + 1, too_close=True)
+
+        route = self._built(request, radius, cancelled)
+
+        return None if cancelled() else route
+
+    def _built(self, request: RouteRequest, radius: float, cancelled) -> Route | None:
+        """The route built leg by leg (see route_pipeline); a leg that cannot be built is
+        searched (see _searched). Inner waypoints are passed at the heading halfway between the
+        lines into and out of them."""
+
+        search = _Search(self, request, WINDOW_MARGIN)
+        cheapest = min(BAND_COSTS) * (SAME_LANE if search.lanes else 1.0)
+        builder = LegBuilder(search, radius, SAMPLE, cheapest)
+        waypoints = request.waypoints
+        last = len(waypoints) - 1
+        points = [request.start]
+        blocked = [search._is_blocked(request.start)]
+        indices = [0]
+        start_headings = request.start_headings
+
+        for leg in range(last):
+            started = time.perf_counter()
+            start, goal = points[-1], waypoints[leg + 1]
+
+            if leg + 1 == last:
+                goal_headings = request.goal_headings
+            else:
+                goal_headings = (bisector(waypoints[leg], goal, waypoints[leg + 2]),)
+
+            built = builder.build(start, start_headings, goal, goal_headings, cancelled)
+
+            if cancelled():
+                return None
+
+            if built is not None and _loop_start(built.points, LOOP_CIRCLES * math.tau * radius):
+                built = None
+
+            if built is not None:
+                logger.debug(
+                    "Leg %d built (%s), cost %.0f, %.3f s",
+                    leg + 1,
+                    built.kind,
+                    built.cost,
+                    time.perf_counter() - started,
+                )
+                points += built.points[1:]
+                blocked += [False] * (len(built.points) - 1)
+                indices.append(len(points) - 1)
+                start_headings = (built.end_heading,)
+                continue
+
+            logger.debug("Leg %d cannot be built, searching", leg + 1)
+            leg_request = RouteRequest(
+                (start, goal),
+                start_headings,
+                request.goal_headings if leg + 1 == last else None,
+                request.lanes,
+                request.free_radius,
+                request.free_length,
+                request.turning_radius,
+            )
+            searched = self._searched(leg_request, cancelled)
+
+            if searched is None:
+                return None
+
+            points += searched.points[1:]
+            blocked += searched.blocked[1:]
+
+            if not searched.is_complete:
+                gap = [points[-1], *waypoints[leg + 1 :]]
+                return Route(points, indices, blocked, gap, leg + 1)
+
+            indices.append(len(points) - 1)
+            (ax, az), (bx, bz) = searched.points[-2:]
+            start_headings = (math.atan2(bz - az, bx - ax),)
+
+        return Route(points, indices, blocked)
+
+    def _searched(self, request: RouteRequest, cancelled) -> Route | None:
+        """The route found by the search (Hybrid A*), or None if cancelled."""
 
         route = None
 

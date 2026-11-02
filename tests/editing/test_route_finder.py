@@ -356,5 +356,8 @@ def test_route_keeps_to_the_line_between_waypoints_after_a_corner():
     corner, goal = route.waypoint_indices[1:]
     after_curve = [x for x, z in route.points[corner:goal] if z > 3 * VEHICLE.turning_radius]
 
+    # Passed at the heading halfway between the two lines, the route turns onto a straight line
+    # to the goal, starting close to the line between the waypoints.
     assert after_curve
-    assert max(abs(x) for x in after_curve) < 1.0
+    assert max(abs(x) for x in after_curve) < 2.0
+    assert after_curve == sorted(after_curve, reverse=True)

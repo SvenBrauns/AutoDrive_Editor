@@ -3,7 +3,7 @@ from itertools import pairwise
 
 import pytest
 
-from autodrive_editor.editing.route_geometry import fillet, sample
+from autodrive_editor.editing.route_geometry import corners_of, fillet, sample, turn_straight_turn
 
 
 def _assert_smooth(pieces):
@@ -41,12 +41,26 @@ def test_corners_too_close_turning_the_same_way_become_one():
     assert pieces[-1].end == pytest.approx((22, 25, math.pi / 2))
 
 
-def test_an_s_bend_too_tight_for_the_radius_fails():
-    assert fillet([(0, 0), (20, 0), (22, 2), (40, 2)], 6) is None
+def test_an_s_bend_too_tight_for_the_radius_becomes_a_wider_one():
+    pieces = fillet([(0, 0), (20, 0), (22, 2), (40, 2)], 6)
+
+    _assert_smooth(pieces)
+    assert pieces[0].start == pytest.approx((0, 0, 0))
+    assert pieces[-1].end == pytest.approx((40, 2, 0))
+    assert all(abs(piece.curvature) in (0, pytest.approx(1 / 6)) for piece in pieces)
 
 
 def test_arcs_need_room_up_to_the_ends():
     assert fillet([(0, 0), (3, 0), (3, 30)], 6) is None
+
+
+def test_a_u_turn_turns_straight_and_turns():
+    ways = turn_straight_turn((0, 0, 0), (0, 20, math.pi), 6)
+
+    first, second = ways[0]
+
+    assert first == pytest.approx((6, 0))
+    assert second == pytest.approx((6, 20))
 
 
 def test_turning_back_fails():
@@ -63,3 +77,9 @@ def test_sampled_points_are_close_together_and_end_exactly():
     on_arc = [point for point in points if point[0] > 24 and point[1] < 6]
     assert on_arc
     assert all(math.dist(point, (24, 6)) == pytest.approx(6) for point in on_arc)
+
+
+def test_the_corners_of_rounded_pieces_are_the_merged_corners():
+    pieces = fillet([(0, 0), (20, 0), (22, 2), (22, 25)], 6)
+
+    assert corners_of(pieces) == pytest.approx([(0, 0), (22, 0), (22, 25)])
