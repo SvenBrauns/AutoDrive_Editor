@@ -1,6 +1,7 @@
 import pytest
 from base_game_helpers import make_installation
 from game_folder_helpers import make_game_folder
+from PySide6.QtCore import QByteArray
 
 from autodrive_editor.editing.junction import Stem
 from autodrive_editor.editing.junction_box import Style
@@ -370,3 +371,11 @@ def test_map_chosen_for_a_file_is_remembered(tmp_path):
 
     assert AppSettings().file_map(tmp_path / "a.xml") == "LS25_Testkarte"
     assert AppSettings().file_map(tmp_path / "b.xml") is None
+
+
+def test_window_layout_is_empty_until_saved_and_then_kept():
+    assert AppSettings().window_layout == (QByteArray(), QByteArray())
+
+    AppSettings().set_window_layout(QByteArray(b"geometry"), QByteArray(b"state"))
+
+    assert AppSettings().window_layout == (QByteArray(b"geometry"), QByteArray(b"state"))

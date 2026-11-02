@@ -5,7 +5,7 @@ import os
 from dataclasses import fields
 from pathlib import Path
 
-from PySide6.QtCore import QSettings
+from PySide6.QtCore import QByteArray, QSettings
 
 from autodrive_editor.editing.junction import LANE_GAP, Stem
 from autodrive_editor.editing.junction_box import Style
@@ -56,6 +56,8 @@ class AppSettings:
     JUNCTION_GAP_KEY = "junction/lane_gap"
     JUNCTION_STYLE_KEY = "junction/style"
     RECENT_ITEMS_KEY = "app/recent_items"
+    WINDOW_GEOMETRY_KEY = "window/geometry"
+    WINDOW_STATE_KEY = "window/state"
     LANGUAGE_KEY = "app/language"
     CHECK_OVERLAP_KEY = "check/overlap_tolerance"
     CHECK_HEIGHT_KEY = "check/max_height_difference"
@@ -341,6 +343,23 @@ class AppSettings:
         self._settings.setValue(
             self.RECENT_ITEMS_KEY, json.dumps([item.to_dict() for item in items])
         )
+        self._settings.sync()
+
+    @property
+    def window_layout(self) -> tuple[QByteArray, QByteArray]:
+        """Window size and position, and the panels and toolbars; empty until first saved."""
+
+        geometry = self._settings.value(self.WINDOW_GEOMETRY_KEY, QByteArray())
+        state = self._settings.value(self.WINDOW_STATE_KEY, QByteArray())
+
+        return (
+            geometry if isinstance(geometry, QByteArray) else QByteArray(),
+            state if isinstance(state, QByteArray) else QByteArray(),
+        )
+
+    def set_window_layout(self, geometry: QByteArray, state: QByteArray):
+        self._settings.setValue(self.WINDOW_GEOMETRY_KEY, geometry)
+        self._settings.setValue(self.WINDOW_STATE_KEY, state)
         self._settings.sync()
 
     def file_map(self, path) -> str | None:

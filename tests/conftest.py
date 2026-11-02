@@ -61,6 +61,16 @@ def no_recent_items():
         settings.set_recent_items([])
 
 
+@pytest.fixture(autouse=True)
+def default_window_layout():
+    """Every window starts with the default size and panels, not those a previous test left."""
+    from PySide6.QtCore import QByteArray
+
+    from autodrive_editor.settings.app_settings import AppSettings
+
+    AppSettings().set_window_layout(QByteArray(), QByteArray())
+
+
 @pytest.fixture
 def isolated_user_data(tmp_path, monkeypatch):
     """A fresh, empty user data folder for tests that need clean settings."""

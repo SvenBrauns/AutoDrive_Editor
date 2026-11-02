@@ -190,8 +190,18 @@ class MainWindow(QMainWindow):
         # dock reads the renderer state after it has been updated.
         self._create_debug_dock_coordinator()
 
+        self._restore_layout()
+
+    def _restore_layout(self):
+        """Size, position and panels as they were when the window was last closed."""
+
+        geometry, state = self.settings.window_layout
+        self.restoreGeometry(geometry)
+        self.restoreState(state)
+
     def closeEvent(self, event):
         if self.files.confirm_discard_changes() and self.picture_capture.confirm_stop():
+            self.settings.set_window_layout(self.saveGeometry(), self.saveState())
             event.accept()
         else:
             event.ignore()
