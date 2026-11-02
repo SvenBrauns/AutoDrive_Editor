@@ -17,6 +17,7 @@ class BackgroundSearch(QObject):
         super().__init__(parent)
 
         self._done.connect(lambda handler, value: handler(value))
+        self._running: list[tuple[threading.Thread, threading.Event]] = []
 
     def start(
         self,
@@ -39,9 +40,24 @@ class BackgroundSearch(QObject):
             else:
                 self._emit(on_done, result)
 
-        threading.Thread(target=run, daemon=True).start()
+        thread = threading.Thread(target=run, daemon=True)
+        thread.start()
+        self._running = [(t, c) for t, c in self._running if t.is_alive()]
+        self._running.append((thread, cancelled))
 
         return cancelled
+
+    def stop(self):
+        """Cancels all running searches and waits until they have ended, so none reports to a
+        window that is deleted meanwhile."""
+
+        for _, cancelled in self._running:
+            cancelled.set()
+
+        for thread, _ in self._running:
+            thread.join()
+
+        self._running = []
 
     def _emit(self, handler, value):
         try:

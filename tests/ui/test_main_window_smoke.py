@@ -142,3 +142,15 @@ def test_display_style_is_applied_without_rebuilding_the_scene(zoomed_window):
     assert all(layer.display_style is style for layer in renderer.layers)
     assert window.node_selection.selected_node_ids == {2}
     assert renderer.get_node_at(10, 0, window.view.zoom_level).node_id == 2
+
+
+def test_closing_stops_the_background_searches(window, monkeypatch):
+    stopped = []
+    monkeypatch.setattr(window.find_route_operation, "stop_search", lambda: stopped.append("route"))
+    monkeypatch.setattr(
+        window.junction_operation, "stop_search", lambda: stopped.append("junction")
+    )
+
+    window.close()
+
+    assert stopped == ["route", "junction"]

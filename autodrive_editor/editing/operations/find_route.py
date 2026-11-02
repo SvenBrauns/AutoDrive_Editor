@@ -275,6 +275,11 @@ class FindRouteOperation(EditOperation):
 
         return True
 
+    def stop_search(self):
+        """Cancels a running search and waits until it has ended. For closing the window."""
+
+        self._background.stop()
+
     def missing_costmap_message(self) -> str | None:
         """Why there is no drivability map, or None if there is one."""
 
