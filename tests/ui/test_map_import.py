@@ -1,5 +1,6 @@
 """Settings → Maps: import from a mod zip, re-import, remove, use for the open file."""
 
+import threading
 import zipfile
 
 import pytest
@@ -75,7 +76,7 @@ def test_reimport_reads_the_map_from_its_mod_again(map_window):
     cached = map_window.map_cache.import_map(mod, read_map_mod(mod).maps[0])
     (cached.directory / "dem.png").unlink()
 
-    assert map_window.map_import.reimport(cached)
+    assert map_window.map_import.reimport([cached])
 
     assert cached.heightmap_path is not None
 
@@ -84,7 +85,7 @@ def test_reimport_without_the_mod_explains_it(map_window, tmp_path):
     mod = make_single_map_mod(tmp_path / "elsewhere", name="FS25_A")
     cached = map_window.map_cache.import_map(mod, read_map_mod(mod).maps[0])
 
-    assert not map_window.map_import.reimport(cached)
+    assert not map_window.map_import.reimport([cached])
 
     assert "FS25_A" in map_window.messages[0]
 
@@ -141,3 +142,36 @@ def test_map_menu_is_gone_and_capture_is_under_background(window):
     assert "Map" not in menus
     assert window.actions.capture_picture_action in view["Background"].actions()
     assert window.actions.refresh_picture_action in view["Background"].actions()
+
+
+def test_several_maps_are_reimported_together_and_missing_mods_are_named(map_window, tmp_path):
+    mod_a = make_single_map_mod(map_window.mods, name="FS25_A", title="Karte A")
+    mod_b = make_single_map_mod(map_window.mods, name="FS25_B", title="Karte B")
+    mod_c = make_single_map_mod(tmp_path / "elsewhere", name="FS25_C", title="Karte C")
+    maps = [
+        map_window.map_cache.import_map(mod, read_map_mod(mod).maps[0])
+        for mod in (mod_a, mod_b, mod_c)
+    ]
+    for cached in maps:
+        (cached.directory / "dem.png").unlink()
+
+    assert map_window.map_import.reimport(maps)
+
+    assert [cached.heightmap_path is not None for cached in maps] == [True, True, False]
+    assert "FS25_C" in map_window.messages[0]
+
+
+def test_maps_are_imported_in_another_thread(map_window, monkeypatch):
+    mod = make_single_map_mod(map_window.mods, name="FS25_A")
+    cached = map_window.map_cache.import_map(mod, read_map_mod(mod).maps[0])
+    threads = []
+    original = map_window.map_cache.import_map
+    monkeypatch.setattr(
+        map_window.map_cache,
+        "import_map",
+        lambda *args: threads.append(threading.get_ident()) or original(*args),
+    )
+
+    assert map_window.map_import.reimport([cached])
+
+    assert threads and threads[0] != threading.get_ident()

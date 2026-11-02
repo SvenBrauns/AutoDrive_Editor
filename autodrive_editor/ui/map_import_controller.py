@@ -1,6 +1,7 @@
 import shutil
+from concurrent.futures import ThreadPoolExecutor
 
-from PySide6.QtCore import QObject, Qt, Signal
+from PySide6.QtCore import QEventLoop, QMetaObject, QObject, Qt, Signal
 from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox, QProgressDialog, QWidget
 
 from autodrive_editor.file_io.autodrive_xml import ConfigFormat, ConfigSource
@@ -65,18 +66,27 @@ class MapImportController(QObject):
     def _show_first_start_dialog(self):
         FirstStartDialog(self.settings, parent=self.window).exec()
 
-    def reimport(self, cached: CachedMap) -> bool:
-        """Settings → Maps → Re-import: reads the map from its mod again."""
+    def reimport(self, maps: list[CachedMap]) -> bool:
+        """Settings → Maps → Re-import: reads the maps from their mods again."""
 
         game_folder = self.settings.game_folder
         mods = game_folder.mods_directory if game_folder is not None else None
-        found = find_import_source(cached, mods, self._read_base_game_maps())
+        base_maps = self._read_base_game_maps()
+        found, missing = [], []
 
-        if found is None:
-            self._inform(tr("The mod “{mod}” of this map was not found.", mod=cached.mod_name))
-            return False
+        for cached in maps:
+            source = find_import_source(cached, mods, base_maps)
 
-        return bool(self._import_maps([found]))
+            if source is None:
+                text = tr("The mod “{mod}” of this map was not found.", mod=cached.mod_name)
+                missing.append(text)
+            else:
+                found.append(source)
+
+        if missing:
+            self._inform("\n".join(missing))
+
+        return bool(found) and bool(self._import_maps(found))
 
     def remove(self, cached: CachedMap) -> bool:
         """Settings → Maps → Remove: deletes the imported map with its game picture, after
@@ -238,29 +248,33 @@ class MapImportController(QObject):
         show_now shows a new map under the open file right away; False when a file is about to
         be opened with it."""
 
-        progress = QProgressDialog(tr("Importing maps…"), tr("Cancel"), 0, len(chosen), self.window)
+        # A moving bar: a map imports in one step. Application modal, because the window stays
+        # responsive meanwhile (also Settings, where a re-import starts).
+        progress = QProgressDialog(tr("Importing maps…"), tr("Cancel"), 0, 0, self.window)
         progress.setWindowTitle(tr("Import maps"))
-        progress.setWindowModality(Qt.WindowModality.WindowModal)
-        # A single map imports in one blocking step; shown at once so the user sees why.
-        progress.setMinimumDuration(300 if len(chosen) > 1 else 0)
+        progress.setWindowModality(Qt.WindowModality.ApplicationModal)
+        progress.setMinimumDuration(0)
+        # Cancel stops after the map being imported; the dialog stays open until then.
+        canceled = []
+        progress.canceled.disconnect(progress.cancel)
+        progress.canceled.connect(lambda: canceled.append(True))
 
         imported, failed = [], []
 
         for index, (map_mod, entry) in enumerate(chosen):
-            if progress.wasCanceled():
+            if canceled:
                 break
 
             progress.setLabelText(f"{entry.title} ({index + 1}/{len(chosen)})")
-            progress.setValue(index)
-            QApplication.processEvents()
+            progress.show()
 
             try:
-                self.map_cache.import_map(map_mod, entry)
+                run_in_background(self.map_cache.import_map, map_mod, entry)
                 imported.append(entry.title)
             except Exception as ex:
                 failed.append(f"{entry.title}: {ex}")
 
-        progress.setValue(len(chosen))
+        progress.close()
 
         # Shows a new or re-imported map (e.g. now with its ground map) right away.
         if imported and show_now:
@@ -280,3 +294,21 @@ class MapImportController(QObject):
 
     def _inform(self, message: str):
         inform(self.window, message)
+
+
+def run_in_background(function, *args):
+    """function(*args) in another thread, while Qt goes on painting and handling events (such as
+    a progress dialog's Cancel). Returns its result or raises its exception."""
+
+    with ThreadPoolExecutor(1) as executor:
+        future = executor.submit(function, *args)
+        loop = QEventLoop()
+        # Queued: the call comes from the other thread.
+        future.add_done_callback(
+            lambda _: QMetaObject.invokeMethod(loop, "quit", Qt.ConnectionType.QueuedConnection)
+        )
+
+        if not future.done():
+            loop.exec()
+
+        return future.result()
