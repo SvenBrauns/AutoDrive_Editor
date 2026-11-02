@@ -23,7 +23,7 @@ from pathlib import Path
 
 import pytest
 
-from autodrive_editor.editing.route_finder import RouteFinder, RouteRequest, Vehicle
+from autodrive_editor.editing.route_finder import CURVE_RADIUS, RouteFinder, RouteRequest, Vehicle
 from autodrive_editor.file_io.navigation_costmap import NavigationCostmap
 
 FIXTURE = Path(__file__).parent / "data" / "route_benchmark.json"
@@ -106,6 +106,7 @@ def measure(piece: Piece, vehicle: Vehicle = VEHICLE) -> Result:
         (points[0], points[-1]),
         (heading(points[0], points[1]),),
         (heading(points[-2], points[-1]),),
+        turning_radius=CURVE_RADIUS,
     )
     started = time.perf_counter()
     deadline = started + TIME_LIMIT

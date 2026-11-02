@@ -632,6 +632,7 @@ class MainWindow(QMainWindow):
             spacing_provider=lambda: self.create_path_operation.options.spacing,
             plan_node_ids_provider=self._plan_node_ids,
             height_for_new_node=self.create_nodes_operation.height_for_new_node,
+            curve_radius_provider=lambda: self.settings.curve_radius,
             parent=self,
         )
 
@@ -643,6 +644,7 @@ class MainWindow(QMainWindow):
             height_for_new_node=self.create_nodes_operation.height_for_new_node,
             stem_provider=lambda: self.settings.junction_stem,
             style_provider=lambda: self.settings.junction_style,
+            curve_radius_provider=lambda: self.settings.curve_radius,
             parent=self,
         )
 

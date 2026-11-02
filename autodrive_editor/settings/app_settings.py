@@ -10,7 +10,7 @@ from PySide6.QtCore import QByteArray, QSettings
 from autodrive_editor.editing.junction import LANE_GAP, Stem
 from autodrive_editor.editing.junction_box import Style
 from autodrive_editor.editing.path_shapes import PathOptions
-from autodrive_editor.editing.route_finder import Vehicle
+from autodrive_editor.editing.route_finder import CURVE_RADIUS, Vehicle
 from autodrive_editor.editing.station_layout import StationSettings
 from autodrive_editor.file_io.savegame_buildings import BuildingGroup
 from autodrive_editor.game.game_folder import GameFolder
@@ -45,6 +45,7 @@ class AppSettings:
         "width": "route/vehicle_width",
         "margin": "route/safety_margin",
     }
+    CURVE_RADIUS_KEY = "route/curve_radius"
     STATION_KEYS = {
         "before": "stations/lane_before",
         "after": "stations/lane_after",
@@ -313,6 +314,18 @@ class AppSettings:
         for name, key in self.VEHICLE_KEYS.items():
             self._settings.setValue(key, float(getattr(vehicle, name)))
 
+        self._settings.sync()
+
+    @property
+    def curve_radius(self) -> float:
+        """Radius of the arcs Find route and Junction build curves with."""
+
+        radius = self._settings.value(self.CURVE_RADIUS_KEY, CURVE_RADIUS, type=float)
+
+        return radius if radius > 0 else CURVE_RADIUS
+
+    def set_curve_radius(self, radius: float):
+        self._settings.setValue(self.CURVE_RADIUS_KEY, float(radius))
         self._settings.sync()
 
     @property

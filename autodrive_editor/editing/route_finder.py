@@ -103,6 +103,10 @@ LOOP_CIRCLES = 2
 HEURISTIC_WEIGHT = 1.2
 
 
+# Default radius of the arcs routes are built with (the "Curve radius" setting).
+CURVE_RADIUS = 6.0
+
+
 @dataclass(frozen=True)
 class Vehicle:
     turning_radius: float = 10.0
@@ -123,7 +127,7 @@ class RouteRequest:
     # blocked cells can be driven on.
     free_radius: float = 3.0
     free_length: float = 20.0
-    # Tightest turn of this search, e.g. the yard radius; None for the vehicle's.
+    # Radius of the arcs and of the fallback search, e.g. CURVE_RADIUS; None for the vehicle's.
     turning_radius: float | None = None
 
     @property

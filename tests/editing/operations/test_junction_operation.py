@@ -24,7 +24,13 @@ class Fixture:
     `two_lanes` also a west-bound lane at z = -4 (IDs 101–113)."""
 
     def __init__(
-        self, qapp, costmap=None, stem=(Stem.AUTO, 5.5), style=Style.CURVES, two_lanes=False
+        self,
+        qapp,
+        costmap=None,
+        stem=(Stem.AUTO, 5.5),
+        style=Style.CURVES,
+        two_lanes=False,
+        radius=6.0,
     ):
         self.qapp = qapp
         self.data = AutoDriveData()
@@ -60,6 +66,7 @@ class Fixture:
             height_for_new_node=lambda data, x, z: 0.0,
             stem_provider=lambda: stem,
             style_provider=lambda: style,
+            curve_radius_provider=lambda: radius,
         )
         self.operation.status_changed.connect(self.messages.append)
 
@@ -86,6 +93,14 @@ def test_dragging_previews_curves_meeting_a_radius_from_the_road_and_the_stem(qa
     assert len(preview.plan.curves) == 2
     assert preview.junction[:2] == pytest.approx((2.0, 6.0))
     assert preview.stem_length == pytest.approx(14.0)
+
+
+def test_curves_use_the_curve_radius_setting(qapp):
+    fixture = Fixture(qapp, radius=9.0)
+
+    fixture.drag(2.0, 20.0)
+
+    assert fixture.operation.preview.junction[:2] == pytest.approx((2.0, 9.0))
 
 
 def test_release_adds_the_junction_to_the_plan_in_one_step(qapp):

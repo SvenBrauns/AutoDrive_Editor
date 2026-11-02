@@ -3,7 +3,7 @@
 One-way curves lead in from each road lane to the junction node and out from it to each lane;
 the stem into the yard starts at the junction node. A stem of two one-way lanes has a meeting
 point per lane instead, half the lane gap to each side of the stem's centre line. Each curve
-leaves or joins its lane tangentially at the yard radius, so it works on straight and curved
+leaves or joins its lane tangentially at the curve radius, so it works on straight and curved
 roads, with two one-way lanes (as from the AI scan) or one two-way road. Where a curve is
 blocked on the drivability map, other places along the lane are tried, then tighter radii down
 to MIN_RADIUS, then the route finder; a curve that still does not fit is left out and listed.
@@ -35,9 +35,7 @@ from autodrive_editor.model.connections import (
 
 Point = tuple[float, float]
 
-# Turning radius of curves in yards.
-YARD_RADIUS = 6.0
-# Curves tighten in RADIUS_STEP steps down to MIN_RADIUS where the yard radius does not fit.
+# Curves tighten in RADIUS_STEP steps down to MIN_RADIUS where the curve radius does not fit.
 MIN_RADIUS = 4.0
 RADIUS_STEP = 1.0
 # Places where a curve leaves or joins its lane are tried every LEAVE_STEP metres up to
@@ -69,7 +67,7 @@ LANE_GAP = 5.5
 ACROSS = 80.0
 # ... and at most this far to the side of the stem's line, on the far side of the road.
 ACROSS_SIDEWAYS = 10.0
-# Straight lanes across try these multiples of the yard radius, the gentlest first.
+# Straight lanes across try these multiples of the curve radius, the gentlest first.
 ACROSS_RADII = (8, 4, 2, 1)
 
 

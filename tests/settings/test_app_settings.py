@@ -319,6 +319,14 @@ def test_vehicle_for_the_route_finder_is_kept():
     assert AppSettings().vehicle == Vehicle(12.5, 3.5, 1.0)
 
 
+def test_curve_radius_is_kept():
+    assert AppSettings().curve_radius == 6.0
+
+    AppSettings().set_curve_radius(8.5)
+
+    assert AppSettings().curve_radius == 8.5
+
+
 def test_invalid_vehicle_values_fall_back_to_the_defaults():
     settings = AppSettings()
     settings.set_vehicle(Vehicle(0, 3, 0.5))

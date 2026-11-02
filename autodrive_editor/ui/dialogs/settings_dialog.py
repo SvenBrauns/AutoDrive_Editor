@@ -126,15 +126,16 @@ class SettingsDialog(QDialog):
 
             return spin_box
 
+        self.curve_radius_input = metres_input(self.settings.curve_radius, 4.0, 50.0)
         self.turning_radius_input = metres_input(vehicle.turning_radius, 3.0, 50.0)
         self.vehicle_width_input = metres_input(vehicle.width, 1.0, 10.0)
         self.safety_margin_input = metres_input(vehicle.margin, 0.1, 5.0)
 
         note = QLabel(
             tr(
-                "Find route plans for a vehicle of this size: it turns no tighter than the "
-                "turning radius and keeps half its width plus the safety margin away from "
-                "buildings, fences and trees."
+                "Find route and Junction build curves as arcs of the curve radius. Routes keep "
+                "half the vehicle width plus the safety margin away from buildings, fences and "
+                "trees."
             ),
             tab,
         )
@@ -142,6 +143,7 @@ class SettingsDialog(QDialog):
 
         form = QFormLayout(tab)
         form.addRow(note)
+        form.addRow(tr("Curve radius:"), self.curve_radius_input)
         form.addRow(tr("Minimum turning radius:"), self.turning_radius_input)
         form.addRow(tr("Vehicle width:"), self.vehicle_width_input)
         form.addRow(tr("Safety margin:"), self.safety_margin_input)
@@ -157,6 +159,7 @@ class SettingsDialog(QDialog):
                 self.safety_margin_input.value(),
             )
         )
+        self.settings.set_curve_radius(self.curve_radius_input.value())
         self.settings.set_autosave_minutes(self.autosave_input.value())
         self.settings.set_theme(self.theme_input.currentData())
         self.settings.set_check_updates(self.check_updates_input.isChecked())

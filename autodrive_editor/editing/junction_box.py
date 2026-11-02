@@ -24,7 +24,6 @@ from autodrive_editor.editing.junction import (
     RADIUS_STEP,
     SAMPLE,
     SNAP,
-    YARD_RADIUS,
     Curve,
     CurveKind,
     RoadEnd,
@@ -41,7 +40,7 @@ from autodrive_editor.editing.junction import (
     lane_poses,
 )
 from autodrive_editor.editing.path_shapes import spaced_points
-from autodrive_editor.editing.route_finder import Route, RouteRequest, Vehicle
+from autodrive_editor.editing.route_finder import CURVE_RADIUS, Route, RouteRequest, Vehicle
 from autodrive_editor.file_io.navigation_costmap import NavigationCostmap
 from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
@@ -115,6 +114,7 @@ def plan_box(
     marker_ids: frozenset[int] = frozenset(),
     across: list[tuple[CurveKind, RoadLane]] = (),
     find_route: Callable[[RouteRequest], Route | None] | None = None,
+    radius: float = CURVE_RADIUS,
 ) -> BoxPlan | None:
     """The box where a stem of two lanes `gap` apart leaves `foot` along the heading. None
     unless the road has two one-way lanes that both stem lanes cross with room for the box."""
@@ -171,9 +171,7 @@ def plan_box(
 
     for kind, lane in across:
         index = 0 if kind == CurveKind.IN else 1
-        curve = _straight(
-            lane, kind, (*far_edges[index], heading), YARD_RADIUS, checker, find_route
-        )
+        curve = _straight(lane, kind, (*far_edges[index], heading), radius, checker, find_route)
 
         if curve is None:
             plan.missing.append(_missing_across_text(lane, kind, junction))

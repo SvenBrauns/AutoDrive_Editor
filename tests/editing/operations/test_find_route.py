@@ -202,8 +202,7 @@ def test_waypoints_too_close_for_the_radius_are_named(route):
 
     assert route.find(11, 12).too_close
     assert route.messages[-1] == (
-        "Waypoints 1 and 2 are too close for the turning radius of 8 m (red dashed). "
-        "Move them apart"
+        "Waypoints 1 and 2 are too close for the curve radius of 6 m (red dashed). Move them apart"
     )
 
 
