@@ -25,7 +25,13 @@ def test_savegame_without_career_file_gets_a_default_name(tmp_path):
     directory = tmp_path / "savegame7"
     directory.mkdir()
 
-    assert read_savegame_info(directory).display_name == "Savegame 7"
+    assert read_savegame_info(directory).display_name == "savegame7"
+
+
+def test_display_name_starts_with_the_folder(tmp_path):
+    directory = add_savegame(tmp_path, 3, "Mein Spielstand", "LS25 Thüringen 2.0 16x", "LS25_X")
+
+    assert read_savegame_info(directory).display_name == "savegame3 – Mein Spielstand"
 
 
 def test_autodrive_map_name_is_the_name_routes_xml_uses(tmp_path):

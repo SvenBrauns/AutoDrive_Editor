@@ -3,7 +3,7 @@
 import shutil
 
 import pytest
-from game_folder_helpers import add_routes, make_game_folder
+from game_folder_helpers import add_routes, add_savegame, make_game_folder
 from PySide6.QtWidgets import QFileDialog
 
 from autodrive_editor.settings.recent_items import RecentItem, RecentKind
@@ -80,6 +80,19 @@ def test_recent_route_opens_with_its_name_and_map(window, tmp_path):
     source = window.project_coordinator.config_source
     assert (source.display_name, source.map_name) == ("NF Marsch", "Map")
     assert menu_texts(window)[0] == "NF Marsch – Route"
+
+
+def test_recent_savegame_opens_with_its_folder_in_the_name(window, tmp_path):
+    folder = make_game_folder(tmp_path / "FarmingSimulator2025")
+    savegame = add_savegame(folder, 2, "Mein Spielstand", "LS25 Testkarte", "LS25_Testkarte")
+    path = str(savegame / "AutoDrive_config.xml")
+
+    # Stored by an older version, with the game's name only.
+    window.files.open_recent(RecentItem(RecentKind.SAVEGAME, path, "Mein Spielstand"))
+
+    expected = "savegame2 – Mein Spielstand"
+    assert window.project_coordinator.config_source.display_name == expected
+    assert menu_texts(window)[0] == f"{expected} – Savegame"
 
 
 def test_missing_file_is_removed_with_a_message(window, monkeypatch, tmp_path):

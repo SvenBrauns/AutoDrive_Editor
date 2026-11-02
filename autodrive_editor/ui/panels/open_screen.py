@@ -84,9 +84,9 @@ class OpenScreen(QWidget):
                 (
                     [
                         f"{info.number:2d}",
-                        info.display_name
+                        _savegame_name(info)
                         if info.has_autodrive
-                        else tr("{name} (no AutoDrive network)", name=info.display_name),
+                        else tr("{name} (no AutoDrive network)", name=_savegame_name(info)),
                         info.map_title,
                         info.saved_text,
                     ],
@@ -174,3 +174,9 @@ def settings_link(text: str) -> str:
     """A hint text with a link to the settings at its end."""
 
     return f'{text} <a href="{SETTINGS_LINK}">{tr("Open settings")}</a>'
+
+
+def _savegame_name(info) -> str:
+    """The name in the game; the number has its own column."""
+
+    return info.name or info.directory.name
