@@ -6,7 +6,8 @@ user data folder so a mod only has to be imported once.
         dem.png        terrain heightmap, as in the mod
         ground.png     map drawn from the ground textures (see ground_map)
         fields.json    field numbers and outlines
-        map.json       names, titles, map size and which mod it came from
+        map.json       names, titles, map size, which mod it came from and that mod's
+                       size and date, to notice an update of the mod (see map_stamp)
 
 The editor ships no map images; each user imports them from their own
 mods.
@@ -43,6 +44,10 @@ class CachedMap:
     mod_name: str
     map_id: str
     config_file: str
+    # map_stamp of the mod when imported; None for imports of older versions.
+    source_stamp: tuple[int, ...] | None = None
+    # A mod update the user chose not to import.
+    declined_stamp: tuple[int, ...] | None = None
 
     @property
     def title(self) -> str:
@@ -146,6 +151,7 @@ class MapCache:
                 "mod_name": archive.name,
                 "map_id": map_entry.map_id,
                 "config_file": map_entry.config_file,
+                "source_stamp": map_stamp(archive, map_entry),
                 "imported": datetime.now().isoformat(timespec="seconds"),
             }
 
@@ -154,6 +160,23 @@ class MapCache:
         )
 
         return self._read(folder)
+
+    def record_stamp(self, cached: CachedMap, stamp: tuple[int, ...]) -> CachedMap:
+        """Stores the mod's map_stamp for a map imported before the editor stored it."""
+
+        return self._update_info(cached, source_stamp=stamp)
+
+    def decline_update(self, cached: CachedMap, stamp: tuple[int, ...]) -> CachedMap:
+        """Not asked again to import this version of the mod."""
+
+        return self._update_info(cached, declined_stamp=stamp)
+
+    def _update_info(self, cached: CachedMap, **values) -> CachedMap:
+        path = cached.directory / INFO_FILE
+        info = json.loads(path.read_text(encoding="utf-8")) | values
+        path.write_text(json.dumps(info, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        return self._read(cached.directory)
 
     @staticmethod
     def _import_ground(archive: ModArchive, i3d_file: str, folder: Path):
@@ -210,7 +233,22 @@ class MapCache:
             mod_name=info.get("mod_name", ""),
             map_id=info.get("map_id", ""),
             config_file=info.get("config_file", ""),
+            source_stamp=_stamp(info.get("source_stamp")),
+            declined_stamp=_stamp(info.get("declined_stamp")),
         )
+
+
+def map_stamp(archive: ModArchive, map_entry: MapEntry) -> tuple[int, ...] | None:
+    """Size and date of the mod zip, or of the map's files in an unpacked mod or the base
+    game. A new value means the mod was updated."""
+
+    names = [map_entry.image_file, map_entry.heightmap_file, map_entry.i3d_file]
+
+    return archive.stamp([name for name in names if name])
+
+
+def _stamp(value) -> tuple[int, ...] | None:
+    return tuple(value) if value else None
 
 
 def folder_size(folder: Path) -> int:

@@ -1,4 +1,5 @@
 import json
+import os
 
 import pytest
 from map_mod_helpers import (
@@ -13,7 +14,8 @@ from PIL import Image
 
 from autodrive_editor.file_io.ground_map import SURFACE_COLORS, Field
 from autodrive_editor.file_io.map_mod import read_map_mod
-from autodrive_editor.terrain.map_cache import MapCache
+from autodrive_editor.file_io.mod_archive import ModArchive
+from autodrive_editor.terrain.map_cache import MapCache, map_stamp
 
 
 @pytest.fixture
@@ -149,3 +151,30 @@ def test_broken_cache_folders_are_skipped(cache, tmp_path):
     (cache.directory / "broken" / "map.json").write_text("{not json", encoding="utf-8")
 
     assert len(cache.maps()) == 1
+
+
+def test_import_stores_the_stamp_of_the_mod(cache, tmp_path):
+    cached, mod_path, _ = import_test_map(cache, tmp_path)
+
+    assert cached.source_stamp == (mod_path.stat().st_size, mod_path.stat().st_mtime_ns)
+    assert cached.declined_stamp is None
+
+
+def test_stamp_of_an_unpacked_mod_comes_from_the_map_files(cache, tmp_path):
+    cached, mod_path, entry = import_test_map(cache, tmp_path, unpacked=True)
+    image = mod_path / entry.image_file
+    os.utime(image, ns=(0, 10**18))
+
+    with ModArchive(mod_path) as archive:
+        assert len(cached.source_stamp) == 6
+        assert map_stamp(archive, entry) != cached.source_stamp
+
+
+def test_recorded_and_declined_stamps_are_kept_in_the_info(cache, tmp_path):
+    cached, _, _ = import_test_map(cache, tmp_path)
+
+    cache.record_stamp(cached, (1, 2))
+    declined = cache.decline_update(cached, (3, 4))
+
+    assert (declined.source_stamp, declined.declined_stamp) == ((1, 2), (3, 4))
+    assert MapCache().maps()[0] == declined

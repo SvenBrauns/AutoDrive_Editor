@@ -38,6 +38,7 @@ from autodrive_editor.editing.operations.stations import StationOperation
 from autodrive_editor.editing.path_shapes import PathShape
 from autodrive_editor.error_log import set_debug_logging
 from autodrive_editor.file_io.autodrive_xml import ConfigFormat
+from autodrive_editor.file_io.building_cache import BuildingCache
 from autodrive_editor.file_io.game_files import GameFiles
 from autodrive_editor.i18n import tr
 from autodrive_editor.measurement.coordinator import MeasurementCoordinator
@@ -674,6 +675,7 @@ class MainWindow(QMainWindow):
             measurement_coordinator=self.measurement_coordinator,
             map_cache=self.map_cache,
             game_files=self._game_files,
+            building_cache=BuildingCache(user_data_directory() / "cache" / "buildings.pickle"),
             parent=self,
         )
         self.project_coordinator.view_for_file = self.settings.file_view
@@ -1235,6 +1237,7 @@ class MainWindow(QMainWindow):
         self.files.saved.connect(self._update_window_title)
 
         self.map_import.status_changed.connect(self._set_status)
+        self.files.config_opened.connect(self.map_import.offer_update)
 
         self.picture_capture.status_changed.connect(self._set_status)
         self.reload.status_changed.connect(self._set_status)

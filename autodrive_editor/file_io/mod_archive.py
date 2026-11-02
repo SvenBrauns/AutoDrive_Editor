@@ -53,6 +53,27 @@ class ModArchive:
 
         return self._names.get(normalized.lower())
 
+    def stamp(self, names: list[str]) -> tuple[int, ...] | None:
+        """Size and modification time of the mod zip, or of these files of an unpacked mod, to
+        tell whether they changed since they were read; None if one is missing."""
+
+        if self.path.is_file():
+            paths = [self.path]
+        else:
+            real_names = [self.resolve(name) for name in names]
+
+            if None in real_names:
+                return None
+
+            paths = [self.path / name for name in real_names]
+
+        try:
+            infos = [path.stat() for path in paths]
+        except OSError:
+            return None
+
+        return tuple(value for info in infos for value in (info.st_size, info.st_mtime_ns))
+
     def exists(self, name: str) -> bool:
         return self.resolve(name) is not None
 
