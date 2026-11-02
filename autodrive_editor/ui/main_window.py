@@ -1260,6 +1260,7 @@ class MainWindow(QMainWindow):
         self.open_screen.hide()
 
         self.setWindowModified(False)
+        self.actions.reload_action.setEnabled(True)
         self.actions.save_xml_action.setEnabled(True)
         self.actions.save_xml_as_action.setEnabled(True)
         source = self.project_coordinator.config_source

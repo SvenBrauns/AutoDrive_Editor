@@ -3,8 +3,15 @@ from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import QObject, QTimer, Signal
-from PySide6.QtWidgets import QDialog, QFileDialog, QInputDialog, QMessageBox, QWidget
+from PySide6.QtCore import QObject, Qt, QTimer, Signal
+from PySide6.QtWidgets import (
+    QApplication,
+    QDialog,
+    QFileDialog,
+    QInputDialog,
+    QMessageBox,
+    QWidget,
+)
 
 from autodrive_editor.editing.commands.replace_network import ReplaceNetworkCommand
 from autodrive_editor.editing.edit_history import EditHistory
@@ -273,6 +280,15 @@ class FileController(QObject):
             self.status_changed.emit(tr("Load an AutoDrive XML first"))
             return False
 
+        if self._file_changed_on_disk():
+            answer = self._ask_overwrite_changed_file()
+
+            if answer == QMessageBox.Discard and self.confirm_end_capture():
+                self._reload()
+
+            if answer != QMessageBox.Save:
+                return False
+
         if not self.confirm_save():
             return False
 
@@ -285,6 +301,69 @@ class FileController(QObject):
         self._after_save(affected_vehicles)
 
         return True
+
+    def _file_changed_on_disk(self) -> bool:
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+
+        try:
+            return self.project_coordinator.file_changed_on_disk()
+        finally:
+            QApplication.restoreOverrideCursor()
+
+    def _ask_overwrite_changed_file(self):
+        """QMessageBox.Save overwrites, Discard reloads, Cancel cancels."""
+
+        box = QMessageBox(
+            QMessageBox.Warning,
+            APP_TITLE,
+            tr(
+                "“{name}” was changed by someone else since it was opened or saved, "
+                "probably by the game. Saving overwrites these changes.",
+                name=self.project_coordinator.config_source.display_name,
+            ),
+            parent=self.window,
+        )
+        box.addButton(tr("Save anyway"), QMessageBox.AcceptRole)
+        box.addButton(tr("Reload (my changes are lost)"), QMessageBox.DestructiveRole)
+        box.addButton(QMessageBox.Cancel)
+        box.setDefaultButton(QMessageBox.Cancel)
+        box.exec()
+
+        return {
+            QMessageBox.AcceptRole: QMessageBox.Save,
+            QMessageBox.DestructiveRole: QMessageBox.Discard,
+        }.get(box.buttonRole(box.clickedButton()), QMessageBox.Cancel)
+
+    def reload(self):
+        """File → Reload: loads the open file again from disk; unsaved changes are lost."""
+
+        source = self.project_coordinator.config_source
+
+        if source is None or not self.confirm_end_plan() or not self.confirm_end_capture():
+            return
+
+        if self.edit_history.is_clean or self._confirm_reload(source.display_name):
+            self._reload()
+
+    def _confirm_reload(self, name: str) -> bool:
+        answer = QMessageBox.question(
+            self.window,
+            APP_TITLE,
+            tr("Reload “{name}” from disk? The unsaved changes are lost.", name=name),
+            QMessageBox.Yes | QMessageBox.Cancel,
+            QMessageBox.Cancel,
+        )
+
+        return answer == QMessageBox.Yes
+
+    def _reload(self):
+        try:
+            self.project_coordinator.reload_file()
+        except Exception as ex:
+            self._inform(tr("The AutoDrive data could not be loaded:\n{error}", error=ex))
+            return
+
+        self.autosave_store.clear()
 
     def save_as_route(self) -> bool:
         """File → Save as route…: keeps a version of the network in the RoutesManager. A route

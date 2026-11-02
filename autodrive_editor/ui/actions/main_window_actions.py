@@ -90,7 +90,7 @@ class MainWindowActions:
         groups = (
             (
                 tr("File"),
-                ("open", "save_xml", "save_xml_as", "load_route", "settings", "exit"),
+                ("open", "reload", "save_xml", "save_xml_as", "load_route", "settings", "exit"),
             ),
             (
                 tr("Edit"),
@@ -222,6 +222,14 @@ class MainWindowActions:
         self.open_action.setShortcut(QKeySequence.Open)
         self.open_action.setStatusTip(tr("Open a route, a savegame or an AutoDrive XML file"))
         self.open_action.triggered.connect(self.window.files.open)
+
+        self.reload_action = QAction(tr("Reload"), self.window)
+        self.reload_action.setShortcut(QKeySequence("F5"))
+        self.reload_action.setStatusTip(
+            tr("Load the open file again from disk, e.g. after the game saved it")
+        )
+        self.reload_action.setEnabled(False)
+        self.reload_action.triggered.connect(self.window.files.reload)
 
         self.save_xml_action = QAction(tool_icon("save"), tr("Save"), self.window)
         self.save_xml_action.setShortcut(QKeySequence.Save)
@@ -510,6 +518,8 @@ class MainWindowActions:
         self.recent_menu = file_menu.addMenu(tr("Open recent"))
 
         self.recent_menu.aboutToShow.connect(self.fill_recent_menu)
+
+        file_menu.addAction(self.reload_action)
 
         file_menu.addAction(self.save_xml_action)
 
