@@ -72,8 +72,9 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ## 6. Project Conventions
 
 - Write all code (app and tests) in compact, normal Python style: `ruff format .`, not one argument per line. `pyproject.toml` is the source of truth.
-- Before finishing: `python -m pytest -q` and `ruff check . --output-format concise`.
-- New functions get tests; test files mirror the package structure under `tests/`.
+- While working, run only the test files for the code you changed. Run the full suite (`python -m pytest -q`) and `ruff check . --output-format concise` once before a commit.
+- New behavior gets a test, not every function. Test it once, at the lowest level that shows it (logic under `editing/`, `file_io/` etc.); a UI test only checks the wiring a user sees, through the public interface, not private attributes or exact texts. Test files mirror the package structure under `tests/`.
+- When a test fails, first decide: is the code wrong, or did the requirement change? Fix the code by default. Change a test only when the behavior was meant to change, and say so in the reply with the reason.
 - Every edit of the data model is an `EditCommand` pushed via `EditHistory.push()`, never a direct change to `AutoDriveData`. See DEVELOPMENT.md for architecture.
 - Keep the virtualization (never permanent NodeItems for all nodes).
 
