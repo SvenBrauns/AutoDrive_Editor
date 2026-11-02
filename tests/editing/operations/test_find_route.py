@@ -354,3 +354,22 @@ def test_route_found_message_warns_about_poor_join_nodes(route):
         "Nothing drives to node 1, so the route cannot be reached. "
         "Node 2 is a marker: other routes would lead through it"
     )
+
+
+def test_stop_search_waits_until_the_running_search_has_ended(qapp, monkeypatch):
+    ended = []
+
+    def find(self, request, cancelled):
+        while not cancelled():
+            time.sleep(0.01)
+
+        ended.append(1)
+
+    monkeypatch.setattr("autodrive_editor.editing.route_finder.RouteFinder.find", find)
+    route = Fixture(qapp)
+    route.operation.add_waypoint(0, 0, 1)
+    route.operation.add_waypoint(0, 0, 2)
+
+    route.operation.stop_search()
+
+    assert ended == [1]

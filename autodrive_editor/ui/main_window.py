@@ -221,6 +221,8 @@ class MainWindow(QMainWindow):
         if self.files.confirm_discard_changes() and self.picture_capture.confirm_stop():
             self.settings.set_window_layout(self.saveGeometry(), self.saveState())
             self.project_coordinator.remember_view()
+            self.find_route_operation.stop_search()
+            self.junction_operation.stop_search()
             event.accept()
         else:
             event.ignore()

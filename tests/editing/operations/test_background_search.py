@@ -50,3 +50,20 @@ def test_the_returned_event_cancels_the_search(qapp):
     wait_for(qapp, lambda: results)
 
     assert results == ["stopped"]
+
+
+def test_stop_cancels_running_searches_and_waits_for_them(qapp):
+    ended = []
+
+    def search(cancelled):
+        while not cancelled():
+            time.sleep(0.01)
+
+        time.sleep(0.05)
+        ended.append(1)
+
+    background = BackgroundSearch()
+    background.start(search, lambda result: None, lambda: None)
+    background.stop()
+
+    assert ended == [1]

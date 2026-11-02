@@ -268,6 +268,11 @@ class JunctionOperation(EditOperation):
 
         return self.cancel()
 
+    def stop_search(self):
+        """Cancels a running search and waits until it has ended. For closing the window."""
+
+        self._background.stop()
+
     def cancel(self) -> bool:
         had_something = self.preview is not None or self._running is not None
 
