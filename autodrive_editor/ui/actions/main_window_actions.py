@@ -383,6 +383,10 @@ class MainWindowActions:
 
         return action
 
+    def _set_keep_heights(self, keep: bool):
+        self.window.settings.set_keep_paste_heights(keep)
+        self.window.clipboard_operation.keep_heights = keep
+
     def _set_debug_log(self, enabled: bool):
         self.window.settings.set_debug_log(enabled)
         set_debug_logging(enabled)
@@ -487,6 +491,15 @@ class MainWindowActions:
             action.triggered.connect(trigger)
             setattr(self, name, action)
 
+        self.keep_heights_action = QAction(tr("Keep heights when pasting"), self.window)
+        self.keep_heights_action.setCheckable(True)
+        self.keep_heights_action.setStatusTip(
+            tr("Pasted nodes keep their copied heights, e.g. on a bridge or ramp")
+        )
+        self.keep_heights_action.toggled.connect(self._set_keep_heights)
+        self.keep_heights_action.setChecked(self.window.settings.keep_paste_heights)
+        clipboard.keep_heights = self.keep_heights_action.isChecked()
+
     def _create_history_action(
         self, icon: str, base_text: str, shortcut, trigger, can_run_changed, text_changed
     ) -> QAction:
@@ -551,6 +564,8 @@ class MainWindowActions:
         edit_menu.addAction(self.paste_action)
 
         edit_menu.addAction(self.paste_at_original_action)
+
+        edit_menu.addAction(self.keep_heights_action)
 
         edit_menu.addSeparator()
 

@@ -248,6 +248,8 @@ TEXTS = {
     "Cut": "Ausschneiden",
     "Paste": "Einfügen",
     "Paste at original position": "An Originalposition einfügen",
+    "Keep heights when pasting": "Beim Einfügen Höhen beibehalten",
+    "Pasted nodes keep their copied heights, e.g. on a bridge or ramp": "Eingefügte Nodes behalten ihre kopierten Höhen, z. B. auf einer Brücke oder Rampe",
     "Draw": "Zeichnen",
     "Connect": "Verbinden",
     "Selection": "Auswahl",

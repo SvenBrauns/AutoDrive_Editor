@@ -24,6 +24,8 @@ class ClipboardOperation(EditOperation):
         self.paste_position = paste_position
 
         self.content: ClipboardContent | None = None
+        # Pasted nodes keep their copied heights, e.g. for a bridge or ramp.
+        self.keep_heights = False
 
     def copy(self) -> bool:
         content = self._copy_selection()
@@ -53,7 +55,8 @@ class ClipboardOperation(EditOperation):
 
     def paste(self, at_original_position: bool = False) -> bool:
         """Pastes centered on the paste position (the mouse), or at the
-        copied coordinates. The pasted nodes become the selection."""
+        copied coordinates. Nodes get the terrain height unless keep_heights is set
+        (or at the copied coordinates). The pasted nodes become the selection."""
 
         autodrive_data = self.autodrive_data_provider()
 
@@ -69,7 +72,8 @@ class ClipboardOperation(EditOperation):
         else:
             target_x, target_z = self.paste_position()
             center_x, center_z = self.content.center
-            offset, height_at = (target_x - center_x, target_z - center_z), self.terrain_height_at
+            offset = (target_x - center_x, target_z - center_z)
+            height_at = None if self.keep_heights else self.terrain_height_at
 
         nodes, markers = nodes_for_paste(self.content, autodrive_data, offset, height_at)
 

@@ -68,6 +68,7 @@ class AppSettings:
     CHECK_UPDATES_KEY = "app/check_updates"
     REOPEN_LAST_KEY = "app/reopen_last"
     DEBUG_LOG_KEY = "app/debug_log"
+    KEEP_PASTE_HEIGHTS_KEY = "paste/keep_heights"
     FILE_MAPS_KEY = "maps/file_maps"
     PARKING_TEMPLATES_KEY = "parking/templates"
     # Named after the sheds, which were the first building types that could be hidden.
@@ -221,6 +222,16 @@ class AppSettings:
 
     def set_debug_log(self, enabled: bool):
         self._settings.setValue(self.DEBUG_LOG_KEY, bool(enabled))
+        self._settings.sync()
+
+    @property
+    def keep_paste_heights(self) -> bool:
+        """Whether pasted nodes keep their copied heights instead of the terrain height."""
+
+        return self._settings.value(self.KEEP_PASTE_HEIGHTS_KEY, False, type=bool)
+
+    def set_keep_paste_heights(self, keep: bool):
+        self._settings.setValue(self.KEEP_PASTE_HEIGHTS_KEY, bool(keep))
         self._settings.sync()
 
     @property
