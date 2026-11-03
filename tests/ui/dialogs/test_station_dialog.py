@@ -1,12 +1,24 @@
 import pytest
 from PySide6.QtCore import Qt
 
-from autodrive_editor.editing.station_layout import MarkerRule, StationSettings, plan_stations
+from autodrive_editor.editing.station_layout import (
+    LaneEnd,
+    MarkerRule,
+    StationSettings,
+    plan_stations,
+)
 from autodrive_editor.file_io.savegame_stations import Stop, StopKind
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
 from autodrive_editor.settings.app_settings import AppSettings
 from autodrive_editor.ui.dialogs.generator_settings_widget import GeneratorSettingsDialog
-from autodrive_editor.ui.dialogs.station_dialog import GROUP, NAME, NOTE, STOP, StationDialog
+from autodrive_editor.ui.dialogs.station_dialog import (
+    GROUP,
+    NAME,
+    NOTE,
+    STOP,
+    LaneHandle,
+    StationDialog,
+)
 
 pytestmark = pytest.mark.usefixtures("isolated_user_data")
 
@@ -53,22 +65,44 @@ def test_notes_name_a_missing_ai_node_and_an_existing_node_on_the_lane(qapp):
     assert station_dialog.table.item(1, NOTE).toolTip() == "no AI node"
 
 
-def test_handles_sit_at_the_front_end_of_the_chosen_lanes(qapp):
-    AppSettings().set_station_settings(StationSettings(after=2, marker=0))
+def test_handles_sit_at_the_lane_ends_and_the_marker(qapp):
+    AppSettings().set_station_settings(StationSettings(before=10, after=2, marker=0))
     station_dialog = dialog()
 
-    (sell, buy) = station_dialog.handles()
-    # At least 5 m from the stop, so short lanes can still be grabbed.
-    assert sell == pytest.approx((0, 5, 0, 0, 0))
-    assert buy == pytest.approx((1, -5, 30, 0, 30))
+    handles = station_dialog.handles()
+    # The turn handle at least 5 m from the stop, so short lanes can still be turned.
+    assert handles[:3] == [
+        (0, LaneHandle.START, pytest.approx(-10), pytest.approx(0)),
+        (0, LaneHandle.END, pytest.approx(2), pytest.approx(0)),
+        (0, LaneHandle.TURN, pytest.approx(5), pytest.approx(0)),
+    ]
+    assert handles[5][2:] == pytest.approx((-5, 30))
 
-    # The lane goes on past the marker.
-    AppSettings().set_station_settings(StationSettings(after=2, marker=8))
+    AppSettings().set_station_settings(StationSettings(before=10, after=2, marker=8))
     station_dialog.reload_settings()
-    assert station_dialog.handles()[0] == pytest.approx((0, 10, 0, 0, 0))
+    assert station_dialog.handles()[2][2:] == pytest.approx((8, 0))
 
     station_dialog.table.item(0, STOP).setCheckState(Qt.Unchecked)
-    assert [handle[0] for handle in station_dialog.handles()] == [1]
+    assert {handle[0] for handle in station_dialog.handles()} == {1}
+
+
+def test_lane_ends_bend_join_a_fitting_node_and_straighten_when_turned(qapp):
+    road = NodeData(1, 20, 0, 10, outgoing={2})
+    station_dialog = dialog(nodes=[road, NodeData(2, 30, 0, 10), NodeData(3, 20, 0, -10)])
+    start, end, turn = station_dialog.handles()[:3]
+
+    station_dialog.drag_handle(end, 21, 11, node_id=1)
+    # Node 3 is not driven to, so the lane cannot start there.
+    station_dialog.drag_handle(start, 19, -9, node_id=3)
+
+    choice = station_dialog.choices[0]
+    assert (choice.start, choice.end) == (LaneEnd(19, -9), LaneEnd(20, 10, 1))
+    assert "existing node" not in station_dialog.table.item(0, NOTE).text()
+
+    station_dialog.drag_handle(turn, 1, 10, snap=True)
+
+    choice = station_dialog.choices[0]
+    assert (choice.heading, choice.start, choice.end) == (180, None, None)
 
 
 def test_duplicate_or_empty_names_and_no_choice_block_create(qapp):

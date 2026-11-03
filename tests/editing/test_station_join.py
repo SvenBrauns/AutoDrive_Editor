@@ -1,16 +1,21 @@
+import math
+from dataclasses import replace
 from itertools import pairwise
 
+import pytest
 from costmap_helpers import BLOCKED, GRASS, ROAD, make_costmap
 
 from autodrive_editor.editing.junction import CurveKind
 from autodrive_editor.editing.route_finder import RouteFinder, Vehicle
 from autodrive_editor.editing.station_join import (
+    can_join,
     direct_command,
+    lane_poses,
     nearest_road,
     plan_direct,
     preview_piece,
 )
-from autodrive_editor.editing.station_layout import StationSettings, StopChoice
+from autodrive_editor.editing.station_layout import LaneEnd, StationSettings, StopChoice
 from autodrive_editor.file_io.navigation_costmap import NavigationCostmap
 from autodrive_editor.file_io.savegame_stations import Stop, StopKind
 from autodrive_editor.model.autodrive_data import (
@@ -176,6 +181,36 @@ def test_a_stop_beyond_the_reach_keeps_its_lane_with_both_ends_open():
     assert len(open_ends) == 2
     assert len(data.markers) == 1
     assert len(command.new_nodes) == 4
+
+
+def test_a_lane_end_dropped_on_a_node_joins_it_without_a_search():
+    data = east_road(ConnectionType.REGULAR)
+    # Beyond the reach; the end bends down to road node 11 at (0, 0).
+    joined = replace(choice(z=90.0), end=LaneEnd(0.0, 0.0, 11))
+
+    join = plan(data, joined)
+
+    assert len(join.missing) == 1 and not join.has_way_out
+    command, open_ends = applied(data, [joined], [join])
+    (marker_id,) = data.markers
+
+    assert len(open_ends) == 1 and open_ends[0] != 11
+    assert 11 not in {node.node_id for node in command.new_nodes}
+    assert 21 in reachable(data, marker_id)
+
+
+def test_a_lane_starts_at_a_node_driven_to_and_ends_at_one_driven_from():
+    data = east_road(ConnectionType.REGULAR)
+
+    assert can_join(data, 5, CurveKind.IN) and can_join(data, 5, CurveKind.OUT)
+    assert not can_join(data, 1, CurveKind.IN) and not can_join(data, 21, CurveKind.OUT)
+
+
+def test_a_bent_lane_end_heads_along_its_arc():
+    # East from (0, 30), a quarter circle to (10, 40): it ends heading south (z grows).
+    _, end = lane_poses(replace(choice(), end=LaneEnd(10.0, 40.0)), SETTINGS)
+
+    assert end == pytest.approx((10, 40, math.pi / 2), abs=0.05)
 
 
 def test_the_route_finder_builds_the_yard_legs():

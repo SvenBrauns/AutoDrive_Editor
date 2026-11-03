@@ -753,7 +753,7 @@ TEXTS = {
     "Stop": "Halt",
     "Type": "Typ",
     "Fill types": "Fruchtsorten",
-    "Drag the end of a lane to turn it around its stop (Shift: 15° steps)": "Ende einer Spur ziehen, um sie um ihren Halt zu drehen (Umschalt: 15°-Schritte)",
+    "Drag the marker of a lane to turn it (Shift: 15° steps), its ends to bend it; drop an end on a node to join it": "Marker einer Spur ziehen, um sie zu drehen (Umschalt: 15°-Schritte), ihre Enden, um sie zu biegen; ein Ende auf einem Knoten ablegen, um es damit zu verbinden",
     "Note": "Hinweis",
     "Lane before the stop:": "Spur vor dem Halt:",
     "Marker past the stop:": "Marker hinter dem Halt:",

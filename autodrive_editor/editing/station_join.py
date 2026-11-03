@@ -46,7 +46,7 @@ from autodrive_editor.editing.route_nodes import _recorded
 from autodrive_editor.editing.station_layout import (
     StationSettings,
     StopChoice,
-    direction,
+    lane_line,
     lane_points,
     plan_stations,
 )
@@ -190,14 +190,30 @@ def _road_connections(autodrive_data: AutoDriveData, point: Point, distance: flo
 
 
 def lane_poses(choice: StopChoice, settings: StationSettings) -> tuple[Pose, Pose]:
-    """The start and end of the lane with its heading (radians in the x-z plane)."""
+    """The start and end of the lane with its heading there (radians in the x-z plane)."""
 
-    points, _ = lane_points(choice.stop, settings, choice.heading)
-    dx, dz = direction(choice.heading)
-    heading = math.atan2(dz, dx)
-    (sx, _, sz), (ex, _, ez) = points[0], points[-1]
+    before, after = lane_line(choice.stop, settings, choice.heading, choice.start, choice.end)
+    line = before + after[1:]
+    (sx, sz), (ex, ez) = line[0], line[-1]
 
-    return (sx, sz, heading), (ex, ez, heading)
+    if len(line) < 2:
+        heading = math.radians(choice.heading - 90)
+        return (sx, sz, heading), (ex, ez, heading)
+
+    return (sx, sz, _heading(line[0], line[1])), (ex, ez, _heading(line[-2], line[-1]))
+
+
+def _heading(a: Point, b: Point) -> float:
+    return math.atan2(b[1] - a[1], b[0] - a[0])
+
+
+def can_join(autodrive_data: AutoDriveData, node_id: int, kind: CurveKind) -> bool:
+    """Whether a lane end may join the node: the start one that is driven to, the end one that is
+    driven from."""
+
+    node = autodrive_data.nodes[node_id]
+
+    return bool(node.incoming if kind == CurveKind.IN else node.outgoing)
 
 
 def plan_direct(
@@ -209,15 +225,21 @@ def plan_direct(
     vehicle: Vehicle,
     find_route: Callable[[RouteRequest], Route | None] | None = None,
 ) -> StopJoin:
-    """The driveways and yard legs between the stop's lane and the road. Without find_route the
-    yard legs follow the ways found (a quick preview)."""
+    """The driveways and yard legs between the stop's lane and the road; none for an end that
+    joins a node. Without find_route the yard legs follow the ways found (a quick preview)."""
 
     start, end = lane_poses(choice, settings)
     search = _WaySearch(autodrive_data, choice, settings, costmap, vehicle)
     join = StopJoin()
     ways = {}
 
-    for kind, pose in ((CurveKind.IN, start), (CurveKind.OUT, end)):
+    for kind, pose, lane_end in (
+        (CurveKind.IN, start, choice.start),
+        (CurveKind.OUT, end, choice.end),
+    ):
+        if lane_end is not None and lane_end.node_id is not None:
+            continue
+
         way = search.way(pose, kind)
 
         if way is None:
@@ -372,7 +394,7 @@ class _WaySearch:
         self.costmap = costmap
         x, _, z = choice.stop.position
         self.center = (x, z)
-        self.lane = lane_poses(choice, settings)
+        lane, _ = lane_points(choice.stop, settings, choice.heading, choice.start, choice.end)
         self.grid = None
 
         if costmap is not None:
@@ -386,6 +408,7 @@ class _WaySearch:
             )
             self.grid = Grid(costmap, bounds, vehicle.width / 2 + vehicle.margin)
             self.roads = self._road_cells()
+            self.lane_cells = self._lane_cells([(px, pz) for px, _, pz in lane])
 
     def way(self, pose: Pose, kind: CurveKind) -> tuple[list[Point], tuple[int, int], float] | None:
         """The way from the lane end to the road as points (lane end first), the road
@@ -423,7 +446,6 @@ class _WaySearch:
             return None
 
         beyond = (pose[0] + free_length * dx, pose[1] + free_length * dz)
-        (sx, sz, _), (ex, ez, _) = self.lane
         costs = {start: 0.0}
         previous = {start: start}
         queue = [(0.0, start)]
@@ -451,7 +473,7 @@ class _WaySearch:
                 free = math.dist(point, pose[:2]) <= FREE_RADIUS
                 free = free or _distance_to_segment(point, pose[:2], beyond) <= FREE_RADIUS
 
-                if not free and _distance_to_segment(point, (sx, sz), (ex, ez)) <= LANE_WIDTH:
+                if not free and other in self.lane_cells:
                     continue
 
                 value = grid.cells[other]
@@ -515,6 +537,28 @@ class _WaySearch:
 
         return cells
 
+    def _lane_cells(self, lane: list[Point]) -> set[int]:
+        """The cells within LANE_WIDTH of the lane."""
+
+        grid, cells = self.grid, set()
+        segments = list(pairwise(lane)) or [(lane[0], lane[0])]
+        left, right = min(x for x, _ in lane) - LANE_WIDTH, max(x for x, _ in lane) + LANE_WIDTH
+        top, bottom = min(z for _, z in lane) - LANE_WIDTH, max(z for _, z in lane) + LANE_WIDTH
+
+        for column in range(math.ceil(right - left) + 1):
+            for row in range(math.ceil(bottom - top) + 1):
+                index = grid.index(left + column, top + row)
+
+                if index is None or index in cells:
+                    continue
+
+                point = grid.center(index)
+
+                if any(_distance_to_segment(point, a, b) <= LANE_WIDTH for a, b in segments):
+                    cells.add(index)
+
+        return cells
+
 
 def _closest_on_segment(point: Point, a: Point, b: Point) -> Point:
     dx, dz = b[0] - a[0], b[1] - a[1]
@@ -557,8 +601,16 @@ def direct_command(
         return _recorded(points, settings.spacing)
 
     for choice, join in zip(choices, joins, strict=True):
-        points, marker_index = lane_points(choice.stop, settings, choice.heading)
-        lane = [new_node((x, z), y, SUBPRIO_FLAG) for x, y, z in points]
+        points, marker_index = lane_points(
+            choice.stop, settings, choice.heading, choice.start, choice.end
+        )
+        start_id = choice.start.node_id if choice.start is not None else None
+        end_id = choice.end.node_id if choice.end is not None else None
+        joined = {0: start_id, len(points) - 1: end_id}
+        lane = [
+            new_node((x, z), y, SUBPRIO_FLAG) if joined.get(index) is None else joined[index]
+            for index, (x, y, z) in enumerate(points)
+        ]
         connections += [(a, b, regular) for a, b in pairwise(lane)]
         markers.append(MarkerData(lane[marker_index], choice.name, choice.group))
         junction_ids = []
@@ -586,10 +638,10 @@ def direct_command(
 
             connections += [(a, b, regular) for a, b in pairwise(chain)]
 
-        if not join.has_way_in:
+        if not join.has_way_in and start_id is None:
             open_ends.append(lane[0])
 
-        if not join.has_way_out:
+        if not join.has_way_out and end_id is None:
             open_ends.append(lane[-1])
 
     # Nodes splitting a road keep the road's type.

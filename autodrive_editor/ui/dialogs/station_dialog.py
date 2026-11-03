@@ -1,3 +1,6 @@
+import math
+from enum import Enum
+
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QDialog,
@@ -10,8 +13,10 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from autodrive_editor.editing.station_join import StopJoin, plan_direct, preview_piece
+from autodrive_editor.editing.junction import CurveKind
+from autodrive_editor.editing.station_join import StopJoin, can_join, plan_direct, preview_piece
 from autodrive_editor.editing.station_layout import (
+    LaneEnd,
     StationSettings,
     StopChoice,
     direction,
@@ -30,8 +35,20 @@ from autodrive_editor.ui.dialogs.generator_settings_widget import GeneratorSetti
 STOP, KIND, FILL_TYPES, NAME, GROUP, ANGLE, NOTE = range(7)
 # Fill types listed in the table before "…".
 SHOWN_FILL_TYPES = 3
-# Least distance of a lane's handle on the map from its stop, in metres.
+# Least distance of a lane's turn handle on the map from its stop, in metres.
 HANDLE_DISTANCE = 5.0
+# Shift snaps the lane angle to multiples of this, in degrees.
+SNAP_DEGREES = 15
+
+
+class LaneHandle(Enum):
+    """The turn handle at the marker and the handles at the lane's first and last node."""
+
+    TURN = "turn"
+    START = "start"
+    END = "end"
+
+
 # The legs to the road are planned again this long after the last change, in milliseconds.
 LEGS_DELAY = 200
 
@@ -40,7 +57,8 @@ class StationDialog(QDialog):
     """The picked stops with a check box each, their markers and lane angles;
     the lane lengths come from the generator settings.
     The planned lanes are sent with plan_changed, as for the parking spots, so the map can show
-    them; the angles can also be set by dragging the lane ends on the map (handles). Shortly
+    them. On the map the marker's handle turns a lane, the handles at its ends bend it and join
+    a node they are dropped on; turning straightens the lane again. Shortly
     after a change the ways through the yard to the road are added roughly (see station_join);
     what is missing is noted."""
 
@@ -90,6 +108,8 @@ class StationDialog(QDialog):
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
         self.table.horizontalHeader().setStretchLastSection(True)
         self.angle_inputs: list[QSpinBox] = []
+        # The dragged start and end of each row's lane, None while straight.
+        self.lane_ends: list[list[LaneEnd | None]] = [[None, None] for _ in self.stops]
 
         self.markers = self._default_markers()
 
@@ -102,7 +122,7 @@ class StationDialog(QDialog):
             self._set_item(row, NAME, name, editable=True)
             self._set_item(row, GROUP, group, editable=True)
             self._set_item(row, NOTE, "")
-            self.angle_inputs.append(self._angle_input(headings[row]))
+            self.angle_inputs.append(self._angle_input(row, headings[row]))
             self.table.setCellWidget(row, ANGLE, self.angle_inputs[-1])
 
         self.table.resizeColumnsToContents()
@@ -166,6 +186,7 @@ class StationDialog(QDialog):
                     self.table.item(row, NAME).text().strip(),
                     self.table.item(row, GROUP).text().strip(),
                     self.angle_inputs[row].value(),
+                    *self.lane_ends[row],
                 ),
             )
             for row, stop in enumerate(self.stops)
@@ -179,23 +200,65 @@ class StationDialog(QDialog):
     def set_heading(self, row: int, heading: float):
         self.angle_inputs[row].setValue(round(heading) % 360)
 
-    def handles(self) -> list[tuple[int, float, float, float, float]]:
-        """(row, handle x, z, stop x, z) of each chosen stop: the handle sits at the front end
-        of its lane, at least HANDLE_DISTANCE from the stop, and turns the lane around the stop."""
+    def handles(self) -> list[tuple[int, LaneHandle, float, float]]:
+        """(row, kind, x, z) of the handles of each chosen lane: at its first and last node and
+        the turn handle at the marker, at least HANDLE_DISTANCE from the stop."""
 
         result = []
-        settings = self.settings
-        length = max(settings.marker + settings.after, HANDLE_DISTANCE)
 
-        for row, stop in enumerate(self.stops):
-            if self.table.item(row, STOP).checkState() != Qt.Checked:
-                continue
+        for row, choice in self._chosen():
+            points, marker_index = lane_points(
+                choice.stop, self.settings, choice.heading, choice.start, choice.end
+            )
+            x, _, z = choice.stop.position
+            turn_x, _, turn_z = points[marker_index]
 
-            dx, dz = direction(self.angle_inputs[row].value())
-            x, _, z = stop.position
-            result.append((row, x + dx * length, z + dz * length, x, z))
+            if math.dist((x, z), (turn_x, turn_z)) < HANDLE_DISTANCE:
+                dx, dz = direction(choice.heading)
+                turn_x, turn_z = x + dx * HANDLE_DISTANCE, z + dz * HANDLE_DISTANCE
+
+            result += [
+                (row, LaneHandle.START, points[0][0], points[0][2]),
+                (row, LaneHandle.END, points[-1][0], points[-1][2]),
+                (row, LaneHandle.TURN, turn_x, turn_z),
+            ]
 
         return result
+
+    def drag_handle(
+        self,
+        handle: tuple[int, LaneHandle, float, float],
+        x: float,
+        z: float,
+        node_id: int | None = None,
+        snap: bool = False,
+    ):
+        """Turns the lane towards (x, z) (snap: in 15° steps) or moves its end there, onto the
+        node `node_id` if the lane may join it there."""
+
+        row, kind = handle[:2]
+
+        if kind == LaneHandle.TURN:
+            stop_x, _, stop_z = self.stops[row].position
+
+            if math.hypot(x - stop_x, z - stop_z) > 0:
+                heading = math.degrees(math.atan2(x - stop_x, stop_z - z)) % 360
+                self.set_heading(
+                    row, round(heading / SNAP_DEGREES) * SNAP_DEGREES if snap else heading
+                )
+
+            return
+
+        curve_kind = CurveKind.IN if kind == LaneHandle.START else CurveKind.OUT
+
+        if node_id is not None and can_join(self.autodrive_data, node_id, curve_kind):
+            node = self.autodrive_data.nodes[node_id]
+            lane_end = LaneEnd(node.x, node.z, node_id)
+        else:
+            lane_end = LaneEnd(x, z)
+
+        self.lane_ends[row][0 if kind == LaneHandle.START else 1] = lane_end
+        self._update()
 
     def reload_settings(self):
         """After the generator settings changed: new lanes, and new marker names for the rows
@@ -236,14 +299,18 @@ class StationDialog(QDialog):
         item.setFlags(flags)
         self.table.setItem(row, column, item)
 
-    def _angle_input(self, heading: float) -> QSpinBox:
+    def _angle_input(self, row: int, heading: float) -> QSpinBox:
         spin_box = QSpinBox(self)
         spin_box.setRange(0, 359)
         spin_box.setWrapping(True)
         spin_box.setSuffix("°")
         spin_box.setValue(round(heading) % 360)
-        spin_box.valueChanged.connect(self._update)
+        spin_box.valueChanged.connect(lambda: self._straighten(row))
         return spin_box
+
+    def _straighten(self, row: int):
+        self.lane_ends[row] = [None, None]
+        self._update()
 
     def _update(self):
         self.joins = {}
@@ -263,13 +330,18 @@ class StationDialog(QDialog):
         self.table.blockSignals(True)
 
         for row, stop in enumerate(self.stops):
-            points, _ = lane_points(stop, settings, self.angle_inputs[row].value())
+            start, end = self.lane_ends[row]
+            points, _ = lane_points(stop, settings, self.angle_inputs[row].value(), start, end)
             notes = []
 
             if not stop.from_ai_node:
                 notes.append(tr("no AI node"))
 
-            if occupied(points, self.nodes):
+            # A joined end sits on its node.
+            points = points[int(start is not None and start.node_id is not None) :]
+            points = points[: len(points) - int(end is not None and end.node_id is not None)]
+
+            if points and occupied(points, self.nodes):
                 notes.append(tr("existing node on the lane"))
 
             if row in self.joins:

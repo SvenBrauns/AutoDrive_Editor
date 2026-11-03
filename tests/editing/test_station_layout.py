@@ -1,7 +1,10 @@
+import math
+
 import pytest
 from costmap_helpers import make_costmap
 
 from autodrive_editor.editing.station_layout import (
+    LaneEnd,
     MarkerRule,
     StationSettings,
     StopChoice,
@@ -85,6 +88,32 @@ def test_marker_without_lane_before_still_starts_at_the_stop():
 
     assert points[0] == pytest.approx((100, 5, 200))
     assert index == len(points) - 1 and points[-1] == pytest.approx((108, 5, 200))
+
+
+def test_a_dragged_end_bends_its_leg_in_one_arc_from_the_stop():
+    # Heading right from (100, 200) to (110, 210): a quarter circle around (100, 210).
+    settings = StationSettings(5, 5, 5, 5)
+    points, index = lane_points(stop(), settings, 90, end=LaneEnd(110, 210))
+
+    assert points[0] == pytest.approx((95, 5, 200))
+    assert points[-1] == pytest.approx((110, 5, 210))
+    assert all(
+        math.dist((x, z), (100, 210)) == pytest.approx(10, abs=0.01) for x, _, z in points[index:]
+    )
+    # The marker 5 m along the arc.
+    assert points[index] == pytest.approx(
+        (100 + 10 * math.sin(0.5), 5, 210 - 10 * math.cos(0.5)), abs=0.01
+    )
+
+
+def test_a_dragged_start_bends_the_leg_behind_the_stop():
+    points, index = lane_points(stop(), StationSettings(5, 5, 5, 5), 90, start=LaneEnd(90, 190))
+
+    assert points[0] == pytest.approx((90, 5, 190))
+    assert all(
+        math.dist((x, z), (100, 190)) == pytest.approx(10, abs=0.01) for x, _, z in points[:3]
+    )
+    assert points[index] == pytest.approx((105, 5, 200))
 
 
 def test_plan_has_one_way_lanes_markers_and_open_ends():

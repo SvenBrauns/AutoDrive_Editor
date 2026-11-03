@@ -427,11 +427,13 @@ class MainWindow(QMainWindow):
         overlay = ParkingMapOverlay(self.scene_renderer.display_style)
         dialog.plan_changed.connect(overlay.set_network)
         dialog.plan_changed.connect(
-            lambda *_: overlay.set_handles([(x, z) for _, x, z, _, _ in dialog.handles()])
+            lambda *_: overlay.set_handles([(x, z) for _, _, x, z in dialog.handles()])
         )
         dialog._update()
         self.scene.addItem(overlay)
-        handle_tool = LaneHandleTool(self.view, dialog.handles, dialog.set_heading)
+        handle_tool = LaneHandleTool(
+            self.view, dialog.handles, dialog.drag_handle, self.selection_coordinator.get_node_at
+        )
 
         try:
             accepted = self._run_beside_map(dialog, handle_tool)

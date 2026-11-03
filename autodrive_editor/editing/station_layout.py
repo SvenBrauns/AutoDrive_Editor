@@ -6,15 +6,19 @@ heading comes from the drivability map: the lane axis with the most free room th
 (for a stop with an AI node: its axis or the one across it), driven so that all stops of a
 building circle it the same way and one route can pass them all.
 The lane's nodes are subprio, so vehicles only drive over the trigger when it is their
-destination. Connecting the lane ends to the network comes later.
+destination. A dragged lane end bends its leg in one arc from the stop; an end dropped on a node
+joins it.
 """
 
 import math
 import string
 from dataclasses import dataclass
+from itertools import pairwise
 
+from autodrive_editor.editing.junction import stem_poses
 from autodrive_editor.editing.path_shapes import spaced_points
 from autodrive_editor.editing.planned_piece import PlannedPiece
+from autodrive_editor.editing.route_nodes import _recorded
 from autodrive_editor.file_io.navigation_costmap import BLOCKED_VALUE, NavigationCostmap
 from autodrive_editor.file_io.savegame_stations import Stop, StopKind
 from autodrive_editor.i18n import tr
@@ -37,6 +41,8 @@ AXIS_STEP = 5
 MIN_CIRCLING = 0.5
 # Too close to the building's origin to tell which way the lane circles it, in metres.
 MIN_RADIUS = 2.0
+# The lane is drawn with points this far apart (in metres) before its nodes are spaced.
+LINE_STEP = 0.5
 
 
 @dataclass(frozen=True)
@@ -53,13 +59,25 @@ class StationSettings:
 
 
 @dataclass(frozen=True)
+class LaneEnd:
+    """A dragged lane end: where it lies and the existing node it joins, if any."""
+
+    x: float
+    z: float
+    node_id: int | None = None
+
+
+@dataclass(frozen=True)
 class StopChoice:
-    """A stop to build, with its marker and the map angle of its lane (0° up, 90° right)."""
+    """A stop to build, with its marker, the map angle of its lane (0° up, 90° right) and its
+    dragged ends, if any."""
 
     stop: Stop
     name: str
     group: str
     heading: float
+    start: LaneEnd | None = None
+    end: LaneEnd | None = None
 
 
 # Marker names are patterns with the stop's building, its type and a number, as in "VK-{building}"
@@ -162,31 +180,95 @@ def unique_name(name: str, group: str, taken: set[tuple[str, str]]) -> str:
     return candidate
 
 
-def lane_points(stop: Stop, settings: StationSettings, heading: float) -> tuple[list, int]:
+def lane_points(
+    stop: Stop,
+    settings: StationSettings,
+    heading: float,
+    start: LaneEnd | None = None,
+    end: LaneEnd | None = None,
+) -> tuple[list, int]:
     """The lane's nodes in driving direction and the index of the marker node, which lies
-    settings.marker past the stop."""
+    settings.marker past the stop. A straight lane has nodes at equal distances, a bent one as
+    AutoDrive records a drive."""
+
+    y = stop.position[1]
+    before, after = lane_line(stop, settings, heading, start, end)
+    space = spaced_points if start is None and end is None else _recorded
+    first = space(before, settings.spacing) if _length(before) > 0 else [before[-1]]
+    second = space(after, settings.spacing)[1:] if _length(after) > 0 else []
+    # The marker node exactly at its place, not where the spacing would put it.
+    points = [(px, y, pz) for px, pz in first[:-1] + [after[0]] + second]
+
+    return points, len(first) - 1
+
+
+def lane_line(
+    stop: Stop,
+    settings: StationSettings,
+    heading: float,
+    start: LaneEnd | None = None,
+    end: LaneEnd | None = None,
+) -> tuple[list[tuple[float, float]], list[tuple[float, float]]]:
+    """The lane in driving direction as a fine line (x, z), split at the marker: from the start
+    to the marker and from the marker to the end. Each leg runs from the stop to its end, straight
+    by the settings or, if dragged, in one arc."""
 
     dx, dz = direction(heading)
-    x, y, z = stop.position
-    start = (x - dx * settings.before, z - dz * settings.before)
-    mx, mz = x + dx * settings.marker, z + dz * settings.marker
-    end = (mx + dx * settings.after, mz + dz * settings.after)
-    length = settings.before + settings.marker
+    x, _, z = stop.position
+    angle = math.atan2(dz, dx)
 
-    before = spaced_points([start, (mx, mz)], settings.spacing) if length > 0 else [(mx, mz)]
-    after = spaced_points([(mx, mz), end], settings.spacing)[1:] if settings.after > 0 else []
-    # The marker node exactly at its place, not where the spacing would put it.
-    points = [(px, y, pz) for px, pz in before[:-1]] + [(mx, y, mz)]
-    points += [(px, y, pz) for px, pz in after]
+    if start is None:
+        start = LaneEnd(x - dx * settings.before, z - dz * settings.before)
 
-    return points, len(before) - 1
+    if end is None:
+        length = settings.marker + settings.after
+        end = LaneEnd(x + dx * length, z + dz * length)
+
+    behind = _leg((x, z, angle + math.pi), (start.x, start.z))[::-1]
+    to_marker, from_marker = _split(_leg((x, z, angle), (end.x, end.z)), settings.marker)
+
+    return behind + to_marker[1:], from_marker
+
+
+def _leg(pose: tuple[float, float, float], tip: tuple[float, float]) -> list:
+    return [(px, pz) for px, pz, _ in stem_poses(pose, tip, LINE_STEP)]
+
+
+def _split(line: list, distance: float) -> tuple[list, list]:
+    """The line up to the distance along it and from there on, both with the point there."""
+
+    if distance <= 0:
+        return line[:1], line
+
+    walked = 0.0
+
+    for index, (a, b) in enumerate(pairwise(line)):
+        length = math.dist(a, b)
+
+        if walked + length > distance:
+            fraction = (distance - walked) / length
+            point = (a[0] + fraction * (b[0] - a[0]), a[1] + fraction * (b[1] - a[1]))
+            return line[: index + 1] + ([point] if fraction > 0 else []), [
+                point,
+                *line[index + 1 :],
+            ]
+
+        walked += length
+
+    return line, line[-1:]
+
+
+def _length(line: list) -> float:
+    return sum(math.dist(a, b) for a, b in pairwise(line))
 
 
 def plan_stations(choices: list[StopChoice], settings: StationSettings) -> PlannedPiece:
     piece = PlannedPiece()
 
     for choice in choices:
-        points, marker_index = lane_points(choice.stop, settings, choice.heading)
+        points, marker_index = lane_points(
+            choice.stop, settings, choice.heading, choice.start, choice.end
+        )
         lane = [piece.add(*point, flag=SUBPRIO_FLAG) for point in points]
         piece.chain(lane)
         piece.markers.append((lane[marker_index], choice.name, choice.group))
