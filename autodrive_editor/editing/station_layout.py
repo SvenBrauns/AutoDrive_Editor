@@ -43,12 +43,13 @@ MIN_RADIUS = 2.0
 class StationSettings:
     """Lane length before the stop and after the marker, the node spacing and how far past the
     stop the marker sits, in metres. The tractor stops at the marker, so the offset puts the
-    trailer over the trigger."""
+    trailer over the trigger. A stop is joined to a road at most `reach` away."""
 
     before: float = 10.0
     after: float = 10.0
     spacing: float = 12.0
     marker: float = 8.0
+    reach: float = 50.0
 
 
 @dataclass(frozen=True)

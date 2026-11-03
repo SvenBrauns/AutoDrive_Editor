@@ -55,6 +55,7 @@ class AppSettings:
         "before": "stations/lane_before",
         "after": "stations/lane_after",
         "marker": "stations/marker_offset",
+        "reach": "stations/reach",
     }
     GENERATOR_SPACING_KEY = "generators/spacing"
     MARKER_RULES_KEY = "generators/marker_rules"
