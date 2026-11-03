@@ -41,8 +41,8 @@ class StationDialog(QDialog):
     the lane lengths come from the generator settings.
     The planned lanes are sent with plan_changed, as for the parking spots, so the map can show
     them; the angles can also be set by dragging the lane ends on the map (handles). Shortly
-    after a change the legs to the road that fit as curves are added (see station_join); the
-    others are noted and searched on Create."""
+    after a change the ways through the yard to the road are added roughly (see station_join);
+    what is missing is noted."""
 
     # (PlannedPiece or None, map points (x, z) of its nodes)
     plan_changed = Signal(object, object)
@@ -108,10 +108,9 @@ class StationDialog(QDialog):
         self.table.resizeColumnsToContents()
 
         self.search_label = QLabel(
-            tr("Legs to the road that do not fit as curves are searched on Create."), self
+            tr("The map shows the ways through the yard roughly; Create smooths them."), self
         )
         self.search_label.setWordWrap(True)
-        self.search_label.hide()
         self.problem_label = QLabel(self)
         self.problem_label.setWordWrap(True)
 
@@ -155,7 +154,6 @@ class StationDialog(QDialog):
             for row, choice in chosen
         }
         self._update_notes()
-        self.search_label.setVisible(any(join.missing for join in self.joins.values()))
         piece = preview_piece([c for _, c in chosen], list(self.joins.values()), settings)
         self.plan_changed.emit(piece, [(x, z) for x, _, z in piece.points])
 

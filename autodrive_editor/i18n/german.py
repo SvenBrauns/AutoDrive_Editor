@@ -733,9 +733,13 @@ TEXTS = {
         "Diese Halte haben noch keine Zu- oder Abfahrt. Ihre Spurenden sind ausgewählt und die "
         "fehlenden Anbindungen gestrichelt auf der Karte eingezeichnet:"
     ),
-    "Legs to the road that do not fit as curves are searched on Create.": (
-        "Anbindungen an die Straße, die nicht als Kurven passen, werden beim Erstellen gesucht."
+    "The map shows the ways through the yard roughly; Create smooths them.": (
+        "Die Karte zeigt die Wege durch den Hof grob; Erstellen glättet sie."
     ),
+    "No way in from a road within {reach} m": "Keine Zufahrt von einer Straße im Umkreis von {reach} m",
+    "No way out to a road within {reach} m": "Keine Abfahrt zu einer Straße im Umkreis von {reach} m",
+    "No way in through the yard": "Keine Zufahrt durch den Hof",
+    "No way out through the yard": "Keine Abfahrt durch den Hof",
     "{count} station lanes created; {missing} have no way in or out, their lane ends are "
     "selected": (
         "{count} Stationsspuren erstellt; {missing} haben keine Zu- oder Abfahrt, ihre "
@@ -744,7 +748,6 @@ TEXTS = {
     "{count} station lanes created and joined to the roads": (
         "{count} Stationsspuren erstellt und an die Straßen angebunden"
     ),
-    "No road within {reach} m": "Keine Straße im Umkreis von {reach} m",
     "Click a station or right-drag a box around several to create their lanes": "Station anklicken oder mit der rechten Maustaste einen Rahmen um mehrere ziehen, um ihre Spuren zu erstellen",
     "No stations shown: open a savegame": "Keine Stationen angezeigt: Spielstand öffnen",
     "Stop": "Halt",

@@ -129,6 +129,8 @@ class RouteRequest:
     free_length: float = 20.0
     # Radius of the arcs and of the fallback search, e.g. CURVE_RADIUS; None for the vehicle's.
     turning_radius: float | None = None
+    # Ground other than roads and yards costs this many times more, e.g. for yard roads.
+    off_road_factor: float = 1.0
 
     @property
     def start(self) -> Point:
@@ -359,6 +361,7 @@ class RouteFinder:
                 request.free_radius,
                 request.free_length,
                 request.turning_radius,
+                request.off_road_factor,
             )
             searched = self._searched(leg_request, cancelled)
 
@@ -456,6 +459,12 @@ class _Search:
         # Whether the search tried to leave the area.
         self.hit_edge = False
         self._cell_costs: list[float] | None = None
+        factor = request.off_road_factor
+        self.band_costs = (BAND_COSTS[0], *(cost * factor for cost in BAND_COSTS[1:]))
+        self.cost_table = [
+            cost * (factor if value > ROAD_VALUE + BAND_WIDTH - 1 else 1.0)
+            for value, cost in enumerate(COST_TABLE)
+        ]
 
     def run(self, cancelled) -> Route | None:
         request = self.request
@@ -736,7 +745,7 @@ class _Search:
         if self.grid.blocked[index] and not self._in_free_zone(position[0], position[1]):
             blocked = 2 if value >= BLOCKED_VALUE else 1
 
-        return blocked, BAND_COSTS[band]
+        return blocked, self.band_costs[band]
 
     def _is_blocked(self, point: Point) -> bool:
         index = self.grid.index(*point)
@@ -867,18 +876,18 @@ class _Search:
         value = grid.cells[index]
 
         if not grid.blocked[index]:
-            return COST_TABLE[value]
+            return self.cost_table[value]
 
         if x is None:
             x, z = grid.center(index)
 
         if self._in_free_zone(x, z):
-            return FREE_ZONE_COST if value >= BLOCKED_VALUE else COST_TABLE[value]
+            return FREE_ZONE_COST if value >= BLOCKED_VALUE else self.cost_table[value]
 
         if value >= BLOCKED_VALUE:
             return OBSTACLE_COST
 
-        return COST_TABLE[value] + NEAR_BLOCKED_COST
+        return self.cost_table[value] + NEAR_BLOCKED_COST
 
     def _lane_factor(self, index: int, direction_x: float, direction_z: float) -> float:
         """Cheaper on a planned lane in its direction, dearer near one against it."""

@@ -666,19 +666,6 @@ def test_straight_lanes_blocked_by_an_island_are_searched_or_listed():
     assert all(curve.searched for curve in plan.curves if curve.across)
 
 
-def test_max_turn_allows_an_s_curve_to_a_lane_beside_the_road():
-    # A lane 20 m south of the east-bound road, also heading east.
-    lanes = road_lanes(two_lane_road(), 7, 8)[:1]
-    pose = (0.0, 20.0, 0.0)
-
-    assert plan_junction(lanes, pose, (CurveKind.IN,), 6.0, None, VEHICLE).curves == []
-
-    plan = plan_junction(lanes, pose, (CurveKind.IN,), 6.0, None, VEHICLE, max_turn=math.pi)
-
-    assert len(plan.curves) == 1
-    assert plan.curves[0].points[-1] == pytest.approx(pose[:2])
-
-
 @pytest.mark.parametrize("stem", [Stem.IN_ONLY, Stem.OUT_ONLY])
 def test_a_one_way_stem_has_curves_and_a_lane_of_one_direction_only(stem):
     data = two_lane_road()

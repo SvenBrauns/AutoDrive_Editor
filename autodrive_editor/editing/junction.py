@@ -396,14 +396,11 @@ def plan_junction(
     find_route: Callable[[RouteRequest], Route | None] | None = None,
     gap: float = 0.0,
     across: list[tuple[CurveKind, RoadLane]] = (),
-    max_turn: float | None = None,
 ) -> JunctionPlan:
     """The curves of each kind between each lane and the junction, whose heading points into
     the yard; with a lane `gap`, curves in meet at the in-lane and curves out at the out-lane of
     a two-lane stem. Curves avoid blocked cells (see FREE_RADIUS) and never end on a marker
-    node. Straight lanes lead to and from the road `across` (see roads_across). With `max_turn`
-    (radians) a curve may turn that much in all, e.g. an S-curve to a lane beside the road;
-    else at most EXTRA_TURN more than the angle between lane and stem."""
+    node. Straight lanes lead to and from the road `across` (see roads_across)."""
 
     reach = max((math.dist(junction[:2], lane.points[0]) for _, lane in across), default=0.0)
     checker = _BlockedCheck(costmap, junction, radius, vehicle, reach)
@@ -415,10 +412,10 @@ def plan_junction(
         pose = poses[kind]
 
         for lane in lanes:
-            curve = _fit(lane, kind, pose, radius, checker, marker_ids, max_turn)
+            curve = _fit(lane, kind, pose, radius, checker, marker_ids)
 
             if curve is None and find_route is not None:
-                curve = _searched(lane, kind, pose, radius, marker_ids, find_route, max_turn)
+                curve = _searched(lane, kind, pose, radius, marker_ids, find_route)
 
             if curve is None:
                 plan.missing.append(_missing_text(lane, kind, pose))
@@ -762,7 +759,6 @@ def _fit(
     radius: float,
     checker: "_BlockedCheck",
     marker_ids: frozenset[int],
-    max_turn: float | None = None,
 ) -> Curve | None:
     """The shortest clear Dubins curve between the lane and the junction, at the largest radius
     from `radius` down to MIN_RADIUS that has one."""
@@ -774,7 +770,7 @@ def _fit(
         paths = []
 
         for end, heading in places:
-            path = _curve_path(kind, end.point, heading, junction, current, max_turn)
+            path = _curve_path(kind, end.point, heading, junction, current)
 
             if path is not None:
                 paths.append((path.length, end, path))
@@ -795,16 +791,8 @@ def _fit(
     return None
 
 
-def _curve_path(
-    kind: CurveKind,
-    point: Point,
-    lane_heading: float,
-    junction: Pose,
-    radius: float,
-    max_turn: float | None = None,
-):
-    """The Dubins path of the curve, or None if it turns much more than needed (a loop), or
-    more than `max_turn` if given."""
+def _curve_path(kind: CurveKind, point: Point, lane_heading: float, junction: Pose, radius: float):
+    """The Dubins path of the curve, or None if it turns much more than needed (a loop)."""
 
     lane_heading = kinked(kind, point, lane_heading, junction[:2])
 
@@ -818,21 +806,18 @@ def _curve_path(
     if path is None:
         return None
 
-    return path if _turns_little(path, start[2], goal[2], radius, max_turn) else None
+    return path if _turns_little(path, start[2], goal[2], radius) else None
 
 
-def _turns_little(
-    path, start_heading: float, goal_heading: float, radius: float, max_turn: float | None = None
-) -> bool:
-    """Whether the Dubins path turns at most EXTRA_TURN more than needed (no loop), or at most
-    `max_turn` if given."""
+def _turns_little(path, start_heading: float, goal_heading: float, radius: float) -> bool:
+    """Whether the Dubins path turns at most EXTRA_TURN more than needed (no loop)."""
 
     needed = abs(math.remainder(goal_heading - start_heading, math.tau))
     turned = sum(
         length for letter, length in zip(path.word, path.lengths, strict=True) if letter != "S"
     )
 
-    return turned / radius <= (needed + EXTRA_TURN if max_turn is None else max_turn)
+    return turned / radius <= needed + EXTRA_TURN
 
 
 def _places(
@@ -898,7 +883,6 @@ def _searched(
     radius: float,
     marker_ids: frozenset[int],
     find_route: Callable[[RouteRequest], Route | None],
-    max_turn: float | None = None,
 ) -> Curve | None:
     """The curve built by the route finder from the place on the lane where the shortest Dubins
     curve would leave or join it."""
@@ -906,7 +890,7 @@ def _searched(
     best = None
 
     for end, heading in _places(lane, junction, marker_ids):
-        path = _curve_path(kind, end.point, heading, junction, radius, max_turn)
+        path = _curve_path(kind, end.point, heading, junction, radius)
 
         if path is not None and (best is None or path.length < best[0]):
             best = (path.length, end, heading)

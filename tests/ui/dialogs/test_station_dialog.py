@@ -149,4 +149,3 @@ def test_a_stop_without_a_road_is_noted(qapp):
     station_dialog.update_legs()
 
     assert "50" in station_dialog.table.item(0, NOTE).text()
-    assert not station_dialog.search_label.isHidden()
