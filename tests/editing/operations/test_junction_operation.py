@@ -362,3 +362,16 @@ def test_the_box_style_falls_back_to_curves_and_says_so(qapp):
     assert fixture.messages[-1] == (
         "Junction added; built with curves: a box needs two one-way lanes on the road and the stem"
     )
+
+
+def test_a_one_way_in_stem_adds_only_the_curve_in_and_a_one_way_stem(qapp):
+    fixture = Fixture(qapp, stem=(Stem.IN_ONLY, 5.5), two_lanes=True, style=Style.BOX)
+    fixture.history.start_plan()
+    fixture.drag(2.0, 20.0)
+
+    assert [curve.kind.value for curve in fixture.operation.preview.plan.curves] == ["in", "in"]
+    assert fixture.operation.finish()
+
+    new = [node for node in fixture.data.nodes.values() if node.node_id > 113]
+    tip = max(new, key=lambda node: node.z)
+    assert not tip.outgoing and tip.incoming

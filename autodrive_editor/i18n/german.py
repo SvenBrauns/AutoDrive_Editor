@@ -786,6 +786,8 @@ TEXTS = {
     "Auto": "Automatisch",
     "Two-way": "Beide Richtungen",
     "Two lanes": "Zwei Spuren",
+    "One way in": "Einbahn hinein",
+    "One way out": "Einbahn hinaus",
     "Auto: two lanes on a road of two one-way lanes, two-way on a two-way road": "Automatisch: zwei Spuren an einer Straße aus zwei Einbahnspuren, beide Richtungen an einer Straße in beide Richtungen",
     "Lane gap:": "Spurabstand:",
     "Distance between the two lanes of the stem": "Abstand zwischen den beiden Spuren der Zufahrt",

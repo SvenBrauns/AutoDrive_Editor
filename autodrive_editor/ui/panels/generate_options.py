@@ -78,6 +78,8 @@ class GenerateOptionsWidget(QWidget):
             (Stem.AUTO, tr("Auto")),
             (Stem.TWO_WAY, tr("Two-way")),
             (Stem.TWO_LANES, tr("Two lanes")),
+            (Stem.IN_ONLY, tr("One way in")),
+            (Stem.OUT_ONLY, tr("One way out")),
         ):
             self.stem_box.addItem(name, each)
 
