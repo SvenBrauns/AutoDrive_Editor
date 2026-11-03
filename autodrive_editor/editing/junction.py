@@ -80,11 +80,18 @@ BOTH = (CurveKind.IN, CurveKind.OUT)
 
 
 class Stem(Enum):
-    """The stem into the yard: matching the road, one two-way road, or two one-way lanes."""
+    """The stem into the yard: matching the road, one two-way road, two one-way lanes, or one
+    one-way lane into or out of the yard (curves of that kind only)."""
 
     AUTO = "auto"
     TWO_WAY = "two_way"
     TWO_LANES = "two_lanes"
+    IN_ONLY = "in_only"
+    OUT_ONLY = "out_only"
+
+    @property
+    def kinds(self) -> tuple[CurveKind, ...]:
+        return {Stem.IN_ONLY: (CurveKind.IN,), Stem.OUT_ONLY: (CurveKind.OUT,)}.get(self, BOTH)
 
 
 @dataclass(frozen=True)
@@ -493,6 +500,7 @@ def junction_command(
     stem: list[Pose] = (),
     gap: float = 0.0,
     tip_id: int | None = None,
+    kinds: tuple[CurveKind, ...] = BOTH,
 ) -> AddRouteCommand:
     """The edit that adds the curves: a new junction node unless `junction_id` is given, new
     nodes along each curve, and the lane connections split where a curve leaves or joins one.
@@ -501,7 +509,8 @@ def junction_command(
     out is two-way. A two-way stem follows the `stem` poses (see stem_poses) from the junction.
     With a lane `gap`, each lane of the stem gets its own meeting node and runs one-way beside
     the stem poses (`junction_id` is not used then). Both lanes, or the two-way stem, end at
-    the node `tip_id` if given."""
+    the node `tip_id` if given. With one of the `kinds` only, the stem is one-way, into the
+    yard (IN) or out of it (OUT)."""
 
     next_id = max(autodrive_data.nodes, default=0) + 1
     new_nodes: list[NodeData] = []
@@ -540,8 +549,13 @@ def junction_command(
         connections += _curve_connections(
             plan.curves, junction, junction_id, spacing, splits, new_node
         )
-        dual = CONNECTION_STATES[ConnectionType.DUAL]
-        connections += [(a, b, dual) for a, b in pairwise(stem_line(None, junction_id))]
+        stem_ids = stem_line(None, junction_id)
+
+        if kinds == (CurveKind.OUT,):
+            stem_ids.reverse()
+
+        state = regular if len(kinds) == 1 else CONNECTION_STATES[ConnectionType.DUAL]
+        connections += [(a, b, state) for a, b in pairwise(stem_ids)]
 
     for (source_id, target_id), points in splits.items():
         state = read_connection_state(autodrive_data, source_id, target_id)

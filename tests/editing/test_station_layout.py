@@ -1,21 +1,29 @@
+import math
+
 import pytest
 from costmap_helpers import make_costmap
 
 from autodrive_editor.editing.station_layout import (
+    LaneEnd,
+    MarkerRule,
     StationSettings,
     StopChoice,
     building_stops_at,
+    can_join,
     default_group,
     default_heading,
-    default_marker_name,
+    default_marker_rules,
     free_reach,
     lane_points,
+    marker_names,
     occupied,
+    pattern_problem,
     plan_stations,
+    stations_command,
     unique_name,
 )
 from autodrive_editor.file_io.savegame_stations import Stop, StopKind
-from autodrive_editor.model.autodrive_data import SUBPRIO_FLAG, NodeData
+from autodrive_editor.model.autodrive_data import SUBPRIO_FLAG, AutoDriveData, NodeData
 from autodrive_editor.model.connections import ConnectionType
 
 
@@ -84,6 +92,55 @@ def test_marker_without_lane_before_still_starts_at_the_stop():
     assert index == len(points) - 1 and points[-1] == pytest.approx((108, 5, 200))
 
 
+def test_a_dragged_end_bends_its_leg_in_one_arc_from_the_stop():
+    # Heading right from (100, 200) to (110, 210): a quarter circle around (100, 210).
+    settings = StationSettings(5, 5, 5, 5)
+    points, index = lane_points(stop(), settings, 90, end=LaneEnd(110, 210))
+
+    assert points[0] == pytest.approx((95, 5, 200))
+    assert points[-1] == pytest.approx((110, 5, 210))
+    assert all(
+        math.dist((x, z), (100, 210)) == pytest.approx(10, abs=0.01) for x, _, z in points[index:]
+    )
+    # The marker 5 m along the arc.
+    assert points[index] == pytest.approx(
+        (100 + 10 * math.sin(0.5), 5, 210 - 10 * math.cos(0.5)), abs=0.01
+    )
+
+
+def test_a_dragged_start_bends_the_leg_behind_the_stop():
+    points, index = lane_points(stop(), StationSettings(5, 5, 5, 5), 90, start=LaneEnd(90, 190))
+
+    assert points[0] == pytest.approx((90, 5, 190))
+    assert all(
+        math.dist((x, z), (100, 190)) == pytest.approx(10, abs=0.01) for x, _, z in points[:3]
+    )
+    assert points[index] == pytest.approx((105, 5, 200))
+
+
+def test_a_lane_end_dropped_on_a_node_joins_it():
+    data = AutoDriveData()
+    data.add_node(NodeData(1, 120, 0, 210))
+    joined = StopChoice(stop(), "A", "G", 90, end=LaneEnd(120, 210, 1))
+
+    command = stations_command(data, [joined], StationSettings(5, 5, 5, 0))
+    command.apply()
+
+    (marker_id,) = data.markers
+    assert 1 not in {node.node_id for node in command.new_nodes}
+    assert data.nodes[1].incoming and all(n.is_subprio for n in command.new_nodes)
+    assert marker_id != 1
+
+
+def test_a_lane_starts_at_a_node_driven_to_and_ends_at_one_driven_from():
+    data = AutoDriveData()
+    data.add_node(NodeData(1, 0, 0, 0, outgoing={2}))
+    data.add_node(NodeData(2, 10, 0, 0, incoming={1}))
+
+    assert can_join(data, 2, at_start=True) and can_join(data, 1, at_start=False)
+    assert not can_join(data, 1, at_start=True) and not can_join(data, 2, at_start=False)
+
+
 def test_plan_has_one_way_lanes_markers_and_open_ends():
     choices = [
         StopChoice(stop(), "A", "Selling points", 90),
@@ -101,9 +158,41 @@ def test_plan_has_one_way_lanes_markers_and_open_ends():
 
 
 def test_default_marker_name_and_group():
-    assert default_marker_name(stop()) == "Grain store (Selling point)"
+    assert marker_names([stop()], default_marker_rules(), set()) == [
+        ("Grain store (Selling point)", "Selling points")
+    ]
     assert default_group(StopKind.PRODUCTION) == "Productions"
     assert all(default_group(kind) for kind in StopKind)
+
+
+def test_marker_names_follow_the_rule_of_the_stop_type():
+    rules = default_marker_rules() | {StopKind.PRODUCTION: MarkerRule("VK-{building}", "VK")}
+    stops = [stop(kind=StopKind.PRODUCTION), stop(), stop(kind=StopKind.PRODUCTION)]
+
+    assert marker_names(stops, rules, {("VK-Grain store", "VK")}) == [
+        ("VK-Grain store 2", "VK"),
+        ("Grain store (Selling point)", "Selling points"),
+        ("VK-Grain store 3", "VK"),
+    ]
+
+
+def test_numbers_count_per_group_and_skip_taken_names():
+    rules = {kind: MarkerRule("{n:03}-{type}", "G") for kind in StopKind}
+    stops = [stop(), stop(kind=StopKind.LOAD), stop()]
+
+    assert marker_names(stops, rules, {("006-Loading", "G")}, start=5) == [
+        ("005-Selling point", "G"),
+        ("007-Loading", "G"),
+        ("008-Selling point", "G"),
+    ]
+
+
+def test_pattern_problem():
+    assert pattern_problem("{n:03}-{building} ({type})") is None
+    assert "{name}" in pattern_problem("VK-{name}")
+    assert pattern_problem("VK-{building") is not None
+    assert pattern_problem("{n:x.}") is not None
+    assert pattern_problem("  ") is not None
 
 
 def test_unique_name_adds_the_lowest_free_number():
@@ -120,17 +209,18 @@ def test_occupied_finds_an_existing_node_on_the_lane():
     assert not occupied(points, [NodeData(1, 104.5, 0, 202), NodeData(2, 130, 0, 200)])
 
 
-def test_building_stops_at_picks_the_building_of_the_closest_stop():
+def test_building_stops_at_picks_every_building_with_a_stop_near_the_click():
     a1 = stop(position=(0, 0, 0))
-    a2 = stop(position=(30, 0, 0))
-    b = Stop("b.xml", "8", "B", StopKind.LOAD, (), (40, 0, 0), 0.0, False)
+    a2 = stop(position=(60, 0, 0))
+    b = Stop("b.xml", "8", "B", StopKind.LOAD, (), (75, 0, 0), 0.0, False)
     stops = [a1, a2, b]
 
-    assert building_stops_at(stops, 37, 0, 5) == [b]
-    assert building_stops_at(stops, 33, 0, 5) == [a1, a2]
+    assert building_stops_at(stops, 88, 0, 5) == [b]
+    # Between two buildings, within 15 m of both.
+    assert building_stops_at(stops, 67, 0, 5) == stops
     # Between the stops of a building, away from each of them.
-    assert building_stops_at(stops, 15, 3, 5) == [a1, a2]
-    assert building_stops_at(stops, 15, 10, 5) == []
+    assert building_stops_at(stops, 30, 3, 5) == [a1, a2]
+    assert building_stops_at(stops, 30, 20, 5) == []
 
 
 def test_free_reach_ends_at_the_first_blocked_cell_beside_or_on_the_lane():

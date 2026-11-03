@@ -6,18 +6,25 @@ heading comes from the drivability map: the lane axis with the most free room th
 (for a stop with an AI node: its axis or the one across it), driven so that all stops of a
 building circle it the same way and one route can pass them all.
 The lane's nodes are subprio, so vehicles only drive over the trigger when it is their
-destination. Connecting the lane ends to the network comes later.
+destination. A dragged lane end bends its leg in one arc from the stop; an end dropped on a node
+joins it.
 """
 
 import math
+import string
 from dataclasses import dataclass
+from itertools import pairwise
 
+from autodrive_editor.editing.commands.add_route import AddRouteCommand
+from autodrive_editor.editing.junction import stem_poses
 from autodrive_editor.editing.path_shapes import spaced_points
 from autodrive_editor.editing.planned_piece import PlannedPiece
+from autodrive_editor.editing.route_nodes import _recorded
 from autodrive_editor.file_io.navigation_costmap import BLOCKED_VALUE, NavigationCostmap
 from autodrive_editor.file_io.savegame_stations import Stop, StopKind
 from autodrive_editor.i18n import tr
-from autodrive_editor.model.autodrive_data import SUBPRIO_FLAG, NodeData
+from autodrive_editor.model.autodrive_data import SUBPRIO_FLAG, AutoDriveData, MarkerData, NodeData
+from autodrive_editor.model.connections import CONNECTION_STATES, ConnectionType
 
 Point = tuple[float, float, float]
 
@@ -36,6 +43,10 @@ AXIS_STEP = 5
 MIN_CIRCLING = 0.5
 # Too close to the building's origin to tell which way the lane circles it, in metres.
 MIN_RADIUS = 2.0
+# The lane is drawn with points this far apart (in metres) before its nodes are spaced.
+LINE_STEP = 0.5
+# A click picks every building with a stop this close, in metres.
+PICK_RADIUS = 15.0
 
 
 @dataclass(frozen=True)
@@ -46,22 +57,48 @@ class StationSettings:
 
     before: float = 10.0
     after: float = 10.0
-    spacing: float = 5.0
+    spacing: float = 12.0
     marker: float = 8.0
 
 
 @dataclass(frozen=True)
+class LaneEnd:
+    """A dragged lane end: where it lies and the existing node it joins, if any."""
+
+    x: float
+    z: float
+    node_id: int | None = None
+
+
+@dataclass(frozen=True)
 class StopChoice:
-    """A stop to build, with its marker and the map angle of its lane (0° up, 90° right)."""
+    """A stop to build, with its marker, the map angle of its lane (0° up, 90° right) and its
+    dragged ends, if any."""
 
     stop: Stop
     name: str
     group: str
     heading: float
+    start: LaneEnd | None = None
+    end: LaneEnd | None = None
 
 
-def default_marker_name(stop: Stop) -> str:
-    return f"{stop.name.strip()} ({stop.kind.label})"
+# Marker names are patterns with the stop's building, its type and a number, as in "VK-{building}"
+# or "{n:03}-{type}".
+DEFAULT_PATTERN = "{building} ({type})"
+PATTERN_FIELDS = {"building", "type", "n"}
+
+
+@dataclass(frozen=True)
+class MarkerRule:
+    """How the markers of one stop type are named and grouped."""
+
+    pattern: str
+    group: str
+
+
+def default_marker_rules() -> dict[StopKind, MarkerRule]:
+    return {kind: MarkerRule(DEFAULT_PATTERN, default_group(kind)) for kind in StopKind}
 
 
 def default_group(kind: StopKind) -> str:
@@ -74,6 +111,63 @@ def default_group(kind: StopKind) -> str:
         StopKind.ANIMALS: tr("Animals"),
         StopKind.DIESEL: tr("Diesel"),
     }[kind]
+
+
+def pattern_problem(pattern: str) -> str | None:
+    """What is wrong with a marker name pattern, or None."""
+
+    try:
+        names = {name for _, name, _, _ in string.Formatter().parse(pattern) if name is not None}
+        unknown = names - PATTERN_FIELDS
+
+        if unknown:
+            return tr("Unknown placeholder {{{name}}}", name=sorted(unknown)[0])
+
+        if not _format(pattern, "Building", "Type", 1).strip():
+            return tr("A marker name pattern must not be empty.")
+    except (ValueError, TypeError):
+        return tr("The pattern “{pattern}” is not valid.", pattern=pattern)
+
+    return None
+
+
+def marker_names(
+    stops: list[Stop],
+    rules: dict[StopKind, MarkerRule],
+    taken: set[tuple[str, str]],
+    start: int = 1,
+) -> list[tuple[str, str]]:
+    """(name, group) of each stop's marker by the rule of its type, none taken twice. {n} counts
+    per group from start, skipping numbers whose name is taken; without {n} a taken name gets
+    the lowest free number from 2. The pattern must be valid (pattern_problem)."""
+
+    taken = set(taken)
+    numbers: dict[str, int] = {}
+    result = []
+
+    for stop in stops:
+        rule = rules[stop.kind]
+        building, kind = stop.name.strip(), stop.kind.label
+
+        if "{n" in rule.pattern:
+            number = numbers.get(rule.group, start)
+
+            while (_format(rule.pattern, building, kind, number), rule.group) in taken:
+                number += 1
+
+            numbers[rule.group] = number + 1
+            name = _format(rule.pattern, building, kind, number)
+        else:
+            name = unique_name(_format(rule.pattern, building, kind, start), rule.group, taken)
+
+        taken.add((name, rule.group))
+        result.append((name, rule.group))
+
+    return result
+
+
+def _format(pattern: str, building: str, kind: str, number: int) -> str:
+    return pattern.format(building=building, type=kind, n=number).strip()
 
 
 def unique_name(name: str, group: str, taken: set[tuple[str, str]]) -> str:
@@ -89,37 +183,146 @@ def unique_name(name: str, group: str, taken: set[tuple[str, str]]) -> str:
     return candidate
 
 
-def lane_points(stop: Stop, settings: StationSettings, heading: float) -> tuple[list, int]:
+def lane_points(
+    stop: Stop,
+    settings: StationSettings,
+    heading: float,
+    start: LaneEnd | None = None,
+    end: LaneEnd | None = None,
+) -> tuple[list, int]:
     """The lane's nodes in driving direction and the index of the marker node, which lies
-    settings.marker past the stop."""
+    settings.marker past the stop. A straight lane has nodes at equal distances, a bent one as
+    AutoDrive records a drive."""
+
+    y = stop.position[1]
+    before, after = lane_line(stop, settings, heading, start, end)
+    space = spaced_points if start is None and end is None else _recorded
+    first = space(before, settings.spacing) if _length(before) > 0 else [before[-1]]
+    second = space(after, settings.spacing)[1:] if _length(after) > 0 else []
+    # The marker node exactly at its place, not where the spacing would put it.
+    points = [(px, y, pz) for px, pz in first[:-1] + [after[0]] + second]
+
+    return points, len(first) - 1
+
+
+def lane_line(
+    stop: Stop,
+    settings: StationSettings,
+    heading: float,
+    start: LaneEnd | None = None,
+    end: LaneEnd | None = None,
+) -> tuple[list[tuple[float, float]], list[tuple[float, float]]]:
+    """The lane in driving direction as a fine line (x, z), split at the marker: from the start
+    to the marker and from the marker to the end. Each leg runs from the stop to its end, straight
+    by the settings or, if dragged, in one arc."""
 
     dx, dz = direction(heading)
-    x, y, z = stop.position
-    start = (x - dx * settings.before, z - dz * settings.before)
-    mx, mz = x + dx * settings.marker, z + dz * settings.marker
-    end = (mx + dx * settings.after, mz + dz * settings.after)
-    length = settings.before + settings.marker
+    x, _, z = stop.position
+    angle = math.atan2(dz, dx)
 
-    before = spaced_points([start, (mx, mz)], settings.spacing) if length > 0 else [(mx, mz)]
-    after = spaced_points([(mx, mz), end], settings.spacing)[1:] if settings.after > 0 else []
-    # The marker node exactly at its place, not where the spacing would put it.
-    points = [(px, y, pz) for px, pz in before[:-1]] + [(mx, y, mz)]
-    points += [(px, y, pz) for px, pz in after]
+    if start is None:
+        start = LaneEnd(x - dx * settings.before, z - dz * settings.before)
 
-    return points, len(before) - 1
+    if end is None:
+        length = settings.marker + settings.after
+        end = LaneEnd(x + dx * length, z + dz * length)
+
+    behind = _leg((x, z, angle + math.pi), (start.x, start.z))[::-1]
+    to_marker, from_marker = _split(_leg((x, z, angle), (end.x, end.z)), settings.marker)
+
+    return behind + to_marker[1:], from_marker
+
+
+def _leg(pose: tuple[float, float, float], tip: tuple[float, float]) -> list:
+    return [(px, pz) for px, pz, _ in stem_poses(pose, tip, LINE_STEP)]
+
+
+def _split(line: list, distance: float) -> tuple[list, list]:
+    """The line up to the distance along it and from there on, both with the point there."""
+
+    if distance <= 0:
+        return line[:1], line
+
+    walked = 0.0
+
+    for index, (a, b) in enumerate(pairwise(line)):
+        length = math.dist(a, b)
+
+        if walked + length > distance:
+            fraction = (distance - walked) / length
+            point = (a[0] + fraction * (b[0] - a[0]), a[1] + fraction * (b[1] - a[1]))
+            return line[: index + 1] + ([point] if fraction > 0 else []), [
+                point,
+                *line[index + 1 :],
+            ]
+
+        walked += length
+
+    return line, line[-1:]
+
+
+def _length(line: list) -> float:
+    return sum(math.dist(a, b) for a, b in pairwise(line))
 
 
 def plan_stations(choices: list[StopChoice], settings: StationSettings) -> PlannedPiece:
     piece = PlannedPiece()
 
     for choice in choices:
-        points, marker_index = lane_points(choice.stop, settings, choice.heading)
+        points, marker_index = lane_points(
+            choice.stop, settings, choice.heading, choice.start, choice.end
+        )
         lane = [piece.add(*point, flag=SUBPRIO_FLAG) for point in points]
         piece.chain(lane)
         piece.markers.append((lane[marker_index], choice.name, choice.group))
         piece.open_ends += [lane[0], lane[-1]]
 
     return piece
+
+
+def can_join(autodrive_data: AutoDriveData, node_id: int, at_start: bool) -> bool:
+    """Whether a lane end may join the node: the start one that is driven to, the end one that is
+    driven from."""
+
+    node = autodrive_data.nodes[node_id]
+
+    return bool(node.incoming if at_start else node.outgoing)
+
+
+def stations_command(
+    autodrive_data: AutoDriveData, choices: list[StopChoice], settings: StationSettings
+) -> AddRouteCommand:
+    """The edit that adds the lanes and their markers, a joined end on its node."""
+
+    next_id = max(autodrive_data.nodes, default=0) + 1
+    new_nodes, connections, markers = [], [], []
+    regular = CONNECTION_STATES[ConnectionType.REGULAR]
+
+    for choice in choices:
+        points, marker_index = lane_points(
+            choice.stop, settings, choice.heading, choice.start, choice.end
+        )
+        joined = {
+            0: choice.start.node_id if choice.start is not None else None,
+            len(points) - 1: choice.end.node_id if choice.end is not None else None,
+        }
+        lane = []
+
+        for index, (x, y, z) in enumerate(points):
+            if joined.get(index) is not None:
+                lane.append(joined[index])
+                continue
+
+            new_nodes.append(NodeData(next_id, x, y, z, SUBPRIO_FLAG))
+            lane.append(next_id)
+            next_id += 1
+
+        connections += [(a, b, regular) for a, b in pairwise(lane)]
+        markers.append(MarkerData(lane[marker_index], choice.name, choice.group))
+
+    return AddRouteCommand(
+        tr("Create station lanes"), autodrive_data, new_nodes, connections, markers
+    )
 
 
 def occupied(points: list[Point], nodes: list[NodeData], distance=OCCUPIED_DISTANCE) -> bool:
@@ -134,14 +337,15 @@ def occupied(points: list[Point], nodes: list[NodeData], distance=OCCUPIED_DISTA
 
 
 def building_stops_at(stops: list[Stop], x: float, z: float, tolerance: float) -> list[Stop]:
-    """All stops of the building picked at the point: the one with the closest stop within
-    tolerance, else one whose stops span an area (grown by tolerance) that contains the point."""
+    """All stops of the buildings picked at the point: each with a stop within PICK_RADIUS (or
+    tolerance if larger), as buildings standing together often belong together; else one whose
+    stops span an area (grown by tolerance) that contains the point."""
 
-    near = [stop for stop in stops if math.dist((x, z), stop.position[::2]) <= tolerance]
+    radius = max(PICK_RADIUS, tolerance)
+    near = {stop.unique_id for stop in stops if math.dist((x, z), stop.position[::2]) <= radius}
 
     if near:
-        closest = min(near, key=lambda stop: math.dist((x, z), stop.position[::2]))
-        return [stop for stop in stops if stop.unique_id == closest.unique_id]
+        return [stop for stop in stops if stop.unique_id in near]
 
     buildings: dict[str, list[Stop]] = {}
 

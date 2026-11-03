@@ -75,6 +75,7 @@ from autodrive_editor.ui.dialogs.settings_dialog import SettingsDialog
 from autodrive_editor.ui.dialogs.station_dialog import StationDialog
 from autodrive_editor.ui.file_controller import FileController
 from autodrive_editor.ui.map_import_controller import MapImportController
+from autodrive_editor.ui.map_view.dialog_placement import place_beside
 from autodrive_editor.ui.map_view.map_only_input import MapOnlyInput
 from autodrive_editor.ui.map_view.map_view import MapView
 from autodrive_editor.ui.map_view.rotation_controller import ViewRotationController
@@ -417,18 +418,22 @@ class MainWindow(QMainWindow):
             stops,
             [headings.get(stop, stop.heading) for stop in stops],
             taken_names,
-            list(autodrive_data.nodes.values()),
+            autodrive_data,
             self.settings,
             parent=self,
         )
         overlay = ParkingMapOverlay(self.scene_renderer.display_style)
         dialog.plan_changed.connect(overlay.set_network)
         dialog.plan_changed.connect(
-            lambda *_: overlay.set_handles([(x, z) for _, x, z, _, _ in dialog.handles()])
+            lambda *_: overlay.set_handles([(x, z) for _, _, x, z in dialog.handles()])
         )
         dialog._update()
         self.scene.addItem(overlay)
-        handle_tool = LaneHandleTool(self.view, dialog.handles, dialog.set_heading)
+        handle_tool = LaneHandleTool(
+            self.view, dialog.handles, dialog.drag_handle, self.selection_coordinator.get_node_at
+        )
+
+        place_beside(dialog, self.view, [stop.position[::2] for stop in stops])
 
         try:
             accepted = self._run_beside_map(dialog, handle_tool)
@@ -629,7 +634,7 @@ class MainWindow(QMainWindow):
             costmap_provider=lambda: self.scene_renderer.costmap,
             savegame_provider=lambda: self.project_coordinator.costmap_directory,
             vehicle_provider=lambda: self.settings.vehicle,
-            spacing_provider=lambda: self.create_path_operation.options.spacing,
+            spacing_provider=lambda: self.settings.generator_spacing,
             plan_node_ids_provider=self._plan_node_ids,
             height_for_new_node=self.create_nodes_operation.height_for_new_node,
             curve_radius_provider=lambda: self.settings.curve_radius,
@@ -640,7 +645,7 @@ class MainWindow(QMainWindow):
             context,
             costmap_provider=lambda: self.scene_renderer.costmap,
             vehicle_provider=lambda: self.settings.vehicle,
-            spacing_provider=lambda: self.create_path_operation.options.spacing,
+            spacing_provider=lambda: self.settings.generator_spacing,
             height_for_new_node=self.create_nodes_operation.height_for_new_node,
             stem_provider=lambda: self.settings.junction_stem,
             style_provider=lambda: self.settings.junction_style,
@@ -1100,9 +1105,11 @@ class MainWindow(QMainWindow):
         )
 
     def _get_station_name_at(self, view_position) -> str:
-        stops = self._get_station_stops_at(view_position)
+        names = dict.fromkeys(
+            stop.name.strip() for stop in self._get_station_stops_at(view_position)
+        )
 
-        return stops[0].name.strip() if stops else ""
+        return ", ".join(names)
 
     def _get_node_id_at(self, view_position) -> int | None:
         node = self.selection_coordinator.get_node_at(view_position)

@@ -44,7 +44,7 @@ def test_creates_lanes_and_markers_in_one_undo_step(setup):
     assert [(m.node_id, m.name, m.group) for m in data.markers.values()] == [
         (7, "Store (Selling point)", "Selling points")
     ]
-    assert selection.selected_node_ids == {6, 8}
+    assert selection.selected_node_ids == set()
 
     edits.undo()
 

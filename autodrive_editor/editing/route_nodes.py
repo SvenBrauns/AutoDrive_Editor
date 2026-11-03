@@ -1,6 +1,7 @@
 """Turns the points of a found route into nodes and connections.
 
-Where the route runs along a planned lane, it uses the lane's nodes instead of new ones. Where it
+Where the route runs along a planned lane, it uses the lane's nodes instead of new ones, except
+along a lane right out of its start or right into its goal, where it keeps its own way. Where it
 runs against the lane's direction closer than a lane width, the lane becomes dual there: the way
 back shares the lane because there was no room for its own.
 """
@@ -126,6 +127,17 @@ def route_nodes(
             end += 1
 
         shared_ids = _shared_node_ids(points[index:end], shares[index:end])
+
+        # Not even one lane connection between the nearer ends, or along a lane right at the
+        # route's start or goal: the stretch is free.
+        at_end = index == 0 or end == len(points) or start_id in shared_ids or goal_id in shared_ids
+        at_end = at_end and all(forward for _, forward, _ in shares[index:end])
+
+        if len(shared_ids) < 2 or at_end:
+            free_points += points[index:end]
+            index = end
+            continue
+
         _add_free(chain, free_points, positions[shared_ids[0]], spacing)
         _append(chain, shared_ids)
         free_points = [positions[shared_ids[-1]]]
@@ -222,7 +234,8 @@ def _drop_short_shares(points: list[Point], shares: list):
 
 def _shared_node_ids(points: list[Point], shares: list) -> list[int]:
     """The lane nodes a shared stretch passes, in driving order. It joins a lane at the node
-    nearer to where it meets the lane and leaves it the same way."""
+    nearer to where it meets the lane and leaves it the same way; fewer than two nodes if that
+    leaves no lane connection."""
 
     ids: list[int] = []
     previous = None
@@ -243,14 +256,11 @@ def _shared_node_ids(points: list[Point], shares: list) -> list[int]:
 
     # Join and leave at the nearer end of the first and last lane.
     _, first_forward, first_fraction = shares[0]
-    if (first_fraction >= 0.5) == first_forward and len(ids) > 2:
-        ids.pop(0)
-
     _, last_forward, last_fraction = shares[-1]
-    if (last_fraction < 0.5) == last_forward and len(ids) > 2:
-        ids.pop()
+    first = int((first_fraction >= 0.5) == first_forward)
+    last = int((last_fraction < 0.5) == last_forward)
 
-    return ids
+    return ids[first : len(ids) - last]
 
 
 def _append(chain: list, items: list):

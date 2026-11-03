@@ -664,3 +664,28 @@ def test_straight_lanes_blocked_by_an_island_are_searched_or_listed():
 
     assert plan.missing == []
     assert all(curve.searched for curve in plan.curves if curve.across)
+
+
+@pytest.mark.parametrize("stem", [Stem.IN_ONLY, Stem.OUT_ONLY])
+def test_a_one_way_stem_has_curves_and_a_lane_of_one_direction_only(stem):
+    data = two_lane_road()
+    plan = plan_junction(road_lanes(data, 7, 8), JUNCTION, stem.kinds, 6.0, None, VEHICLE)
+    command = junction_command(
+        data,
+        plan,
+        JUNCTION,
+        5.0,
+        lambda data, x, z: 0.0,
+        stem=stem_poses(JUNCTION, (0, 27), 5.0),
+        kinds=stem.kinds,
+    )
+
+    command.apply()
+
+    assert {curve.kind for curve in plan.curves} == set(stem.kinds)
+    tip = next(node.node_id for node in command.new_nodes if node.z == pytest.approx(27.0))
+    road_ids = set(range(1, 14)) | set(range(101, 114))
+    if stem == Stem.IN_ONLY:
+        assert tip in reachable(data, 1) and not reachable(data, tip) & road_ids
+    else:
+        assert reachable(data, tip) & road_ids and tip not in reachable(data, 1)

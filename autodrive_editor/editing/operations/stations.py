@@ -1,8 +1,7 @@
 from collections.abc import Callable
 
 from autodrive_editor.editing.edit_context import EditContext, EditOperation
-from autodrive_editor.editing.planned_piece import push_piece
-from autodrive_editor.editing.station_layout import StationSettings, StopChoice, plan_stations
+from autodrive_editor.editing.station_layout import StationSettings, StopChoice, stations_command
 from autodrive_editor.file_io.savegame_stations import Stop
 from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData
@@ -35,23 +34,12 @@ class StationOperation(EditOperation):
         if not choices:
             return False
 
-        piece = plan_stations(choices, settings)
-        node_ids = push_piece(
-            self.edit_history,
-            self.autodrive_data_provider(),
-            piece,
-            tr("Create station lanes"),
-        )
-
-        if self.node_selection is not None:
-            open_ends = [node_ids[index] for index in piece.open_ends]
-            self.node_selection.replace(set(open_ends), open_ends[0])
-
+        self.edit_history.push(stations_command(self.autodrive_data_provider(), choices, settings))
         self.status_changed.emit(
             tr(
-                "{count} station lanes created; the selected lane ends still need to be "
-                "connected to the network",
-                count=len(piece.markers),
+                "{count} station lanes created; their open ends still need to be connected to "
+                "the network",
+                count=len(choices),
             )
         )
 

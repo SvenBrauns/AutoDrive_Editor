@@ -331,6 +331,7 @@ class JunctionOperation(EditOperation):
 
         markers = frozenset(self.autodrive_data_provider().markers)
         lanes, foot, across = list(self._lanes), self._foot, list(self._across)
+        kinds = self.stem_provider()[0].kinds
         style, costmap, vehicle, radius = (
             self.style_provider(),
             self.costmap_provider(),
@@ -340,7 +341,7 @@ class JunctionOperation(EditOperation):
         junction = self._junction(heading, gap)
 
         def plan(find_route=None) -> tuple[Pose, object]:
-            if style == Style.BOX:
+            if style == Style.BOX and kinds == BOTH:
                 box = plan_box(
                     lanes, foot, heading, gap, costmap, vehicle, markers, across, find_route, radius
                 )
@@ -351,7 +352,7 @@ class JunctionOperation(EditOperation):
             return junction, plan_junction(
                 lanes,
                 junction,
-                BOTH,
+                kinds,
                 radius,
                 costmap,
                 vehicle,
@@ -404,6 +405,7 @@ class JunctionOperation(EditOperation):
             stem=list(preview.stem),
             gap=preview.gap,
             tip_id=preview.tip_id,
+            **({} if is_box else {"kinds": self.stem_provider()[0].kinds}),
         )
         _log(preview, command)
         self.cancel()

@@ -1,7 +1,7 @@
 import pytest
 
 from autodrive_editor.editing.commands.add_route import AddRouteCommand
-from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
+from autodrive_editor.model.autodrive_data import AutoDriveData, MarkerData, NodeData
 from autodrive_editor.model.connections import (
     CONNECTION_STATES,
     ConnectionType,
@@ -48,3 +48,26 @@ def test_rejects_unknown_nodes_and_used_ids(data):
 
     with pytest.raises(ValueError):
         AddRouteCommand("x", data, [NodeData(2, 0, 0, 0)], [])
+
+
+def test_adds_markers_on_new_nodes_with_their_group_and_undoes_them(data):
+    command = AddRouteCommand(
+        "Stations", data, [NodeData(3, 5, 0, 5)], [(2, 3, REGULAR)], [MarkerData(3, "A", "New")]
+    )
+
+    change = command.apply()
+
+    assert data.markers[3].name == "A"
+    assert data.find_marker_group("New") is not None
+    assert change.changed_marker_node_ids == {3}
+    assert change.marker_groups_changed
+
+    command.revert()
+
+    assert 3 not in data.markers
+    assert data.find_marker_group("New") is None
+
+
+def test_a_marker_must_be_on_a_new_node(data):
+    with pytest.raises(ValueError):
+        AddRouteCommand("Stations", data, [], [], [MarkerData(1, "A", "New")])

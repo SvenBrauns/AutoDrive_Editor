@@ -3,7 +3,6 @@ from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
-    QDoubleSpinBox,
     QFormLayout,
     QLabel,
     QSpinBox,
@@ -12,11 +11,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from autodrive_editor.editing.route_finder import Vehicle
 from autodrive_editor.i18n import LANGUAGES, tr
 from autodrive_editor.settings.app_settings import AppSettings
 from autodrive_editor.ui.actions.shortcuts import ShortcutRegistry
 from autodrive_editor.ui.dialogs.folder_settings_widget import FolderSettingsWidget
+from autodrive_editor.ui.dialogs.generator_settings_widget import GeneratorSettingsWidget
 from autodrive_editor.ui.dialogs.maps_widget import MapsWidget
 from autodrive_editor.ui.dialogs.shortcuts_widget import ShortcutsWidget
 
@@ -26,8 +25,8 @@ UPDATE_CHECK_TEXT = tr("Check for a new version at startup (contacts github.com)
 
 class SettingsDialog(QDialog):
     """Editor settings: the FS25 user folder and install folder, the
-    autosave interval, the language, the theme, the imported maps, the vehicle size for the
-    route finder and the keyboard shortcuts."""
+    autosave interval, the language, the theme, the imported maps, the generator settings and the
+    keyboard shortcuts."""
 
     MAX_AUTOSAVE_MINUTES = 60
 
@@ -99,7 +98,8 @@ class SettingsDialog(QDialog):
             self.maps = MapsWidget(map_import, self)
             self.tabs.addTab(self.maps, tr("Maps"))
 
-        self.tabs.addTab(self._create_route_tab(), tr("Route finder"))
+        self.generators = GeneratorSettingsWidget(settings, self)
+        self.tabs.addTab(self.generators, tr("Generators"))
         self.tabs.addTab(self.shortcuts, tr("Shortcuts"))
 
         buttons = QDialogButtonBox(
@@ -107,53 +107,18 @@ class SettingsDialog(QDialog):
         )
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
+        self.ok_button = buttons.button(QDialogButtonBox.StandardButton.Ok)
+        self.generators.changed.connect(
+            lambda: self.ok_button.setEnabled(self.generators.problem() is None)
+        )
 
         layout = QVBoxLayout(self)
         layout.addWidget(self.tabs)
         layout.addWidget(buttons)
 
-    def _create_route_tab(self) -> QWidget:
-        tab = QWidget(self)
-        vehicle = self.settings.vehicle
-
-        def metres_input(value: float, minimum: float, maximum: float) -> QDoubleSpinBox:
-            spin_box = QDoubleSpinBox(tab)
-            spin_box.setRange(minimum, maximum)
-            spin_box.setDecimals(1)
-            spin_box.setSingleStep(0.5)
-            spin_box.setSuffix(" m")
-            spin_box.setValue(value)
-
-            return spin_box
-
-        self.curve_radius_input = metres_input(self.settings.curve_radius, 4.0, 50.0)
-        self.vehicle_width_input = metres_input(vehicle.width, 1.0, 10.0)
-        self.safety_margin_input = metres_input(vehicle.margin, 0.1, 5.0)
-
-        note = QLabel(
-            tr(
-                "Find route and Junction build curves as arcs of the curve radius. Routes keep "
-                "half the vehicle width plus the safety margin away from buildings, fences and "
-                "trees."
-            ),
-            tab,
-        )
-        note.setWordWrap(True)
-
-        form = QFormLayout(tab)
-        form.addRow(note)
-        form.addRow(tr("Curve radius:"), self.curve_radius_input)
-        form.addRow(tr("Vehicle width:"), self.vehicle_width_input)
-        form.addRow(tr("Safety margin:"), self.safety_margin_input)
-
-        return tab
-
     def accept(self):
         self.folders.store()
-        self.settings.set_vehicle(
-            Vehicle(width=self.vehicle_width_input.value(), margin=self.safety_margin_input.value())
-        )
-        self.settings.set_curve_radius(self.curve_radius_input.value())
+        self.generators.store()
         self.settings.set_autosave_minutes(self.autosave_input.value())
         self.settings.set_theme(self.theme_input.currentData())
         self.settings.set_check_updates(self.check_updates_input.isChecked())
