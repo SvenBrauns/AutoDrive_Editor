@@ -13,8 +13,7 @@ ChoiceRequest = Callable[
 
 
 class StationOperation(EditOperation):
-    """Creates the lanes and markers of picked station stops in one undo step; the lane ends
-    that still need a connection to the network are selected."""
+    """Creates the lanes and markers of picked station stops in one undo step."""
 
     def __init__(self, context: EditContext, ask_choices: ChoiceRequest, parent=None):
         super().__init__(context, parent)
@@ -35,16 +34,11 @@ class StationOperation(EditOperation):
         if not choices:
             return False
 
-        command, open_ends = stations_command(self.autodrive_data_provider(), choices, settings)
-        self.edit_history.push(command)
-
-        if self.node_selection is not None and open_ends:
-            self.node_selection.replace(set(open_ends), open_ends[0])
-
+        self.edit_history.push(stations_command(self.autodrive_data_provider(), choices, settings))
         self.status_changed.emit(
             tr(
-                "{count} station lanes created; the selected lane ends still need to be "
-                "connected to the network",
+                "{count} station lanes created; their open ends still need to be connected to "
+                "the network",
                 count=len(choices),
             )
         )

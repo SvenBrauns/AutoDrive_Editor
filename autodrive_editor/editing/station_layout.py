@@ -289,12 +289,11 @@ def can_join(autodrive_data: AutoDriveData, node_id: int, at_start: bool) -> boo
 
 def stations_command(
     autodrive_data: AutoDriveData, choices: list[StopChoice], settings: StationSettings
-) -> tuple[AddRouteCommand, list[int]]:
-    """The edit that adds the lanes and their markers, a joined end on its node, and the IDs of
-    the lane ends that still need a connection to the network."""
+) -> AddRouteCommand:
+    """The edit that adds the lanes and their markers, a joined end on its node."""
 
     next_id = max(autodrive_data.nodes, default=0) + 1
-    new_nodes, connections, markers, open_ends = [], [], [], []
+    new_nodes, connections, markers = [], [], []
     regular = CONNECTION_STATES[ConnectionType.REGULAR]
 
     for choice in choices:
@@ -318,13 +317,10 @@ def stations_command(
 
         connections += [(a, b, regular) for a, b in pairwise(lane)]
         markers.append(MarkerData(lane[marker_index], choice.name, choice.group))
-        open_ends += [lane[index] for index, node_id in joined.items() if node_id is None]
 
-    command = AddRouteCommand(
+    return AddRouteCommand(
         tr("Create station lanes"), autodrive_data, new_nodes, connections, markers
     )
-
-    return command, open_ends
 
 
 def occupied(points: list[Point], nodes: list[NodeData], distance=OCCUPIED_DISTANCE) -> bool:

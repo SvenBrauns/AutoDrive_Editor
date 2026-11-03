@@ -724,7 +724,7 @@ TEXTS = {
     "Buying stations": "Kaufstellen",
     "Productions": "Produktionen",
     "Create station lanes": "Stationsspuren erstellen",
-    "{count} station lanes created; the selected lane ends still need to be connected to the network": "{count} Stationsspuren erstellt; die ausgewählten Spurenden müssen noch mit dem Netz verbunden werden",
+    "{count} station lanes created; their open ends still need to be connected to the network": "{count} Stationsspuren erstellt; ihre offenen Enden müssen noch mit dem Netz verbunden werden",
     "Click a station or right-drag a box around several to create their lanes": "Station anklicken oder mit der rechten Maustaste einen Rahmen um mehrere ziehen, um ihre Spuren zu erstellen",
     "No stations shown: open a savegame": "Keine Stationen angezeigt: Spielstand öffnen",
     "Stop": "Halt",

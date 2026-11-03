@@ -118,17 +118,16 @@ def test_a_dragged_start_bends_the_leg_behind_the_stop():
     assert points[index] == pytest.approx((105, 5, 200))
 
 
-def test_a_lane_end_dropped_on_a_node_joins_it_and_is_no_open_end():
+def test_a_lane_end_dropped_on_a_node_joins_it():
     data = AutoDriveData()
     data.add_node(NodeData(1, 120, 0, 210))
     joined = StopChoice(stop(), "A", "G", 90, end=LaneEnd(120, 210, 1))
 
-    command, open_ends = stations_command(data, [joined], StationSettings(5, 5, 5, 0))
+    command = stations_command(data, [joined], StationSettings(5, 5, 5, 0))
     command.apply()
 
     (marker_id,) = data.markers
     assert 1 not in {node.node_id for node in command.new_nodes}
-    assert len(open_ends) == 1 and data.nodes[open_ends[0]].outgoing
     assert data.nodes[1].incoming and all(n.is_subprio for n in command.new_nodes)
     assert marker_id != 1
 
