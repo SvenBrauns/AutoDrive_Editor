@@ -172,10 +172,18 @@ def test_ok_stores_the_vehicle_size(qapp):
     settings = AppSettings()
     dialog = SettingsDialog(settings, ShortcutRegistry())
 
-    dialog.curve_radius_input.setValue(8)
-    dialog.vehicle_width_input.setValue(4)
-    dialog.safety_margin_input.setValue(1)
+    dialog.generators.curve_radius_input.setValue(8)
+    dialog.generators.vehicle_width_input.setValue(4)
+    dialog.generators.safety_margin_input.setValue(1)
     dialog.accept()
 
     assert settings.vehicle == Vehicle(width=4, margin=1)
     assert settings.curve_radius == 8
+
+
+def test_an_invalid_marker_pattern_disables_ok(qapp):
+    dialog = SettingsDialog(AppSettings(), ShortcutRegistry())
+
+    dialog.generators.rules_table.item(0, 1).setText("VK-{name}")
+
+    assert not dialog.ok_button.isEnabled()

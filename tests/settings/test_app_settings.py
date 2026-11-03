@@ -7,8 +7,13 @@ from autodrive_editor.editing.junction import Stem
 from autodrive_editor.editing.junction_box import Style
 from autodrive_editor.editing.path_shapes import PathOptions
 from autodrive_editor.editing.route_finder import Vehicle
-from autodrive_editor.editing.station_layout import StationSettings
+from autodrive_editor.editing.station_layout import (
+    MarkerRule,
+    StationSettings,
+    default_marker_rules,
+)
 from autodrive_editor.file_io.savegame_buildings import BuildingGroup
+from autodrive_editor.file_io.savegame_stations import StopKind
 from autodrive_editor.game.game_folder import GameFolder
 from autodrive_editor.game.game_installation import GameInstallation
 from autodrive_editor.model.autodrive_data import SUBPRIO_FLAG
@@ -338,9 +343,28 @@ def test_station_settings_are_kept():
     settings = AppSettings()
     assert settings.station_settings == StationSettings()
 
-    settings.set_station_settings(StationSettings(8.0, 12.0, 4.0))
+    settings.set_station_settings(StationSettings(8.0, 12.0, 4.0, 3.0))
+    settings.set_generator_spacing(6.0)
 
-    assert AppSettings().station_settings == StationSettings(8.0, 12.0, 4.0)
+    assert AppSettings().station_settings == StationSettings(8.0, 12.0, 6.0, 3.0)
+
+
+def test_marker_rules_are_kept_and_invalid_ones_fall_back():
+    settings = AppSettings()
+    rules = settings.marker_rules
+    assert rules == default_marker_rules()
+
+    rules[StopKind.PRODUCTION] = MarkerRule("VK-{building}", "VK")
+    settings.set_marker_rules(rules)
+    settings.set_marker_start(5)
+
+    assert AppSettings().marker_rules == rules
+    assert AppSettings().marker_start == 5
+
+    rules[StopKind.PRODUCTION] = MarkerRule("VK-{name}", "VK")
+    settings.set_marker_rules(rules)
+
+    assert AppSettings().marker_rules == default_marker_rules()
 
 
 def test_debug_log_is_off_until_turned_on():

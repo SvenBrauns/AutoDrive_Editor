@@ -10,6 +10,7 @@ destination. Connecting the lane ends to the network comes later.
 """
 
 import math
+import string
 from dataclasses import dataclass
 
 from autodrive_editor.editing.path_shapes import spaced_points
@@ -46,7 +47,7 @@ class StationSettings:
 
     before: float = 10.0
     after: float = 10.0
-    spacing: float = 5.0
+    spacing: float = 12.0
     marker: float = 8.0
 
 
@@ -60,8 +61,22 @@ class StopChoice:
     heading: float
 
 
-def default_marker_name(stop: Stop) -> str:
-    return f"{stop.name.strip()} ({stop.kind.label})"
+# Marker names are patterns with the stop's building, its type and a number, as in "VK-{building}"
+# or "{n:03}-{type}".
+DEFAULT_PATTERN = "{building} ({type})"
+PATTERN_FIELDS = {"building", "type", "n"}
+
+
+@dataclass(frozen=True)
+class MarkerRule:
+    """How the markers of one stop type are named and grouped."""
+
+    pattern: str
+    group: str
+
+
+def default_marker_rules() -> dict[StopKind, MarkerRule]:
+    return {kind: MarkerRule(DEFAULT_PATTERN, default_group(kind)) for kind in StopKind}
 
 
 def default_group(kind: StopKind) -> str:
@@ -74,6 +89,63 @@ def default_group(kind: StopKind) -> str:
         StopKind.ANIMALS: tr("Animals"),
         StopKind.DIESEL: tr("Diesel"),
     }[kind]
+
+
+def pattern_problem(pattern: str) -> str | None:
+    """What is wrong with a marker name pattern, or None."""
+
+    try:
+        names = {name for _, name, _, _ in string.Formatter().parse(pattern) if name is not None}
+        unknown = names - PATTERN_FIELDS
+
+        if unknown:
+            return tr("Unknown placeholder {{{name}}}", name=sorted(unknown)[0])
+
+        if not _format(pattern, "Building", "Type", 1).strip():
+            return tr("A marker name pattern must not be empty.")
+    except (ValueError, TypeError):
+        return tr("The pattern “{pattern}” is not valid.", pattern=pattern)
+
+    return None
+
+
+def marker_names(
+    stops: list[Stop],
+    rules: dict[StopKind, MarkerRule],
+    taken: set[tuple[str, str]],
+    start: int = 1,
+) -> list[tuple[str, str]]:
+    """(name, group) of each stop's marker by the rule of its type, none taken twice. {n} counts
+    per group from start, skipping numbers whose name is taken; without {n} a taken name gets
+    the lowest free number from 2. The pattern must be valid (pattern_problem)."""
+
+    taken = set(taken)
+    numbers: dict[str, int] = {}
+    result = []
+
+    for stop in stops:
+        rule = rules[stop.kind]
+        building, kind = stop.name.strip(), stop.kind.label
+
+        if "{n" in rule.pattern:
+            number = numbers.get(rule.group, start)
+
+            while (_format(rule.pattern, building, kind, number), rule.group) in taken:
+                number += 1
+
+            numbers[rule.group] = number + 1
+            name = _format(rule.pattern, building, kind, number)
+        else:
+            name = unique_name(_format(rule.pattern, building, kind, start), rule.group, taken)
+
+        taken.add((name, rule.group))
+        result.append((name, rule.group))
+
+    return result
+
+
+def _format(pattern: str, building: str, kind: str, number: int) -> str:
+    return pattern.format(building=building, type=kind, n=number).strip()
 
 
 def unique_name(name: str, group: str, taken: set[tuple[str, str]]) -> str:

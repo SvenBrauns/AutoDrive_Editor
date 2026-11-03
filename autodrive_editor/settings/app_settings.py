@@ -11,8 +11,14 @@ from autodrive_editor.editing.junction import LANE_GAP, Stem
 from autodrive_editor.editing.junction_box import Style
 from autodrive_editor.editing.path_shapes import PathOptions
 from autodrive_editor.editing.route_finder import CURVE_RADIUS, Vehicle
-from autodrive_editor.editing.station_layout import StationSettings
+from autodrive_editor.editing.station_layout import (
+    MarkerRule,
+    StationSettings,
+    default_marker_rules,
+    pattern_problem,
+)
 from autodrive_editor.file_io.savegame_buildings import BuildingGroup
+from autodrive_editor.file_io.savegame_stations import StopKind
 from autodrive_editor.game.game_folder import GameFolder
 from autodrive_editor.game.game_installation import GameInstallation
 from autodrive_editor.i18n import LANGUAGES, system_language
@@ -48,9 +54,11 @@ class AppSettings:
     STATION_KEYS = {
         "before": "stations/lane_before",
         "after": "stations/lane_after",
-        "spacing": "stations/spacing",
         "marker": "stations/marker_offset",
     }
+    GENERATOR_SPACING_KEY = "generators/spacing"
+    MARKER_RULES_KEY = "generators/marker_rules"
+    MARKER_START_KEY = "generators/marker_start"
     ROTATE_SNAP_KEY = "rotate/snap_angle"
     PICTURE_WAIT_KEY = "picture/wait_ms"
     JUNCTION_STEM_KEY = "junction/stem"
@@ -328,8 +336,21 @@ class AppSettings:
         self._settings.sync()
 
     @property
+    def generator_spacing(self) -> float:
+        """Node spacing of generated roads on straights; curves get closer nodes."""
+
+        default = StationSettings().spacing
+        spacing = self._settings.value(self.GENERATOR_SPACING_KEY, default, type=float)
+
+        return spacing if spacing > 0 else default
+
+    def set_generator_spacing(self, spacing: float):
+        self._settings.setValue(self.GENERATOR_SPACING_KEY, float(spacing))
+        self._settings.sync()
+
+    @property
     def station_settings(self) -> StationSettings:
-        """Lane lengths and node spacing of the stations generator."""
+        """Lane lengths of the stations generator and the generator spacing."""
 
         default = StationSettings()
         values = {
@@ -337,12 +358,61 @@ class AppSettings:
             for name, key in self.STATION_KEYS.items()
         }
 
-        return StationSettings(**values) if values["spacing"] > 0 else default
+        if any(value < 0 for value in values.values()):
+            values = {}
+
+        return StationSettings(**values, spacing=self.generator_spacing)
 
     def set_station_settings(self, settings: StationSettings):
         for name, key in self.STATION_KEYS.items():
             self._settings.setValue(key, float(getattr(settings, name)))
 
+        self._settings.sync()
+
+    @property
+    def marker_rules(self) -> dict[StopKind, MarkerRule]:
+        """Name pattern and group of the generated markers per stop type."""
+
+        rules = default_marker_rules()
+
+        try:
+            values = json.loads(self._settings.value(self.MARKER_RULES_KEY, "{}"))
+        except (TypeError, ValueError):
+            return rules
+
+        for kind in StopKind:
+            value = values.get(kind.value) if isinstance(values, dict) else None
+
+            if (
+                isinstance(value, list)
+                and len(value) == 2
+                and all(isinstance(v, str) for v in value)
+            ):
+                if value[1].strip() and pattern_problem(value[0]) is None:
+                    rules[kind] = MarkerRule(*value)
+
+        return rules
+
+    def set_marker_rules(self, rules: dict[StopKind, MarkerRule]):
+        """Stores only the rules that differ from the defaults, so these follow the language."""
+
+        defaults = default_marker_rules()
+        values = {
+            kind.value: [rule.pattern, rule.group]
+            for kind, rule in rules.items()
+            if rule != defaults[kind]
+        }
+        self._settings.setValue(self.MARKER_RULES_KEY, json.dumps(values))
+        self._settings.sync()
+
+    @property
+    def marker_start(self) -> int:
+        """The first number of {n} in marker name patterns."""
+
+        return max(self._settings.value(self.MARKER_START_KEY, 1, type=int), 0)
+
+    def set_marker_start(self, number: int):
+        self._settings.setValue(self.MARKER_START_KEY, int(number))
         self._settings.sync()
 
     @property

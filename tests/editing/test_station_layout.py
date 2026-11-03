@@ -2,15 +2,18 @@ import pytest
 from costmap_helpers import make_costmap
 
 from autodrive_editor.editing.station_layout import (
+    MarkerRule,
     StationSettings,
     StopChoice,
     building_stops_at,
     default_group,
     default_heading,
-    default_marker_name,
+    default_marker_rules,
     free_reach,
     lane_points,
+    marker_names,
     occupied,
+    pattern_problem,
     plan_stations,
     unique_name,
 )
@@ -101,9 +104,41 @@ def test_plan_has_one_way_lanes_markers_and_open_ends():
 
 
 def test_default_marker_name_and_group():
-    assert default_marker_name(stop()) == "Grain store (Selling point)"
+    assert marker_names([stop()], default_marker_rules(), set()) == [
+        ("Grain store (Selling point)", "Selling points")
+    ]
     assert default_group(StopKind.PRODUCTION) == "Productions"
     assert all(default_group(kind) for kind in StopKind)
+
+
+def test_marker_names_follow_the_rule_of_the_stop_type():
+    rules = default_marker_rules() | {StopKind.PRODUCTION: MarkerRule("VK-{building}", "VK")}
+    stops = [stop(kind=StopKind.PRODUCTION), stop(), stop(kind=StopKind.PRODUCTION)]
+
+    assert marker_names(stops, rules, {("VK-Grain store", "VK")}) == [
+        ("VK-Grain store 2", "VK"),
+        ("Grain store (Selling point)", "Selling points"),
+        ("VK-Grain store 3", "VK"),
+    ]
+
+
+def test_numbers_count_per_group_and_skip_taken_names():
+    rules = {kind: MarkerRule("{n:03}-{type}", "G") for kind in StopKind}
+    stops = [stop(), stop(kind=StopKind.LOAD), stop()]
+
+    assert marker_names(stops, rules, {("006-Loading", "G")}, start=5) == [
+        ("005-Selling point", "G"),
+        ("007-Loading", "G"),
+        ("008-Selling point", "G"),
+    ]
+
+
+def test_pattern_problem():
+    assert pattern_problem("{n:03}-{building} ({type})") is None
+    assert "{name}" in pattern_problem("VK-{name}")
+    assert pattern_problem("VK-{building") is not None
+    assert pattern_problem("{n:x.}") is not None
+    assert pattern_problem("  ") is not None
 
 
 def test_unique_name_adds_the_lowest_free_number():

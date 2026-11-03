@@ -2,8 +2,6 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
-    QDoubleSpinBox,
-    QFormLayout,
     QHeaderView,
     QLabel,
     QSpinBox,
@@ -15,18 +13,17 @@ from PySide6.QtWidgets import (
 from autodrive_editor.editing.station_layout import (
     StationSettings,
     StopChoice,
-    default_group,
-    default_marker_name,
     direction,
     lane_points,
+    marker_names,
     occupied,
     plan_stations,
-    unique_name,
 )
 from autodrive_editor.file_io.savegame_stations import Stop
 from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import NodeData
 from autodrive_editor.settings.app_settings import AppSettings
+from autodrive_editor.ui.dialogs.generator_settings_widget import GeneratorSettingsDialog
 
 STOP, KIND, FILL_TYPES, NAME, GROUP, ANGLE, NOTE = range(7)
 # Fill types listed in the table before "…".
@@ -36,7 +33,8 @@ HANDLE_DISTANCE = 5.0
 
 
 class StationDialog(QDialog):
-    """The picked stops with a check box each, their markers, lane angles and the lane settings.
+    """The picked stops with a check box each, their markers and lane angles;
+    the lane lengths come from the generator settings.
     The planned lanes are sent with plan_changed, as for the parking spots, so the map can show
     them; the angles can also be set by dragging the lane ends on the map (handles)."""
 
@@ -78,13 +76,9 @@ class StationDialog(QDialog):
         self.table.horizontalHeader().setStretchLastSection(True)
         self.angle_inputs: list[QSpinBox] = []
 
-        names = set(self.taken_names)
+        self.markers = self._default_markers()
 
-        for row, stop in enumerate(self.stops):
-            group = default_group(stop.kind)
-            name = unique_name(default_marker_name(stop), group, names)
-            names.add((name, group))
-
+        for row, (stop, (name, group)) in enumerate(zip(self.stops, self.markers, strict=True)):
             self._set_item(row, STOP, stop.name.strip(), checked=True)
             self._set_item(row, KIND, stop.kind.label)
             fill_types = ", ".join(stop.fill_types[:SHOWN_FILL_TYPES])
@@ -98,29 +92,20 @@ class StationDialog(QDialog):
 
         self.table.resizeColumnsToContents()
 
-        defaults = app_settings.station_settings
-        self.before_input = self._length_input(defaults.before, 0.0)
-        self.after_input = self._length_input(defaults.after, 0.0)
-        self.spacing_input = self._length_input(defaults.spacing, 1.0)
-        self.marker_input = self._length_input(defaults.marker, 0.0)
-
-        form = QFormLayout()
-        form.addRow(tr("Lane before the stop:"), self.before_input)
-        form.addRow(tr("Marker past the stop:"), self.marker_input)
-        form.addRow(tr("Lane after the marker:"), self.after_input)
-        form.addRow(tr("Node spacing:"), self.spacing_input)
-
         self.problem_label = QLabel(self)
         self.problem_label.setWordWrap(True)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Cancel, self)
         self.create_button = buttons.addButton(tr("Create"), QDialogButtonBox.AcceptRole)
+        self.settings_button = buttons.addButton(
+            tr("Generator settings…"), QDialogButtonBox.ResetRole
+        )
+        self.settings_button.clicked.connect(self._edit_settings)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
 
         layout = QVBoxLayout(self)
         layout.addWidget(self.table)
-        layout.addLayout(form)
         layout.addWidget(self.problem_label)
         layout.addWidget(buttons)
         self.setSizeGripEnabled(True)
@@ -131,12 +116,7 @@ class StationDialog(QDialog):
 
     @property
     def settings(self) -> StationSettings:
-        return StationSettings(
-            self.before_input.value(),
-            self.after_input.value(),
-            self.spacing_input.value(),
-            self.marker_input.value(),
-        )
+        return self.app_settings.station_settings
 
     @property
     def choices(self) -> list[StopChoice]:
@@ -163,7 +143,8 @@ class StationDialog(QDialog):
         of its lane, at least HANDLE_DISTANCE from the stop, and turns the lane around the stop."""
 
         result = []
-        length = max(self.marker_input.value() + self.after_input.value(), HANDLE_DISTANCE)
+        settings = self.settings
+        length = max(settings.marker + settings.after, HANDLE_DISTANCE)
 
         for row, stop in enumerate(self.stops):
             if self.table.item(row, STOP).checkState() != Qt.Checked:
@@ -175,9 +156,30 @@ class StationDialog(QDialog):
 
         return result
 
-    def accept(self):
-        self.app_settings.set_station_settings(self.settings)
-        super().accept()
+    def reload_settings(self):
+        """After the generator settings changed: new lanes, and new marker names for the rows
+        whose name and group were not edited."""
+
+        markers = self._default_markers()
+        self.table.blockSignals(True)
+
+        for row, (old, new) in enumerate(zip(self.markers, markers, strict=True)):
+            if (self.table.item(row, NAME).text(), self.table.item(row, GROUP).text()) == old:
+                self.table.item(row, NAME).setText(new[0])
+                self.table.item(row, GROUP).setText(new[1])
+
+        self.table.blockSignals(False)
+        self.markers = markers
+        self._update()
+
+    def _edit_settings(self):
+        if GeneratorSettingsDialog(self.app_settings, self).exec():
+            self.reload_settings()
+
+    def _default_markers(self) -> list[tuple[str, str]]:
+        rules, start = self.app_settings.marker_rules, self.app_settings.marker_start
+
+        return marker_names(self.stops, rules, self.taken_names, start)
 
     def _set_item(self, row: int, column: int, text: str, editable=False, checked=None):
         item = QTableWidgetItem(text)
@@ -192,15 +194,6 @@ class StationDialog(QDialog):
 
         item.setFlags(flags)
         self.table.setItem(row, column, item)
-
-    def _length_input(self, value: float, minimum: float) -> QDoubleSpinBox:
-        spin_box = QDoubleSpinBox(self)
-        spin_box.setRange(minimum, 100.0)
-        spin_box.setDecimals(1)
-        spin_box.setSuffix(" m")
-        spin_box.setValue(value)
-        spin_box.valueChanged.connect(self._update)
-        return spin_box
 
     def _angle_input(self, heading: float) -> QSpinBox:
         spin_box = QSpinBox(self)
