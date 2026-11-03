@@ -724,8 +724,27 @@ TEXTS = {
     "Buying stations": "Kaufstellen",
     "Productions": "Produktionen",
     "Create station lanes": "Stationsspuren erstellen",
+    "The generator failed. Details are in the log file": (
+        "Der Generator ist fehlgeschlagen. Details stehen in der Logdatei"
+    ),
+    "Stops without a way in or out": "Halte ohne Zu- oder Abfahrt",
+    "These stops have no way in or out yet. Their lane ends are selected and the missing legs "
+    "are drawn dashed on the map:": (
+        "Diese Halte haben noch keine Zu- oder Abfahrt. Ihre Spurenden sind ausgewählt und die "
+        "fehlenden Anbindungen gestrichelt auf der Karte eingezeichnet:"
+    ),
+    "Legs to the road that do not fit as curves are searched on Create.": (
+        "Anbindungen an die Straße, die nicht als Kurven passen, werden beim Erstellen gesucht."
+    ),
+    "{count} station lanes created; {missing} have no way in or out, their lane ends are "
+    "selected": (
+        "{count} Stationsspuren erstellt; {missing} haben keine Zu- oder Abfahrt, ihre "
+        "Spurenden sind ausgewählt"
+    ),
+    "{count} station lanes created and joined to the roads": (
+        "{count} Stationsspuren erstellt und an die Straßen angebunden"
+    ),
     "No road within {reach} m": "Keine Straße im Umkreis von {reach} m",
-    "{count} station lanes created; the selected lane ends still need to be connected to the network": "{count} Stationsspuren erstellt; die ausgewählten Spurenden müssen noch mit dem Netz verbunden werden",
     "Click a station or right-drag a box around several to create their lanes": "Station anklicken oder mit der rechten Maustaste einen Rahmen um mehrere ziehen, um ihre Spuren zu erstellen",
     "No stations shown: open a savegame": "Keine Stationen angezeigt: Spielstand öffnen",
     "Stop": "Halt",
@@ -736,6 +755,7 @@ TEXTS = {
     "Lane before the stop:": "Spur vor dem Halt:",
     "Marker past the stop:": "Marker hinter dem Halt:",
     "Lane after the marker:": "Spur nach dem Marker:",
+    "Reach to a road:": "Reichweite bis zur Straße:",
     "no AI node": "kein KI-Punkt",
     "existing node on the lane": "vorhandener Knoten auf der Spur",
     "No stop is chosen.": "Kein Halt gewählt.",

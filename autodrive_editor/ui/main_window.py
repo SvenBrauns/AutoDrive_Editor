@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QInputDialog,
     QLabel,
     QMainWindow,
+    QMessageBox,
     QToolButton,
     QVBoxLayout,
     QWidget,
@@ -71,6 +72,7 @@ from autodrive_editor.ui.dialogs.messages import APP_TITLE
 from autodrive_editor.ui.dialogs.node_position_dialog import NodePositionDialog
 from autodrive_editor.ui.dialogs.parking_map_overlay import ParkingMapOverlay
 from autodrive_editor.ui.dialogs.parking_spot_dialog import ParkingSpotDialog
+from autodrive_editor.ui.dialogs.progress_dialog import GeneratorFailed, run_with_progress
 from autodrive_editor.ui.dialogs.settings_dialog import SettingsDialog
 from autodrive_editor.ui.dialogs.station_dialog import StationDialog
 from autodrive_editor.ui.file_controller import FileController
@@ -417,8 +419,9 @@ class MainWindow(QMainWindow):
             stops,
             [headings.get(stop, stop.heading) for stop in stops],
             taken_names,
-            list(autodrive_data.nodes.values()),
+            autodrive_data,
             self.settings,
+            self.scene_renderer.costmap,
             parent=self,
         )
         overlay = ParkingMapOverlay(self.scene_renderer.display_style)
@@ -436,6 +439,25 @@ class MainWindow(QMainWindow):
             self.scene.removeItem(overlay)
 
         return (dialog.choices, dialog.settings) if accepted else None
+
+    def _run_generator(self, title: str, work):
+        try:
+            return run_with_progress(title, work, self)
+        except GeneratorFailed:
+            self._set_status(tr("The generator failed. Details are in the log file"))
+            return None
+
+    def _show_stops_without_way(self, lines: list[str]):
+        QMessageBox.information(
+            self,
+            tr("Stops without a way in or out"),
+            tr(
+                "These stops have no way in or out yet. Their lane ends are selected and the "
+                "missing legs are drawn dashed on the map:"
+            )
+            + "\n\n"
+            + "\n".join(lines),
+        )
 
     def _run_beside_map(self, dialog: QDialog, tool: MapTool | None = None) -> bool:
         """Runs the dialog without blocking the map: it can be moved, zoomed and rotated, but
@@ -606,6 +628,13 @@ class MainWindow(QMainWindow):
             context,
             # Looked up on each call, so tests can replace _ask_station_choices.
             ask_choices=lambda stops, data: self._ask_station_choices(stops, data),
+            costmap_provider=lambda: self.scene_renderer.costmap,
+            vehicle_provider=lambda: self.settings.vehicle,
+            curve_radius_provider=lambda: self.settings.curve_radius,
+            height_for_new_node=self.create_nodes_operation.height_for_new_node,
+            run_generator=self._run_generator,
+            # Looked up on each call, so tests can replace _show_stops_without_way.
+            show_missing=lambda lines: self._show_stops_without_way(lines),
             parent=self,
         )
 
@@ -900,7 +929,9 @@ class MainWindow(QMainWindow):
             ),
             is_target=lambda view_position: bool(self._get_station_stops_at(view_position)),
             hover_text=self._get_station_name_at,
+            z_value=display_style.selected_node_z + 1,
         )
+        self.station_operation.gaps_changed.connect(station_tool.show_gaps)
         junction_tool = JunctionTool(
             self.view,
             self.junction_operation,

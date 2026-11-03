@@ -25,6 +25,7 @@ from autodrive_editor.editing.junction import (
     road_lanes,
     split_connections,
 )
+from autodrive_editor.editing.planned_piece import PlannedPiece
 from autodrive_editor.editing.route_finder import Route, RouteRequest, Vehicle
 from autodrive_editor.editing.route_nodes import _recorded
 from autodrive_editor.editing.station_layout import (
@@ -32,6 +33,7 @@ from autodrive_editor.editing.station_layout import (
     StopChoice,
     direction,
     lane_points,
+    plan_stations,
 )
 from autodrive_editor.file_io.navigation_costmap import NavigationCostmap
 from autodrive_editor.i18n import tr
@@ -210,3 +212,27 @@ def direct_command(
     )
 
     return command, open_ends
+
+
+def preview_piece(
+    choices: list[StopChoice], joins: list[StopJoin], settings: StationSettings
+) -> PlannedPiece:
+    """The lanes with their legs, for the map while the dialog is open."""
+
+    piece = plan_stations(choices, settings)
+
+    for index, join in enumerate(joins):
+        start, end = piece.open_ends[2 * index], piece.open_ends[2 * index + 1]
+        y = piece.points[start][1]
+
+        for curve in join.curves:
+            points = _recorded(list(curve.points), settings.spacing)
+
+            if curve.kind == CurveKind.IN:
+                chain = [piece.add(x, y, z, flag=SUBPRIO_FLAG) for x, z in points[:-1]] + [start]
+            else:
+                chain = [end] + [piece.add(x, y, z, flag=SUBPRIO_FLAG) for x, z in points[1:]]
+
+            piece.chain(chain)
+
+    return piece

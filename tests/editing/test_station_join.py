@@ -5,7 +5,12 @@ from costmap_helpers import make_costmap
 
 from autodrive_editor.editing.junction import CurveKind
 from autodrive_editor.editing.route_finder import Vehicle
-from autodrive_editor.editing.station_join import direct_command, nearest_road, plan_direct
+from autodrive_editor.editing.station_join import (
+    direct_command,
+    nearest_road,
+    plan_direct,
+    preview_piece,
+)
 from autodrive_editor.editing.station_layout import StationSettings, StopChoice
 from autodrive_editor.file_io.savegame_stations import Stop, StopKind
 from autodrive_editor.model.autodrive_data import (
@@ -152,3 +157,16 @@ def test_subprio_and_marker_connections_are_no_road():
 
     assert nearest_road(data, (5.0, 30.0), 50.0) == (11, 12)
     assert nearest_road(data, (5.0, 30.0), 20.0) is None
+
+
+def test_the_preview_joins_the_legs_to_the_lane_ends():
+    data = east_road()
+    join = plan_direct(data, choice(), SETTINGS, 6.0, None, VEHICLE)
+
+    piece = preview_piece([choice()], [join], SETTINGS)
+
+    start, end = piece.open_ends
+    targets = {target for _, target, _ in piece.connections}
+    sources = {source for source, _, _ in piece.connections}
+    assert start in targets and end in sources
+    assert len(piece.points) > 4

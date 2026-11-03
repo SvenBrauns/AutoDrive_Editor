@@ -1,4 +1,4 @@
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+from autodrive_editor.editing.station_join import StopJoin, plan_direct, preview_piece
 from autodrive_editor.editing.station_layout import (
     StationSettings,
     StopChoice,
@@ -19,9 +20,10 @@ from autodrive_editor.editing.station_layout import (
     occupied,
     plan_stations,
 )
+from autodrive_editor.file_io.navigation_costmap import NavigationCostmap
 from autodrive_editor.file_io.savegame_stations import Stop
 from autodrive_editor.i18n import tr
-from autodrive_editor.model.autodrive_data import NodeData
+from autodrive_editor.model.autodrive_data import AutoDriveData
 from autodrive_editor.settings.app_settings import AppSettings
 from autodrive_editor.ui.dialogs.generator_settings_widget import GeneratorSettingsDialog
 
@@ -30,13 +32,17 @@ STOP, KIND, FILL_TYPES, NAME, GROUP, ANGLE, NOTE = range(7)
 SHOWN_FILL_TYPES = 3
 # Least distance of a lane's handle on the map from its stop, in metres.
 HANDLE_DISTANCE = 5.0
+# The legs to the road are planned again this long after the last change, in milliseconds.
+LEGS_DELAY = 200
 
 
 class StationDialog(QDialog):
     """The picked stops with a check box each, their markers and lane angles;
     the lane lengths come from the generator settings.
     The planned lanes are sent with plan_changed, as for the parking spots, so the map can show
-    them; the angles can also be set by dragging the lane ends on the map (handles)."""
+    them; the angles can also be set by dragging the lane ends on the map (handles). Shortly
+    after a change the legs to the road that fit as curves are added (see station_join); the
+    others are noted and searched on Create."""
 
     # (PlannedPiece or None, map points (x, z) of its nodes)
     plan_changed = Signal(object, object)
@@ -46,8 +52,9 @@ class StationDialog(QDialog):
         stops: list[Stop],
         headings: list[float],
         taken_names: set[tuple[str, str]],
-        nodes: list[NodeData],
+        autodrive_data: AutoDriveData,
         app_settings: AppSettings,
+        costmap: NavigationCostmap | None = None,
         parent=None,
     ):
         super().__init__(parent)
@@ -56,8 +63,16 @@ class StationDialog(QDialog):
 
         self.stops = list(stops)
         self.taken_names = set(taken_names)
-        self.nodes = list(nodes)
+        self.autodrive_data = autodrive_data
+        self.nodes = list(autodrive_data.nodes.values())
         self.app_settings = app_settings
+        self.costmap = costmap
+        # The planned legs of the chosen stops by row.
+        self.joins: dict[int, StopJoin] = {}
+        self._legs_timer = QTimer(self)
+        self._legs_timer.setSingleShot(True)
+        self._legs_timer.setInterval(LEGS_DELAY)
+        self._legs_timer.timeout.connect(self.update_legs)
 
         self.table = QTableWidget(len(self.stops), 7, self)
         self.table.setHorizontalHeaderLabels(
@@ -92,6 +107,11 @@ class StationDialog(QDialog):
 
         self.table.resizeColumnsToContents()
 
+        self.search_label = QLabel(
+            tr("Legs to the road that do not fit as curves are searched on Create."), self
+        )
+        self.search_label.setWordWrap(True)
+        self.search_label.hide()
         self.problem_label = QLabel(self)
         self.problem_label.setWordWrap(True)
 
@@ -106,6 +126,7 @@ class StationDialog(QDialog):
 
         layout = QVBoxLayout(self)
         layout.addWidget(self.table)
+        layout.addWidget(self.search_label)
         layout.addWidget(self.problem_label)
         layout.addWidget(buttons)
         self.setSizeGripEnabled(True)
@@ -120,12 +141,34 @@ class StationDialog(QDialog):
 
     @property
     def choices(self) -> list[StopChoice]:
+        return [choice for _, choice in self._chosen()]
+
+    def update_legs(self):
+        """Plans the legs of the chosen stops as curves and shows them; runs shortly after a
+        change."""
+
+        self._legs_timer.stop()
+        settings, chosen = self.settings, self._chosen()
+        radius, vehicle = self.app_settings.curve_radius, self.app_settings.vehicle
+        self.joins = {
+            row: plan_direct(self.autodrive_data, choice, settings, radius, self.costmap, vehicle)
+            for row, choice in chosen
+        }
+        self._update_notes()
+        self.search_label.setVisible(any(join.missing for join in self.joins.values()))
+        piece = preview_piece([c for _, c in chosen], list(self.joins.values()), settings)
+        self.plan_changed.emit(piece, [(x, z) for x, _, z in piece.points])
+
+    def _chosen(self) -> list[tuple[int, StopChoice]]:
         return [
-            StopChoice(
-                stop,
-                self.table.item(row, NAME).text().strip(),
-                self.table.item(row, GROUP).text().strip(),
-                self.angle_inputs[row].value(),
+            (
+                row,
+                StopChoice(
+                    stop,
+                    self.table.item(row, NAME).text().strip(),
+                    self.table.item(row, GROUP).text().strip(),
+                    self.angle_inputs[row].value(),
+                ),
             )
             for row, stop in enumerate(self.stops)
             if self.table.item(row, STOP).checkState() == Qt.Checked
@@ -205,6 +248,19 @@ class StationDialog(QDialog):
         return spin_box
 
     def _update(self):
+        self.joins = {}
+        self._update_notes()
+        settings = self.settings
+        choices = self.choices
+        problem = self._problem(choices)
+        self.problem_label.setText(problem or "")
+        self.create_button.setEnabled(problem is None)
+
+        piece = plan_stations(choices, settings)
+        self.plan_changed.emit(piece, [(x, z) for x, _, z in piece.points])
+        self._legs_timer.start()
+
+    def _update_notes(self):
         settings = self.settings
         self.table.blockSignals(True)
 
@@ -218,19 +274,14 @@ class StationDialog(QDialog):
             if occupied(points, self.nodes):
                 notes.append(tr("existing node on the lane"))
 
+            if row in self.joins:
+                notes += self.joins[row].missing
+
             note = self.table.item(row, NOTE)
             note.setText(", ".join(notes))
             note.setToolTip(note.text())
 
         self.table.blockSignals(False)
-
-        choices = self.choices
-        problem = self._problem(choices)
-        self.problem_label.setText(problem or "")
-        self.create_button.setEnabled(problem is None)
-
-        piece = plan_stations(choices, settings)
-        self.plan_changed.emit(piece, [(x, z) for x, _, z in piece.points])
 
     def _problem(self, choices: list[StopChoice]) -> str | None:
         if not choices:
