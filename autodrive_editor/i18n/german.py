@@ -694,8 +694,8 @@ TEXTS = {
     "The route crosses obstacles (red). Move or add waypoints first": "Die Route kreuzt Hindernisse (rot). Zuerst Wegpunkte verschieben oder hinzufügen",
     "Route with {count} new nodes added": "Route mit {count} neuen Nodes hinzugefügt",
     "No route found through the waypoints": "Keine Route durch die Wegpunkte gefunden",
-    "Waypoints {first} and {second} are too close for the turning radius of {radius} m (red dashed). Move them apart": (
-        "Die Wegpunkte {first} und {second} liegen zu nah für den Wenderadius von {radius} m "
+    "Waypoints {first} and {second} are too close for the curve radius of {radius} m (red dashed). Move them apart": (
+        "Die Wegpunkte {first} und {second} liegen zu nah für den Kurvenradius von {radius} m "
         "(rot gestrichelt). Weiter auseinander schieben"
     ),
     "No drivable way found to waypoint {number} (red dashed). Move or add waypoints there": (
@@ -712,8 +712,8 @@ TEXTS = {
     "Nothing drives to node {id}, so the route cannot be reached": "Zu Node {id} führt nichts, die Route ist also nicht erreichbar",
     "Node {id} leads nowhere, so the route ends in a dead end": "Node {id} führt nirgendwohin, die Route endet also in einer Sackgasse",
     "Find route needs the drivability map of a savegame. Open a savegame": "Route finden braucht die Befahrbarkeitskarte eines Spielstands. Einen Spielstand öffnen",
-    "Find route plans for a vehicle of this size: it turns no tighter than the turning radius and keeps half its width plus the safety margin away from buildings, fences and trees.": "Route finden plant für ein Fahrzeug dieser Größe: Es fährt keine engeren Kurven als den Wendekreis und hält die halbe Breite plus den Sicherheitsabstand von Gebäuden, Zäunen und Bäumen fern.",
-    "Minimum turning radius:": "Kleinster Wenderadius:",
+    "Find route and Junction build curves as arcs of the curve radius. Routes keep half the vehicle width plus the safety margin away from buildings, fences and trees.": "Route finden und Einmündung bauen Kurven als Kreisbögen mit dem Kurvenradius. Routen halten die halbe Fahrzeugbreite plus den Sicherheitsabstand von Gebäuden, Zäunen und Bäumen fern.",
+    "Curve radius:": "Kurvenradius:",
     "Route finder": "Routensuche",
     "Safety margin:": "Sicherheitsabstand:",
     "The savegame has no drivability map yet. Save the game in Farming Simulator first (again after placing buildings)": "Der Spielstand hat noch keine Befahrbarkeitskarte. Zuerst im Landwirtschafts-Simulator speichern (auch wieder nach dem Platzieren von Gebäuden)",

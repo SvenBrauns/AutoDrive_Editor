@@ -11,7 +11,6 @@ from autodrive_editor.editing.edit_context import EditContext, EditOperation
 from autodrive_editor.editing.junction import (
     BOTH,
     LANE_GAP,
-    YARD_RADIUS,
     JunctionPlan,
     RoadLane,
     Stem,
@@ -27,7 +26,7 @@ from autodrive_editor.editing.junction import (
 )
 from autodrive_editor.editing.junction_box import BoxPlan, Style, box_command, plan_box
 from autodrive_editor.editing.operations.background_search import BackgroundSearch
-from autodrive_editor.editing.route_finder import RouteFinder, Vehicle
+from autodrive_editor.editing.route_finder import CURVE_RADIUS, RouteFinder, Vehicle
 from autodrive_editor.file_io.navigation_costmap import NavigationCostmap
 from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData
@@ -54,7 +53,7 @@ class JunctionPreview:
 
 class JunctionOperation(EditOperation):
     """Junction task in two steps. Step 1: pressing on a road connection and dragging previews
-    a junction (curves in and out at the yard radius, a stem of two-way or two one-way lanes,
+    a junction (curves in and out at the curve radius, a stem of two-way or two one-way lanes,
     see Stem) at the road point closest to the mouse, the stem square to the road and as long
     as the mouse is far from it. Step 2, after release: dragging the stem's tip bends the stem;
     dropping it on a node joins it. finish adds the junction to the plan as one undo step;
@@ -76,6 +75,7 @@ class JunctionOperation(EditOperation):
         height_for_new_node: Callable[[AutoDriveData, float, float], float],
         stem_provider: Callable[[], tuple[Stem, float]] = lambda: (Stem.AUTO, LANE_GAP),
         style_provider: Callable[[], Style] = lambda: Style.BOX,
+        curve_radius_provider: Callable[[], float] = lambda: CURVE_RADIUS,
         parent=None,
     ):
         super().__init__(context, parent)
@@ -86,6 +86,7 @@ class JunctionOperation(EditOperation):
         self.height_for_new_node = height_for_new_node
         self.stem_provider = stem_provider
         self.style_provider = style_provider
+        self.curve_radius_provider = curve_radius_provider
 
         self.preview: JunctionPreview | None = None
         # The preview at the end of step 1, before any bending.
@@ -304,7 +305,9 @@ class JunctionOperation(EditOperation):
         return gap if uses_two_lanes(stem, self._lanes) else 0.0
 
     def _junction(self, heading: float, gap: float) -> Pose:
-        distance = junction_distance(self._lanes, self._foot, heading, YARD_RADIUS, gap)
+        distance = junction_distance(
+            self._lanes, self._foot, heading, self.curve_radius_provider(), gap
+        )
 
         return (
             self._foot[0] + distance * math.cos(heading),
@@ -328,17 +331,18 @@ class JunctionOperation(EditOperation):
 
         markers = frozenset(self.autodrive_data_provider().markers)
         lanes, foot, across = list(self._lanes), self._foot, list(self._across)
-        style, costmap, vehicle = (
+        style, costmap, vehicle, radius = (
             self.style_provider(),
             self.costmap_provider(),
             self.vehicle_provider(),
+            self.curve_radius_provider(),
         )
         junction = self._junction(heading, gap)
 
         def plan(find_route=None) -> tuple[Pose, object]:
             if style == Style.BOX:
                 box = plan_box(
-                    lanes, foot, heading, gap, costmap, vehicle, markers, across, find_route
+                    lanes, foot, heading, gap, costmap, vehicle, markers, across, find_route, radius
                 )
 
                 if box is not None:
@@ -348,7 +352,7 @@ class JunctionOperation(EditOperation):
                 lanes,
                 junction,
                 BOTH,
-                YARD_RADIUS,
+                radius,
                 costmap,
                 vehicle,
                 markers,

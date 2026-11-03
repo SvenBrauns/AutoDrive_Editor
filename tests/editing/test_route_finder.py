@@ -144,6 +144,24 @@ def test_roads_are_preferred_over_grass():
     assert max(z for _, z in route) > 17
 
 
+def test_routes_follow_a_road_around_grass_instead_of_cutting_across():
+    # A road around three sides of a 40 x 50 m meadow, like an orchard; start and goal on its ends.
+    costmap = make_costmap(value=GRASS)
+    cells = bytearray(costmap.cells)
+    for x1, z1, x2, z2 in [(-23, -25, -17, 25), (17, -25, 23, 25), (-23, 19, 23, 25)]:
+        for z in range(z1, z2):
+            for x in range(x1, x2):
+                cells[(z + 100) * 200 + x + 100] = ROAD
+    costmap = type(costmap)(200, 200, bytes(cells))
+    request = RouteRequest(
+        ((-20, -17), (20, -17)), (math.pi / 2,), (-math.pi / 2,), turning_radius=6
+    )
+
+    route = find(costmap, request)
+
+    assert max(z for _, z in route) > 17
+
+
 def test_planned_lanes_against_the_direction_are_avoided_where_there_is_room():
     lane = ((60.0, 0.0), (-60.0, 0.0))
     request = RouteRequest(((-60, 0), (60, 0)), (0.0,), (0.0,), lanes=(lane,))
@@ -175,8 +193,8 @@ def test_widened_blocked_cells():
 def test_cost_by_kind_of_ground():
     assert cell_cost(51) == 1.0
     assert cell_cost(85) == 8.0
-    assert cell_cost(119) == 2.0
-    assert 2.0 < cell_cost(130) < 4.0
+    assert cell_cost(119) == 3.0
+    assert 3.0 < cell_cost(130) < 6.0
 
 
 def test_route_passes_a_gate_narrower_than_the_safety_distance():
@@ -356,5 +374,8 @@ def test_route_keeps_to_the_line_between_waypoints_after_a_corner():
     corner, goal = route.waypoint_indices[1:]
     after_curve = [x for x, z in route.points[corner:goal] if z > 3 * VEHICLE.turning_radius]
 
+    # Passed at the heading halfway between the two lines, the route turns onto a straight line
+    # to the goal, starting close to the line between the waypoints.
     assert after_curve
-    assert max(abs(x) for x in after_curve) < 1.0
+    assert max(abs(x) for x in after_curve) < 2.0
+    assert after_curve == sorted(after_curve, reverse=True)

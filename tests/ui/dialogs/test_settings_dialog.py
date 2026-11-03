@@ -172,9 +172,10 @@ def test_ok_stores_the_vehicle_size(qapp):
     settings = AppSettings()
     dialog = SettingsDialog(settings, ShortcutRegistry())
 
-    dialog.turning_radius_input.setValue(14)
+    dialog.curve_radius_input.setValue(8)
     dialog.vehicle_width_input.setValue(4)
     dialog.safety_margin_input.setValue(1)
     dialog.accept()
 
-    assert settings.vehicle == Vehicle(14, 4, 1)
+    assert settings.vehicle == Vehicle(width=4, margin=1)
+    assert settings.curve_radius == 8

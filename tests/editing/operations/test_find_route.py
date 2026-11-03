@@ -177,7 +177,8 @@ def test_route_through_a_wall_is_marked_and_not_added(qapp):
 
 
 def test_a_route_with_a_gap_names_the_waypoint_and_is_not_added(qapp, monkeypatch):
-    # Too few steps to get through the corridor.
+    # No built leg, and too few search steps to get through the corridor.
+    monkeypatch.setattr("autodrive_editor.editing.route_pipeline.LegBuilder.build", lambda *a: None)
     monkeypatch.setattr("autodrive_editor.editing.route_finder.MAX_EXPANSIONS", 5)
     route = Fixture(qapp)
     route.start_plan()
@@ -201,8 +202,7 @@ def test_waypoints_too_close_for_the_radius_are_named(route):
 
     assert route.find(11, 12).too_close
     assert route.messages[-1] == (
-        "Waypoints 1 and 2 are too close for the turning radius of 8 m (red dashed). "
-        "Move them apart"
+        "Waypoints 1 and 2 are too close for the curve radius of 6 m (red dashed). Move them apart"
     )
 
 

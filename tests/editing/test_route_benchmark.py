@@ -23,7 +23,7 @@ from pathlib import Path
 
 import pytest
 
-from autodrive_editor.editing.route_finder import RouteFinder, RouteRequest, Vehicle
+from autodrive_editor.editing.route_finder import CURVE_RADIUS, RouteFinder, RouteRequest, Vehicle
 from autodrive_editor.file_io.navigation_costmap import NavigationCostmap
 
 FIXTURE = Path(__file__).parent / "data" / "route_benchmark.json"
@@ -106,6 +106,7 @@ def measure(piece: Piece, vehicle: Vehicle = VEHICLE) -> Result:
         (points[0], points[-1]),
         (heading(points[0], points[1]),),
         (heading(points[-2], points[-1]),),
+        turning_radius=CURVE_RADIUS,
     )
     started = time.perf_counter()
     deadline = started + TIME_LIMIT
@@ -167,17 +168,19 @@ def report(results: list[Result], numbers: dict[str, float]) -> str:
     return "\n".join(lines + [f"{key}: {value:.2f}" for key, value in numbers.items()])
 
 
-# Results of 2026-11-01 (grass cost 2); deviations are medians in metres, times in seconds.
+# Results of 2026-11-03 (legs built from straight pieces and arcs of the 6 m curve radius, the
+# search only where that fails, grass 3 times the cost of roads); deviations are medians in
+# metres, times in seconds.
 BASELINE = {
     "incomplete": 0,
     "blocked": 0,
     "loops": 0,
-    "time median": 0.14,
-    "time max": 6.1,
-    "curve mean deviation": 2.17,
-    "curve max deviation": 4.57,
-    "straight mean deviation": 0.50,
-    "straight max deviation": 1.59,
+    "time median": 0.02,
+    "time max": 5.4,
+    "curve mean deviation": 1.73,
+    "curve max deviation": 3.99,
+    "straight mean deviation": 0.28,
+    "straight max deviation": 0.49,
 }
 # Allowed scatter of the times between runs and machines.
 TIME_FACTOR = 2.0

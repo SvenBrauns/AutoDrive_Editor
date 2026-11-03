@@ -11,7 +11,13 @@ from autodrive_editor.editing.commands.add_route import AddRouteCommand
 from autodrive_editor.editing.edit_context import EditContext, EditOperation
 from autodrive_editor.editing.join_rules import join_problem
 from autodrive_editor.editing.operations.background_search import BackgroundSearch
-from autodrive_editor.editing.route_finder import Route, RouteFinder, RouteRequest, Vehicle
+from autodrive_editor.editing.route_finder import (
+    CURVE_RADIUS,
+    Route,
+    RouteFinder,
+    RouteRequest,
+    Vehicle,
+)
 from autodrive_editor.editing.route_nodes import (
     chain_connections,
     node_headings,
@@ -68,11 +74,13 @@ class FindRouteOperation(EditOperation):
         spacing_provider: Callable[[], float],
         plan_node_ids_provider: Callable[[], set[int]],
         height_for_new_node: Callable[[AutoDriveData, float, float], float],
+        curve_radius_provider: Callable[[], float] = lambda: CURVE_RADIUS,
         parent=None,
     ):
         super().__init__(context, parent)
 
         self.costmap_provider = costmap_provider
+        self.curve_radius_provider = curve_radius_provider
         self.savegame_provider = savegame_provider
         self.vehicle_provider = vehicle_provider
         self.spacing_provider = spacing_provider
@@ -339,6 +347,7 @@ class FindRouteOperation(EditOperation):
             self._headings(autodrive_data, self.waypoints[0]),
             self._headings(autodrive_data, self.waypoints[-1]),
             tuple((lane.source, lane.target) for lane in lanes),
+            turning_radius=self.curve_radius_provider(),
         )
 
     def _lanes(self, autodrive_data: AutoDriveData):
@@ -409,11 +418,11 @@ class FindRouteOperation(EditOperation):
     def _gap_message(self, route: Route) -> str:
         if route.too_close:
             return tr(
-                "Waypoints {first} and {second} are too close for the turning radius of {radius} m "
+                "Waypoints {first} and {second} are too close for the curve radius of {radius} m "
                 "(red dashed). Move them apart",
                 first=route.gap_to,
                 second=route.gap_to + 1,
-                radius=f"{self.vehicle_provider().turning_radius:g}",
+                radius=f"{self.curve_radius_provider():g}",
             )
 
         return tr(
