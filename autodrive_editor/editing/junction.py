@@ -557,24 +557,13 @@ def junction_command(
         state = regular if len(kinds) == 1 else CONNECTION_STATES[ConnectionType.DUAL]
         connections += [(a, b, state) for a, b in pairwise(stem_ids)]
 
-    connections += split_connections(autodrive_data, splits)
-
-    return AddRouteCommand(tr("Junction"), autodrive_data, new_nodes, connections)
-
-
-def split_connections(autodrive_data: AutoDriveData, splits: dict) -> list:
-    """The connections that split each existing connection (source, target) at its new nodes
-    (fraction, point, id), keeping its state."""
-
-    connections = []
-
     for (source_id, target_id), points in splits.items():
         state = read_connection_state(autodrive_data, source_id, target_id)
         chain = [source_id, *(node_id for _, _, node_id in sorted(points)), target_id]
         connections.append((source_id, target_id, NO_CONNECTION))
         connections += [(a, b, state) for a, b in pairwise(chain)]
 
-    return connections
+    return AddRouteCommand(tr("Junction"), autodrive_data, new_nodes, connections)
 
 
 def _stem_ids(
@@ -606,11 +595,9 @@ def _curve_connections(
     spacing: float,
     splits: dict,
     new_node: Callable[[Point], int],
-    spaced: Callable[[list[Point]], list[Point]] | None = None,
 ) -> list:
     """Connections of the curves meeting at the junction node, with new nodes along them and on
-    the line behind the junction (see junction_command). `spaced` places the nodes along a
-    curve's points, both ends included; by default about NODE_TURN of the radius apart."""
+    the line behind the junction (see junction_command)."""
 
     regular = CONNECTION_STATES[ConnectionType.REGULAR]
     # Per curve: its own points from the road to the stem line, and where it reaches the line.
@@ -620,12 +607,8 @@ def _curve_connections(
 
     for curve, (points, back) in zip(curves, parts, strict=True):
         road_id = _road_end_id(curve, splits, new_node)
-        if spaced is None:
-            nodes = spaced_points(points, min(spacing, curve.radius * NODE_TURN))
-        else:
-            nodes = spaced(points)
-
-        chain = [road_id, *(new_node(point) for point in nodes[1:-1]), stem[back]]
+        spaced = spaced_points(points, min(spacing, curve.radius * NODE_TURN))
+        chain = [road_id, *(new_node(point) for point in spaced[1:-1]), stem[back]]
 
         if curve.kind == CurveKind.OUT:
             chain.reverse()

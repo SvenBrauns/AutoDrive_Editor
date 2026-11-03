@@ -31,8 +31,6 @@ def station_window(zoomed_window):
         )
 
     window._ask_station_choices = ask
-    window.missing = []
-    window._show_stops_without_way = window.missing.extend
     types = [
         BuildingType("store.xml", "Store", "stations", BuildingGroup.STATIONS, 1),
         BuildingType("barn.xml", "Barn", "stations", BuildingGroup.STATIONS, 1),
@@ -86,13 +84,3 @@ def test_hovering_a_station_shows_its_name(station_window):
 
     labels = [w for w in station_window.view.viewport().children() if hasattr(w, "text")]
     assert any(label.isVisible() and label.text() == "Barn" for label in labels)
-
-
-def test_missing_legs_are_drawn_until_esc(station_window):
-    tool = station_window.generate_tool.tools[GenerateTask.STATIONS]
-
-    station_window.station_operation.gaps_changed.emit([((0.0, 0.0), (10.0, 10.0))])
-
-    assert tool.shows_gaps
-    assert tool.cancel()
-    assert not tool.shows_gaps

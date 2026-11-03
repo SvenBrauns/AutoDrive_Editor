@@ -9,6 +9,7 @@ from autodrive_editor.editing.station_layout import (
     StationSettings,
     StopChoice,
     building_stops_at,
+    can_join,
     default_group,
     default_heading,
     default_marker_rules,
@@ -18,10 +19,11 @@ from autodrive_editor.editing.station_layout import (
     occupied,
     pattern_problem,
     plan_stations,
+    stations_command,
     unique_name,
 )
 from autodrive_editor.file_io.savegame_stations import Stop, StopKind
-from autodrive_editor.model.autodrive_data import SUBPRIO_FLAG, NodeData
+from autodrive_editor.model.autodrive_data import SUBPRIO_FLAG, AutoDriveData, NodeData
 from autodrive_editor.model.connections import ConnectionType
 
 
@@ -114,6 +116,30 @@ def test_a_dragged_start_bends_the_leg_behind_the_stop():
         math.dist((x, z), (100, 190)) == pytest.approx(10, abs=0.01) for x, _, z in points[:3]
     )
     assert points[index] == pytest.approx((105, 5, 200))
+
+
+def test_a_lane_end_dropped_on_a_node_joins_it_and_is_no_open_end():
+    data = AutoDriveData()
+    data.add_node(NodeData(1, 120, 0, 210))
+    joined = StopChoice(stop(), "A", "G", 90, end=LaneEnd(120, 210, 1))
+
+    command, open_ends = stations_command(data, [joined], StationSettings(5, 5, 5, 0))
+    command.apply()
+
+    (marker_id,) = data.markers
+    assert 1 not in {node.node_id for node in command.new_nodes}
+    assert len(open_ends) == 1 and data.nodes[open_ends[0]].outgoing
+    assert data.nodes[1].incoming and all(n.is_subprio for n in command.new_nodes)
+    assert marker_id != 1
+
+
+def test_a_lane_starts_at_a_node_driven_to_and_ends_at_one_driven_from():
+    data = AutoDriveData()
+    data.add_node(NodeData(1, 0, 0, 0, outgoing={2}))
+    data.add_node(NodeData(2, 10, 0, 0, incoming={1}))
+
+    assert can_join(data, 2, at_start=True) and can_join(data, 1, at_start=False)
+    assert not can_join(data, 1, at_start=True) and not can_join(data, 2, at_start=False)
 
 
 def test_plan_has_one_way_lanes_markers_and_open_ends():

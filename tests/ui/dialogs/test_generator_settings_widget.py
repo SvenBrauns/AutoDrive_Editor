@@ -17,14 +17,13 @@ def test_ok_stores_spacing_station_lanes_and_marker_rules(qapp):
     page.before_input.setValue(6)
     page.marker_input.setValue(3)
     page.after_input.setValue(4)
-    page.reach_input.setValue(30)
     page.rules_table.item(row, 1).setText("VK-{building}")
     page.rules_table.item(row, 2).setText("VK")
     page.start_input.setValue(5)
     dialog.accept()
 
     settings = AppSettings()
-    assert settings.station_settings == StationSettings(6, 4, 8, 3, 30)
+    assert settings.station_settings == StationSettings(6, 4, 8, 3)
     assert settings.marker_rules[StopKind.PRODUCTION] == MarkerRule("VK-{building}", "VK")
     assert settings.marker_start == 5
 

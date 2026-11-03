@@ -45,7 +45,6 @@ class GeneratorSettingsWidget(QWidget):
         self.before_input = self._metres_input(stations.before, 0.0, 100.0)
         self.marker_input = self._metres_input(stations.marker, 0.0, 100.0)
         self.after_input = self._metres_input(stations.after, 0.0, 100.0)
-        self.reach_input = self._metres_input(stations.reach, 1.0, 500.0)
 
         roads = QGroupBox(tr("Roads"), self)
         roads_note = QLabel(
@@ -81,7 +80,6 @@ class GeneratorSettingsWidget(QWidget):
         stations_form.addRow(tr("Lane before the stop:"), self.before_input)
         stations_form.addRow(tr("Marker past the stop:"), self.marker_input)
         stations_form.addRow(tr("Lane after the marker:"), self.after_input)
-        stations_form.addRow(tr("Reach to a road:"), self.reach_input)
 
         markers = QGroupBox(tr("Markers"), self)
         markers_note = QLabel(
@@ -165,7 +163,6 @@ class GeneratorSettingsWidget(QWidget):
                 before=self.before_input.value(),
                 after=self.after_input.value(),
                 marker=self.marker_input.value(),
-                reach=self.reach_input.value(),
             )
         )
         self.settings.set_marker_rules(self.rules)

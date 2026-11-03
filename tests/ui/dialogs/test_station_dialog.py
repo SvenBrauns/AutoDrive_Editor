@@ -5,7 +5,6 @@ from autodrive_editor.editing.station_layout import (
     LaneEnd,
     MarkerRule,
     StationSettings,
-    plan_stations,
 )
 from autodrive_editor.file_io.savegame_stations import Stop, StopKind
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
@@ -158,28 +157,3 @@ def test_settings_button_renames_only_unedited_markers(qapp, monkeypatch):
         ("VK-Store", "VK"),
         ("Seeds", "Buying stations"),
     ]
-
-
-def test_legs_to_a_nearby_road_are_previewed(qapp):
-    data = AutoDriveData()
-    data.add_node(NodeData(1, -100, 0, -20))
-    data.add_node(NodeData(2, 100, 0, -20))
-    data.nodes[1].outgoing.add(2)
-    data.nodes[2].incoming.add(1)
-    station_dialog = StationDialog([SELL], [90], set(), data, AppSettings())
-    shown = []
-    station_dialog.plan_changed.connect(lambda piece, points: shown.append(piece))
-    lane_count = len(plan_stations(station_dialog.choices, station_dialog.settings).points)
-
-    station_dialog.update_legs()
-
-    assert len(shown[-1].points) > lane_count
-    assert station_dialog.table.item(0, NOTE).text() == ""
-
-
-def test_a_stop_without_a_road_is_noted(qapp):
-    station_dialog = dialog()
-
-    station_dialog.update_legs()
-
-    assert "50" in station_dialog.table.item(0, NOTE).text()

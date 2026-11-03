@@ -1,19 +1,15 @@
 from collections.abc import Callable
 
 from PySide6.QtCore import QPoint, Qt
-from PySide6.QtGui import QMouseEvent, QPainterPath, QPen
-from PySide6.QtWidgets import QGraphicsPathItem
+from PySide6.QtGui import QMouseEvent, QPainterPath
 
 from autodrive_editor.ui.map_view.area_selection import AreaSelectionController
-from autodrive_editor.ui.tools.find_route_tool import BLOCKED_COLOR
-from autodrive_editor.ui.tools.map_tool import is_alive_in_scene
 from autodrive_editor.ui.tools.node_click_tool import NodeClickTool
 
 
 class StationPickTool(NodeClickTool):
     """Picks station buildings: a click picks the building at the pointer, right dragging all
-    stops in a box (Shift: a lasso). Left dragging pans. Legs that could not be built are shown
-    dashed (show_gaps) until the next pick, Esc or leaving the tool."""
+    stops in a box (Shift: a lasso). Left dragging pans."""
 
     # The right button draws the box.
     RIGHT_CLICK_CANCELS = False
@@ -26,12 +22,8 @@ class StationPickTool(NodeClickTool):
         hint: str | Callable[[], str],
         is_target: Callable[[QPoint], bool],
         hover_text: Callable[[QPoint], str],
-        z_value: float = 0.0,
     ):
         super().__init__(view, click, hint, is_target=is_target, hover_text=hover_text)
-
-        self._z_value = z_value
-        self._gap_item: QGraphicsPathItem | None = None
 
         self._area = AreaSelectionController(view=view, parent=view)
         self._area.area_requested.connect(lambda path, modifiers: pick_area(path))
@@ -40,33 +32,6 @@ class StationPickTool(NodeClickTool):
     def deactivate(self):
         super().deactivate()
         self._cancel_area()
-        self.show_gaps([])
-
-    def show_gaps(self, gaps: list[tuple[tuple[float, float], tuple[float, float]]]):
-        path = QPainterPath()
-
-        for a, b in gaps:
-            path.moveTo(*a)
-            path.lineTo(*b)
-
-        if not is_alive_in_scene(self._gap_item, self.view.scene()):
-            if path.isEmpty():
-                return
-
-            self._gap_item = QGraphicsPathItem()
-            self._gap_item.setZValue(self._z_value)
-            self._gap_item.setAcceptedMouseButtons(Qt.NoButton)
-            pen = QPen(BLOCKED_COLOR, 2.5, Qt.DashLine)
-            pen.setCosmetic(True)
-            self._gap_item.setPen(pen)
-            self.view.scene().addItem(self._gap_item)
-
-        self._gap_item.setPath(path)
-        self._gap_item.setVisible(not path.isEmpty())
-
-    @property
-    def shows_gaps(self) -> bool:
-        return is_alive_in_scene(self._gap_item, self.view.scene()) and self._gap_item.isVisible()
 
     def mouse_press(self, event: QMouseEvent) -> bool:
         if event.button() == Qt.RightButton:
@@ -95,10 +60,6 @@ class StationPickTool(NodeClickTool):
 
     def cancel(self) -> bool:
         if not self._right_button_pressed:
-            if self.shows_gaps:
-                self.show_gaps([])
-                return True
-
             return False
 
         self._cancel_area()

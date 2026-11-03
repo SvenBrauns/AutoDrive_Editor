@@ -15,6 +15,7 @@ import string
 from dataclasses import dataclass
 from itertools import pairwise
 
+from autodrive_editor.editing.commands.add_route import AddRouteCommand
 from autodrive_editor.editing.junction import stem_poses
 from autodrive_editor.editing.path_shapes import spaced_points
 from autodrive_editor.editing.planned_piece import PlannedPiece
@@ -22,7 +23,8 @@ from autodrive_editor.editing.route_nodes import _recorded
 from autodrive_editor.file_io.navigation_costmap import BLOCKED_VALUE, NavigationCostmap
 from autodrive_editor.file_io.savegame_stations import Stop, StopKind
 from autodrive_editor.i18n import tr
-from autodrive_editor.model.autodrive_data import SUBPRIO_FLAG, NodeData
+from autodrive_editor.model.autodrive_data import SUBPRIO_FLAG, AutoDriveData, MarkerData, NodeData
+from autodrive_editor.model.connections import CONNECTION_STATES, ConnectionType
 
 Point = tuple[float, float, float]
 
@@ -49,13 +51,12 @@ LINE_STEP = 0.5
 class StationSettings:
     """Lane length before the stop and after the marker, the node spacing and how far past the
     stop the marker sits, in metres. The tractor stops at the marker, so the offset puts the
-    trailer over the trigger. A stop is joined to a road at most `reach` away."""
+    trailer over the trigger."""
 
     before: float = 10.0
     after: float = 10.0
     spacing: float = 12.0
     marker: float = 8.0
-    reach: float = 50.0
 
 
 @dataclass(frozen=True)
@@ -275,6 +276,55 @@ def plan_stations(choices: list[StopChoice], settings: StationSettings) -> Plann
         piece.open_ends += [lane[0], lane[-1]]
 
     return piece
+
+
+def can_join(autodrive_data: AutoDriveData, node_id: int, at_start: bool) -> bool:
+    """Whether a lane end may join the node: the start one that is driven to, the end one that is
+    driven from."""
+
+    node = autodrive_data.nodes[node_id]
+
+    return bool(node.incoming if at_start else node.outgoing)
+
+
+def stations_command(
+    autodrive_data: AutoDriveData, choices: list[StopChoice], settings: StationSettings
+) -> tuple[AddRouteCommand, list[int]]:
+    """The edit that adds the lanes and their markers, a joined end on its node, and the IDs of
+    the lane ends that still need a connection to the network."""
+
+    next_id = max(autodrive_data.nodes, default=0) + 1
+    new_nodes, connections, markers, open_ends = [], [], [], []
+    regular = CONNECTION_STATES[ConnectionType.REGULAR]
+
+    for choice in choices:
+        points, marker_index = lane_points(
+            choice.stop, settings, choice.heading, choice.start, choice.end
+        )
+        joined = {
+            0: choice.start.node_id if choice.start is not None else None,
+            len(points) - 1: choice.end.node_id if choice.end is not None else None,
+        }
+        lane = []
+
+        for index, (x, y, z) in enumerate(points):
+            if joined.get(index) is not None:
+                lane.append(joined[index])
+                continue
+
+            new_nodes.append(NodeData(next_id, x, y, z, SUBPRIO_FLAG))
+            lane.append(next_id)
+            next_id += 1
+
+        connections += [(a, b, regular) for a, b in pairwise(lane)]
+        markers.append(MarkerData(lane[marker_index], choice.name, choice.group))
+        open_ends += [lane[index] for index, node_id in joined.items() if node_id is None]
+
+    command = AddRouteCommand(
+        tr("Create station lanes"), autodrive_data, new_nodes, connections, markers
+    )
+
+    return command, open_ends
 
 
 def occupied(points: list[Point], nodes: list[NodeData], distance=OCCUPIED_DISTANCE) -> bool:
