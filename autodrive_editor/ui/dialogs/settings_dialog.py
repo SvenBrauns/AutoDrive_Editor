@@ -127,7 +127,6 @@ class SettingsDialog(QDialog):
             return spin_box
 
         self.curve_radius_input = metres_input(self.settings.curve_radius, 4.0, 50.0)
-        self.turning_radius_input = metres_input(vehicle.turning_radius, 3.0, 50.0)
         self.vehicle_width_input = metres_input(vehicle.width, 1.0, 10.0)
         self.safety_margin_input = metres_input(vehicle.margin, 0.1, 5.0)
 
@@ -144,7 +143,6 @@ class SettingsDialog(QDialog):
         form = QFormLayout(tab)
         form.addRow(note)
         form.addRow(tr("Curve radius:"), self.curve_radius_input)
-        form.addRow(tr("Minimum turning radius:"), self.turning_radius_input)
         form.addRow(tr("Vehicle width:"), self.vehicle_width_input)
         form.addRow(tr("Safety margin:"), self.safety_margin_input)
 
@@ -153,11 +151,7 @@ class SettingsDialog(QDialog):
     def accept(self):
         self.folders.store()
         self.settings.set_vehicle(
-            Vehicle(
-                self.turning_radius_input.value(),
-                self.vehicle_width_input.value(),
-                self.safety_margin_input.value(),
-            )
+            Vehicle(width=self.vehicle_width_input.value(), margin=self.safety_margin_input.value())
         )
         self.settings.set_curve_radius(self.curve_radius_input.value())
         self.settings.set_autosave_minutes(self.autosave_input.value())

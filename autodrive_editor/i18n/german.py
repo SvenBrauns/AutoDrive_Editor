@@ -714,7 +714,6 @@ TEXTS = {
     "Find route needs the drivability map of a savegame. Open a savegame": "Route finden braucht die Befahrbarkeitskarte eines Spielstands. Einen Spielstand öffnen",
     "Find route and Junction build curves as arcs of the curve radius. Routes keep half the vehicle width plus the safety margin away from buildings, fences and trees.": "Route finden und Einmündung bauen Kurven als Kreisbögen mit dem Kurvenradius. Routen halten die halbe Fahrzeugbreite plus den Sicherheitsabstand von Gebäuden, Zäunen und Bäumen fern.",
     "Curve radius:": "Kurvenradius:",
-    "Minimum turning radius:": "Kleinster Wenderadius:",
     "Route finder": "Routensuche",
     "Safety margin:": "Sicherheitsabstand:",
     "The savegame has no drivability map yet. Save the game in Farming Simulator first (again after placing buildings)": "Der Spielstand hat noch keine Befahrbarkeitskarte. Zuerst im Landwirtschafts-Simulator speichern (auch wieder nach dem Platzieren von Gebäuden)",

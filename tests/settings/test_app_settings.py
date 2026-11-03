@@ -314,9 +314,9 @@ def test_vehicle_for_the_route_finder_is_kept():
     settings = AppSettings()
     assert settings.vehicle == Vehicle()
 
-    settings.set_vehicle(Vehicle(12.5, 3.5, 1.0))
+    settings.set_vehicle(Vehicle(width=3.5, margin=1.0))
 
-    assert AppSettings().vehicle == Vehicle(12.5, 3.5, 1.0)
+    assert AppSettings().vehicle == Vehicle(width=3.5, margin=1.0)
 
 
 def test_curve_radius_is_kept():

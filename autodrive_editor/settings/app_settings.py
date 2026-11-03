@@ -41,7 +41,6 @@ class AppSettings:
     PATH_FLAG_KEY = "path/flag"
     PATH_CONTROL_POINTS_KEY = "path/control_points"
     VEHICLE_KEYS = {
-        "turning_radius": "route/turning_radius",
         "width": "route/vehicle_width",
         "margin": "route/safety_margin",
     }
