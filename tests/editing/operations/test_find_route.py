@@ -281,14 +281,14 @@ def test_reset_drops_waypoints_and_their_undo(route):
 def test_leg_at_a_point_of_the_route_and_inserting_a_waypoint_there(route):
     route.find(1, (0, 0), 2)
 
-    assert route.operation.leg_at(-30, 0, 1.0) == 0
-    assert route.operation.leg_at(30, 0, 1.0) == 1
-    assert route.operation.leg_at(30, 20, 1.0) is None
+    assert route.operation.legs_at(-30, 0, 1.0) == {0: 0}
+    assert route.operation.legs_at(30, 0, 1.0) == {0: 1}
+    assert route.operation.legs_at(30, 20, 1.0) == {}
 
-    route.operation.insert_waypoint(2, 30, 1)
+    route.operation.insert_waypoint(30, 1, {0: 1})
 
     assert route.operation.waypoints[2] == Waypoint(30, 1)
-    assert route.operation.leg_at(30, 0, 1.0) is None
+    assert route.operation.legs_at(30, 0, 1.0) == {}
 
 
 def test_a_newer_change_cancels_the_running_search_and_the_last_route_stays_shown(route):
@@ -373,3 +373,115 @@ def test_stop_search_waits_until_the_running_search_has_ended(qapp, monkeypatch)
     route.operation.stop_search()
 
     assert ended == [1]
+
+
+def find_tree(route, starts, ends):
+    """Sets starts and ends (node IDs) and waits for the routes."""
+
+    route.operation.clear()
+
+    for node_id in starts:
+        route.operation.add_start(node_id)
+
+    for node_id in ends:
+        route.operation.add_end(node_id)
+
+    route.wait()
+
+    return route.operation.current_routes
+
+
+def corridor_nodes(route, path):
+    return [n for n in path if abs(route.data.nodes[n].x) < 30]
+
+
+def test_routes_from_two_starts_merge_in_the_corridor_as_one_undo_step(route):
+    route.data.add_node(NodeData(3, -60, 0, 30))
+    route.start_plan()
+
+    routes = find_tree(route, [1, 3], [2])
+
+    assert len(routes) == 2 and all(r.is_clear for r in routes)
+    assert route.messages[-1].startswith("Routes found. Enter adds them to the plan")
+    assert route.operation.apply()
+    assert route.messages[-1].startswith("2 routes with")
+    first, second = route.path_from(1, 2), route.path_from(3, 2)
+    assert first and second
+    assert corridor_nodes(route, first) == corridor_nodes(route, second) != []
+
+    route.history.undo()
+    assert set(route.data.nodes) == {1, 2, 3}
+
+
+def test_routes_to_two_ends_share_the_way_from_their_start(route):
+    route.data.add_node(NodeData(5, 60, 0, 30))
+    route.start_plan()
+
+    find_tree(route, [1], [2, 5])
+    assert route.operation.apply()
+
+    first, second = route.path_from(1, 2), route.path_from(1, 5)
+    assert first[:5] == second[:5]
+    assert corridor_nodes(route, first) == corridor_nodes(route, second)
+
+
+def test_several_starts_or_ends_must_be_nodes(route):
+    route.operation.add_waypoint(-60, 20)
+    route.operation.add_waypoint(0, 0, 2)
+
+    route.operation.add_start(1)
+
+    assert route.operation.starts == [0]
+    assert route.messages[-1] == "With several starts or ends, all starts and ends are nodes"
+
+
+def test_a_click_with_several_ends_adds_a_waypoint_all_routes_share(route):
+    route.data.add_node(NodeData(5, 60, 0, 30))
+    find_tree(route, [1], [2, 5])
+
+    route.operation.add_waypoint(50, 10)
+
+    key = max(route.operation.points)
+    assert all(keys[1:-1] == (key,) for keys in route.operation.routes)
+    # A new end gets the waypoints all routes share.
+    route.data.add_node(NodeData(6, 60, 0, -30))
+    route.operation.add_end(6)
+    assert route.operation.routes[-1][1:-1] == (key,)
+
+
+def test_a_waypoint_on_one_route_searches_only_that_route_again(route):
+    route.data.add_node(NodeData(5, 60, 0, 30))
+    find_tree(route, [1], [2, 5])
+    kept, edited = route.operation.current_routes
+
+    point = next(point for point in edited.points if point[0] > 45)
+    legs = route.operation.legs_at(*point, 1.0)
+    route.operation.insert_waypoint(*point, {1: legs[1]})
+    route.wait()
+
+    first, second = route.operation.current_routes
+    assert first is kept
+    assert second is not edited and second.is_clear
+
+
+def test_a_route_that_is_not_clear_is_named_and_nothing_is_added(route):
+    # Node 5 lies in the blocked area north of the corridor.
+    route.data.add_node(NodeData(5, 0, 0, 50))
+    route.start_plan()
+
+    find_tree(route, [1], [2, 5])
+
+    assert route.messages[-1] == "Not clear yet (red): 1 → 5. Move or add waypoints there"
+    assert not route.operation.apply()
+    assert set(route.data.nodes) == {1, 2, 5}
+
+
+def test_removing_a_start_takes_its_routes_and_backspace_the_last_added(route):
+    route.data.add_node(NodeData(3, -60, 0, 30))
+    find_tree(route, [1, 3], [2])
+
+    route.operation.remove_waypoint(route.operation.starts[0])
+    assert [keys for keys in route.operation.routes] == [(1, 2)]
+
+    route.operation.remove_last()
+    assert route.operation.ends == [] and route.operation.starts == [1]
