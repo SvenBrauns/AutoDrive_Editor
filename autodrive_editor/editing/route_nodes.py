@@ -126,6 +126,13 @@ def route_nodes(
             end += 1
 
         shared_ids = _shared_node_ids(points[index:end], shares[index:end])
+
+        # Not even one lane connection between the nearer ends: the stretch is free.
+        if len(shared_ids) < 2:
+            free_points += points[index:end]
+            index = end
+            continue
+
         _add_free(chain, free_points, positions[shared_ids[0]], spacing)
         _append(chain, shared_ids)
         free_points = [positions[shared_ids[-1]]]
@@ -222,7 +229,8 @@ def _drop_short_shares(points: list[Point], shares: list):
 
 def _shared_node_ids(points: list[Point], shares: list) -> list[int]:
     """The lane nodes a shared stretch passes, in driving order. It joins a lane at the node
-    nearer to where it meets the lane and leaves it the same way."""
+    nearer to where it meets the lane and leaves it the same way; fewer than two nodes if that
+    leaves no lane connection."""
 
     ids: list[int] = []
     previous = None
@@ -243,14 +251,11 @@ def _shared_node_ids(points: list[Point], shares: list) -> list[int]:
 
     # Join and leave at the nearer end of the first and last lane.
     _, first_forward, first_fraction = shares[0]
-    if (first_fraction >= 0.5) == first_forward and len(ids) > 2:
-        ids.pop(0)
-
     _, last_forward, last_fraction = shares[-1]
-    if (last_fraction < 0.5) == last_forward and len(ids) > 2:
-        ids.pop()
+    first = int((first_fraction >= 0.5) == first_forward)
+    last = int((last_fraction < 0.5) == last_forward)
 
-    return ids
+    return ids[first : len(ids) - last]
 
 
 def _append(chain: list, items: list):

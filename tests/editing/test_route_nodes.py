@@ -95,6 +95,20 @@ def test_route_along_a_lane_uses_its_nodes():
     assert shared == [1, 10, 11, 12, 2]
 
 
+def test_a_route_meeting_a_lane_only_near_its_end_does_not_turn_back_to_its_start():
+    # Lane 10 → 2 from (0, 20) to the goal at (40, 0); the route comes in from (0, 0) and runs
+    # along the lane's last 4 m only.
+    lanes = [PlannedLane(10, 2, (0, 20), (40, 0))]
+    positions = {1: (0, 0), 2: (40, 0), 10: (0, 20)}
+    lane_x, lane_z = 40 / math.hypot(40, 20), -20 / math.hypot(40, 20)
+    joint = (40 - 4 * lane_x, -4 * lane_z)
+    points = line((0, 0), joint) + line(joint, (40, 0))[1:]
+
+    chain = route_nodes(points, 1, 2, positions, lanes, 5.0)
+
+    assert 10 not in chain
+
+
 def test_crossing_lanes_are_not_shared():
     lanes = [PlannedLane(10, 11, (10, -10), (10, 10))]
     positions = {1: (0, 0), 2: (20, 0), 10: (10, -10), 11: (10, 10)}
