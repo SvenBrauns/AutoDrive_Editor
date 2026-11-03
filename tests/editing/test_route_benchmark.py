@@ -169,15 +169,16 @@ def report(results: list[Result], numbers: dict[str, float]) -> str:
 
 
 # Results of 2026-11-03 (legs built from straight pieces and arcs of the 6 m curve radius, the
-# search only where that fails); deviations are medians in metres, times in seconds.
+# search only where that fails, grass 3 times the cost of roads); deviations are medians in
+# metres, times in seconds.
 BASELINE = {
     "incomplete": 0,
     "blocked": 0,
     "loops": 0,
     "time median": 0.02,
     "time max": 5.4,
-    "curve mean deviation": 2.08,
-    "curve max deviation": 4.19,
+    "curve mean deviation": 1.73,
+    "curve max deviation": 3.99,
     "straight mean deviation": 0.28,
     "straight max deviation": 0.49,
 }

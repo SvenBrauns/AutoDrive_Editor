@@ -18,8 +18,8 @@ cells, so routes do not swerve.
   have to move. Within half the vehicle width plus the safety margin of blocked cells each metre
   costs extra, so routes keep their distance where there is room but can still pass gates, which
   the map shows only about 3 m wide for a 4 m gate.
-- Each metre costs by the kind of ground (roads and yards 1, grass 4, fields 8, …), so routes
-  keep to roads and yards.
+- Each metre costs by the kind of ground (roads and yards 1, grass 3, fields 8, …), so routes
+  keep to roads and yards, also where a road goes around a meadow or an orchard.
 - Each metre off the line between two waypoints costs a little extra, so where that line is clear
   the route runs along it and turns around the waypoints, as drawn by hand.
 - Lanes already planned are cheap in their direction, so routes join them. Against their
@@ -199,7 +199,7 @@ class Grid:
 BLOCKED_TABLE = bytes(1 if value >= BLOCKED_VALUE else 0 for value in range(256))
 # Cost per metre of each band of cell values (see navigation_costmap): roads and yards, fields
 # (expensive, to spare the crops), grass, then rougher ground.
-BAND_COSTS = (1.0, 8.0, 2.0, 6.0, 8.0, 10.0)
+BAND_COSTS = (1.0, 8.0, 3.0, 6.0, 8.0, 10.0)
 BAND_WIDTH = 34
 
 

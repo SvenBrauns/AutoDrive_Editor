@@ -20,7 +20,7 @@ ruff check .
 ruff format .
 ```
 
-The route finder benchmark (`tests/editing/test_route_benchmark.py`) searches 60 hand-made route pieces of the Thüringen course again and compares the results with them. It is skipped by default; run it with `python -m pytest -m benchmark -s -n0` before and after changes to the route finder. It fails when the results are worse than its recorded baseline.
+The route finder benchmark (`tests/editing/test_route_benchmark.py`) searches 59 hand-made route pieces of the Thüringen course again and compares the results with them. It is skipped by default; run it with `python -m pytest -m benchmark -s -n0` before and after changes to the route finder. It fails when the results are worse than its recorded baseline.
 
 GitHub Actions checks every push and pull request with `ruff` and `pytest`. A tag such as `v0.1.0` builds the Windows version with PyInstaller and publishes it as a release. Before tagging, raise the version in `autodrive_editor/__init__.py` and `pyproject.toml` (a test checks that they match) and turn the `Unreleased` section of `CHANGELOG.md` into the new version; the app shows that file under `Help → Version history`. The release stops if the tag does not match the version, and its notes are the version's section of `CHANGELOG.md`.
 
