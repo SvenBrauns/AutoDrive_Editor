@@ -109,6 +109,16 @@ def test_a_route_meeting_a_lane_only_near_its_end_does_not_turn_back_to_its_star
     assert 10 not in chain
 
 
+def test_the_stretch_into_the_goal_or_out_of_the_start_is_not_shared():
+    # Lanes 1 → 4 and 5 → 2 lie under the route's first and last 5 m.
+    lanes = [PlannedLane(1, 4, (0, 0), (5, 0)), PlannedLane(5, 2, (35, 0), (40, 0))]
+    positions = {1: (0, 0), 2: (40, 0), 4: (5, 0), 5: (35, 0)}
+
+    chain = route_nodes(line((0, 0), (40, 0)), 1, 2, positions, lanes, 5.0)
+
+    assert [item for item in chain if isinstance(item, int)] == [1, 2]
+
+
 def test_crossing_lanes_are_not_shared():
     lanes = [PlannedLane(10, 11, (10, -10), (10, 10))]
     positions = {1: (0, 0), 2: (20, 0), 10: (10, -10), 11: (10, 10)}
