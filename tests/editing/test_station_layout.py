@@ -209,17 +209,18 @@ def test_occupied_finds_an_existing_node_on_the_lane():
     assert not occupied(points, [NodeData(1, 104.5, 0, 202), NodeData(2, 130, 0, 200)])
 
 
-def test_building_stops_at_picks_the_building_of_the_closest_stop():
+def test_building_stops_at_picks_every_building_with_a_stop_near_the_click():
     a1 = stop(position=(0, 0, 0))
-    a2 = stop(position=(30, 0, 0))
-    b = Stop("b.xml", "8", "B", StopKind.LOAD, (), (40, 0, 0), 0.0, False)
+    a2 = stop(position=(60, 0, 0))
+    b = Stop("b.xml", "8", "B", StopKind.LOAD, (), (75, 0, 0), 0.0, False)
     stops = [a1, a2, b]
 
-    assert building_stops_at(stops, 37, 0, 5) == [b]
-    assert building_stops_at(stops, 33, 0, 5) == [a1, a2]
+    assert building_stops_at(stops, 88, 0, 5) == [b]
+    # Between two buildings, within 15 m of both.
+    assert building_stops_at(stops, 67, 0, 5) == stops
     # Between the stops of a building, away from each of them.
-    assert building_stops_at(stops, 15, 3, 5) == [a1, a2]
-    assert building_stops_at(stops, 15, 10, 5) == []
+    assert building_stops_at(stops, 30, 3, 5) == [a1, a2]
+    assert building_stops_at(stops, 30, 20, 5) == []
 
 
 def test_free_reach_ends_at_the_first_blocked_cell_beside_or_on_the_lane():

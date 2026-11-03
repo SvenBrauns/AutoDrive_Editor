@@ -45,6 +45,8 @@ MIN_CIRCLING = 0.5
 MIN_RADIUS = 2.0
 # The lane is drawn with points this far apart (in metres) before its nodes are spaced.
 LINE_STEP = 0.5
+# A click picks every building with a stop this close, in metres.
+PICK_RADIUS = 15.0
 
 
 @dataclass(frozen=True)
@@ -335,14 +337,15 @@ def occupied(points: list[Point], nodes: list[NodeData], distance=OCCUPIED_DISTA
 
 
 def building_stops_at(stops: list[Stop], x: float, z: float, tolerance: float) -> list[Stop]:
-    """All stops of the building picked at the point: the one with the closest stop within
-    tolerance, else one whose stops span an area (grown by tolerance) that contains the point."""
+    """All stops of the buildings picked at the point: each with a stop within PICK_RADIUS (or
+    tolerance if larger), as buildings standing together often belong together; else one whose
+    stops span an area (grown by tolerance) that contains the point."""
 
-    near = [stop for stop in stops if math.dist((x, z), stop.position[::2]) <= tolerance]
+    radius = max(PICK_RADIUS, tolerance)
+    near = {stop.unique_id for stop in stops if math.dist((x, z), stop.position[::2]) <= radius}
 
     if near:
-        closest = min(near, key=lambda stop: math.dist((x, z), stop.position[::2]))
-        return [stop for stop in stops if stop.unique_id == closest.unique_id]
+        return [stop for stop in stops if stop.unique_id in near]
 
     buildings: dict[str, list[Stop]] = {}
 

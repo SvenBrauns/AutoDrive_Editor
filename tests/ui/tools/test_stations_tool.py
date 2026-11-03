@@ -16,7 +16,7 @@ from autodrive_editor.ui.tools.generate_tool import GenerateTask
 # Two stops of one store and one of a barn, below the nodes 1–3 on the line z=0.
 STORE_A = Stop("store.xml", "1", "Store", StopKind.SELL, ("WHEAT",), (0, 0, 15), 90.0, True)
 STORE_B = Stop("store.xml", "1", "Store", StopKind.BUY, ("SEEDS",), (10, 0, 15), 90.0, True)
-BARN = Stop("barn.xml", "2", "Barn", StopKind.ANIMALS, ("WATER",), (20, 0, 25), 0.0, False)
+BARN = Stop("barn.xml", "2", "Barn", StopKind.ANIMALS, ("WATER",), (40, 0, 25), 0.0, False)
 
 
 @pytest.fixture
@@ -72,7 +72,7 @@ def test_right_drag_picks_the_stops_in_the_box(station_window):
     drag(
         station_window,
         view_pos(station_window, 8, 10),
-        view_pos(station_window, 25, 30),
+        view_pos(station_window, 45, 30),
         button=Qt.RightButton,
     )
 
@@ -80,7 +80,7 @@ def test_right_drag_picks_the_stops_in_the_box(station_window):
 
 
 def test_hovering_a_station_shows_its_name(station_window):
-    hover(station_window, view_pos(station_window, 20, 25))
+    hover(station_window, view_pos(station_window, 40, 25))
 
     labels = [w for w in station_window.view.viewport().children() if hasattr(w, "text")]
     assert any(label.isVisible() and label.text() == "Barn" for label in labels)

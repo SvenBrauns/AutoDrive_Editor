@@ -75,6 +75,7 @@ from autodrive_editor.ui.dialogs.settings_dialog import SettingsDialog
 from autodrive_editor.ui.dialogs.station_dialog import StationDialog
 from autodrive_editor.ui.file_controller import FileController
 from autodrive_editor.ui.map_import_controller import MapImportController
+from autodrive_editor.ui.map_view.dialog_placement import place_beside
 from autodrive_editor.ui.map_view.map_only_input import MapOnlyInput
 from autodrive_editor.ui.map_view.map_view import MapView
 from autodrive_editor.ui.map_view.rotation_controller import ViewRotationController
@@ -431,6 +432,8 @@ class MainWindow(QMainWindow):
         handle_tool = LaneHandleTool(
             self.view, dialog.handles, dialog.drag_handle, self.selection_coordinator.get_node_at
         )
+
+        place_beside(dialog, self.view, [stop.position[::2] for stop in stops])
 
         try:
             accepted = self._run_beside_map(dialog, handle_tool)
@@ -1102,9 +1105,11 @@ class MainWindow(QMainWindow):
         )
 
     def _get_station_name_at(self, view_position) -> str:
-        stops = self._get_station_stops_at(view_position)
+        names = dict.fromkeys(
+            stop.name.strip() for stop in self._get_station_stops_at(view_position)
+        )
 
-        return stops[0].name.strip() if stops else ""
+        return ", ".join(names)
 
     def _get_node_id_at(self, view_position) -> int | None:
         node = self.selection_coordinator.get_node_at(view_position)
