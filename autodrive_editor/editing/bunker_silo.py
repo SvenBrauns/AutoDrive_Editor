@@ -1,15 +1,17 @@
-"""Bunker silos: how vehicles use a silo, found from the drivability map.
+"""Bunker silos: how vehicles use a silo, found from the drivability map, and the default layout.
 
 The silo's inner area (see savegame_sheds) runs between its walls; its height is the driving
 direction, so its ends are the back (start edge) and the front (height end), named as the shed
 sides in parking_layout. Which end is closed by a wall is not in the building's XML, but the
 drivability map shows it: just outside a closed end the cells are blocked, outside an open end
 they are not.
+
+The layout is the shed's (parking_layout) with the silo's distances; its bays are the lanes.
 """
 
 import math
-from enum import StrEnum
 
+from autodrive_editor.editing.parking_layout import ParkingMode, ParkingSettings, ShedFrame
 from autodrive_editor.file_io.navigation_costmap import BLOCKED_VALUE, NavigationCostmap
 from autodrive_editor.file_io.savegame_sheds import IndoorArea
 
@@ -19,29 +21,50 @@ WALL_DISTANCES = (0.5, 1.0, 1.5)
 # An end is closed when at least this part of it is blocked.
 CLOSED_SHARE = 0.5
 
+# One lane per this much of the inner width.
+LANE_WIDTH = 5.5
+# Back in: the marker's distance from the back wall. Drive through: past the silo's far end.
+BACK_WALL_TO_MARKER = 3.0
+MARKER_PAST_SILO = 15.0
 
-class SiloMode(StrEnum):
-    BACK_IN = "back_in"
-    DRIVE_THROUGH = "drive_through"
+
+def silo_settings(area: IndoorArea, costmap: NavigationCostmap | None) -> ParkingSettings:
+    """The default layout of a silo: mode and side from the map, lanes in the centres of equal
+    strips of the inner width."""
+
+    mode, side = silo_access(area, costmap)
+    lanes = max(1, round(ShedFrame.from_area(area, side).length / LANE_WIDTH))
+    back_in = mode == ParkingMode.BACK_IN
+
+    return ParkingSettings(
+        mode=mode,
+        open_side=side,
+        bays=lanes,
+        left_offset=0.0,
+        right_offset=0.0,
+        back_offset=BACK_WALL_TO_MARKER if back_in else -MARKER_PAST_SILO,
+        gaps=(0.0,) * (lanes - 1),
+        silo=True,
+    )
 
 
-def silo_access(area: IndoorArea, costmap: NavigationCostmap | None) -> tuple[SiloMode, str]:
+def silo_access(area: IndoorArea, costmap: NavigationCostmap | None) -> tuple[ParkingMode, str]:
     """Mode and open side of a silo (for driving through, the side vehicles drive in). One end
     closed: back in from the other end. Both open: drive through from the front. Without a map
     or with both ends closed: back in from the front, as most silos are built."""
 
     if costmap is None:
-        return SiloMode.BACK_IN, "front"
+        return ParkingMode.BACK_IN, "front"
 
     closed = {side for side in ENDS if blocked_share(area, side, costmap) >= CLOSED_SHARE}
 
     if not closed:
-        return SiloMode.DRIVE_THROUGH, "front"
+        return ParkingMode.DRIVE_THROUGH, "front"
 
     if closed == {"front"}:
-        return SiloMode.BACK_IN, "back"
+        return ParkingMode.BACK_IN, "back"
 
-    return SiloMode.BACK_IN, "front"
+    return ParkingMode.BACK_IN, "front"
 
 
 def blocked_share(area: IndoorArea, side: str, costmap: NavigationCostmap) -> float:
