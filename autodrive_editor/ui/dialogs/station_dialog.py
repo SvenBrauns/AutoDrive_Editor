@@ -536,12 +536,14 @@ class StationDialog(QDialog):
             if row in failed:
                 notes.append(failed[row])
 
-            # A joined end sits on its node.
+            # A joined end sits on its node, which belongs to the lane.
+            joined = {e.node_id for e in (start, end) if e is not None and e.node_id is not None}
             points = points[int(start is not None and start.node_id is not None) :]
             points = points[: len(points) - int(end is not None and end.node_id is not None)]
             on_yard = self._yard is not None and row not in self._lane_rows
+            others = [node for node in self.nodes if node.node_id not in joined]
 
-            if points and not on_yard and occupied(points, self.nodes):
+            if points and not on_yard and occupied(points, others):
                 notes.append(tr("existing node on the lane"))
 
             note = self.table.item(row, NOTE)
