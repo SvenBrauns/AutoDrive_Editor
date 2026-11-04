@@ -882,7 +882,7 @@ TEXTS = {
     "No bunker silos shown: open a savegame": "Keine Fahrsilos angezeigt: ein Savegame öffnen",
     "{count} bunker silos picked: Enter or a click on one of them creates their lanes, Esc drops the pick": "{count} Fahrsilos gewählt: Enter oder ein Klick auf eines davon legt ihre Spuren an, Esc verwirft die Auswahl",
     "Create silo lanes": "Silospuren anlegen",
-    "{count} silo lanes created; the selected line ends still need to be connected to the network": "{count} Silospuren angelegt; die ausgewählten Linienenden müssen noch mit dem Netz verbunden werden",
+    "{count} silo lanes created; the line ends still need to be connected to the network": "{count} Silospuren angelegt; die Linienenden müssen noch mit dem Netz verbunden werden",
     "The marker must be inside the silo.": "Der Marker muss im Silo liegen.",
     "The entry line must be at least {distance} m outside the silo.": "Die Zufahrtslinie muss mindestens {distance} m außerhalb des Silos liegen.",
     "Reset silo settings": "Siloeinstellungen zurücksetzen",

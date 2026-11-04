@@ -32,18 +32,13 @@ class BunkerSiloOperation(EditOperation):
 
     def create(self, areas: list[IndoorArea], settings: ParkingSettings) -> bool:
         piece = plan_silos(areas, settings)
-        node_ids = push_piece(
+        push_piece(
             self.edit_history, self.autodrive_data_provider(), piece, tr("Create silo lanes")
         )
-
-        if self.node_selection is not None and piece.open_ends:
-            open_ends = [node_ids[index] for index in piece.open_ends]
-            self.node_selection.replace(set(open_ends), open_ends[0])
-
         self.status_changed.emit(
             tr(
-                "{count} silo lanes created; the selected line ends still need to be connected "
-                "to the network",
+                "{count} silo lanes created; the line ends still need to be connected to the "
+                "network",
                 count=len(piece.markers),
             )
         )

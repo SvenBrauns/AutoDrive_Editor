@@ -35,8 +35,8 @@ def test_creates_the_lanes_of_all_picked_silos_in_one_undo_step():
         ("Farm-KS-B", "KS-B-2"),
     ]
     assert all(node.y == 80.0 for node_id, node in data.nodes.items() if node_id != 1)
-    # The ends of the one shared entry line and exit line are selected.
-    assert len(selection.selected_node_ids) == 4
+    # The line ends are not selected.
+    assert selection.selected_node_ids == set()
 
     edits.undo()
 
