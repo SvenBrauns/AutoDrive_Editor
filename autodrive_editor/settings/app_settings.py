@@ -7,8 +7,11 @@ from pathlib import Path
 
 from PySide6.QtCore import QByteArray, QSettings
 
+from autodrive_editor.editing.bunker_silo import DEFAULT_PATTERNS
+from autodrive_editor.editing.bunker_silo import pattern_problem as silo_pattern_problem
 from autodrive_editor.editing.junction import LANE_GAP, Stem
 from autodrive_editor.editing.junction_box import Style
+from autodrive_editor.editing.parking_layout import ParkingMode
 from autodrive_editor.editing.path_shapes import PathOptions
 from autodrive_editor.editing.route_finder import CURVE_RADIUS, Vehicle
 from autodrive_editor.editing.station_layout import (
@@ -58,6 +61,7 @@ class AppSettings:
     }
     GENERATOR_SPACING_KEY = "generators/spacing"
     MARKER_RULES_KEY = "generators/marker_rules"
+    SILO_PATTERNS_KEY = "generators/silo_patterns"
     MARKER_START_KEY = "generators/marker_start"
     ROTATE_SNAP_KEY = "rotate/snap_angle"
     PICTURE_WAIT_KEY = "picture/wait_ms"
@@ -403,6 +407,36 @@ class AppSettings:
             if rule != defaults[kind]
         }
         self._settings.setValue(self.MARKER_RULES_KEY, json.dumps(values))
+        self._settings.sync()
+
+    @property
+    def silo_patterns(self) -> dict[ParkingMode, tuple[str, str]]:
+        """Marker name and group pattern of the bunker silo lanes per mode."""
+
+        patterns = dict(DEFAULT_PATTERNS)
+
+        try:
+            values = json.loads(self._settings.value(self.SILO_PATTERNS_KEY, "{}"))
+        except (TypeError, ValueError):
+            return patterns
+
+        for mode in ParkingMode:
+            value = values.get(mode.value) if isinstance(values, dict) else None
+
+            if (
+                isinstance(value, list)
+                and len(value) == 2
+                and all(isinstance(v, str) for v in value)
+                and silo_pattern_problem(value[0]) is None
+                and silo_pattern_problem(value[1], group=True) is None
+            ):
+                patterns[mode] = tuple(value)
+
+        return patterns
+
+    def set_silo_patterns(self, patterns: dict[ParkingMode, tuple[str, str]]):
+        values = {mode.value: list(pattern) for mode, pattern in patterns.items()}
+        self._settings.setValue(self.SILO_PATTERNS_KEY, json.dumps(values))
         self._settings.sync()
 
     @property

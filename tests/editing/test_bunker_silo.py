@@ -3,7 +3,12 @@ from dataclasses import replace
 import pytest
 from costmap_helpers import make_costmap
 
-from autodrive_editor.editing.bunker_silo import plan_silos, silo_access, silo_settings
+from autodrive_editor.editing.bunker_silo import (
+    pattern_problem,
+    plan_silos,
+    silo_access,
+    silo_settings,
+)
 from autodrive_editor.editing.parking_layout import (
     ParkingMode,
     ShedFrame,
@@ -125,3 +130,19 @@ def test_silos_get_letters_row_by_row_and_lanes_numbers():
     ]
     # One entry and one exit line for the pair, and for the single silo.
     assert len(piece.open_ends) == 8
+
+
+@pytest.mark.parametrize(
+    "pattern, group, ok",
+    [
+        ("KS-{letter}-{n}", False, True),
+        ("{building}-KS-{letter}", True, True),
+        ("{building}-{n}", True, False),
+        ("KS-{type}", False, False),
+        ("KS-{n", False, False),
+        ("{n:03}", False, True),
+        (" ", False, False),
+    ],
+)
+def test_pattern_problem(pattern, group, ok):
+    assert (pattern_problem(pattern, group) is None) == ok

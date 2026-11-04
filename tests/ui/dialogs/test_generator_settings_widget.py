@@ -1,5 +1,6 @@
 import pytest
 
+from autodrive_editor.editing.parking_layout import ParkingMode
 from autodrive_editor.editing.station_layout import MarkerRule, StationSettings
 from autodrive_editor.file_io.savegame_stations import StopKind
 from autodrive_editor.settings.app_settings import AppSettings
@@ -39,3 +40,20 @@ def test_an_empty_group_disables_ok(qapp):
     dialog.page.rules_table.item(0, 2).setText("Shops")
 
     assert dialog.ok_button.isEnabled()
+
+
+def test_silo_patterns_are_stored_and_bad_ones_disable_ok(qapp):
+    dialog = GeneratorSettingsDialog(AppSettings())
+    table = dialog.page.silo_table
+
+    table.item(1, 1).setText("{letter}-{x}")
+
+    assert not dialog.ok_button.isEnabled()
+
+    table.item(1, 1).setText("{letter}{n}")
+    dialog.accept()
+
+    assert AppSettings().silo_patterns[ParkingMode.DRIVE_THROUGH] == (
+        "{letter}{n}",
+        "{building}-DS-{letter}",
+    )

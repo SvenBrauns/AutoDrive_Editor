@@ -2,7 +2,7 @@ from dataclasses import replace
 
 import pytest
 from drawing_helpers import paint_scene
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QPainterPath
 from PySide6.QtWidgets import QGraphicsScene
 
 from autodrive_editor.file_io.savegame_buildings import (
@@ -100,3 +100,47 @@ def test_only_types_of_the_sheds_group_are_sheds(renderer):
     assert renderer.get_shed_at(510, 505) == AREA
     assert renderer.group_of("shed.xml") == BuildingGroup.SHEDS
     assert renderer.group_of("unknown.xml") == BuildingGroup.OTHER
+
+
+SILO = IndoorArea("silo.xml", "s", ((600, 500), (620, 500), (620, 530), (600, 530)), 80.0)
+
+
+@pytest.fixture
+def silo_renderer(renderer):
+    silo_type = BuildingType("silo.xml", "Silo", "silos", BuildingGroup.BUNKER_SILOS, 1)
+    renderer.set_buildings(SavegameBuildings(types=[SHED, silo_type], areas=[AREA], silos=[SILO]))
+    return renderer
+
+
+def test_silos_are_drawn_and_found_apart_from_the_sheds(silo_renderer):
+    assert len(silo_renderer.silo_layer.polygons) == 1
+    assert silo_renderer.get_silo_at(610, 515) == SILO
+    assert silo_renderer.get_silo_at(510, 505) is None
+    assert silo_renderer.get_shed_at(610, 515) is None
+
+    silo_renderer.set_visibility(Visibility(silos=False))
+
+    assert silo_renderer.get_silo_at(610, 515) is None
+    assert silo_renderer.get_shed_at(510, 505) == AREA
+
+
+def test_box_picks_the_silos_with_their_centre_inside(silo_renderer):
+    path = QPainterPath()
+    path.addRect(590, 505, 40, 20)
+
+    assert silo_renderer.get_silos_in_path(path) == [SILO]
+
+    path = QPainterPath()
+    path.addRect(590, 490, 40, 20)
+
+    assert silo_renderer.get_silos_in_path(path) == []
+
+
+def test_picked_silos_are_filled_stronger(silo_renderer):
+    def fill():
+        return QColor(paint_scene(silo_renderer.scene, (610, 515), scale=4.0).color_at(610, 515))
+
+    plain = fill()
+    silo_renderer.set_picked_silos([SILO])
+
+    assert fill().red() < plain.red() - 50

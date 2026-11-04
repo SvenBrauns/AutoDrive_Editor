@@ -3,8 +3,10 @@ from base_game_helpers import make_installation
 from game_folder_helpers import make_game_folder
 from PySide6.QtCore import QByteArray
 
+from autodrive_editor.editing.bunker_silo import DEFAULT_PATTERNS
 from autodrive_editor.editing.junction import Stem
 from autodrive_editor.editing.junction_box import Style
+from autodrive_editor.editing.parking_layout import ParkingMode
 from autodrive_editor.editing.path_shapes import PathOptions
 from autodrive_editor.editing.route_finder import Vehicle
 from autodrive_editor.editing.station_layout import (
@@ -365,6 +367,20 @@ def test_marker_rules_are_kept_and_invalid_ones_fall_back():
     settings.set_marker_rules(rules)
 
     assert AppSettings().marker_rules == default_marker_rules()
+
+
+def test_silo_patterns_are_kept_and_invalid_ones_fall_back():
+    settings = AppSettings()
+    assert settings.silo_patterns == DEFAULT_PATTERNS
+
+    patterns = dict(DEFAULT_PATTERNS) | {ParkingMode.BACK_IN: ("{letter}{n}", "{building} silos")}
+    settings.set_silo_patterns(patterns)
+
+    assert AppSettings().silo_patterns == patterns
+
+    settings.set_silo_patterns(patterns | {ParkingMode.BACK_IN: ("KS-{n}", "{building}-{n}")})
+
+    assert AppSettings().silo_patterns == DEFAULT_PATTERNS
 
 
 def test_debug_log_is_off_until_turned_on():

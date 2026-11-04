@@ -92,6 +92,7 @@ class SceneRenderer:
         self.neighbor_layer: NeighborLayerItem | None = None
         self.plan_layer: PlanLayerItem | None = None
         self.shed_layer: ShedLayerItem | None = None
+        self.silo_layer: ShedLayerItem | None = None
         self.station_layer: StationLayerItem | None = None
         self.drivability_layer: DrivabilityLayerItem | None = None
 
@@ -102,6 +103,7 @@ class SceneRenderer:
             for layer in (
                 self.drivability_layer,
                 self.shed_layer,
+                self.silo_layer,
                 self.station_layer,
                 self.connection_layer,
                 self.plan_layer,
@@ -134,6 +136,7 @@ class SceneRenderer:
         self.neighbor_layer = NeighborLayerItem(style)
         self.plan_layer = PlanLayerItem(style)
         self.shed_layer = ShedLayerItem(style)
+        self.silo_layer = ShedLayerItem(style, silos=True)
         self.station_layer = StationLayerItem(style)
         self.drivability_layer = DrivabilityLayerItem(style)
 
@@ -163,6 +166,7 @@ class SceneRenderer:
         self.neighbor_layer = None
         self.plan_layer = None
         self.shed_layer = None
+        self.silo_layer = None
         self.station_layer = None
         self.drivability_layer = None
 
@@ -358,18 +362,24 @@ class SceneRenderer:
     def get_shed_at(self, x: float, z: float) -> IndoorArea | None:
         """The shed whose outline contains the scene point, while sheds are shown."""
 
-        if not self.visibility.sheds:
-            return None
+        return _area_at(self.shown_shed_areas, x, z) if self.visibility.sheds else None
 
-        point = QPointF(x, z)
+    def get_silo_at(self, x: float, z: float) -> IndoorArea | None:
+        """The bunker silo whose inner area contains the scene point, while silos are shown."""
 
-        for area in self.shown_shed_areas:
-            outline = QPolygonF([QPointF(*corner) for corner in area.corners])
+        return _area_at(self.shown_silo_areas, x, z) if self.visibility.silos else None
 
-            if outline.containsPoint(point, Qt.OddEvenFill):
-                return area
+    def get_silos_in_path(self, path: QPainterPath) -> list[IndoorArea]:
+        """The shown bunker silos whose centre is inside the scene path, while silos are shown."""
 
-        return None
+        if not self.visibility.silos:
+            return []
+
+        return [area for area in self.shown_silo_areas if path.contains(_centre(area))]
+
+    def set_picked_silos(self, areas: list[IndoorArea]):
+        if self.silo_layer is not None:
+            self.silo_layer.set_picked(areas)
 
     def get_station_stops_at(self, x: float, z: float, tolerance: float) -> list[Stop]:
         """All stops of the station building picked at the scene point, while stations are
@@ -457,6 +467,10 @@ class SceneRenderer:
         return self._shown(self.buildings.areas, BuildingGroup.SHEDS)
 
     @property
+    def shown_silo_areas(self) -> list[IndoorArea]:
+        return self._shown(self.buildings.silos, BuildingGroup.BUNKER_SILOS)
+
+    @property
     def shown_stops(self) -> list[Stop]:
         return self._shown(self.buildings.stops, BuildingGroup.STATIONS)
 
@@ -499,6 +513,9 @@ class SceneRenderer:
         if self.shed_layer is not None:
             self.shed_layer.set_areas(self.shown_shed_areas)
 
+        if self.silo_layer is not None:
+            self.silo_layer.set_areas(self.shown_silo_areas)
+
         if self.station_layer is not None:
             self.station_layer.set_stops(self.shown_stops, self.stop_headings)
 
@@ -510,6 +527,22 @@ class SceneRenderer:
 
         for layer in self.layers:
             layer.set_display_style(display_style)
+
+
+def _area_at(areas: list[IndoorArea], x: float, z: float) -> IndoorArea | None:
+    point = QPointF(x, z)
+
+    for area in areas:
+        if QPolygonF([QPointF(*corner) for corner in area.corners]).containsPoint(
+            point, Qt.OddEvenFill
+        ):
+            return area
+
+    return None
+
+
+def _centre(area: IndoorArea) -> QPointF:
+    return QPointF(*(sum(corner[i] for corner in area.corners) / 4 for i in range(2)))
 
 
 def _get_bounds(nodes) -> QRectF:

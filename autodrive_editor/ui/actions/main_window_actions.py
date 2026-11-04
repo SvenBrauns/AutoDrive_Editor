@@ -47,6 +47,7 @@ SHOW_GROUPS = (
         ("marker_names", tr("Marker names")),
         ("parking", tr("Parking positions")),
         ("sheds", tr("Sheds")),
+        ("silos", tr("Bunker silos")),
         ("stations", tr("Stations")),
         ("drivability", tr("Drivability map")),
     ),

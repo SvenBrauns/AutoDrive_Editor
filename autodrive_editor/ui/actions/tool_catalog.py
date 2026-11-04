@@ -107,6 +107,10 @@ GENERATE_TASKS = {
         "generate_stations",
         tr("Click a station or right-drag a box around several to create their lanes"),
     ),
+    GenerateTask.BUNKER_SILOS: (
+        "generate_silos",
+        tr("Click a bunker silo, Shift-click or right-drag a box to pick several"),
+    ),
 }
 
 MOVE_TOOL = ToolDefinition(

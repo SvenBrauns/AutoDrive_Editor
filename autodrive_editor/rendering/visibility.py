@@ -16,6 +16,7 @@ class Visibility:
     markers: bool = True
     parking: bool = True
     sheds: bool = True
+    silos: bool = True
     stations: bool = True
     drivability: bool = False
     hidden_selectable: bool = False

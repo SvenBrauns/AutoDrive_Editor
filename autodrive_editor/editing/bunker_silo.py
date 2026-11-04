@@ -22,6 +22,7 @@ from autodrive_editor.editing.parking_layout import (
 from autodrive_editor.editing.planned_piece import PlannedPiece
 from autodrive_editor.file_io.navigation_costmap import BLOCKED_VALUE, NavigationCostmap
 from autodrive_editor.file_io.savegame_sheds import IndoorArea
+from autodrive_editor.i18n import tr
 
 ENDS = {"back": (0, 1, 3), "front": (3, 2, 0)}
 # Distances outside an end where the wall shows in the map: it lies 0–1.5 m past the inner area.
@@ -41,6 +42,27 @@ DEFAULT_PATTERNS = {
     ParkingMode.BACK_IN: ("KS-{letter}-{n}", "{building}-KS-{letter}"),
     ParkingMode.DRIVE_THROUGH: ("DS-{letter}-{n}", "{building}-DS-{letter}"),
 }
+
+
+def pattern_problem(pattern: str, group: bool = False) -> str | None:
+    """What is wrong with a marker name pattern (or a group pattern, which has no {n}), or
+    None."""
+
+    fields = {"building": "Farm", "letter": "A"} | ({} if group else {"n": 1})
+
+    try:
+        names = {name for _, name, _, _ in string.Formatter().parse(pattern) if name is not None}
+        unknown = names - set(fields)
+
+        if unknown:
+            return tr("Unknown placeholder {{{name}}}", name=sorted(unknown)[0])
+
+        if not pattern.format(**fields).strip():
+            return tr("A marker name pattern must not be empty.")
+    except (ValueError, TypeError, IndexError, KeyError, AttributeError):
+        return tr("The pattern “{pattern}” is not valid.", pattern=pattern)
+
+    return None
 
 
 def silo_settings(area: IndoorArea, costmap: NavigationCostmap | None) -> ParkingSettings:
