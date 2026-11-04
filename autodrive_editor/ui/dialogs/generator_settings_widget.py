@@ -1,6 +1,6 @@
 """The Generators settings page: curve radius, node spacing, vehicle size, station lanes and the
-names and groups of generated markers. Shown in the Settings dialog and on its own from the
-generator dialogs."""
+names and groups of generated markers, also of the bunker silo lanes. Shown in the Settings
+dialog and on its own from the generator dialogs."""
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
@@ -18,6 +18,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from autodrive_editor.editing.bunker_silo import pattern_problem as silo_pattern_problem
+from autodrive_editor.editing.parking_layout import ParkingMode
 from autodrive_editor.editing.route_finder import Vehicle
 from autodrive_editor.editing.station_layout import MarkerRule, StationSettings, pattern_problem
 from autodrive_editor.file_io.savegame_stations import StopKind
@@ -25,6 +27,7 @@ from autodrive_editor.i18n import tr
 from autodrive_editor.settings.app_settings import AppSettings
 
 KIND, PATTERN, GROUP = range(3)
+SILO_MODES = {ParkingMode.BACK_IN: tr("Back in"), ParkingMode.DRIVE_THROUGH: tr("Drive through")}
 
 
 class GeneratorSettingsWidget(QWidget):
@@ -107,6 +110,36 @@ class GeneratorSettingsWidget(QWidget):
         height += sum(self.rules_table.rowHeight(row) for row in range(len(StopKind)))
         self.rules_table.setFixedHeight(height)
 
+        silos = QGroupBox(tr("Bunker silos"), self)
+        silos_note = QLabel(
+            tr(
+                "Placeholders: {building} the building's name, {letter} the silo's letter when "
+                "several are picked (A, B, …), {n} the lane's number."
+            ),
+            silos,
+        )
+        silos_note.setWordWrap(True)
+
+        patterns = settings.silo_patterns
+        self.silo_table = QTableWidget(len(SILO_MODES), 3, silos)
+        self.silo_table.setHorizontalHeaderLabels([tr("Mode"), tr("Name"), tr("Group")])
+        self.silo_table.verticalHeader().hide()
+        self.silo_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+
+        for row, (mode, label) in enumerate(SILO_MODES.items()):
+            self._set_item(row, KIND, label, editable=False, table=self.silo_table)
+            self._set_item(row, PATTERN, patterns[mode][0], table=self.silo_table)
+            self._set_item(row, GROUP, patterns[mode][1], table=self.silo_table)
+
+        self.silo_table.resizeRowsToContents()
+        height = self.silo_table.horizontalHeader().height() + 2 * self.silo_table.frameWidth()
+        height += sum(self.silo_table.rowHeight(row) for row in range(len(SILO_MODES)))
+        self.silo_table.setFixedHeight(height)
+
+        silos_form = QFormLayout(silos)
+        silos_form.addRow(silos_note)
+        silos_form.addRow(self.silo_table)
+
         self.start_input = QSpinBox(markers)
         self.start_input.setRange(0, 9999)
         self.start_input.setValue(settings.marker_start)
@@ -125,9 +158,11 @@ class GeneratorSettingsWidget(QWidget):
         layout.addWidget(vehicle_box)
         layout.addWidget(stations_box)
         layout.addWidget(markers)
+        layout.addWidget(silos)
         layout.addStretch(1)
 
         self.rules_table.itemChanged.connect(self._update)
+        self.silo_table.itemChanged.connect(self._update)
         self._update()
 
     @property
@@ -140,6 +175,13 @@ class GeneratorSettingsWidget(QWidget):
             for row, kind in enumerate(StopKind)
         }
 
+    @property
+    def silo_patterns(self) -> dict[ParkingMode, tuple[str, str]]:
+        return {
+            mode: tuple(self.silo_table.item(row, column).text().strip() for column in (1, 2))
+            for row, mode in enumerate(SILO_MODES)
+        }
+
     def problem(self) -> str | None:
         for kind, rule in self.rules.items():
             problem = pattern_problem(rule.pattern)
@@ -149,6 +191,12 @@ class GeneratorSettingsWidget(QWidget):
 
             if problem is not None:
                 return f"{kind.label}: {problem}"
+
+        for mode, (name, group) in self.silo_patterns.items():
+            problem = silo_pattern_problem(name) or silo_pattern_problem(group, group=True)
+
+            if problem is not None:
+                return f"{tr('Bunker silos')}, {SILO_MODES[mode]}: {problem}"
 
         return None
 
@@ -166,13 +214,14 @@ class GeneratorSettingsWidget(QWidget):
             )
         )
         self.settings.set_marker_rules(self.rules)
+        self.settings.set_silo_patterns(self.silo_patterns)
         self.settings.set_marker_start(self.start_input.value())
 
     def _update(self):
         self.problem_label.setText(self.problem() or "")
         self.changed.emit()
 
-    def _set_item(self, row: int, column: int, text: str, editable=True):
+    def _set_item(self, row: int, column: int, text: str, editable=True, table=None):
         item = QTableWidgetItem(text)
         flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
 
@@ -180,7 +229,7 @@ class GeneratorSettingsWidget(QWidget):
             flags |= Qt.ItemIsEditable
 
         item.setFlags(flags)
-        self.rules_table.setItem(row, column, item)
+        (table or self.rules_table).setItem(row, column, item)
 
     def _metres_input(self, value: float, minimum: float, maximum: float) -> QDoubleSpinBox:
         spin_box = QDoubleSpinBox(self)

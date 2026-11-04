@@ -54,6 +54,8 @@ class DisplayStyle:
     shed_color: tuple[int, int, int] = (220, 60, 230)
     shed_outline_px: float = 2.0
     shed_fill_alpha: int = 40
+    # The same for the inner areas of the bunker silos.
+    silo_color: tuple[int, int, int] = (0, 150, 160)
 
     # Stops of the stations in the savegame: an arrow along the lane.
     stop_color: tuple[int, int, int] = (255, 210, 0)

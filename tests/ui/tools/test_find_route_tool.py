@@ -154,6 +154,7 @@ def test_menu_entry_and_button_pick_the_same_task(window):
         "Junction",
         "Parking spots",
         "Stations",
+        "Bunker silos",
         "Building types…",
     ]
 

@@ -13,7 +13,7 @@ from pathlib import Path
 from autodrive_editor.error_log import logger
 
 # Raise when a reader returns something else, so entries of older editor versions are not used.
-VERSION = 1
+VERSION = 2
 
 
 class BuildingCache:

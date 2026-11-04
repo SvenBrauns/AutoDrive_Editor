@@ -17,6 +17,8 @@ from autodrive_editor.editing.parking_layout import (
     drive_through_line,
     from_template,
     plan_parking,
+    plan_rows,
+    rows,
     side_angle,
     template_values,
 )
@@ -177,6 +179,44 @@ def test_drive_through_bay_line():
         (s, t) in connections_of(network, ConnectionType.REGULAR)
         for s, t in zip(line, line[1:], strict=False)
     )
+
+
+def moved(area, dx, dz, unique_id):
+    corners = tuple((x + dx, z + dz) for x, z in area.corners)
+    return IndoorArea(area.building_file, unique_id, corners, area.height)
+
+
+# Next to SHED with a 1 m gap; further on with a 9 m gap to it; next to it but 5 m further out; and
+# next to it turned by 90°, its front (corners 3, 2) facing left.
+RIGHT = moved(SHED, 31, 0, "right")
+FAR = moved(SHED, 70, 0, "far")
+OUT = moved(SHED, -31, 5, "out")
+TURNED = IndoorArea("shed.xml", "t", ((-16, -15), (-16, 15), (-31, 15), (-31, -15)), 90.0)
+
+
+def test_neighbours_facing_the_same_way_form_a_row_from_left_to_right():
+    assert rows([RIGHT, FAR, SHED, OUT, TURNED], "front") == [[SHED, RIGHT], [FAR], [OUT], [TURNED]]
+
+
+def test_a_row_shares_one_entry_and_one_exit_line():
+    names = []
+
+    def name(index, area):
+        names.append((index, area.unique_id))
+        return [(f"{area.unique_id} {n}", "G") for n in range(2)]
+
+    values = settings(bays=2, gaps=(0.0,), left_offset=0.0, right_offset=0.0)
+    piece = plan_rows([RIGHT, SHED], values, name)
+
+    assert names == [(0, "1"), (1, "right")]
+    assert len(piece.open_ends) == 4
+    entry_start, entry_end = (piece.points[node] for node in piece.open_ends[:2])
+    # Map points at the shed's height; the line runs from 5 m before the first branch (1.2 m
+    # before its bay) to 5 m after the last.
+    assert entry_start[1] == entry_end[1] == 90.0
+    assert (entry_start[0], entry_end[0]) == pytest.approx((-7.5 - 6.2, 38.5 + 3.8))
+    markers = [piece.points[node] for node, _, _ in piece.markers]
+    assert [round(x, 1) for x, _, _ in markers] == [-7.5, 7.5, 23.5, 38.5]
 
 
 def test_plan_on_the_map_is_rotated_with_the_shed():

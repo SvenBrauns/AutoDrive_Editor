@@ -31,7 +31,13 @@ from autodrive_editor.file_io.building_definitions import (
     rotation_matrix,
 )
 from autodrive_editor.file_io.game_files import GameFiles, locate
-from autodrive_editor.file_io.savegame_sheds import IndoorArea, local_areas, placed_area
+from autodrive_editor.file_io.savegame_sheds import (
+    INDOOR_AREAS,
+    SILO_AREAS,
+    IndoorArea,
+    local_areas,
+    placed_area,
+)
 from autodrive_editor.file_io.savegame_stations import TRIGGERS, Stop, local_stops, placed_stop
 from autodrive_editor.i18n import current_language, tr
 
@@ -78,6 +84,8 @@ class SavegameBuildings:
     types: list[BuildingType] = field(default_factory=list)
     areas: list[IndoorArea] = field(default_factory=list)
     stops: list[Stop] = field(default_factory=list)
+    # Inner areas of the bunker silos.
+    silos: list[IndoorArea] = field(default_factory=list)
     # Building files and savegame files that could not be read.
     failed: list[str] = field(default_factory=list)
 
@@ -87,7 +95,7 @@ def read_savegame_buildings(
 ) -> SavegameBuildings:
     cache = cache or BuildingCache()
     placed, failed = placed_buildings(savegame_directory, files, cache)
-    # Type, indoor areas and stops by building file; None if not readable or of no use.
+    # Type, indoor areas, stops and silo areas by building file; None if not readable or of no use.
     definitions: dict[str, tuple | None] = {}
     counts = Counter()
     result = SavegameBuildings(failed=failed)
@@ -109,13 +117,17 @@ def read_savegame_buildings(
         if definitions[building_file] is None:
             continue
 
-        building_type, areas, stops = definitions[building_file]
+        building_type, areas, stops, silos = definitions[building_file]
         counts[building_file] += 1
         name, category = building_type.name, building_type.category
 
         result.areas += [
             placed_area(points, placement, building_file, unique_id, name, category)
             for points in areas
+        ]
+        result.silos += [
+            placed_area(points, placement, building_file, unique_id, name, category)
+            for points in silos
         ]
         result.stops += [
             placed_stop(stop, placement, building_file, unique_id, name) for stop in stops
@@ -189,8 +201,8 @@ def placed_buildings(
 
 
 def read_definition(building_file: str, files: GameFiles) -> tuple | None:
-    """(type, indoor areas, stops) of a building file, None if it has none of them and is no
-    bunker silo. Farmhouses and weighing stations are in Other. See savegame_sheds and
+    """(type, indoor areas, stops, silo areas) of a building file, None if it has none of them
+    and is no bunker silo. Farmhouses and weighing stations are in Other. See savegame_sheds and
     savegame_stations."""
 
     mod, path = locate(building_file)
@@ -214,13 +226,16 @@ def read_definition(building_file: str, files: GameFiles) -> tuple | None:
         category=category,
         group=group,
     )
-    # A bunker silo may have neither.
-    if definition.find("indoorAreas/indoorArea") is None and not _has_triggers(definition):
-        return building_type, [], []
+    # A bunker silo may have none of them.
+    has_areas = any(definition.find(path) is not None for path in (INDOOR_AREAS, SILO_AREAS))
+
+    if not has_areas and not _has_triggers(definition):
+        return building_type, [], [], []
 
     scene = BuildingScene(definition, mod, files)
+    silos = local_areas(definition, scene, SILO_AREAS)
 
-    return building_type, local_areas(definition, scene), local_stops(definition, scene)
+    return building_type, local_areas(definition, scene), local_stops(definition, scene), silos
 
 
 def default_group(definition) -> BuildingGroup:
@@ -230,7 +245,7 @@ def default_group(definition) -> BuildingGroup:
     if _has_triggers(definition):
         return BuildingGroup.STATIONS
 
-    if definition.find("indoorAreas/indoorArea") is not None:
+    if definition.find(INDOOR_AREAS) is not None:
         return BuildingGroup.SHEDS
 
     return BuildingGroup.OTHER

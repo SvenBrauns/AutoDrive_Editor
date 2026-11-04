@@ -53,6 +53,8 @@ class ParkingSpotDialog(QDialog):
 
     EMPTY_NAME_TEXT = tr("Please enter a marker name.")
     EMPTY_GROUP_TEXT = tr("Please choose or enter a group.")
+    MARKER_OUTSIDE_TEXT = tr("The marker must be inside the shed.")
+    LINE_INSIDE_TEXT = tr("The entry line must be at least {distance} m outside the shed.")
 
     def __init__(
         self,
@@ -67,6 +69,8 @@ class ParkingSpotDialog(QDialog):
         self.setWindowTitle(tr("Create parking spots"))
 
         self.area = area
+        # Templates are kept per building type.
+        self.template_file = area.building_file
         self.groups = list(groups)
         self.taken_names = set(taken_names)
         self.app_settings = app_settings
@@ -182,7 +186,7 @@ class ParkingSpotDialog(QDialog):
         layout.addWidget(self.buttons)
 
         self.reset_shed_settings()
-        last = self.app_settings.last_parking_template(area.building_file)
+        last = self.app_settings.last_parking_template(self.template_file)
 
         if last in self.templates:
             self.apply_template(self.templates[last])
@@ -261,7 +265,7 @@ class ParkingSpotDialog(QDialog):
 
         templates = {}
 
-        for name, values in self.app_settings.parking_templates(self.area.building_file).items():
+        for name, values in self.app_settings.parking_templates(self.template_file).items():
             try:
                 templates[name] = from_template(values)
             except ValueError:
@@ -284,15 +288,15 @@ class ParkingSpotDialog(QDialog):
 
     def load_template(self, name: str):
         self.apply_template(self.templates[name])
-        self.app_settings.set_last_parking_template(self.area.building_file, name)
+        self.app_settings.set_last_parking_template(self.template_file, name)
 
     def save_template(self, name: str):
         values = template_values(self.settings)
-        self.app_settings.save_parking_template(self.area.building_file, name, values)
+        self.app_settings.save_parking_template(self.template_file, name, values)
         self._update_load_button()
 
     def delete_template(self, name: str):
-        self.app_settings.delete_parking_template(self.area.building_file, name)
+        self.app_settings.delete_parking_template(self.template_file, name)
         self._update_load_button()
 
     def _update_load_button(self):
@@ -319,7 +323,7 @@ class ParkingSpotDialog(QDialog):
         ]
         dialog = ListChoiceDialog(
             tr("Load template"),
-            tr("Templates of {building}:", building=self.area.building_file),
+            tr("Templates of {building}:", building=self.template_file),
             [tr("Name"), tr("Mode"), tr("Bays")],
             rows,
             ok_text=tr("Load"),
@@ -344,7 +348,7 @@ class ParkingSpotDialog(QDialog):
         return dialog.chosen_value if dialog.exec() else None
 
     def _ask_template_name(self) -> str | None:
-        last = self.app_settings.last_parking_template(self.area.building_file) or ""
+        last = self.app_settings.last_parking_template(self.template_file) or ""
         name, accepted = QInputDialog.getText(
             self, tr("Save as template"), tr("Template name:"), text=last
         )
@@ -436,17 +440,17 @@ class ParkingSpotDialog(QDialog):
             return tr("The bays are narrower than {width} m.", width=f"{MIN_BAY_WIDTH:.1f}")
 
         if settings.back_offset >= frame.depth:
-            return tr("The marker must be inside the shed.")
+            return self.MARKER_OUTSIDE_TEXT
 
         if not positions_inside:
             return tr("The parking positions don't fit in the shed.")
 
         if not line_fits:
-            return tr(
-                "The entry line must be at least {distance} m outside the shed.",
-                distance=f"{ENTRY_LINE_OUTSIDE:.1f}",
-            )
+            return self.LINE_INSIDE_TEXT.format(distance=f"{ENTRY_LINE_OUTSIDE:.1f}")
 
+        return self._names_problem(settings)
+
+    def _names_problem(self, settings) -> str | None:
         if not settings.marker_name:
             return self.EMPTY_NAME_TEXT
 

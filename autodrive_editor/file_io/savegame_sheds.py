@@ -9,6 +9,11 @@
             <TransformGroup name="indoorAreaWidth01" translation="30 0 0"/>
             <TransformGroup name="indoorAreaHeight01" translation="0 0 15"/>
 
+Bunker silos have the same kind of area for the silo's floor between the walls; its height runs
+along the driving direction:
+
+    <bunkerSilo><innerArea startNode="siloInnerAreaStart" widthNode="…" heightNode="…"/>
+
 The buildings themselves are read by savegame_buildings.
 """
 
@@ -43,16 +48,22 @@ class IndoorArea:
         return category_label(self.category)
 
 
-def local_areas(definition, scene: BuildingScene) -> list[tuple[Point, Point, Point]]:
-    """The indoor areas of a building definition as (start, width, height) points relative to
-    the building."""
+INDOOR_AREAS = "indoorAreas/indoorArea"
+SILO_AREAS = ".//bunkerSilo/innerArea"
+
+
+def local_areas(
+    definition, scene: BuildingScene, path: str = INDOOR_AREAS
+) -> list[tuple[Point, Point, Point]]:
+    """The indoor areas (or with SILO_AREAS the bunker silos' inner areas) of a building
+    definition as (start, width, height) points relative to the building."""
 
     return [
         tuple(
             scene.transform(area.get(key, ""))[1]
             for key in ("startNode", "widthNode", "heightNode")
         )
-        for area in definition.findall("indoorAreas/indoorArea")
+        for area in definition.findall(path)
     ]
 
 

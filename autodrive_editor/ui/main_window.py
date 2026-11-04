@@ -19,6 +19,7 @@ from autodrive_editor.editing.commands.edit_command import DataChange
 from autodrive_editor.editing.edit_context import EditContext
 from autodrive_editor.editing.edit_history import EditHistory
 from autodrive_editor.editing.operations.align_nodes import AlignNodesOperation
+from autodrive_editor.editing.operations.bunker_silos import BunkerSiloOperation
 from autodrive_editor.editing.operations.clipboard import ClipboardOperation
 from autodrive_editor.editing.operations.connect_nodes import ConnectNodesOperation
 from autodrive_editor.editing.operations.create_nodes import CreateNodesOperation
@@ -72,6 +73,7 @@ from autodrive_editor.ui.dialogs.node_position_dialog import NodePositionDialog
 from autodrive_editor.ui.dialogs.parking_map_overlay import ParkingMapOverlay
 from autodrive_editor.ui.dialogs.parking_spot_dialog import ParkingSpotDialog
 from autodrive_editor.ui.dialogs.settings_dialog import SettingsDialog
+from autodrive_editor.ui.dialogs.silo_dialog import SiloDialog
 from autodrive_editor.ui.dialogs.station_dialog import StationDialog
 from autodrive_editor.ui.file_controller import FileController
 from autodrive_editor.ui.map_import_controller import MapImportController
@@ -112,6 +114,7 @@ from autodrive_editor.ui.tools.node_click_tool import NodeClickTool
 from autodrive_editor.ui.tools.path_tool import PathTool
 from autodrive_editor.ui.tools.rotate_selection_tool import RotateSelectionTool
 from autodrive_editor.ui.tools.select_tool import SelectTool
+from autodrive_editor.ui.tools.silo_pick_tool import SiloPickTool
 from autodrive_editor.ui.tools.station_pick_tool import StationPickTool
 from autodrive_editor.ui.tools.toggle_node_type_tool import ToggleNodeTypeTool
 from autodrive_editor.ui.update_controller import UpdateController
@@ -411,6 +414,33 @@ class MainWindow(QMainWindow):
 
         return dialog.settings if accepted else None
 
+    def _ask_silo_settings(self, areas, autodrive_data):
+        taken_names = {(marker.name, marker.group) for marker in autodrive_data.markers.values()}
+        dialog = SiloDialog(
+            areas,
+            self.scene_renderer.costmap,
+            autodrive_data.marker_group_names(),
+            taken_names,
+            self.settings,
+            parent=self,
+        )
+        overlay = ParkingMapOverlay(self.scene_renderer.display_style)
+
+        def show(piece):
+            overlay.set_network(piece, [] if piece is None else [p[::2] for p in piece.points])
+
+        show(dialog.silo_plan)
+        dialog.silos_changed.connect(show)
+        self.scene.addItem(overlay)
+        place_beside(dialog, self.view, [corner for area in areas for corner in area.corners])
+
+        try:
+            accepted = self._run_beside_map(dialog)
+        finally:
+            self.scene.removeItem(overlay)
+
+        return dialog.settings if accepted else None
+
     def _ask_station_choices(self, stops, autodrive_data):
         taken_names = {(marker.name, marker.group) for marker in autodrive_data.markers.values()}
         headings = self.scene_renderer.stop_headings
@@ -608,6 +638,13 @@ class MainWindow(QMainWindow):
             parent=self,
         )
 
+        self.bunker_silo_operation = BunkerSiloOperation(
+            context,
+            # Looked up on each call, so tests can replace _ask_silo_settings.
+            ask_settings=lambda areas, data: self._ask_silo_settings(areas, data),
+            parent=self,
+        )
+
         self.station_operation = StationOperation(
             context,
             # Looked up on each call, so tests can replace _ask_station_choices.
@@ -667,6 +704,7 @@ class MainWindow(QMainWindow):
             self.node_position_operation,
             self.parking_spot_operation,
             self.station_operation,
+            self.bunker_silo_operation,
             self.reverse_direction_operation,
             self.marker_operation,
             self.network_check_operation,
@@ -907,6 +945,19 @@ class MainWindow(QMainWindow):
             is_target=lambda view_position: bool(self._get_station_stops_at(view_position)),
             hover_text=self._get_station_name_at,
         )
+        silo_tool = SiloPickTool(
+            self.view,
+            self._get_silo_at,
+            self.scene_renderer.get_silos_in_path,
+            self.bunker_silo_operation.create_for,
+            self._show_picked_silos,
+            lambda: (
+                tr("Click a bunker silo, Shift-click or right-drag a box to pick several")
+                if self.scene_renderer.shown_silo_areas
+                else tr("No bunker silos shown: open a savegame")
+            ),
+            hover_text=self._get_silo_name_at,
+        )
         junction_tool = JunctionTool(
             self.view,
             self.junction_operation,
@@ -923,6 +974,7 @@ class MainWindow(QMainWindow):
                 GenerateTask.JUNCTION: junction_tool,
                 GenerateTask.PARKING_SPOTS: parking_tool,
                 GenerateTask.STATIONS: station_tool,
+                GenerateTask.BUNKER_SILOS: silo_tool,
             },
             start_planning=lambda: self.planning.start_plan(),
         )
@@ -1096,6 +1148,28 @@ class MainWindow(QMainWindow):
         area = self._get_shed_at(view_position)
 
         return f"{area.name} – {area.category_label}" if area is not None else ""
+
+    def _get_silo_at(self, view_position):
+        scene_position = self.view.mapToScene(view_position)
+
+        return self.scene_renderer.get_silo_at(scene_position.x(), scene_position.y())
+
+    def _get_silo_name_at(self, view_position) -> str:
+        area = self._get_silo_at(view_position)
+
+        return area.name if area is not None else ""
+
+    def _show_picked_silos(self, areas):
+        self.scene_renderer.set_picked_silos(areas)
+
+        if len(areas) > 1:
+            self._set_status(
+                tr(
+                    "{count} bunker silos picked: Enter or a click on one of them creates their "
+                    "lanes, Esc drops the pick",
+                    count=len(areas),
+                )
+            )
 
     def _get_station_stops_at(self, view_position):
         scene_position = self.view.mapToScene(view_position)

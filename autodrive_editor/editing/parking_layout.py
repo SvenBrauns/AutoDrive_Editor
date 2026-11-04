@@ -5,9 +5,14 @@ end, seen from outside, and d runs into the shed (0 on the open side, the depth 
 wall, negative outside). ShedFrame turns them into map positions.
 
 The back in layout is copied from marker G1 of the example route (xml/g8Cq02ZGwaIPuGPr.xml).
+
+Bunker silos use the same layouts with their own distances (settings with silo=True, see
+bunker_silo): the inner area is the frame and the lanes are the bays. Their drive through lanes
+end at the marker past the silo, without an exit line.
 """
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from enum import Enum
 
@@ -49,6 +54,23 @@ TURN_STEPS = (3.2, 1.2)
 # Drive through: distance of the lines from the shed and the node spacing of the bay lines.
 DRIVE_THROUGH_LINE_OUTSIDE = 10.0
 DEFAULT_POSITION_SPACING = 8.0
+
+# Bunker silos, back in: the bay line's first step and the steps after it, how far it reaches out
+# of the silo, and where the entry and exit lines are about (distances outside the open side).
+SILO_FIRST_STEP = 1.0
+SILO_STEP = 3.0
+SILO_BAY_LINE_OUTSIDE = 31.0
+SILO_ENTRY_LINE_OUTSIDE = 5.5
+SILO_EXIT_LINE_OUTSIDE = 22.0
+# Bunker silos, drive through: the entry line's distance before the silo and the node spacing.
+SILO_DRIVE_THROUGH_LINE_OUTSIDE = 20.0
+SILO_DRIVE_THROUGH_STEP = 5.0
+
+# Neighbouring buildings share the entry and exit lines: open sides facing the same way within
+# ROW_ANGLE degrees, at most ROW_OFFSET apart across and ROW_GAP apart along the side.
+ROW_ANGLE = 10.0
+ROW_OFFSET = 3.0
+ROW_GAP = 5.0
 
 # The entry and exit lines reach this far beyond the outer bays.
 LINE_EXTENSION = 5.0
@@ -160,6 +182,26 @@ def default_bay_line(marker_d: float) -> BayLine:
     return BayLine(segments, TURN_STEPS, last - len(OUTSIDE_NODES) + 1, last - 1)
 
 
+def silo_bay_line(marker_d: float) -> BayLine:
+    """The back in bay line of a bunker silo: 1 m, then 3 m steps to SILO_BAY_LINE_OUTSIDE; the
+    branches at the nodes nearest to the silo's entry and exit line distances."""
+
+    reach = marker_d + SILO_BAY_LINE_OUTSIDE
+    distances = [0.0, SILO_FIRST_STEP]
+
+    while distances[-1] < reach:
+        distances.append(distances[-1] + SILO_STEP)
+
+    def nearest(distance: float) -> int:
+        return min(range(1, len(distances)), key=lambda node: abs(distances[node] - distance))
+
+    entry_node = nearest(marker_d + SILO_ENTRY_LINE_OUTSIDE + ENTRY_LINE_INSIDE)
+    exit_node = max(entry_node + 1, nearest(marker_d + SILO_EXIT_LINE_OUTSIDE - EXIT_LINE_OUTSIDE))
+    segments = tuple(round(b - a, 3) for a, b in zip(distances, distances[1:], strict=False))
+
+    return BayLine(segments, TURN_STEPS, entry_node, exit_node)
+
+
 @dataclass(frozen=True)
 class ParkingSettings:
     mode: ParkingMode = ParkingMode.BACK_IN
@@ -183,6 +225,12 @@ class ParkingSettings:
     marker_name: str = ""
     start_number: int = 1
     group: str = ""
+    # A bunker silo: its bay line, and drive through lanes that end at the marker past the silo.
+    silo: bool = False
+
+
+def silo_drive_through(settings: ParkingSettings) -> bool:
+    return settings.silo and settings.mode == ParkingMode.DRIVE_THROUGH
 
 
 def template_values(settings: ParkingSettings) -> dict:
@@ -201,6 +249,7 @@ def template_values(settings: ParkingSettings) -> dict:
         "gaps": list(settings.gaps),
         "positions": settings.positions,
         "position_spacing": settings.position_spacing,
+        "silo": settings.silo,
         "bay_line": None
         if line is None
         else {
@@ -227,6 +276,7 @@ def from_template(values: dict) -> ParkingSettings:
             gaps=tuple(float(gap) for gap in values["gaps"]),
             positions=int(values.get("positions", 1)),
             position_spacing=float(values.get("position_spacing", DEFAULT_POSITION_SPACING)),
+            silo=bool(values.get("silo", False)),
             bay_line=None
             if line is None
             else BayLine(
@@ -333,13 +383,115 @@ def bay_centers(frame: ShedFrame, settings: ParkingSettings) -> list[float]:
 def plan_parking(frame: ShedFrame, settings: ParkingSettings) -> PlannedPiece:
     """The network of all bays and their shared entry and exit lines."""
 
+    first = settings.start_number
+    names = [
+        (f"{settings.marker_name} {number}", settings.group)
+        for number in range(first, first + marker_count(settings))
+    ]
+    network, entry_nodes, exit_nodes = plan_bays(frame, settings, names)
+    add_lines(network, settings, entry_nodes, exit_nodes)
+
+    return network
+
+
+def rows(areas: list[IndoorArea], side: str) -> list[list[IndoorArea]]:
+    """The areas in rows of neighbours, each from left to right seen from outside the given side;
+    the rows in the order of their first area."""
+
+    frames = {area: ShedFrame.from_area(area, side) for area in areas}
+    result: list[list[IndoorArea]] = []
+
+    for area in areas:
+        frame = frames[area]
+        joined = [row for row in result if any(_neighbours(frame, frames[other]) for other in row)]
+        merged = [other for row in joined for other in row] + [area]
+        index = result.index(joined[0]) if joined else len(result)
+        result = [row for row in result if row not in joined]
+        result.insert(index, merged)
+
+    for row in result:
+        first = frames[row[0]]
+        row.sort(
+            key=lambda area, first=first: _dot(
+                _minus(frames[area].origin, first.origin), first.along
+            )
+        )
+
+    return result
+
+
+def _neighbours(first: ShedFrame, second: ShedFrame) -> bool:
+    start = _minus(second.origin, first.origin)
+    a = _dot(start, first.along)
+    gap = max(a - first.length, -a - second.length)
+
+    return (
+        _dot(first.inward, second.inward) >= math.cos(math.radians(ROW_ANGLE))
+        and abs(_dot(start, first.inward)) <= ROW_OFFSET
+        and gap <= ROW_GAP
+    )
+
+
+def plan_rows(
+    areas: list[IndoorArea],
+    settings: ParkingSettings,
+    names: Callable[[int, IndoorArea], list[tuple[str, str]]],
+) -> PlannedPiece:
+    """The bays of several areas, as map points (x, y, z); each row of neighbours shares one
+    entry and one exit line. names gives the (name, group) of an area's markers from its place
+    in the order of the rows. Raises ValueError if the settings don't fit an area."""
+
+    piece = PlannedPiece()
+    index = 0
+
+    for row in rows(areas, settings.open_side):
+        row_frame = ShedFrame.from_area(row[0], settings.open_side)
+        row_piece = PlannedPiece()
+        entry_nodes, exit_nodes = [], []
+
+        for area in row:
+            frame = ShedFrame.from_area(area, settings.open_side)
+            bays, entries, exits = plan_bays(frame, settings, names(index, area))
+            index += 1
+
+            def to_row(a, d, frame=frame, height=area.height, row_frame=row_frame):
+                along, inward = row_frame.map_direction(
+                    *_minus(frame.to_map(a, d), row_frame.origin)
+                )
+                return along, inward, height
+
+            offset = row_piece.add_piece(bays.moved(to_row))
+            entry_nodes += [node + offset for node in entries]
+            exit_nodes += [node + offset for node in exits]
+
+        add_lines(row_piece, settings, entry_nodes, exit_nodes)
+
+        # The lines' own nodes are at the height of the row's first area.
+        def to_map(a, d, height=row[0].height, row_frame=row_frame):
+            x, z = row_frame.to_map(a, d)
+            return x, height, z
+
+        piece.add_piece(row_piece.moved(to_map))
+
+    return piece
+
+
+def plan_bays(
+    frame: ShedFrame, settings: ParkingSettings, names: list[tuple[str, str]]
+) -> tuple[PlannedPiece, list[int], list[int]]:
+    """The bays without the entry and exit lines, their markers with the (name, group) in order,
+    and the bays' entry and exit line nodes. Raises ValueError if the settings don't fit."""
+
     if len(settings.gaps) != settings.bays - 1:
         raise ValueError("There must be one gap fewer than bays.")
 
     if bay_width(frame, settings) < MIN_BAY_WIDTH:
         raise ValueError("The bays are too narrow.")
 
-    if not 0 <= settings.back_offset < frame.depth:
+    # A silo's drive through marker lies past the silo, with a negative offset.
+    lowest = -math.inf if silo_drive_through(settings) else 0
+
+    if not lowest <= settings.back_offset < frame.depth:
         raise ValueError("The marker must be inside the shed.")
 
     if not positions_fit(frame, settings):
@@ -352,7 +504,7 @@ def plan_parking(frame: ShedFrame, settings: ParkingSettings) -> PlannedPiece:
 
     network = PlannedPiece()
     entry_nodes, exit_nodes = [], []
-    number = settings.start_number
+    marker_names = iter(names)
 
     for a in bay_centers(frame, settings):
         if settings.mode == ParkingMode.BACK_IN:
@@ -361,23 +513,31 @@ def plan_parking(frame: ShedFrame, settings: ParkingSettings) -> PlannedPiece:
         else:
             markers, entry, exit_ = _drive_through_bay(network, frame, settings, a)
 
-        for marker in markers:
-            network.markers.append((marker, f"{settings.marker_name} {number}", settings.group))
-            number += 1
-
+        network.markers += [(marker, *next(marker_names)) for marker in markers]
         entry_nodes.append(entry)
         exit_nodes.append(exit_)
 
-    _line(network, entry_nodes, settings.entry_left_to_right)
-    _line(network, exit_nodes, settings.exit_left_to_right)
+    return network, entry_nodes, exit_nodes
 
-    return network
+
+def add_lines(
+    network: PlannedPiece, settings: ParkingSettings, entry_nodes: list[int], exit_nodes: list[int]
+):
+    """The entry line through the bays' entry nodes and the exit line through their exit nodes;
+    a silo's drive through lanes have no exit line."""
+
+    _line(network, entry_nodes, settings.entry_left_to_right)
+
+    if not silo_drive_through(settings):
+        _line(network, exit_nodes, settings.exit_left_to_right)
 
 
 def bay_line(frame: ShedFrame, settings: ParkingSettings) -> BayLine:
-    """The back in bay line: the edited one, or the default fitted to the shed."""
+    """The back in bay line: the edited one, or the default fitted to the shed or silo."""
 
-    return settings.bay_line or default_bay_line(marker_depth(frame, settings))
+    default = silo_bay_line if settings.silo else default_bay_line
+
+    return settings.bay_line or default(marker_depth(frame, settings))
 
 
 def marker_depth(frame: ShedFrame, settings: ParkingSettings) -> float:
@@ -385,7 +545,8 @@ def marker_depth(frame: ShedFrame, settings: ParkingSettings) -> float:
 
 
 def marker_count(settings: ParkingSettings) -> int:
-    positions = settings.positions if settings.mode == ParkingMode.DRIVE_THROUGH else 1
+    drive_through = settings.mode == ParkingMode.DRIVE_THROUGH and not settings.silo
+    positions = settings.positions if drive_through else 1
 
     return settings.bays * positions
 
@@ -401,7 +562,10 @@ def position_depths(frame: ShedFrame, settings: ParkingSettings) -> list[float]:
 def positions_fit(frame: ShedFrame, settings: ParkingSettings) -> bool:
     """Whether every drive through parking position is inside the shed."""
 
-    return settings.mode == ParkingMode.BACK_IN or position_depths(frame, settings)[-1] > 0
+    if settings.mode == ParkingMode.BACK_IN or settings.silo:
+        return True
+
+    return position_depths(frame, settings)[-1] > 0
 
 
 def _back_in_bay(network, frame, settings, a) -> tuple[int, int, int]:
@@ -441,7 +605,13 @@ def drive_through_line(
     frame: ShedFrame, settings: ParkingSettings
 ) -> tuple[list[float], list[int]]:
     """Depths of the nodes of a drive through bay line, and the indices of the markers from the
-    exit side."""
+    exit side. A silo's line runs at even steps from its entry line to the marker past it."""
+
+    if silo_drive_through(settings):
+        start, end = -SILO_DRIVE_THROUGH_LINE_OUTSIDE, marker_depth(frame, settings)
+        steps = max(1, round((end - start) / SILO_DRIVE_THROUGH_STEP))
+
+        return [start + (end - start) * index / steps for index in range(steps + 1)], [steps]
 
     positions = position_depths(frame, settings)
     stops = (
@@ -479,8 +649,8 @@ def _line(network: PlannedPiece, nodes: list[int], left_to_right: bool):
 
     sign = 1 if left_to_right else -1
     ordered = sorted(nodes, key=lambda index: sign * network.points[index][0])
-    first_a, first_d = network.points[ordered[0]]
-    last_a, last_d = network.points[ordered[-1]]
+    first_a, first_d = network.points[ordered[0]][:2]
+    last_a, last_d = network.points[ordered[-1]][:2]
 
     start = _add(network, first_a - sign * LINE_EXTENSION, first_d)
     end = _add(network, last_a + sign * LINE_EXTENSION, last_d)
@@ -491,6 +661,10 @@ def _line(network: PlannedPiece, nodes: list[int], left_to_right: bool):
 
 def _add(network: PlannedPiece, a: float, d: float) -> int:
     return network.add(a, d, flag=SUBPRIO_FLAG)
+
+
+def _minus(u, v) -> tuple[float, float]:
+    return u[0] - v[0], u[1] - v[1]
 
 
 def _dot(u, v) -> float:

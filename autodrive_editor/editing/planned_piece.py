@@ -42,6 +42,19 @@ class PlannedPiece:
         for source, target in zip(indices, indices[1:], strict=False):
             self.connect(source, target, connection_type)
 
+    def add_piece(self, other: "PlannedPiece") -> int:
+        """Adds the nodes, connections, markers and open ends of another piece; returns how far
+        its node indices are shifted."""
+
+        offset = len(self.points)
+        self.points += other.points
+        self.flags += other.flags
+        self.connections += [(s + offset, t + offset, kind) for s, t, kind in other.connections]
+        self.markers += [(index + offset, name, group) for index, name, group in other.markers]
+        self.open_ends += [index + offset for index in other.open_ends]
+
+        return offset
+
     def moved(self, to_map: Callable[..., tuple[float, float, float]]) -> "PlannedPiece":
         """The same piece with every point turned into a map position (x, y, z)."""
 
