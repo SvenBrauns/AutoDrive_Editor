@@ -79,6 +79,8 @@ def tree_chains(routes: list[TreeRoute], nodes: TreeNodes) -> TreeChains:
     result = TreeChains([], {}, [])
     # The lanes of the legs built so far, each with its leg's start and goal key.
     leg_lanes: list[tuple[int, int, PlannedLane]] = []
+    # The node IDs of each leg built so far, by its start and goal key.
+    built_legs: dict[tuple[int, int], list[int]] = {}
 
     for tree_route in routes:
         keys, route = tree_route.keys, tree_route.route
@@ -86,6 +88,12 @@ def tree_chains(routes: list[TreeRoute], nodes: TreeNodes) -> TreeChains:
         chain = [nodes.node_ids[keys[0]]]
 
         for leg, (start_key, goal_key) in enumerate(pairwise(keys)):
+            # A leg between the same waypoints as one built before takes its nodes, even if
+            # the search ran a little differently.
+            if (start_key, goal_key) in built_legs:
+                chain += built_legs[(start_key, goal_key)][1:]
+                continue
+
             shared_ends = frozenset(
                 (lane.source_id, lane.target_id)
                 for start, goal, lane in leg_lanes
@@ -116,6 +124,7 @@ def tree_chains(routes: list[TreeRoute], nodes: TreeNodes) -> TreeChains:
                 lane = PlannedLane(source, target, positions[source], positions[target])
                 leg_lanes.append((start_key, goal_key, lane))
 
+            built_legs[(start_key, goal_key)] = ids
             chain += ids[1:]
 
         result.chains.append(chain)
