@@ -96,6 +96,23 @@ def test_buildings_without_indoor_area_are_left_out(game):
     assert failed == []
 
 
+def test_bunker_silo_inner_area_is_read_apart_from_the_sheds(game):
+    silo = SHED_XML.replace("<indoorAreas>", "<bunkerSilo>").replace("indoorArea ", "innerArea ")
+    silo = silo.replace("</indoorAreas>", "</bunkerSilo>")
+    (game / "game/data/placeables/shed/bunker.xml").write_text(silo, encoding="utf-8")
+    (game / "savegame1/placeables.xml").write_text(
+        f"<placeables>{placeable(file='data/placeables/shed/bunker.xml')}</placeables>",
+        encoding="utf-8",
+    )
+    with GameFiles(game / "game", None) as files:
+        buildings = read_savegame_buildings(game / "savegame1", files)
+
+    assert buildings.areas == []
+    assert [rounded(area.corners) for area in buildings.silos] == [
+        [(86, 192.5), (116, 192.5), (116, 207.5), (86, 207.5)]
+    ]
+
+
 def test_unreadable_buildings_are_reported_once(game):
     missing = placeable(file="$moddir$FS25_Missing/shed.xml")
 
