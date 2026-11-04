@@ -2,7 +2,6 @@ import logging
 import math
 from collections.abc import Callable
 from dataclasses import dataclass, replace
-from itertools import pairwise
 from pathlib import Path
 
 from PySide6.QtCore import Signal
@@ -18,11 +17,14 @@ from autodrive_editor.editing.route_finder import (
     RouteRequest,
     Vehicle,
 )
-from autodrive_editor.editing.route_nodes import (
-    chain_connections,
-    node_headings,
-    planned_lanes,
-    route_nodes,
+from autodrive_editor.editing.route_nodes import SNAP_DISTANCE, node_headings, planned_lanes
+from autodrive_editor.editing.route_tree import (
+    TreeNodes,
+    TreeRoute,
+    TreeSearch,
+    shared_headings,
+    tree_chains,
+    tree_connections,
 )
 from autodrive_editor.file_io.navigation_costmap import NavigationCostmap
 from autodrive_editor.i18n import tr
@@ -35,6 +37,9 @@ from autodrive_editor.model.connections import (
 )
 
 logger = logging.getLogger(__name__)
+
+# A waypoint inserted this close to where routes split or merge goes into all of them.
+SPLIT_DISTANCE = 5.0
 
 
 @dataclass(frozen=True)
@@ -54,13 +59,25 @@ class Waypoint:
         return self.node_id is None and self.connection is None
 
 
-class FindRouteOperation(EditOperation):
-    """Find route: a drivable route through waypoints, which are existing nodes or free map
-    positions. After each change of the waypoints or the network the route is searched again in
-    a background thread and shown as a preview; parts that cross obstacles are marked. apply()
-    adds a clear route to the plan as one undo step."""
+@dataclass
+class _Found:
+    """The route last found for a start and end, and what it was searched with (see
+    _searched_with); None once the network changed."""
 
-    # The waypoints or the previewed route changed.
+    route: Route | None
+    searched: tuple | None
+
+
+class FindRouteOperation(EditOperation):
+    """Find route: drivable routes from each start to each end through waypoints, which are
+    existing nodes or free map positions. Usually there is one start and one end; with several,
+    all starts and ends are existing nodes and a route from every start to every end forms a
+    tree. Waypoints are kept by key; each route has its own list of them, and a waypoint can be
+    in several routes. After each change the routes whose waypoints changed are searched again
+    in a background thread (see route_tree) and shown as a preview; parts that cross obstacles
+    are marked. apply() adds clear routes to the plan as one undo step."""
+
+    # The waypoints or the previewed routes changed.
     preview_changed = Signal()
     # A search started or ended.
     searching_changed = Signal(bool)
@@ -87,13 +104,15 @@ class FindRouteOperation(EditOperation):
         self.plan_node_ids_provider = plan_node_ids_provider
         self.height_for_new_node = height_for_new_node
 
-        self.waypoints: list[Waypoint] = []
-        # Earlier waypoint lists of the route being built, for Ctrl+Z inside the tool.
-        self._undo_waypoints: list[list[Waypoint]] = []
-        # The route through the current waypoints, None while there is none or it is outdated.
-        self.route: Route | None = None
-        # The route last found, shown until the next one is found.
-        self.shown_route: Route | None = None
+        # The waypoints by key; keys grow in the order the waypoints were added.
+        self.points: dict[int, Waypoint] = {}
+        self.starts: list[int] = []
+        self.ends: list[int] = []
+        # The inner waypoints of the route from each start to each end.
+        self._vias: dict[tuple[int, int], list[int]] = {}
+        # Earlier states of the waypoints, for Ctrl+Z inside the tool.
+        self._undo_waypoints: list[tuple] = []
+        self._found: dict[tuple[int, int], _Found] = {}
 
         # Number of the latest search; results of older ones are dropped.
         self._search_number = 0
@@ -102,7 +121,7 @@ class FindRouteOperation(EditOperation):
         self._background = BackgroundSearch(self)
         self.edit_history.data_changed.connect(self._handle_data_changed)
         # Only an ended plan changes the planned lanes; a new plan is empty.
-        self.edit_history.planning_changed.connect(lambda planning: planning or self._search())
+        self.edit_history.planning_changed.connect(lambda planning: planning or self._outdate())
         # A discarded plan is a complete reset, so its waypoints go too.
         self.edit_history.plan_discarded.connect(self.reset)
 
@@ -114,6 +133,61 @@ class FindRouteOperation(EditOperation):
     def can_undo_waypoints(self) -> bool:
         return bool(self._undo_waypoints)
 
+    @property
+    def pairs(self) -> list[tuple[int, int]]:
+        """The start and end key of each route."""
+
+        return [(start, end) for start in self.starts for end in self.ends]
+
+    @property
+    def routes(self) -> list[tuple[int, ...]]:
+        """The waypoint keys of each route, from start to end."""
+
+        return [(start, *self._vias.get((start, end), ()), end) for start, end in self.pairs]
+
+    @property
+    def waypoints(self) -> list[Waypoint]:
+        """The waypoints of the first route in order; without a route the starts and ends."""
+
+        routes = self.routes
+        keys = routes[0] if routes else [*self.starts, *self.ends]
+
+        return [self.points[key] for key in keys]
+
+    @property
+    def is_tree(self) -> bool:
+        return len(self.starts) > 1 or len(self.ends) > 1
+
+    @property
+    def current_routes(self) -> list[Route | None]:
+        """Per route the route found for its current waypoints, None while there is none."""
+
+        return [
+            found.route if (found := self._found.get(pair)) and self._is_current(pair) else None
+            for pair in self.pairs
+        ]
+
+    @property
+    def shown_routes(self) -> list[Route | None]:
+        """Per route the route last found, shown until the next one is found."""
+
+        return [found.route if (found := self._found.get(pair)) else None for pair in self.pairs]
+
+    @property
+    def route(self) -> Route | None:
+        """The route of a single start and end through the current waypoints, None while there
+        is none or it is outdated."""
+
+        routes = self.current_routes
+
+        return routes[0] if len(routes) == 1 else None
+
+    @property
+    def shown_route(self) -> Route | None:
+        routes = self.shown_routes
+
+        return routes[0] if len(routes) == 1 else None
+
     def undo_waypoints(self) -> bool:
         """Takes back the last change of the waypoints (add, move, remove). Returns False if
         there is none, so Ctrl+Z goes on to the plan's undo."""
@@ -121,7 +195,9 @@ class FindRouteOperation(EditOperation):
         if not self._undo_waypoints:
             return False
 
-        self.waypoints = self._undo_waypoints.pop()
+        points, self.starts, self.ends, vias = self._undo_waypoints.pop()
+        self.points = points
+        self._vias = vias
         self._search()
 
         return True
@@ -129,19 +205,24 @@ class FindRouteOperation(EditOperation):
     def remember_waypoints(self):
         """Keeps the waypoints before a change, e.g. before a waypoint is dragged."""
 
-        self._undo_waypoints.append(list(self.waypoints))
+        vias = {pair: list(keys) for pair, keys in self._vias.items()}
+        self._undo_waypoints.append((dict(self.points), list(self.starts), list(self.ends), vias))
 
     def add_waypoint(self, x: float, z: float, node_id: int | None = None):
+        """Adds a waypoint: the start, then the end; with one start and one end the end becomes
+        an inner waypoint and this one the end. With several starts or ends it is an inner
+        waypoint of all routes, before their ends."""
+
         if node_id is not None:
             node = self.autodrive_data_provider().nodes[node_id]
             x, z = node.x, node.z
 
-        if self.waypoints and (self.waypoints[-1].x, self.waypoints[-1].z) == (x, z):
+        waypoints = self.waypoints
+
+        if waypoints and (waypoints[-1].x, waypoints[-1].z) == (x, z):
             return
 
-        self.remember_waypoints()
-        self.waypoints.append(Waypoint(x, z, node_id))
-        self._search()
+        self._add(Waypoint(x, z, node_id))
 
     def add_waypoint_on_connection(self, source_id: int, target_id: int, x: float, z: float):
         """Adds a waypoint on the connection, at the point closest to (x, z)."""
@@ -153,8 +234,7 @@ class FindRouteOperation(EditOperation):
         fraction = ((x - source.x) * dx + (z - source.z) * dz) / length_squared
         fraction = min(max(fraction, 0.01), 0.99)
 
-        self.remember_waypoints()
-        self.waypoints.append(
+        self._add(
             Waypoint(
                 source.x + fraction * dx,
                 source.z + fraction * dz,
@@ -162,80 +242,205 @@ class FindRouteOperation(EditOperation):
                 fraction=fraction,
             )
         )
+
+    def add_start(self, node_id: int):
+        """Adds another start at the node (Shift+click)."""
+
+        self._add_end_node(node_id, self.starts)
+
+    def add_end(self, node_id: int):
+        """Adds another end at the node (Ctrl+click)."""
+
+        self._add_end_node(node_id, self.ends)
+
+    def _add(self, waypoint: Waypoint):
+        if not self.starts or not self.ends:
+            ends = self.ends if self.starts else self.starts
+            others = self.starts if self.starts else self.ends
+
+            if len(others) > 1 and waypoint.node_id is None:
+                self.status_changed.emit(self._nodes_only_message())
+                return
+
+            self.remember_waypoints()
+            ends.append(self._new_key(waypoint))
+        elif not self.is_tree:
+            self.remember_waypoints()
+            (start,), (end,) = self.starts, self.ends
+            vias = self._vias.pop((start, end), [])
+            self.ends = [self._new_key(waypoint)]
+            self._vias[(start, self.ends[0])] = [*vias, end]
+        else:
+            self.remember_waypoints()
+            key = self._new_key(waypoint)
+
+            for pair in self.pairs:
+                self._vias.setdefault(pair, []).append(key)
+
         self._search()
 
+    def _add_end_node(self, node_id: int, ends: list[int]):
+        node = self.autodrive_data_provider().nodes[node_id]
+
+        if any(self.points[key].node_id == node_id for key in (*self.starts, *self.ends)):
+            return
+
+        if any(self.points[key].node_id is None for key in (*self.starts, *self.ends)):
+            self.status_changed.emit(self._nodes_only_message())
+            return
+
+        # A new route gets the waypoints all routes share.
+        routes = self.routes
+        shared = [key for key in routes[0][1:-1] if all(key in r for r in routes)] if routes else []
+
+        self.remember_waypoints()
+        ends.append(self._new_key(Waypoint(node.x, node.z, node_id)))
+
+        for pair in self.pairs:
+            self._vias.setdefault(pair, list(shared))
+
+        self._search()
+
+    @staticmethod
+    def _nodes_only_message() -> str:
+        return tr("With several starts or ends, all starts and ends are nodes")
+
+    def _new_key(self, waypoint: Waypoint) -> int:
+        key = max(self.points, default=-1) + 1
+        self.points[key] = waypoint
+
+        return key
+
     def join_warnings(self) -> list[str]:
-        """Why existing nodes among the waypoints are poor places to join the route."""
+        """Why existing nodes among the waypoints are poor places to join the routes."""
 
         autodrive_data = self.autodrive_data_provider()
-        last = len(self.waypoints) - 1
+        used = {key for keys in self.routes for key in keys}
 
         return [
             problem
-            for index, waypoint in enumerate(self.waypoints)
+            for key, waypoint in self.points.items()
             if waypoint.node_id is not None
+            and key in used
             and (
-                problem := join_problem(autodrive_data, waypoint.node_id, index == 0, index == last)
+                problem := join_problem(
+                    autodrive_data, waypoint.node_id, key in self.starts, key in self.ends
+                )
             )
         ]
 
-    def insert_waypoint(self, index: int, x: float, z: float):
-        """Adds a free waypoint before the one at the index."""
+    def legs_at(self, x: float, z: float, tolerance: float) -> dict[int, int]:
+        """Per route whose shown route passes within `tolerance` of the point, the leg there:
+        leg k runs from the route's waypoint k to k + 1. Routes that run together with one of
+        these within SPLIT_DISTANCE of the point, as just past where they split, are included
+        too. Outdated routes are left out."""
+
+        shown = [
+            (index, route)
+            for index, (keys, route) in enumerate(zip(self.routes, self.shown_routes, strict=True))
+            if route is not None and route.points and len(route.waypoint_indices) == len(keys)
+        ]
+        legs, nearests, close = {}, {}, []
+
+        for index, route in shown:
+            nearest = min(
+                range(len(route.points)), key=lambda i: math.dist(route.points[i], (x, z))
+            )
+            nearests[index] = nearest
+
+            if math.dist(route.points[nearest], (x, z)) <= tolerance:
+                legs[index] = nearest
+                close += [p for p in route.points if math.dist(p, (x, z)) <= SPLIT_DISTANCE]
+
+        for index, route in shown:
+            if index not in legs and any(
+                math.dist(p, q) <= SNAP_DISTANCE for p in route.points for q in close
+            ):
+                legs[index] = nearests[index]
+
+        return {
+            index: max(
+                leg for leg, start in enumerate(route.waypoint_indices[:-1]) if start <= legs[index]
+            )
+            for index, route in shown
+            if index in legs
+        }
+
+    def insert_waypoint(self, x: float, z: float, legs: dict[int, int]) -> int:
+        """Adds a free waypoint to each route of `legs` (see legs_at), in its leg there.
+        Returns its key."""
 
         self.remember_waypoints()
-        self.waypoints.insert(index, Waypoint(x, z))
+        key = self._new_key(Waypoint(x, z))
+        pairs = self.pairs
+
+        for index, leg in legs.items():
+            self._vias.setdefault(pairs[index], []).insert(leg, key)
+
         self._search()
 
-    def leg_at(self, x: float, z: float, tolerance: float) -> int | None:
-        """The leg of the shown route that passes within `tolerance` of the point: leg k runs
-        from waypoint k to k + 1. None if the route does not pass there or is outdated."""
+        return key
 
-        route = self.shown_route
+    def remove_waypoint(self, key: int):
+        """Removes the waypoint from all routes. A removed start or end takes its routes along;
+        with one start and one end the next inner waypoint takes its place."""
 
-        if route is None or len(route.waypoint_indices) != len(self.waypoints):
-            return None
-
-        nearest = min(
-            range(len(route.points)),
-            key=lambda index: math.dist(route.points[index], (x, z)),
-        )
-
-        if math.dist(route.points[nearest], (x, z)) > tolerance:
-            return None
-
-        return max(leg for leg, start in enumerate(route.waypoint_indices[:-1]) if start <= nearest)
-
-    def remove_waypoint(self, index: int):
         self.remember_waypoints()
-        del self.waypoints[index]
+
+        if key in self.starts or key in self.ends:
+            single = not self.is_tree and self.pairs
+            vias = self._vias.pop(self.pairs[0], []) if single else []
+
+            for pair in self.pairs:
+                if key in pair:
+                    self._vias.pop(pair, None)
+
+            if key in self.starts:
+                self.starts.remove(key)
+
+                if single and vias:
+                    self.starts = [vias.pop(0)]
+            else:
+                self.ends.remove(key)
+
+                if single and vias:
+                    self.ends = [vias.pop()]
+
+            if single and vias:
+                self._vias[self.pairs[0]] = vias
+        else:
+            for vias in self._vias.values():
+                if key in vias:
+                    vias.remove(key)
+
+        del self.points[key]
         self._search()
 
     def remove_last(self) -> bool:
-        """Removes the last waypoint. Returns whether there was one."""
+        """Removes the waypoint added last. Returns whether there was one."""
 
-        if not self.waypoints:
+        if not self.points:
             return False
 
-        self.remove_waypoint(len(self.waypoints) - 1)
+        self.remove_waypoint(max(self.points))
 
         return True
 
-    def move_waypoint(self, index: int, x: float, z: float):
+    def move_waypoint(self, key: int, x: float, z: float):
         """Moves a free waypoint. A drag calls remember_waypoints() once before."""
 
-        self.waypoints[index] = replace(self.waypoints[index], x=x, z=z)
+        self.points[key] = replace(self.points[key], x=x, z=z)
         self._search()
 
     def clear(self) -> bool:
         """Removes all waypoints. Returns whether there were any."""
 
-        had_waypoints = bool(self.waypoints)
+        had_waypoints = bool(self.points)
 
         if had_waypoints:
             self.remember_waypoints()
 
-        self.waypoints = []
-        self._search()
+        self._set_empty()
 
         return had_waypoints
 
@@ -243,42 +448,62 @@ class FindRouteOperation(EditOperation):
         """Starts empty, without waypoint undo, e.g. when the tool is left."""
 
         self._undo_waypoints = []
-        self.waypoints = []
+        self._set_empty()
+
+    def _set_empty(self):
+        self.points, self.starts, self.ends, self._vias = {}, [], [], {}
         self._search()
 
     def apply(self) -> bool:
-        """Adds the route to the plan. The tool starts empty; the next click picks a new start."""
+        """Adds the routes to the plan. The tool starts empty; the next click picks a new
+        start."""
 
         autodrive_data = self.autodrive_data_provider()
 
-        if autodrive_data is None or len(self.waypoints) < 2 or self.edit_history.history_locked:
+        if autodrive_data is None or not self.pairs or self.edit_history.history_locked:
             return False
 
         if not self.edit_history.is_planning:
             self.status_changed.emit(tr("Find route adds routes in planning mode"))
             return False
 
-        if self.route is None:
-            self.status_changed.emit(tr("The route is still being searched"))
+        routes = self.current_routes
+
+        if self.is_searching or None in routes:
+            self.status_changed.emit(
+                tr("The routes are still being searched")
+                if self.is_tree
+                else tr("The route is still being searched")
+            )
             return False
 
-        if not self.route.is_complete:
-            self.status_changed.emit(self._gap_message(self.route))
+        if self.is_tree and not all(route.is_clear for route in routes):
+            self.status_changed.emit(self._unclear_message(routes))
             return False
 
-        if not self.route.is_clear:
+        if not routes[0].is_complete:
+            self.status_changed.emit(self._gap_message(routes[0]))
+            return False
+
+        if not routes[0].is_clear:
             self.status_changed.emit(
                 tr("The route crosses obstacles (red). Move or add waypoints first")
             )
             return False
 
-        command = self._route_command(autodrive_data, self.route)
-        # Set first, so the edit does not start a search for the old waypoints.
-        self.waypoints = []
+        command = self._route_command(autodrive_data, routes)
+        # Emptied first, so the edit does not start a search for the old waypoints.
+        self.points, self.starts, self.ends, self._vias = {}, [], [], {}
         self._undo_waypoints = []
         self.edit_history.push(command)
         self.status_changed.emit(
-            tr("Route with {count} new nodes added", count=len(command.new_nodes))
+            tr(
+                "{routes} routes with {count} new nodes added",
+                routes=len(routes),
+                count=len(command.new_nodes),
+            )
+            if len(routes) > 1
+            else tr("Route with {count} new nodes added", count=len(command.new_nodes))
         )
 
         return True
@@ -302,11 +527,39 @@ class FindRouteOperation(EditOperation):
             "(again after placing buildings)"
         )
 
-    def _search(self):
-        """Starts a search for the current waypoints. A running search is outdated then: it is
-        cancelled, and the new one starts once it has stopped. The last route stays shown."""
+    def _route_waypoints(self, keys: tuple[int, ...]) -> tuple[Waypoint, ...]:
+        return tuple(self.points[key] for key in keys)
 
-        self.route = None
+    def _shared_headings(self) -> dict[int, float]:
+        points = {key: (waypoint.x, waypoint.z) for key, waypoint in self.points.items()}
+
+        return shared_headings(self.routes, points)
+
+    def _searched_with(self, keys: tuple[int, ...], shared: dict[int, float]) -> tuple:
+        """What a route is searched with: its waypoints and their fixed headings."""
+
+        return self._route_waypoints(keys), tuple(shared.get(key) for key in keys)
+
+    def _is_current(self, pair: tuple[int, int]) -> bool:
+        found = self._found.get(pair)
+        keys = (pair[0], *self._vias.get(pair, ()), pair[1])
+
+        return found is not None and found.searched == self._searched_with(
+            keys, self._shared_headings()
+        )
+
+    def _outdate(self):
+        """Marks all routes for a new search, e.g. after the network changed, and starts it."""
+
+        for found in self._found.values():
+            found.searched = None
+
+        self._search()
+
+    def _search(self):
+        """Starts a search for the routes whose waypoints changed. A running search is outdated
+        then: it is cancelled, and the new one starts once it has stopped. The last routes stay
+        shown."""
 
         if self._running is not None:
             self._running["cancelled"].set()
@@ -314,46 +567,87 @@ class FindRouteOperation(EditOperation):
             self.preview_changed.emit()
             return
 
-        request = self._request()
+        pairs = self.pairs
+        self._found = {pair: found for pair, found in self._found.items() if pair in pairs}
+        autodrive_data = self.autodrive_data_provider()
+        stale = [pair for pair in pairs if not self._is_current(pair)]
 
-        if request is None:
-            self.shown_route = None
+        if autodrive_data is None or not stale or self.costmap_provider() is None:
+            if autodrive_data is None or self.costmap_provider() is None:
+                self._found = {}
+
             self.preview_changed.emit()
             return
 
+        search = self._tree_search(autodrive_data)
+        shared = self._shared_headings()
+        searched = {
+            pair: self._searched_with(keys, shared)
+            for pair, keys in zip(pairs, self.routes, strict=True)
+        }
         self._search_number += 1
         finder = RouteFinder(self.costmap_provider(), self.vehicle_provider())
         number = self._search_number
         cancelled = self._background.start(
-            lambda cancelled: finder.find(request, cancelled),
-            lambda route: self._finish(number, route),
-            lambda: self._finish(number, None, failed=True),
+            lambda cancelled: search.run(finder, cancelled),
+            lambda routes: self._finish(number, pairs, searched, routes),
+            lambda: self._finish(number, stale, searched, None, failed=True),
         )
         self._running = {"number": number, "cancelled": cancelled}
 
         self.searching_changed.emit(True)
         self.preview_changed.emit()
 
-    def _request(self) -> RouteRequest | None:
-        autodrive_data = self.autodrive_data_provider()
-
-        if autodrive_data is None or len(self.waypoints) < 2 or self.costmap_provider() is None:
-            return None
+    def _tree_nodes(self, autodrive_data: AutoDriveData) -> TreeNodes:
+        """The nodes for the routes; waypoints that are no node get new IDs."""
 
         lanes = self._lanes(autodrive_data)
+        positions = {
+            node_id: (node.x, node.z)
+            for node_id in {lane.source_id for lane in lanes} | {lane.target_id for lane in lanes}
+            if (node := autodrive_data.nodes.get(node_id)) is not None
+        }
+        next_id = max(autodrive_data.nodes, default=0) + 1
+        node_ids = {}
 
-        return RouteRequest(
-            tuple((waypoint.x, waypoint.z) for waypoint in self.waypoints),
-            self._headings(autodrive_data, self.waypoints[0]),
-            self._headings(autodrive_data, self.waypoints[-1]),
-            tuple((lane.source, lane.target) for lane in lanes),
-            turning_radius=self.curve_radius_provider(),
-        )
+        for key, waypoint in self.points.items():
+            if waypoint.node_id is None:
+                node_ids[key] = next_id
+                next_id += 1
+            else:
+                node_ids[key] = waypoint.node_id
+
+            positions[node_ids[key]] = (waypoint.x, waypoint.z)
+
+        vehicle = self.vehicle_provider()
+        width = vehicle.width + vehicle.margin
+
+        return TreeNodes(node_ids, positions, tuple(lanes), self.spacing_provider(), width, next_id)
+
+    def _tree_search(self, autodrive_data: AutoDriveData) -> TreeSearch:
+        lanes = tuple((lane.source, lane.target) for lane in self._lanes(autodrive_data))
+        shared = self._shared_headings()
+        requests = [
+            RouteRequest(
+                tuple((waypoint.x, waypoint.z) for waypoint in self._route_waypoints(keys)),
+                self._headings(autodrive_data, self.points[keys[0]]),
+                self._headings(autodrive_data, self.points[keys[-1]]),
+                lanes,
+                turning_radius=self.curve_radius_provider(),
+                waypoint_headings=tuple(shared.get(key) for key in keys),
+            )
+            for keys in self.routes
+        ]
+        routes = [
+            self._found[pair].route if self._is_current(pair) else None for pair in self.pairs
+        ]
+
+        return TreeSearch(self.routes, requests, routes, self._tree_nodes(autodrive_data))
 
     def _lanes(self, autodrive_data: AutoDriveData):
         """The planned lanes routes can share, without the connections that get split."""
 
-        split = {waypoint.connection for waypoint in self.waypoints if waypoint.connection}
+        split = {waypoint.connection for waypoint in self.points.values() if waypoint.connection}
         split |= {(target, source) for source, target in split}
 
         return [
@@ -385,7 +679,7 @@ class FindRouteOperation(EditOperation):
 
         return tuple(headings) or None
 
-    def _finish(self, number: int, route, failed: bool = False):
+    def _finish(self, number: int, pairs, searched, routes, failed: bool = False):
         if self._running is None or number != self._running["number"]:
             return
 
@@ -397,15 +691,26 @@ class FindRouteOperation(EditOperation):
             return
 
         self.searching_changed.emit(False)
-        self.route = self.shown_route = route
+
+        for index, pair in enumerate(pairs):
+            route = None if failed or routes is None else routes[index]
+            self._found[pair] = _Found(route, searched[pair])
+
+        routes = self.current_routes
 
         if failed:
             self.status_changed.emit(tr("The route search failed. Details are in the log file"))
-        elif route is None:
+        elif self.is_tree:
+            if all(route is not None and route.is_clear for route in routes):
+                message = tr("Routes found. Enter adds them to the plan")
+                self.status_changed.emit(". ".join([message, *self.join_warnings()]))
+            else:
+                self.status_changed.emit(self._unclear_message(routes))
+        elif routes[0] is None:
             self.status_changed.emit(tr("No route found through the waypoints"))
-        elif not route.is_complete:
-            self.status_changed.emit(self._gap_message(route))
-        elif not route.is_clear:
+        elif not routes[0].is_complete:
+            self.status_changed.emit(self._gap_message(routes[0]))
+        elif not routes[0].is_clear:
             self.status_changed.emit(
                 tr("The route crosses obstacles (red). Move nodes or waypoints until it is clear")
             )
@@ -414,6 +719,19 @@ class FindRouteOperation(EditOperation):
             self.status_changed.emit(". ".join([message, *self.join_warnings()]))
 
         self.preview_changed.emit()
+
+    def _unclear_message(self, routes: list[Route | None]) -> str:
+        """Names the routes that are not clear, by their start and end node."""
+
+        names = [
+            f"{self.points[start].node_id} → {self.points[end].node_id}"
+            for (start, end), route in zip(self.pairs, routes, strict=True)
+            if route is None or not route.is_clear
+        ]
+
+        return tr(
+            "Not clear yet (red): {routes}. Move or add waypoints there", routes=", ".join(names)
+        )
 
     def _gap_message(self, route: Route) -> str:
         if route.too_close:
@@ -432,30 +750,30 @@ class FindRouteOperation(EditOperation):
 
     def _handle_data_changed(self, _data_change):
         """Waypoints on nodes or connections follow them; waypoints of deleted nodes or
-        connections become free ones. The route is searched again, as moved nodes or the plan
-        may change it."""
+        connections become free ones. The routes are searched again, as moved nodes or the plan
+        may change them."""
 
         autodrive_data = self.autodrive_data_provider()
 
-        if not self.waypoints or autodrive_data is None:
+        if not self.points or autodrive_data is None:
             return
 
-        for index, waypoint in enumerate(self.waypoints):
+        for key, waypoint in self.points.items():
             if waypoint.connection is not None:
-                self.waypoints[index] = self._on_connection(autodrive_data, waypoint)
+                self.points[key] = self._on_connection(autodrive_data, waypoint)
                 continue
 
             if waypoint.node_id is None:
                 continue
 
             node = autodrive_data.nodes.get(waypoint.node_id)
-            self.waypoints[index] = (
+            self.points[key] = (
                 Waypoint(waypoint.x, waypoint.z)
                 if node is None
                 else Waypoint(node.x, node.z, node.node_id)
             )
 
-        self._search()
+        self._outdate()
 
     @staticmethod
     def _on_connection(autodrive_data: AutoDriveData, waypoint: Waypoint) -> Waypoint:
@@ -476,79 +794,48 @@ class FindRouteOperation(EditOperation):
             z=source.z + fraction * (target.z - source.z),
         )
 
-    def _route_command(self, autodrive_data: AutoDriveData, route: Route) -> AddRouteCommand:
-        """The edit that adds the route."""
+    def _route_command(self, autodrive_data: AutoDriveData, routes: list[Route]) -> AddRouteCommand:
+        """The edit that adds the routes."""
 
-        lanes = self._lanes(autodrive_data)
-        positions = {
-            node_id: (node.x, node.z)
-            for node_id in {lane.source_id for lane in lanes} | {lane.target_id for lane in lanes}
-            if (node := autodrive_data.nodes.get(node_id)) is not None
-        }
-        next_id = max(autodrive_data.nodes, default=0) + 1
+        nodes = self._tree_nodes(autodrive_data)
         new_nodes = []
-        waypoint_ids = []
         split_connections = []
 
         # Free waypoints become new nodes; a waypoint on a connection splits it with a new node.
-        for waypoint in self.waypoints:
-            if waypoint.node_id is None:
-                y = self.height_for_new_node(autodrive_data, waypoint.x, waypoint.z)
-                new_nodes.append(NodeData(next_id, waypoint.x, y, waypoint.z))
-                waypoint_ids.append(next_id)
-
-                if waypoint.connection is not None:
-                    source_id, target_id = waypoint.connection
-                    state = read_connection_state(autodrive_data, source_id, target_id)
-                    split_connections += [
-                        (source_id, target_id, NO_CONNECTION),
-                        (source_id, next_id, state),
-                        (next_id, target_id, state),
-                    ]
-
-                next_id += 1
-            else:
-                waypoint_ids.append(waypoint.node_id)
-
-            positions[waypoint_ids[-1]] = (waypoint.x, waypoint.z)
-
-        vehicle = self.vehicle_provider()
-        indices = route.waypoint_indices
-        chain: list = [waypoint_ids[0]]
-
-        for leg, (start_id, goal_id) in enumerate(pairwise(waypoint_ids)):
-            points = route.points[indices[leg] : indices[leg + 1] + 1]
-            leg_chain = route_nodes(
-                points,
-                start_id,
-                goal_id,
-                positions,
-                lanes,
-                self.spacing_provider(),
-                vehicle.width + vehicle.margin,
-            )
-            chain += leg_chain[1:]
-
-        node_ids = []
-
-        for item in chain:
-            if isinstance(item, int):
-                node_ids.append(item)
+        for key, waypoint in self.points.items():
+            if waypoint.node_id is not None:
                 continue
 
-            x, z = item
-            y = self.height_for_new_node(autodrive_data, x, z)
-            new_nodes.append(NodeData(next_id, x, y, z))
-            node_ids.append(next_id)
-            next_id += 1
+            node_id = nodes.node_ids[key]
+            y = self.height_for_new_node(autodrive_data, waypoint.x, waypoint.z)
+            new_nodes.append(NodeData(node_id, waypoint.x, y, waypoint.z))
 
-        connections = split_connections + chain_connections(autodrive_data, node_ids)
+            if waypoint.connection is not None:
+                source_id, target_id = waypoint.connection
+                state = read_connection_state(autodrive_data, source_id, target_id)
+                split_connections += [
+                    (source_id, target_id, NO_CONNECTION),
+                    (source_id, node_id, state),
+                    (node_id, target_id, state),
+                ]
+
+        tree = tree_chains(
+            [TreeRoute(keys, route) for keys, route in zip(self.routes, routes, strict=True)],
+            nodes,
+        )
+
+        for node_id, (x, z) in tree.new_positions.items():
+            new_nodes.append(
+                NodeData(node_id, x, self.height_for_new_node(autodrive_data, x, z), z)
+            )
+
+        connections = split_connections + tree_connections(autodrive_data, tree.chains)
         dual = CONNECTION_STATES[ConnectionType.DUAL]
         logger.debug(
-            "Route of %d points: %d new nodes, existing nodes used %s, made dual %s",
-            len(route.points),
+            "%d routes: %d new nodes, existing nodes used %s, made dual %s",
+            len(routes),
             len(new_nodes),
-            [item for item in chain if isinstance(item, int) and item in autodrive_data.nodes],
+            sorted({n for chain in tree.chains for n in chain if n in autodrive_data.nodes}),
             [(source, target) for source, target, state in connections if state == dual],
         )
 

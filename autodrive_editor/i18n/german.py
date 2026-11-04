@@ -707,6 +707,11 @@ TEXTS = {
     ),
     "The route crosses obstacles (red). Move nodes or waypoints until it is clear": "Die Route kreuzt Hindernisse (rot). Nodes oder Wegpunkte verschieben, bis sie frei ist",
     "Route found. Enter adds it to the plan": "Route gefunden. Enter fügt sie dem Plan hinzu",
+    "Routes found. Enter adds them to the plan": "Routen gefunden. Enter fügt sie dem Plan hinzu",
+    "The routes are still being searched": "Die Routen werden noch gesucht",
+    "{routes} routes with {count} new nodes added": "{routes} Routen mit {count} neuen Nodes hinzugefügt",
+    "With several starts or ends, all starts and ends are nodes": "Bei mehreren Starts oder Zielen sind alle Starts und Ziele Nodes",
+    "Not clear yet (red): {routes}. Move or add waypoints there": "Noch nicht frei (rot): {routes}. Dort Wegpunkte verschieben oder hinzufügen",
     # editing/join_rules.py
     "Node {id} is a marker: other routes would lead through it": "Node {id} ist ein Marker: andere Routen würden durch ihn führen",
     "Nothing drives to node {id}, so the route cannot be reached": "Zu Node {id} führt nichts, die Route ist also nicht erreichbar",
@@ -855,7 +860,8 @@ TEXTS = {
     "The RoutesManager has no routes of this map.": "Der RoutesManager hat keine Routen dieser Karte.",
     # Find route
     "Clear (Esc)": "Leeren (Esc)",
-    "Click nodes, connections or free ground as waypoints; drag waypoints or nodes to change the route. Delete or right-click removes the waypoint under the pointer, Backspace the last one, Ctrl+Z undoes a waypoint change, Enter adds the route": "Nodes, Connections oder freie Stellen als Wegpunkte anklicken; Wegpunkte oder Nodes ziehen, um die Route zu ändern. Entf oder Rechtsklick entfernt den Wegpunkt unter dem Mauszeiger, Rücktaste den letzten, Strg+Z nimmt eine Wegpunkt-Änderung zurück, Enter fügt die Route hinzu",
+    "Click nodes, connections or free ground as waypoints, Shift+click or Ctrl+click nodes for more starts or ends; drag waypoints or nodes to change the routes. Delete or right-click removes the waypoint under the pointer, Backspace the last one, Ctrl+Z undoes a waypoint change, Enter adds the routes": "Nodes, Connections oder freie Stellen als Wegpunkte anklicken, Umschalt+Klick oder Strg+Klick auf Nodes für weitere Starts oder Ziele; Wegpunkte oder Nodes ziehen, um die Routen zu ändern. Entf oder Rechtsklick entfernt den Wegpunkt unter dem Mauszeiger, Rücktaste den letzten, Strg+Z nimmt eine Wegpunkt-Änderung zurück, Enter fügt die Routen hinzu",
+    "Shift+click or Ctrl+click a node to add a start or an end": "Umschalt+Klick oder Strg+Klick auf einen Node fügt einen Start oder ein Ziel hinzu",
     "Remove last (Backspace)": "Letzten entfernen (Rücktaste)",
     "A marker name pattern must not be empty.": "Ein Markername-Muster darf nicht leer sein.",
     "Every stop type needs a group.": "Jede Halteart braucht eine Gruppe.",

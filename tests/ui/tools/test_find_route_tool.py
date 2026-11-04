@@ -250,3 +250,18 @@ def test_options_bar_buttons_remove_the_last_waypoint_and_clear(window):
 
     options.clear_button.click()
     assert window.find_route_operation.waypoints == []
+
+
+def test_shift_and_ctrl_click_on_nodes_add_starts_and_ends(window):
+    click(window, view_pos(window, 0, 0))
+    click(window, view_pos(window, 10, 0), modifiers=Qt.ShiftModifier)
+    click(window, view_pos(window, 20, 0), modifiers=Qt.ControlModifier)
+    wait(window)
+
+    operation = window.find_route_operation
+    assert [operation.points[key].node_id for key in operation.starts] == [1, 2]
+    assert [operation.points[key].node_id for key in operation.ends] == [3]
+    assert len(operation.shown_routes) == 2
+
+    click(window, view_pos(window, 0, 20), modifiers=Qt.ShiftModifier)
+    assert len(operation.points) == 3

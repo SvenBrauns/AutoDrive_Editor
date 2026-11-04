@@ -1,7 +1,8 @@
 """Turns the points of a found route into nodes and connections.
 
 Where the route runs along a planned lane, it uses the lane's nodes instead of new ones, except
-along a lane right out of its start or right into its goal, where it keeps its own way. Where it
+along a lane right out of its start or right into its goal, where it keeps its own way (unless the
+lane belongs to a route with the same start or goal, see route_tree). Where it
 runs against the lane's direction closer than a lane width, the lane becomes dual there: the way
 back shares the lane because there was no room for its own.
 """
@@ -102,10 +103,12 @@ def route_nodes(
     lanes: list[PlannedLane],
     spacing: float,
     lane_width: float = 3.5,
+    shared_ends: frozenset[tuple[int, int]] = frozenset(),
 ) -> list[int | Point]:
     """The route as a chain in driving order: IDs of existing nodes and positions of new ones.
     `positions` has the position of every node the chain can use: start, goal and lane ends.
-    Driving against a lane closer than `lane_width` shares it."""
+    Driving against a lane closer than `lane_width` shares it. The lanes (source ID, target ID)
+    in `shared_ends` are shared right at the start or goal, too."""
 
     shares = [_shared_lane(points, index, lanes, lane_width) for index in range(len(points))]
     _drop_short_shares(points, shares)
@@ -132,6 +135,9 @@ def route_nodes(
         # route's start or goal: the stretch is free.
         at_end = index == 0 or end == len(points) or start_id in shared_ids or goal_id in shared_ids
         at_end = at_end and all(forward for _, forward, _ in shares[index:end])
+        at_end = at_end and not all(
+            (lane.source_id, lane.target_id) in shared_ends for lane, _, _ in shares[index:end]
+        )
 
         if len(shared_ids) < 2 or at_end:
             free_points += points[index:end]

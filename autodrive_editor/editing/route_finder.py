@@ -129,6 +129,8 @@ class RouteRequest:
     free_length: float = 20.0
     # Radius of the arcs and of the fallback search, e.g. CURVE_RADIUS; None for the vehicle's.
     turning_radius: float | None = None
+    # Per waypoint a fixed heading to pass it at, or None; only inner waypoints use it.
+    waypoint_headings: tuple[float | None, ...] = ()
 
     @property
     def start(self) -> Point:
@@ -306,8 +308,8 @@ class RouteFinder:
 
     def _built(self, request: RouteRequest, radius: float, cancelled) -> Route | None:
         """The route built leg by leg (see route_pipeline); a leg that cannot be built is
-        searched (see _searched). Inner waypoints are passed at the heading halfway between the
-        lines into and out of them."""
+        searched (see _searched). Inner waypoints are passed at their fixed heading, else at the
+        heading halfway between the lines into and out of them."""
 
         search = _Search(self, request, WINDOW_MARGIN)
         cheapest = min(BAND_COSTS) * (SAME_LANE if search.lanes else 1.0)
@@ -322,9 +324,12 @@ class RouteFinder:
         for leg in range(last):
             started = time.perf_counter()
             start, goal = points[-1], waypoints[leg + 1]
+            fixed = request.waypoint_headings[leg + 1] if request.waypoint_headings else None
 
             if leg + 1 == last:
                 goal_headings = request.goal_headings
+            elif fixed is not None:
+                goal_headings = (fixed,)
             else:
                 goal_headings = (bisector(waypoints[leg], goal, waypoints[leg + 2]),)
 
@@ -354,7 +359,7 @@ class RouteFinder:
             leg_request = RouteRequest(
                 (start, goal),
                 start_headings,
-                request.goal_headings if leg + 1 == last else None,
+                goal_headings if leg + 1 == last or fixed is not None else None,
                 request.lanes,
                 request.free_radius,
                 request.free_length,
@@ -425,6 +430,12 @@ class RouteFinder:
             request.turning_radius or "of the vehicle",
             self.vehicle,
         )
+
+        if any(heading is not None for heading in request.waypoint_headings):
+            logger.debug(
+                "Fixed waypoint headings %s",
+                ", ".join("–" if h is None else degrees((h,)) for h in request.waypoint_headings),
+            )
 
 
 class _Search:

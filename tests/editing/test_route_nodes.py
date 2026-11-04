@@ -119,6 +119,18 @@ def test_the_stretch_into_the_goal_or_out_of_the_start_is_not_shared():
     assert [item for item in chain if isinstance(item, int)] == [1, 2]
 
 
+def test_lanes_of_a_route_with_the_same_start_are_shared_from_the_start():
+    # A route from the same start ran along 1 → 4 → 5 first.
+    lanes = [PlannedLane(1, 4, (0, 0), (5, 0)), PlannedLane(4, 5, (5, 0), (10, 0))]
+    positions = {1: (0, 0), 2: (40, 0), 4: (5, 0), 5: (10, 0)}
+
+    chain = route_nodes(
+        line((0, 0), (40, 0)), 1, 2, positions, lanes, 5.0, shared_ends=frozenset({(1, 4), (4, 5)})
+    )
+
+    assert [item for item in chain if isinstance(item, int)] == [1, 4, 5, 2]
+
+
 def test_crossing_lanes_are_not_shared():
     lanes = [PlannedLane(10, 11, (10, -10), (10, 10))]
     positions = {1: (0, 0), 2: (20, 0), 10: (10, -10), 11: (10, 10)}

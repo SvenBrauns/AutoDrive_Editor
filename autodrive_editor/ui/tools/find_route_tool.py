@@ -22,12 +22,13 @@ OUTDATED_OPACITY = 0.45
 
 
 class FindRouteTool(MapTool):
-    """Left click on a node or free ground adds a waypoint. Left dragging a free waypoint moves
-    it, left dragging a node moves the node. Pressing on the route inserts a waypoint there,
-    which a drag moves at once. Left dragging elsewhere pans. Right click on a
-    waypoint or Delete on the waypoint under the pointer removes it, Backspace the last one. Esc
-    removes all waypoints, Ctrl+Z takes back the last waypoint change, Enter adds the route to the
-    plan and starts empty."""
+    """Left click on a node or free ground adds a waypoint; Shift+click on a node adds another
+    start, Ctrl+click another end, for a route from every start to every end. Left dragging a
+    free waypoint moves it, left dragging a node moves the node. Pressing on a route inserts a
+    waypoint there into every route passing there, which a drag moves at once. Left dragging
+    elsewhere pans. Right click on a waypoint or Delete on the waypoint under the pointer removes
+    it, Backspace the one added last. Esc removes all waypoints, Ctrl+Z takes back the last
+    waypoint change, Enter adds the routes to the plan and starts empty."""
 
     RIGHT_CLICK_CANCELS = False
 
@@ -54,11 +55,14 @@ class FindRouteTool(MapTool):
         self._z_value = z_value
 
         self._active = False
+        # Keys of the dragged waypoint and of the one under the pointer, drawn highlighted;
+        # Delete removes it.
         self._dragged_waypoint: int | None = None
-        # The waypoint under the pointer, drawn highlighted; Delete removes it.
         self._hovered: int | None = None
         self._node_drag = DragGesture()
         self._pressed_node_id: int | None = None
+        # Shift or Ctrl held when the node was pressed: a click adds a start or an end.
+        self._pressed_modifiers = Qt.NoModifier
 
         self._route_item: QGraphicsPathItem | None = None
         self._blocked_item: QGraphicsPathItem | None = None
@@ -106,15 +110,17 @@ class FindRouteTool(MapTool):
 
         if node is not None and self.move_nodes_operation.begin_drag(position):
             self._pressed_node_id = node.node_id
+            self._pressed_modifiers = event.modifiers()
             self._node_drag.press(Qt.LeftButton, position)
             return True
 
         scene_position = self.view.mapToScene(position)
-        leg = self._leg_at(position)
+        legs = self._legs_at(position)
 
-        if leg is not None:
-            self.operation.insert_waypoint(leg + 1, scene_position.x(), scene_position.y())
-            self._dragged_waypoint = leg + 1
+        if legs:
+            self._dragged_waypoint = self.operation.insert_waypoint(
+                scene_position.x(), scene_position.y(), legs
+            )
             return True
 
         self._begin_pan(event)
@@ -162,7 +168,7 @@ class FindRouteTool(MapTool):
                 self.move_nodes_operation.finish_drag()
             else:
                 self.move_nodes_operation.cancel_drag()
-                self._add_waypoint(node_id=self._pressed_node_id)
+                self._add_waypoint(node_id=self._pressed_node_id, modifiers=self._pressed_modifiers)
 
             self._pressed_node_id = None
             return True
@@ -173,7 +179,9 @@ class FindRouteTool(MapTool):
             scene_position = self.view.mapToScene(position)
             connection = self._connection_at(position)
 
-            if connection is not None and self.operation.missing_costmap_message() is None:
+            if event.modifiers() & (Qt.ShiftModifier | Qt.ControlModifier):
+                self._add_waypoint(modifiers=event.modifiers())
+            elif connection is not None and self.operation.missing_costmap_message() is None:
                 self.operation.add_waypoint_on_connection(
                     connection.source_id,
                     connection.target_id,
@@ -203,7 +211,7 @@ class FindRouteTool(MapTool):
         return self.operation.remove_last()
 
     def remove_hovered(self) -> bool:
-        if self._hovered is None or self._hovered >= len(self.operation.waypoints):
+        if self._hovered not in self.operation.points:
             return False
 
         index, self._hovered = self._hovered, None
@@ -218,9 +226,10 @@ class FindRouteTool(MapTool):
 
     def status_hint(self) -> str | None:
         return self.operation.missing_costmap_message() or tr(
-            "Click nodes, connections or free ground as waypoints; drag waypoints or nodes to "
-            "change the route. Delete or right-click removes the waypoint under the pointer, "
-            "Backspace the last one, Ctrl+Z undoes a waypoint change, Enter adds the route"
+            "Click nodes, connections or free ground as waypoints, Shift+click or Ctrl+click "
+            "nodes for more starts or ends; drag waypoints or nodes to change the routes. Delete "
+            "or right-click removes the waypoint under the pointer, Backspace the last one, "
+            "Ctrl+Z undoes a waypoint change, Enter adds the routes"
         )
 
     def cursor_at(self, view_position: QPoint) -> Qt.CursorShape:
@@ -233,7 +242,7 @@ class FindRouteTool(MapTool):
         if self._waypoint_at(view_position, free_only=True) is not None:
             return Qt.SizeAllCursor
 
-        if not self.view.has_node_at(view_position) and self._leg_at(view_position) is not None:
+        if not self.view.has_node_at(view_position) and self._legs_at(view_position):
             return Qt.SizeAllCursor
 
         if self.view.has_node_at(view_position) or self._connection_at(view_position) is not None:
@@ -241,8 +250,20 @@ class FindRouteTool(MapTool):
 
         return Qt.CrossCursor
 
-    def _add_waypoint(self, x: float = 0.0, z: float = 0.0, node_id: int | None = None):
+    def _add_waypoint(
+        self, x: float = 0.0, z: float = 0.0, node_id: int | None = None, modifiers=Qt.NoModifier
+    ):
         message = self.operation.missing_costmap_message()
+
+        if message is None and modifiers & (Qt.ShiftModifier | Qt.ControlModifier):
+            if node_id is None:
+                message = tr("Shift+click or Ctrl+click a node to add a start or an end")
+            elif modifiers & Qt.ShiftModifier:
+                self.operation.add_start(node_id)
+                return
+            else:
+                self.operation.add_end(node_id)
+                return
 
         if message is not None:
             self.operation.status_changed.emit(message)
@@ -250,21 +271,21 @@ class FindRouteTool(MapTool):
 
         self.operation.add_waypoint(x, z, node_id)
 
-    def _leg_at(self, view_position: QPoint) -> int | None:
+    def _legs_at(self, view_position: QPoint) -> dict[int, int]:
         scene_position = self.view.mapToScene(view_position)
         tolerance = self.HANDLE_GRAB_DISTANCE / max(self.view.zoom_level, 1e-6)
 
-        return self.operation.leg_at(scene_position.x(), scene_position.y(), tolerance)
+        return self.operation.legs_at(scene_position.x(), scene_position.y(), tolerance)
 
     def _waypoint_at(self, view_position: QPoint, free_only: bool = False) -> int | None:
-        for index, waypoint in reversed(list(enumerate(self.operation.waypoints))):
+        for key, waypoint in reversed(self.operation.points.items()):
             if free_only and not waypoint.is_free:
                 continue
 
             handle_position = self.view.mapFromScene(QPointF(waypoint.x, waypoint.z))
 
             if QLineF(handle_position, view_position).length() <= self.HANDLE_GRAB_DISTANCE:
-                return index
+                return key
 
         return None
 
@@ -273,11 +294,13 @@ class FindRouteTool(MapTool):
             self._hide_preview()
             return
 
-        waypoints = self.operation.waypoints
-        route = self.operation.shown_route if len(waypoints) > 1 else None
+        operation = self.operation
         clear_path, blocked_path, gap_path = QPainterPath(), QPainterPath(), QPainterPath()
 
-        if route is not None:
+        for route in operation.shown_routes:
+            if route is None:
+                continue
+
             for (a, b), blocked in zip(
                 pairwise(route.points), pairwise(route.blocked), strict=False
             ):
@@ -291,7 +314,8 @@ class FindRouteTool(MapTool):
                 for point in route.gap[1:]:
                     gap_path.lineTo(*point)
 
-        opacity = 1.0 if self.operation.route is not None else OUTDATED_OPACITY
+        current = operation.current_routes
+        opacity = 1.0 if current and None not in current else OUTDATED_OPACITY
         self._route_item = self._show(
             self._route_item, clear_path, QPen(QColor(*self._color_provider()), 2.5), opacity
         )
@@ -304,32 +328,32 @@ class FindRouteTool(MapTool):
 
         guide = QPainterPath()
 
-        for index, waypoint in enumerate(waypoints):
-            if index == 0:
-                guide.moveTo(waypoint.x, waypoint.z)
-            else:
-                guide.lineTo(waypoint.x, waypoint.z)
+        for keys in operation.routes:
+            guide.moveTo(operation.points[keys[0]].x, operation.points[keys[0]].z)
+
+            for key in keys[1:]:
+                guide.lineTo(operation.points[key].x, operation.points[key].z)
 
         self._guide_item = self._show(self._guide_item, guide, QPen(GUIDE_COLOR, 1.0, Qt.DotLine))
         self._update_handles()
 
     def _update_handles(self):
-        waypoints = self.operation.waypoints
+        keys = list(self.operation.points)
         self._handle_items = [item for item in self._handle_items if self._valid(item)]
 
-        while len(self._handle_items) < len(waypoints):
+        while len(self._handle_items) < len(keys):
             self._handle_items.append(self._new_handle_item())
 
         for index, item in enumerate(self._handle_items):
-            item.setVisible(index < len(waypoints))
+            item.setVisible(index < len(keys))
 
-            if index < len(waypoints):
-                waypoint = waypoints[index]
+            if index < len(keys):
+                waypoint = self.operation.points[keys[index]]
                 item.setPos(waypoint.x, waypoint.z)
                 # Free waypoints are filled white, waypoints on nodes or connections only ringed.
                 filled = waypoint.is_free
                 item.setBrush(QBrush(QColor(255, 255, 255)) if filled else QBrush(Qt.NoBrush))
-                hovered = index == self._hovered
+                hovered = keys[index] == self._hovered
                 item.setPen(QPen(HOVER_COLOR if hovered else HANDLE_COLOR, 3.0 if hovered else 1.5))
 
     def _new_handle_item(self) -> QGraphicsEllipseItem:
