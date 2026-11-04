@@ -47,3 +47,12 @@ def test_road_points_have_a_node_at_each_fixed_distance():
     assert any(p == pytest.approx((30, 0)) for p in points)
     assert any(p == pytest.approx((55.5, 0)) for p in points)
     assert max(math.dist(a, b) for a, b in pairwise(points)) <= 12.0 + 1e-6
+
+
+def test_fixed_distances_close_together_or_to_an_end_share_a_node():
+    road = yard_road([(0, 0), (50, 0), (50, 50)], radius=6.0).road
+    points = road_points(road, 12.0, [0.3, 20.0, 20.25, 20.6, length(road) - 0.4])
+
+    gaps = [math.dist(a, b) for a, b in pairwise(points)]
+    assert min(gaps) >= 0.5
+    assert any(p == pytest.approx((20, 0)) for p in points)

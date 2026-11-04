@@ -19,6 +19,8 @@ Point = tuple[float, float]
 
 # The road is drawn with points this far apart (in metres) before its nodes are spaced.
 LINE_STEP = 0.25
+# Road nodes where branches leave and join lie at least this far apart (in metres).
+MIN_GAP = 1.0
 
 
 @dataclass(frozen=True)
@@ -63,11 +65,19 @@ def _line(corners: list[Point], radius: float) -> list[Point] | None:
 
 def road_points(line: list[Point], spacing: float, fixed: list[float] = ()) -> list[Point]:
     """Node positions along the line as AutoDrive records a drive, with a node exactly at each
-    of the `fixed` distances from the start (where branches leave and join)."""
+    of the `fixed` distances from the start (where branches leave and join). Fixed distances
+    closer than MIN_GAP to one before them or to an end share that node."""
 
     points: list[Point] = []
+    kept: list[float] = []
 
-    for part in _split_at(line, sorted(fixed)):
+    for distance in sorted(fixed):
+        if MIN_GAP <= distance <= length(line) - MIN_GAP and (
+            not kept or distance - kept[-1] >= MIN_GAP
+        ):
+            kept.append(distance)
+
+    for part in _split_at(line, kept):
         spaced = _recorded(part, spacing) if len(part) > 1 else part
         points += spaced if not points else spaced[1:]
 
