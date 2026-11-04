@@ -460,26 +460,32 @@ class MainWindow(QMainWindow):
         dialog._update()
         self.scene.addItem(overlay)
         handle_tool = LaneHandleTool(
-            self.view, dialog.handles, dialog.drag_handle, self.selection_coordinator.get_node_at
+            self.view,
+            dialog.handles,
+            dialog.drag_handle,
+            self.selection_coordinator.get_node_at,
+            drawing=dialog,
         )
 
         place_beside(dialog, self.view, [stop.position[::2] for stop in stops])
 
         try:
-            accepted = self._run_beside_map(dialog, handle_tool)
+            # Enter and Esc on the map finish drawing the yard road.
+            keys = {Qt.Key_Return, Qt.Key_Enter, Qt.Key_Escape}
+            accepted = self._run_beside_map(dialog, handle_tool, keys)
         finally:
             self.scene.removeItem(overlay)
 
-        return (dialog.choices, dialog.settings) if accepted else None
+        return (dialog.lane_choices, dialog.settings, dialog.yard) if accepted else None
 
-    def _run_beside_map(self, dialog: QDialog, tool: MapTool | None = None) -> bool:
+    def _run_beside_map(self, dialog: QDialog, tool: MapTool | None = None, map_keys=()) -> bool:
         """Runs the dialog without blocking the map: it can be moved, zoomed and rotated, but
         nothing else in the window reacts until the dialog is closed. tool, if given, handles
-        the mouse on the map instead of plain navigation."""
+        the mouse on the map instead of plain navigation, and the keys in map_keys."""
 
         loop = QEventLoop()
         dialog.finished.connect(loop.quit)
-        input_filter = MapOnlyInput(self, self.view)
+        input_filter = MapOnlyInput(self, self.view, map_keys)
         QApplication.instance().installEventFilter(input_filter)
         self.view.set_override_tool(tool or NavigateTool(self.view))
 
@@ -648,6 +654,7 @@ class MainWindow(QMainWindow):
             context,
             # Looked up on each call, so tests can replace _ask_station_choices.
             ask_choices=lambda stops, data: self._ask_station_choices(stops, data),
+            height_for_new_node=self.create_nodes_operation.height_for_new_node,
             parent=self,
         )
 

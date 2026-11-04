@@ -14,19 +14,33 @@ in station_layout.
 
 import bisect
 import math
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
 from itertools import pairwise
 
+from autodrive_editor.editing.commands.add_route import AddRouteCommand
 from autodrive_editor.editing.dubins import advance, shortest_path
 from autodrive_editor.editing.junction import CurveKind, _turns_little, kinked
 from autodrive_editor.editing.planned_piece import PlannedPiece
-from autodrive_editor.editing.station_layout import StationSettings, StopChoice, direction
+from autodrive_editor.editing.station_layout import (
+    StationSettings,
+    StopChoice,
+    can_join,
+    direction,
+    lane_parts,
+)
 from autodrive_editor.editing.yard_road import LINE_STEP, YardRoad, length, road_points
 from autodrive_editor.file_io.savegame_stations import Stop, StopKind
 from autodrive_editor.i18n import tr
-from autodrive_editor.model.autodrive_data import REGULAR_FLAG, SUBPRIO_FLAG
-from autodrive_editor.model.connections import ConnectionType
+from autodrive_editor.model.autodrive_data import (
+    REGULAR_FLAG,
+    SUBPRIO_FLAG,
+    AutoDriveData,
+    MarkerData,
+    NodeData,
+)
+from autodrive_editor.model.connections import CONNECTION_STATES, ConnectionType
 
 Point = tuple[float, float]
 Pose = tuple[float, float, float]
@@ -263,6 +277,69 @@ def _build(road, ring, chains, reverses, problems, spacing) -> YardPlan:
         piece.connect(named[source], named[target], ConnectionType.REVERSE)
 
     return YardPlan(piece, (first, None if road.loop else road_ids[-1]), problems)
+
+
+def joined_ends(
+    autodrive_data: AutoDriveData,
+    corners: list[Point],
+    corner_nodes: list[int | None],
+    loop: bool,
+) -> tuple[list[Point], tuple[int | None, int | None]]:
+    """The corners with each end that may join the node it was put on moved onto it, and the
+    nodes the road's start and end join. The start node must be driven to (for a Loop's two-way
+    stem also driven from), the end node driven from; a Loop has no end."""
+
+    corners = list(corners)
+    start, end = corner_nodes[0], None if loop else corner_nodes[-1]
+
+    if start is not None and not (
+        can_join(autodrive_data, start, True)
+        and (not loop or can_join(autodrive_data, start, False))
+    ):
+        start = None
+
+    if end is not None and not can_join(autodrive_data, end, False):
+        end = None
+
+    for index, node_id in ((0, start), (-1, end)):
+        if node_id is not None:
+            node = autodrive_data.nodes[node_id]
+            corners[index] = (node.x, node.z)
+
+    return corners, (start, end)
+
+
+def yard_command(
+    autodrive_data: AutoDriveData,
+    plan: YardPlan,
+    joined: tuple[int | None, int | None],
+    lanes: list[StopChoice],
+    settings: StationSettings,
+    height: Callable[[AutoDriveData, float, float], float],
+) -> AddRouteCommand:
+    """The edit that adds the yard plan, its road ends on the joined nodes, and the stops with
+    their own lanes; new yard nodes get their height from `height`."""
+
+    next_id = max(autodrive_data.nodes, default=0) + 1
+    new_nodes, connections, markers = lane_parts(lanes, settings, next_id)
+    next_id += len(new_nodes)
+    piece = plan.piece
+    ids = {
+        end: node_id for end, node_id in zip(plan.ends, joined, strict=True) if node_id is not None
+    }
+
+    for index, ((x, z), flag) in enumerate(zip(piece.points, piece.flags, strict=True)):
+        if index not in ids:
+            new_nodes.append(NodeData(next_id, x, height(autodrive_data, x, z), z, flag))
+            ids[index] = next_id
+            next_id += 1
+
+    connections += [(ids[s], ids[t], CONNECTION_STATES[kind]) for s, t, kind in piece.connections]
+    markers += [MarkerData(ids[index], name, group) for index, name, group in piece.markers]
+
+    return AddRouteCommand(
+        tr("Create station yard"), autodrive_data, new_nodes, connections, markers
+    )
 
 
 def _branch(ring: _Road, unit: list[StopChoice], settings, radius) -> _Chain | str:

@@ -2,7 +2,9 @@
 
 import pytest
 from mouse_helpers import click, drag, hover, view_pos
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QEvent, Qt, QTimer
+from PySide6.QtGui import QKeyEvent
+from PySide6.QtWidgets import QApplication
 
 from autodrive_editor.editing.station_layout import StationSettings, StopChoice
 from autodrive_editor.file_io.savegame_buildings import (
@@ -11,6 +13,7 @@ from autodrive_editor.file_io.savegame_buildings import (
     SavegameBuildings,
 )
 from autodrive_editor.file_io.savegame_stations import Stop, StopKind
+from autodrive_editor.ui.dialogs.station_dialog import StationDialog
 from autodrive_editor.ui.tools.generate_tool import GenerateTask
 
 # Two stops of one store and one of a barn, below the nodes 1–3 on the line z=0.
@@ -84,3 +87,25 @@ def test_hovering_a_station_shows_its_name(station_window):
 
     labels = [w for w in station_window.view.viewport().children() if hasattr(w, "text")]
     assert any(label.isVisible() and label.text() == "Barn" for label in labels)
+
+
+def test_yard_road_is_drawn_by_clicks_on_the_map_and_finished_with_enter(zoomed_window):
+    window = zoomed_window
+    data = window.project_coordinator.autodrive_data
+    seen = {}
+
+    def draw():
+        dialog = window.findChild(StationDialog)
+        dialog.draw_button.click()
+        click(window, view_pos(window, -80, 30))
+        click(window, view_pos(window, 120, 30))
+        enter = QKeyEvent(QEvent.KeyPress, Qt.Key_Return, Qt.NoModifier)
+        QApplication.sendEvent(window.view, enter)
+        seen["drawing"] = dialog.drawing
+        dialog.accept()
+
+    QTimer.singleShot(0, draw)
+    lanes, _, yard = window._ask_station_choices([STORE_A, STORE_B], data)
+
+    assert seen["drawing"] is False
+    assert lanes == [] and len(yard[0].piece.markers) == 2

@@ -4,6 +4,8 @@ from autodrive_editor.editing.edit_context import EditContext
 from autodrive_editor.editing.edit_history import EditHistory
 from autodrive_editor.editing.operations.stations import StationOperation
 from autodrive_editor.editing.station_layout import StationSettings, StopChoice
+from autodrive_editor.editing.station_yard import plan_yard
+from autodrive_editor.editing.yard_road import yard_road
 from autodrive_editor.file_io.savegame_stations import Stop, StopKind
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
 from autodrive_editor.model.connections import ConnectionType, get_connection_type
@@ -63,4 +65,21 @@ def test_cancelled_dialog_or_no_stops_create_nothing(setup):
 
     operation.ask_choices = lambda stops, autodrive_data: ([], SETTINGS)
     assert not operation.create_for([STOP])
+    assert list(data.nodes) == [5]
+
+
+def test_a_drawn_yard_road_is_created_with_the_lanes_in_one_undo_step(setup):
+    data, selection, edits, operation, asked = setup
+    plan = plan_yard(yard_road([(0, 10), (100, 10)], 6.0), [], SETTINGS, 6.0)
+    lane = StopChoice(STOP, "Store", "Selling points", 90)
+    operation.height_for_new_node = lambda *_: 3.0
+    operation.ask_choices = lambda stops, autodrive_data: ([lane], SETTINGS, (plan, (5, None)))
+
+    assert operation.create_for([STOP])
+
+    road = [n for n in data.nodes.values() if n.z == 10]
+    assert len(data.nodes) == 3 + len(plan.piece.points) and all(n.y == 3.0 for n in road)
+    assert data.nodes[5].outgoing and len(data.markers) == 1
+
+    edits.undo()
     assert list(data.nodes) == [5]

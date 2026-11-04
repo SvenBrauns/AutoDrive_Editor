@@ -48,3 +48,15 @@ def test_other_windows_are_not_affected(window, input_filter):
     assert not input_filter.eventFilter(dialog, key_press())
     assert not input_filter.eventFilter(dialog, QEvent(QEvent.Type.Close))
     assert not input_filter.eventFilter(window.view, QEvent(QEvent.Type.Paint))
+
+
+def test_map_keys_reach_the_map_before_window_shortcuts(window):
+    input_filter = MapOnlyInput(window, window.view, map_keys={Qt.Key_Return})
+    enter = QKeyEvent(QEvent.Type.KeyPress, Qt.Key_Return, Qt.NoModifier)
+    override = QKeyEvent(QEvent.Type.ShortcutOverride, Qt.Key_Return, Qt.NoModifier)
+    override.ignore()
+
+    assert not input_filter.eventFilter(window.view, enter)
+    assert input_filter.eventFilter(window.view, override) and override.isAccepted()
+    assert input_filter.eventFilter(window.view, key_press())
+    assert input_filter.eventFilter(window.status, enter)

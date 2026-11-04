@@ -908,4 +908,13 @@ TEXTS = {
     "The bay would lie along the yard road": "Die Bucht läge längs der Hofstraße",
     "No room for a bay between the stop and the yard road": "Kein Platz für eine Bucht zwischen Halt und Hofstraße",
     "No room to leave or rejoin the yard road at this bay": "Kein Platz, um an dieser Bucht von der Hofstraße ab- oder auf sie aufzufahren",
+    "Shape": "Form",
+    "Draw yard road": "Hofstraße zeichnen",
+    "Redraw yard road": "Hofstraße neu zeichnen",
+    "Remove yard road": "Hofstraße entfernen",
+    "Click the corners of the yard road on the map, on a node to join it; right-click removes the last one. Enter finishes, a click on an earlier corner closes a loop.": "Klicke die Ecken der Hofstraße auf der Karte, auf einen Knoten, um ihn anzuschließen; Rechtsklick entfernt die letzte. Enter beendet, ein Klick auf eine frühere Ecke schließt einen Ring.",
+    "The corners of the yard road are too close together for the curve radius of {radius} m.": "Die Ecken der Hofstraße liegen zu nah beieinander für den Kurvenradius von {radius} m.",
+    "An existing node lies where the yard road or its branches go.": "Ein vorhandener Knoten liegt dort, wo die Hofstraße oder ihre Abzweige verlaufen.",
+    "Create station yard": "Stationshof erstellen",
+    "Yard road created with {count} station stops": "Hofstraße mit {count} Stationshalten erstellt",
 }

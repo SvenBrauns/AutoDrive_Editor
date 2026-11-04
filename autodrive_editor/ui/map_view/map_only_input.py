@@ -24,18 +24,21 @@ MAP_EVENTS = {
     QEvent.Type.Wheel,
 }
 
+KEY_EVENTS = {QEvent.Type.KeyPress, QEvent.Type.KeyRelease, QEvent.Type.ShortcutOverride}
+
 
 class MapOnlyInput(QObject):
     """Application event filter for a dialog that is open beside the map: in the main window
     only the mouse on the map gets through, so the map can be moved, zoomed and rotated while
     menus, shortcuts, the other panels and closing the window are held back. Other windows, such
-    as the dialog itself, are not affected."""
+    as the dialog itself, are not affected. The keys in map_keys reach the map too."""
 
-    def __init__(self, window: QWidget, map_view: QWidget, parent=None):
+    def __init__(self, window: QWidget, map_view: QWidget, map_keys=(), parent=None):
         super().__init__(parent)
 
         self.window = window
         self.map_view = map_view
+        self.map_keys = set(map_keys)
 
     def eventFilter(self, watched, event) -> bool:
         if event.type() not in BLOCKED_EVENTS:
@@ -46,6 +49,14 @@ class MapOnlyInput(QObject):
                 return False
 
             on_map = watched is self.map_view or self.map_view.isAncestorOf(watched)
+
+            if on_map and event.type() in KEY_EVENTS and event.key() in self.map_keys:
+                # An accepted override keeps a window shortcut on the key from taking it.
+                if event.type() == QEvent.Type.ShortcutOverride:
+                    event.accept()
+                    return True
+
+                return False
 
             return not (on_map and event.type() in MAP_EVENTS)
 

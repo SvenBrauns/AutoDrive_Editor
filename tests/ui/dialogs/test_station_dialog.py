@@ -1,11 +1,13 @@
 import pytest
 from PySide6.QtCore import Qt
+from PySide6.QtTest import QTest
 
 from autodrive_editor.editing.station_layout import (
     LaneEnd,
     MarkerRule,
     StationSettings,
 )
+from autodrive_editor.editing.station_yard import StopShape
 from autodrive_editor.file_io.savegame_stations import Stop, StopKind
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
 from autodrive_editor.settings.app_settings import AppSettings
@@ -157,3 +159,78 @@ def test_settings_button_renames_only_unedited_markers(qapp, monkeypatch):
         ("VK-Store", "VK"),
         ("Seeds", "Buying stations"),
     ]
+
+
+def draw(station_dialog, *corners, first_node=None):
+    station_dialog.draw_button.click()
+
+    for index, (x, z) in enumerate(corners):
+        station_dialog.click(None, x, z, first_node if index == 0 else None)
+
+
+def corner(station_dialog, index):
+    return next(h for h in station_dialog.handles() if h[:2] == (index, LaneHandle.CORNER))
+
+
+def test_drawn_road_takes_the_stops_and_one_it_cannot_take_keeps_its_lane(qapp):
+    # The road runs 10 m from both stops, along their lanes.
+    station_dialog = dialog(headings=(0, 0))
+    draw(station_dialog, (-10, -100), (-10, 100))
+    assert not station_dialog.is_valid
+
+    QTest.keyClick(station_dialog, Qt.Key_Return)
+
+    assert station_dialog.is_valid and station_dialog.result() == 0
+    assert [box.currentData() for box in station_dialog.shape_inputs] == [
+        StopShape.BRANCH,
+        StopShape.BRANCH,
+    ]
+    plan, joined = station_dialog.yard
+    assert len(plan.piece.markers) == 2 and joined == (None, None)
+    assert station_dialog.lane_choices == []
+
+    # A bay across the road has no room 10 m from it: the stop keeps its own lane.
+    shape = station_dialog.shape_inputs[0]
+    shape.setCurrentIndex(shape.findData(StopShape.BAY))
+
+    assert station_dialog.table.item(0, NOTE).text()
+    assert [c.stop for c in station_dialog.lane_choices] == [SELL]
+    assert (0, LaneHandle.START) in [h[:2] for h in station_dialog.handles()]
+
+    # Moving a corner keeps the shape picked by hand; removing the road makes all lanes.
+    station_dialog.drag_handle(corner(station_dialog, 1), -11, 100)
+    assert shape.currentData() == StopShape.BAY
+
+    station_dialog.remove_road_button.click()
+    assert station_dialog.yard is None and len(station_dialog.lane_choices) == 2
+    assert not shape.isEnabled() and shape.currentData() == StopShape.LANE
+
+
+def test_right_click_removes_a_corner_and_a_click_on_an_earlier_one_closes_a_loop(qapp):
+    # Node 1 is driven to and from, so the Loop's stem can start there.
+    nodes = [NodeData(1, -60, 0, 15, incoming={2}, outgoing={2}), NodeData(2, -70, 0, 15)]
+    station_dialog = dialog(nodes=nodes)
+    draw(station_dialog, (-50, 15), (-30, 15), (-30, -20), (30, -20), (30, 60), first_node=1)
+    station_dialog.remove_last()
+    station_dialog.click(None, 30, 50, None)
+    station_dialog.click(None, -30, 50, None)
+
+    # A ring needs three corners: the last one does not close it.
+    station_dialog.click(corner(station_dialog, 5), -30, 50, None)
+    assert station_dialog.drawing
+
+    station_dialog.click(corner(station_dialog, 1), -30, 15, None)
+
+    assert not station_dialog.drawing and station_dialog.closes_at == 1
+    plan, joined = station_dialog.yard
+    assert joined == (1, None) and plan.ends[1] is None
+    assert station_dialog.corners[0] == (-60, 15)
+
+
+def test_corners_too_close_for_the_curve_radius_block_create(qapp):
+    station_dialog = dialog()
+    draw(station_dialog, (40, 0), (45, 0), (45, 5))
+    station_dialog.finish()
+
+    assert not station_dialog.is_valid and station_dialog.yard is None
+    assert station_dialog.problem_label.text()

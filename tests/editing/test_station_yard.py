@@ -3,16 +3,23 @@ from collections import defaultdict
 
 import pytest
 
-from autodrive_editor.editing.station_layout import StationSettings, StopChoice
+from autodrive_editor.editing.station_layout import StationSettings, StopChoice, lane_points
 from autodrive_editor.editing.station_yard import (
     StopShape,
     YardStop,
     default_shapes,
+    joined_ends,
     plan_yard,
+    yard_command,
 )
 from autodrive_editor.editing.yard_road import yard_road
 from autodrive_editor.file_io.savegame_stations import Stop, StopKind
-from autodrive_editor.model.autodrive_data import REGULAR_FLAG, SUBPRIO_FLAG
+from autodrive_editor.model.autodrive_data import (
+    REGULAR_FLAG,
+    SUBPRIO_FLAG,
+    AutoDriveData,
+    NodeData,
+)
 from autodrive_editor.model.connections import ConnectionType
 
 SETTINGS = StationSettings()
@@ -127,6 +134,59 @@ def test_loop_ring_closes_on_its_first_node_and_takes_the_stops():
     marker = plan.piece.markers[0][0]
     assert start in reachable(plan.piece, marker)
     assert math.dist(plan.piece.points[start], (0, 0)) < 1e-6
+
+
+def network():
+    data = AutoDriveData()
+
+    for node in [
+        NodeData(1, -1, 0, 1, outgoing={2}),
+        NodeData(2, 0, 0, 0, incoming={1}, outgoing={3}),
+        NodeData(3, 1, 0, 1, incoming={2}),
+        NodeData(4, 201, 0, 1, outgoing={5}),
+        NodeData(5, 200, 0, 0, incoming={4}),
+    ]:
+        data.add_node(node)
+
+    return data
+
+
+def test_road_ends_join_only_nodes_whose_direction_fits():
+    data = network()
+    corners = [(0.5, 0.5), (100, 0), (199, 1)]
+
+    # Node 2 is driven to; node 5 is not driven from, so the end stays open.
+    moved, joined = joined_ends(data, corners, [2, None, 5], loop=False)
+    assert joined == (2, None) and moved == [(0, 0), (100, 0), (199, 1)]
+
+    # Node 1 is not driven to; node 4 is driven from.
+    assert joined_ends(data, corners, [1, None, 4], loop=False)[1] == (None, 4)
+    # A Loop's two-way stem needs a node driven to and from; a Loop has no end.
+    assert joined_ends(data, corners, [3, None, 4], loop=True)[1] == (None, None)
+    assert joined_ends(data, corners, [2, None, 4], loop=True)[1] == (2, None)
+
+
+def test_yard_command_adds_road_stops_and_lanes_in_one_step_on_the_joined_nodes():
+    data = network()
+    corners, joined = joined_ends(data, [(0, 0), (200, 0)], [2, 5], loop=False)
+    road = yard_road(corners, radius=6.0)
+    choices = [YardStop(StopChoice(stop(100, 15), "A", "G", 90.0), StopShape.BRANCH)]
+    plan = plan_yard(road, choices, SETTINGS, radius=6.0)
+    lane = StopChoice(stop(100, 80, name="B"), "B", "G", 90.0)
+    before = len(data.nodes)
+
+    command = yard_command(data, plan, (2, None), [lane], SETTINGS, lambda _, x, z: 7.0)
+    command.redo()
+
+    lane_count = len(lane_points(lane.stop, SETTINGS, 90.0)[0])
+    added = len(plan.piece.points) - 1 + lane_count
+    assert len(data.nodes) == before + added
+    assert {marker.name for marker in data.markers.values()} == {"A", "B"}
+    assert data.nodes[2].outgoing - {3}
+    assert all(node.y == 7.0 for node in data.nodes.values() if node.node_id > 5 and node.z < 50)
+
+    command.undo()
+    assert len(data.nodes) == before and not data.markers
 
 
 def _out(piece, index):

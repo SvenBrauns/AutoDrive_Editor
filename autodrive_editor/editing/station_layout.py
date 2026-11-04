@@ -294,7 +294,20 @@ def stations_command(
 ) -> AddRouteCommand:
     """The edit that adds the lanes and their markers, a joined end on its node."""
 
-    next_id = max(autodrive_data.nodes, default=0) + 1
+    new_nodes, connections, markers = lane_parts(
+        choices, settings, max(autodrive_data.nodes, default=0) + 1
+    )
+
+    return AddRouteCommand(
+        tr("Create station lanes"), autodrive_data, new_nodes, connections, markers
+    )
+
+
+def lane_parts(
+    choices: list[StopChoice], settings: StationSettings, next_id: int
+) -> tuple[list[NodeData], list, list[MarkerData]]:
+    """The new nodes (IDs from next_id on), connections and markers of the lanes."""
+
     new_nodes, connections, markers = [], [], []
     regular = CONNECTION_STATES[ConnectionType.REGULAR]
 
@@ -320,9 +333,7 @@ def stations_command(
         connections += [(a, b, regular) for a, b in pairwise(lane)]
         markers.append(MarkerData(lane[marker_index], choice.name, choice.group))
 
-    return AddRouteCommand(
-        tr("Create station lanes"), autodrive_data, new_nodes, connections, markers
-    )
+    return new_nodes, connections, markers
 
 
 def occupied(points: list[Point], nodes: list[NodeData], distance=OCCUPIED_DISTANCE) -> bool:
