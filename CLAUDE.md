@@ -64,7 +64,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 **The user has limited usage. Help keep sessions short.**
 
-- At every good break (a commit that finishes a part, a merge, an agreed plan), give a short hand-over: whether to `/clear` now, which model to use next with `/model` (a smaller one for routine work like git cleanup, small fixes, docs; the larger one for planning and complex features), and a ready-to-paste first prompt for the new session. DEVELOPMENT.md, `docs/design/` (designs and the task list `tasks.md`) and `git log` carry the context over.
+- Suggest a `/clear` only at a good break (a commit that finishes a part, a merge, an agreed plan) and only when it saves tokens: the conversation is long, or most of it is not needed for the next task. Otherwise keep going. Re-reading designs and code in a new session also costs tokens. With the suggestion give a short hand-over: which model to use next with `/model` (a smaller one for routine work like git cleanup, small fixes, docs; the larger one for planning and complex features) and a ready-to-paste first prompt for the new session. DEVELOPMENT.md, `docs/design/` (designs and the task list `tasks.md`) and `git log` carry the context over.
 - Only take screenshots when the look of something is the point of the change. Otherwise rely on tests.
 - Don't spawn an agent for git work.
 - Keep tool output small: `ruff check . --output-format concise`, `python -m pytest -q` piped through `tail` when only the summary matters.
