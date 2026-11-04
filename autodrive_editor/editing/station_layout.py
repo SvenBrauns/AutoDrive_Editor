@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from itertools import pairwise
 
 from autodrive_editor.editing.commands.add_route import AddRouteCommand
+from autodrive_editor.editing.fill_type_names import fill_type_name
 from autodrive_editor.editing.junction import stem_poses
 from autodrive_editor.editing.path_shapes import spaced_points
 from autodrive_editor.editing.planned_piece import PlannedPiece
@@ -83,10 +84,15 @@ class StopChoice:
     end: LaneEnd | None = None
 
 
-# Marker names are patterns with the stop's building, its type and a number, as in "VK-{building}"
-# or "{n:03}-{type}".
+# Marker names are patterns with the stop's building, its type, its first fill type, what is done
+# there and a number, as in "VK-{building}", "{n:03}-{type}" or "{fill}-{action}". Groups are
+# patterns too, without the number.
 DEFAULT_PATTERN = "{building} ({type})"
-PATTERN_FIELDS = {"building", "type", "n"}
+PATTERN_FIELDS = {"building", "type", "fill", "action", "n"}
+# Values to try a pattern with.
+EXAMPLE_FIELDS = {"building": "Building", "type": "Type", "fill": "Fill", "action": "load"}
+# Productions are named as course authors do: "Diesel-abladen" in "prod.Destillerie".
+PRODUCTION_RULE = ("{fill}-{action}", "prod.{building}")
 
 
 @dataclass(frozen=True)
@@ -98,7 +104,9 @@ class MarkerRule:
 
 
 def default_marker_rules() -> dict[StopKind, MarkerRule]:
-    return {kind: MarkerRule(DEFAULT_PATTERN, default_group(kind)) for kind in StopKind}
+    rules = {kind: MarkerRule(DEFAULT_PATTERN, default_group(kind)) for kind in StopKind}
+
+    return rules | {StopKind.PRODUCTION: MarkerRule(*PRODUCTION_RULE)}
 
 
 def default_group(kind: StopKind) -> str:
@@ -113,17 +121,18 @@ def default_group(kind: StopKind) -> str:
     }[kind]
 
 
-def pattern_problem(pattern: str) -> str | None:
-    """What is wrong with a marker name pattern, or None."""
+def pattern_problem(pattern: str, group: bool = False) -> str | None:
+    """What is wrong with a marker name pattern (or a group pattern, which has no {n}), or
+    None."""
 
     try:
         names = {name for _, name, _, _ in string.Formatter().parse(pattern) if name is not None}
-        unknown = names - PATTERN_FIELDS
+        unknown = names - (PATTERN_FIELDS - {"n"} if group else PATTERN_FIELDS)
 
         if unknown:
             return tr("Unknown placeholder {{{name}}}", name=sorted(unknown)[0])
 
-        if not _format(pattern, "Building", "Type", 1).strip():
+        if not _format(pattern, EXAMPLE_FIELDS, 1).strip():
             return tr("A marker name pattern must not be empty.")
     except (ValueError, TypeError):
         return tr("The pattern “{pattern}” is not valid.", pattern=pattern)
@@ -147,27 +156,41 @@ def marker_names(
 
     for stop in stops:
         rule = rules[stop.kind]
-        building, kind = stop.name.strip(), stop.kind.label
+        fields = _fields(stop)
+        group = _format(rule.group, fields, start)
 
         if "{n" in rule.pattern:
-            number = numbers.get(rule.group, start)
+            number = numbers.get(group, start)
 
-            while (_format(rule.pattern, building, kind, number), rule.group) in taken:
+            while (_format(rule.pattern, fields, number), group) in taken:
                 number += 1
 
-            numbers[rule.group] = number + 1
-            name = _format(rule.pattern, building, kind, number)
+            numbers[group] = number + 1
+            name = _format(rule.pattern, fields, number)
         else:
-            name = unique_name(_format(rule.pattern, building, kind, start), rule.group, taken)
+            name = unique_name(_format(rule.pattern, fields, start), group, taken)
 
-        taken.add((name, rule.group))
-        result.append((name, rule.group))
+        taken.add((name, group))
+        result.append((name, group))
 
     return result
 
 
-def _format(pattern: str, building: str, kind: str, number: int) -> str:
-    return pattern.format(building=building, type=kind, n=number).strip()
+def _fields(stop: Stop) -> dict[str, str]:
+    """The placeholders of a stop; {fill} is the building's name for a stop without fill types."""
+
+    building = stop.name.strip()
+
+    return {
+        "building": building,
+        "type": stop.kind.label,
+        "fill": fill_type_name(stop.fill_types[0]) if stop.fill_types else building,
+        "action": tr("load") if stop.loads else tr("unload"),
+    }
+
+
+def _format(pattern: str, fields: dict[str, str], number: int) -> str:
+    return pattern.format(**fields, n=number).strip()
 
 
 def unique_name(name: str, group: str, taken: set[tuple[str, str]]) -> str:
