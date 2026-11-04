@@ -10,8 +10,16 @@ The layout is the shed's (parking_layout) with the silo's distances; its bays ar
 """
 
 import math
+import string
 
-from autodrive_editor.editing.parking_layout import ParkingMode, ParkingSettings, ShedFrame
+from autodrive_editor.editing.parking_layout import (
+    ParkingMode,
+    ParkingSettings,
+    ShedFrame,
+    marker_count,
+    plan_rows,
+)
+from autodrive_editor.editing.planned_piece import PlannedPiece
 from autodrive_editor.file_io.navigation_costmap import BLOCKED_VALUE, NavigationCostmap
 from autodrive_editor.file_io.savegame_sheds import IndoorArea
 
@@ -27,6 +35,13 @@ LANE_WIDTH = 5.5
 BACK_WALL_TO_MARKER = 3.0
 MARKER_PAST_SILO = 15.0
 
+# Marker name and group patterns by mode: {building} the building's name, {letter} the silo's
+# letter in the pick, {n} the lane's number.
+DEFAULT_PATTERNS = {
+    ParkingMode.BACK_IN: ("KS-{letter}-{n}", "{building}-KS-{letter}"),
+    ParkingMode.DRIVE_THROUGH: ("DS-{letter}-{n}", "{building}-DS-{letter}"),
+}
+
 
 def silo_settings(area: IndoorArea, costmap: NavigationCostmap | None) -> ParkingSettings:
     """The default layout of a silo: mode and side from the map, lanes in the centres of equal
@@ -36,6 +51,8 @@ def silo_settings(area: IndoorArea, costmap: NavigationCostmap | None) -> Parkin
     lanes = max(1, round(ShedFrame.from_area(area, side).length / LANE_WIDTH))
     back_in = mode == ParkingMode.BACK_IN
 
+    name, group = DEFAULT_PATTERNS[mode]
+
     return ParkingSettings(
         mode=mode,
         open_side=side,
@@ -44,8 +61,31 @@ def silo_settings(area: IndoorArea, costmap: NavigationCostmap | None) -> Parkin
         right_offset=0.0,
         back_offset=BACK_WALL_TO_MARKER if back_in else -MARKER_PAST_SILO,
         gaps=(0.0,) * (lanes - 1),
+        marker_name=name,
+        group=group,
         silo=True,
     )
+
+
+def plan_silos(areas: list[IndoorArea], settings: ParkingSettings) -> PlannedPiece:
+    """The lanes of the picked silos as map points; neighbours share the entry and exit lines.
+    The silos get letters A, B, … row by row from left to right, their lanes numbers from the
+    start number; settings.marker_name and settings.group are patterns (DEFAULT_PATTERNS)."""
+
+    if len(areas) > len(string.ascii_uppercase):
+        raise ValueError("Too many silos.")
+
+    def names(index: int, area: IndoorArea) -> list[tuple[str, str]]:
+        fields = {"building": area.name.strip(), "letter": string.ascii_uppercase[index]}
+        group = settings.group.format(**fields).strip()
+        first = settings.start_number
+
+        return [
+            (settings.marker_name.format(**fields, n=number).strip(), group)
+            for number in range(first, first + marker_count(settings))
+        ]
+
+    return plan_rows(areas, settings, names)
 
 
 def silo_access(area: IndoorArea, costmap: NavigationCostmap | None) -> tuple[ParkingMode, str]:

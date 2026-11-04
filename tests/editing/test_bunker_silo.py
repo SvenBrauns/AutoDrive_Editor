@@ -1,7 +1,9 @@
+from dataclasses import replace
+
 import pytest
 from costmap_helpers import make_costmap
 
-from autodrive_editor.editing.bunker_silo import silo_access, silo_settings
+from autodrive_editor.editing.bunker_silo import plan_silos, silo_access, silo_settings
 from autodrive_editor.editing.parking_layout import (
     ParkingMode,
     ShedFrame,
@@ -100,4 +102,26 @@ def test_drive_through_silo_lanes_end_at_their_markers():
 def test_a_silo_template_stays_a_silo():
     layout = silo_settings(SILO, None)
 
-    assert from_template(template_values(layout)) == layout
+    # Templates keep no marker names.
+    assert from_template(template_values(layout)) == replace(layout, marker_name="", group="")
+
+
+def test_silos_get_letters_row_by_row_and_lanes_numbers():
+    def silo(dx, unique_id):
+        corners = tuple((x + dx, z) for x, z in SILO.corners)
+        return IndoorArea("silo.xml", unique_id, corners, height=0, name="Farm silo")
+
+    # Two silos side by side (1 m wall between them), a third one far away.
+    first, second, far = silo(0, "a"), silo(11, "b"), silo(40, "c")
+    piece = plan_silos([second, far, first], silo_settings(SILO, None))
+
+    assert [(name, group) for _, name, group in piece.markers] == [
+        ("KS-A-1", "Farm silo-KS-A"),
+        ("KS-A-2", "Farm silo-KS-A"),
+        ("KS-B-1", "Farm silo-KS-B"),
+        ("KS-B-2", "Farm silo-KS-B"),
+        ("KS-C-1", "Farm silo-KS-C"),
+        ("KS-C-2", "Farm silo-KS-C"),
+    ]
+    # One entry and one exit line for the pair, and for the single silo.
+    assert len(piece.open_ends) == 8

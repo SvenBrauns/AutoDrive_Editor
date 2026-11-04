@@ -12,6 +12,7 @@ end at the marker past the silo, without an exit line.
 """
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from enum import Enum
 
@@ -64,6 +65,12 @@ SILO_EXIT_LINE_OUTSIDE = 22.0
 # Bunker silos, drive through: the entry line's distance before the silo and the node spacing.
 SILO_DRIVE_THROUGH_LINE_OUTSIDE = 20.0
 SILO_DRIVE_THROUGH_STEP = 5.0
+
+# Neighbouring buildings share the entry and exit lines: open sides facing the same way within
+# ROW_ANGLE degrees, at most ROW_OFFSET apart across and ROW_GAP apart along the side.
+ROW_ANGLE = 10.0
+ROW_OFFSET = 3.0
+ROW_GAP = 5.0
 
 # The entry and exit lines reach this far beyond the outer bays.
 LINE_EXTENSION = 5.0
@@ -376,6 +383,105 @@ def bay_centers(frame: ShedFrame, settings: ParkingSettings) -> list[float]:
 def plan_parking(frame: ShedFrame, settings: ParkingSettings) -> PlannedPiece:
     """The network of all bays and their shared entry and exit lines."""
 
+    first = settings.start_number
+    names = [
+        (f"{settings.marker_name} {number}", settings.group)
+        for number in range(first, first + marker_count(settings))
+    ]
+    network, entry_nodes, exit_nodes = plan_bays(frame, settings, names)
+    add_lines(network, settings, entry_nodes, exit_nodes)
+
+    return network
+
+
+def rows(areas: list[IndoorArea], side: str) -> list[list[IndoorArea]]:
+    """The areas in rows of neighbours, each from left to right seen from outside the given side;
+    the rows in the order of their first area."""
+
+    frames = {area: ShedFrame.from_area(area, side) for area in areas}
+    result: list[list[IndoorArea]] = []
+
+    for area in areas:
+        frame = frames[area]
+        joined = [row for row in result if any(_neighbours(frame, frames[other]) for other in row)]
+        merged = [other for row in joined for other in row] + [area]
+        index = result.index(joined[0]) if joined else len(result)
+        result = [row for row in result if row not in joined]
+        result.insert(index, merged)
+
+    for row in result:
+        first = frames[row[0]]
+        row.sort(
+            key=lambda area, first=first: _dot(
+                _minus(frames[area].origin, first.origin), first.along
+            )
+        )
+
+    return result
+
+
+def _neighbours(first: ShedFrame, second: ShedFrame) -> bool:
+    start = _minus(second.origin, first.origin)
+    a = _dot(start, first.along)
+    gap = max(a - first.length, -a - second.length)
+
+    return (
+        _dot(first.inward, second.inward) >= math.cos(math.radians(ROW_ANGLE))
+        and abs(_dot(start, first.inward)) <= ROW_OFFSET
+        and gap <= ROW_GAP
+    )
+
+
+def plan_rows(
+    areas: list[IndoorArea],
+    settings: ParkingSettings,
+    names: Callable[[int, IndoorArea], list[tuple[str, str]]],
+) -> PlannedPiece:
+    """The bays of several areas, as map points (x, y, z); each row of neighbours shares one
+    entry and one exit line. names gives the (name, group) of an area's markers from its place
+    in the order of the rows. Raises ValueError if the settings don't fit an area."""
+
+    piece = PlannedPiece()
+    index = 0
+
+    for row in rows(areas, settings.open_side):
+        row_frame = ShedFrame.from_area(row[0], settings.open_side)
+        row_piece = PlannedPiece()
+        entry_nodes, exit_nodes = [], []
+
+        for area in row:
+            frame = ShedFrame.from_area(area, settings.open_side)
+            bays, entries, exits = plan_bays(frame, settings, names(index, area))
+            index += 1
+
+            def to_row(a, d, frame=frame, height=area.height, row_frame=row_frame):
+                along, inward = row_frame.map_direction(
+                    *_minus(frame.to_map(a, d), row_frame.origin)
+                )
+                return along, inward, height
+
+            offset = row_piece.add_piece(bays.moved(to_row))
+            entry_nodes += [node + offset for node in entries]
+            exit_nodes += [node + offset for node in exits]
+
+        add_lines(row_piece, settings, entry_nodes, exit_nodes)
+
+        # The lines' own nodes are at the height of the row's first area.
+        def to_map(a, d, height=row[0].height, row_frame=row_frame):
+            x, z = row_frame.to_map(a, d)
+            return x, height, z
+
+        piece.add_piece(row_piece.moved(to_map))
+
+    return piece
+
+
+def plan_bays(
+    frame: ShedFrame, settings: ParkingSettings, names: list[tuple[str, str]]
+) -> tuple[PlannedPiece, list[int], list[int]]:
+    """The bays without the entry and exit lines, their markers with the (name, group) in order,
+    and the bays' entry and exit line nodes. Raises ValueError if the settings don't fit."""
+
     if len(settings.gaps) != settings.bays - 1:
         raise ValueError("There must be one gap fewer than bays.")
 
@@ -398,7 +504,7 @@ def plan_parking(frame: ShedFrame, settings: ParkingSettings) -> PlannedPiece:
 
     network = PlannedPiece()
     entry_nodes, exit_nodes = [], []
-    number = settings.start_number
+    marker_names = iter(names)
 
     for a in bay_centers(frame, settings):
         if settings.mode == ParkingMode.BACK_IN:
@@ -407,19 +513,23 @@ def plan_parking(frame: ShedFrame, settings: ParkingSettings) -> PlannedPiece:
         else:
             markers, entry, exit_ = _drive_through_bay(network, frame, settings, a)
 
-        for marker in markers:
-            network.markers.append((marker, f"{settings.marker_name} {number}", settings.group))
-            number += 1
-
+        network.markers += [(marker, *next(marker_names)) for marker in markers]
         entry_nodes.append(entry)
         exit_nodes.append(exit_)
+
+    return network, entry_nodes, exit_nodes
+
+
+def add_lines(
+    network: PlannedPiece, settings: ParkingSettings, entry_nodes: list[int], exit_nodes: list[int]
+):
+    """The entry line through the bays' entry nodes and the exit line through their exit nodes;
+    a silo's drive through lanes have no exit line."""
 
     _line(network, entry_nodes, settings.entry_left_to_right)
 
     if not silo_drive_through(settings):
         _line(network, exit_nodes, settings.exit_left_to_right)
-
-    return network
 
 
 def bay_line(frame: ShedFrame, settings: ParkingSettings) -> BayLine:
@@ -539,8 +649,8 @@ def _line(network: PlannedPiece, nodes: list[int], left_to_right: bool):
 
     sign = 1 if left_to_right else -1
     ordered = sorted(nodes, key=lambda index: sign * network.points[index][0])
-    first_a, first_d = network.points[ordered[0]]
-    last_a, last_d = network.points[ordered[-1]]
+    first_a, first_d = network.points[ordered[0]][:2]
+    last_a, last_d = network.points[ordered[-1]][:2]
 
     start = _add(network, first_a - sign * LINE_EXTENSION, first_d)
     end = _add(network, last_a + sign * LINE_EXTENSION, last_d)
@@ -551,6 +661,10 @@ def _line(network: PlannedPiece, nodes: list[int], left_to_right: bool):
 
 def _add(network: PlannedPiece, a: float, d: float) -> int:
     return network.add(a, d, flag=SUBPRIO_FLAG)
+
+
+def _minus(u, v) -> tuple[float, float]:
+    return u[0] - v[0], u[1] - v[1]
 
 
 def _dot(u, v) -> float:
