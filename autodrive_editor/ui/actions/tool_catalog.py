@@ -101,7 +101,7 @@ GENERATE_TASKS = {
     ),
     GenerateTask.PARKING_SPOTS: (
         "generate_parking",
-        tr("Click a shed to create parking spots in it"),
+        tr("Click a shed, Shift-click or right-drag a box to pick several of one type"),
     ),
     GenerateTask.STATIONS: (
         "generate_stations",

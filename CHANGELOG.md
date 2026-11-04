@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Parking spots: `Create` no longer selects the line ends, as for station lanes
+- Parking spots in several sheds of one type at once: `Shift`+click them and press `Enter`, or right-drag a box. One layout for all, `Shed:` picks the shed the views show, neighbouring sheds share one entry and one exit line, and the marker numbers run on from shed to shed
 - Bunker silos (Generate tool, task `Bunker silos`): `View → Show → Bunker silos` draws the silos' floors. Click a silo, or `Shift`+click several and press `Enter`, or right-drag a box; the parking spots dialog then lays out the lanes: back in or drive through and the open side from the drivability map, one lane per ~5.5 m of width, the silo's distances, marker name and group as patterns with the new placeholder `{letter}` (defaults `KS-{letter}-{n}` in `{building}-KS-{letter}`, `DS-…` for drive through, set on `File → Settings → Generators`). Neighbouring silos facing the same way share one entry and one exit line
 - The nodes connected to the node under the pointer are drawn purple, in every tool, as in AutoDrive
 - `File → Settings → Generators`: curve radius and node spacing on straights (default 12 m) for Find route, Junction and station lanes, vehicle width and safety margin, the lane lengths of station lanes, and a marker name pattern (`{building}`, `{type}`, `{n}`) and group per stop type. The Stations dialog opens it with `Generator settings…`

@@ -14,8 +14,12 @@ pytestmark = pytest.mark.usefixtures("isolated_user_data")
 SHED = IndoorArea("shed.xml", "1", ((-15, -7.5), (15, -7.5), (15, 7.5), (-15, 7.5)), 90.0)
 
 
-def dialog(taken=(), shed=SHED):
-    parking_dialog = ParkingSpotDialog(shed, ["Farm", "All"], set(taken), AppSettings())
+# A shed of the same type next to it, on the right seen from the front.
+NEXT = IndoorArea("shed.xml", "2", ((16, -7.5), (46, -7.5), (46, 7.5), (16, 7.5)), 90.0, "Next")
+
+
+def dialog(taken=(), shed=SHED, others=()):
+    parking_dialog = ParkingSpotDialog([shed, *others], ["Farm", "All"], set(taken), AppSettings())
     parking_dialog.group_input.setCurrentText("Farm")
     return parking_dialog
 
@@ -430,5 +434,21 @@ def test_taken_names_of_every_position_are_refused(qapp):
 
     parking_dialog.mode_input.setCurrentIndex(1)
     parking_dialog.positions_input.setValue(2)
+
+    assert not parking_dialog.is_valid
+
+
+def test_several_sheds_get_running_numbers_and_a_shed_choice(qapp):
+    parking_dialog = dialog(others=[NEXT])
+
+    assert [m[1] for m in parking_dialog.area_plan.markers] == [f"Shed {n}" for n in range(1, 9)]
+    parking_dialog.area_input.setCurrentIndex(1)
+    assert parking_dialog.preview.area == NEXT
+
+    assert not dialog().form.isRowVisible(dialog().area_input)
+
+
+def test_a_taken_name_in_another_shed_disables_create(qapp):
+    parking_dialog = dialog(taken={("Shed 6", "Farm")}, others=[NEXT])
 
     assert not parking_dialog.is_valid

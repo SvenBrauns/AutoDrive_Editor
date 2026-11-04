@@ -1,8 +1,9 @@
 """Creating parking spots by clicking a shed."""
 
 import pytest
-from mouse_helpers import click, hover, view_pos
-from PySide6.QtCore import QEvent, QTimer
+from mouse_helpers import click, drag, hover, view_pos
+from PySide6.QtCore import QEvent, Qt, QTimer
+from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QDialog, QLabel
 
 from autodrive_editor.editing.parking_layout import ParkingSettings
@@ -21,6 +22,8 @@ from autodrive_editor.ui.tools.navigate_tool import NavigateTool
 SHED = IndoorArea(
     "shed.xml", "1", ((0, 10), (20, 10), (20, 20), (0, 20)), 5.0, "Farm barn", "sheds"
 )
+NEXT = IndoorArea("shed.xml", "2", ((21, 10), (41, 10), (41, 20), (21, 20)), 5.0, "Next", "sheds")
+BARN = IndoorArea("barn.xml", "3", ((-21, 10), (-1, 10), (-1, 20), (-21, 20)), 5.0, "Barn", "sheds")
 
 
 @pytest.fixture
@@ -28,13 +31,17 @@ def parking_window(zoomed_window):
     window = zoomed_window
     window.asked = []
 
-    def ask(area, autodrive_data):
-        window.asked.append(area)
+    def ask(areas, autodrive_data):
+        window.asked.append(areas)
         return ParkingSettings(bays=2, gaps=(0.0,), marker_name="Shed", group="Farm")
 
     window._ask_parking_settings = ask
-    shed_type = BuildingType("shed.xml", "Farm barn", "sheds", BuildingGroup.SHEDS, 1)
-    window.scene_renderer.set_buildings(SavegameBuildings(types=[shed_type], areas=[SHED]))
+    types = [
+        BuildingType("shed.xml", "Farm barn", "sheds", BuildingGroup.SHEDS, 2),
+        BuildingType("barn.xml", "Barn", "sheds", BuildingGroup.SHEDS, 1),
+    ]
+    buildings = SavegameBuildings(types=types, areas=[SHED, NEXT, BARN])
+    window.scene_renderer.set_buildings(buildings)
     window.set_generate_task(GenerateTask.PARKING_SPOTS)
     return window
 
@@ -44,7 +51,7 @@ def test_click_on_a_shed_creates_its_parking_spots(parking_window):
 
     click(parking_window, view_pos(parking_window, 10, 15))
 
-    assert parking_window.asked == [SHED]
+    assert parking_window.asked == [[SHED]]
     assert [marker.name for marker in data.markers.values()] == ["Shed 1", "Shed 2"]
     assert parking_window.node_selection.selected_node_ids == set()
     assert parking_window.status.text().startswith("2 parking spots created")
@@ -52,6 +59,31 @@ def test_click_on_a_shed_creates_its_parking_spots(parking_window):
     parking_window.edit_history.undo()
 
     assert list(data.nodes) == [1, 2, 3]
+
+
+def test_shift_clicks_collect_sheds_of_one_type_and_enter_opens_them(parking_window):
+    click(parking_window, view_pos(parking_window, 30, 15), modifiers=Qt.ShiftModifier)
+    click(parking_window, view_pos(parking_window, 10, 15), modifiers=Qt.ShiftModifier)
+    click(parking_window, view_pos(parking_window, -10, 15), modifiers=Qt.ShiftModifier)
+
+    assert len(parking_window.scene_renderer.shed_layer.picked) == 2
+    assert "different types" in parking_window.status.text()
+
+    QTest.keyClick(parking_window.view, Qt.Key_Return)
+
+    assert parking_window.asked == [[NEXT, SHED]]
+
+
+def test_box_with_sheds_of_different_types_opens_nothing(parking_window):
+    drag(
+        parking_window,
+        view_pos(parking_window, -23, 8),
+        view_pos(parking_window, 43, 22),
+        button=Qt.RightButton,
+    )
+
+    assert parking_window.asked == []
+    assert "different types" in parking_window.status.text()
 
 
 def test_click_beside_the_shed_does_not_ask(parking_window):
@@ -113,7 +145,7 @@ def test_dialog_shows_its_plan_on_the_map_and_keeps_the_map_movable(zoomed_windo
 
     monkeypatch.setattr(window, "_run_beside_map", run)
 
-    settings = window._ask_parking_settings(SHED, data)
+    settings = window._ask_parking_settings([SHED], data)
 
     assert seen["markers"] > 1 and seen["after_change"] == 1
     assert settings.bays == 1

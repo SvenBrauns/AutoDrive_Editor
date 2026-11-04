@@ -7,33 +7,36 @@ from autodrive_editor.file_io.savegame_sheds import IndoorArea
 from autodrive_editor.ui.tools.station_pick_tool import StationPickTool
 
 
-class SiloPickTool(StationPickTool):
-    """Picks bunker silos: a click opens the silo at the pointer, Shift-click adds or removes a
-    silo from the pick, Enter or a click on a picked silo opens the pick, right dragging the
-    silos in a box (Shift: a lasso). Esc drops the pick. Left dragging pans."""
+class AreaPickTool(StationPickTool):
+    """Picks sheds or bunker silos: a click opens the area at the pointer, Shift-click adds or
+    removes an area from the pick (if may_add allows it), Enter or a click on a picked area opens
+    the pick, right dragging the areas in a box (Shift: a lasso). Esc drops the pick. Left
+    dragging pans."""
 
     def __init__(
         self,
         view,
-        silo_at: Callable[[QPoint], IndoorArea | None],
-        silos_in: Callable[[QPainterPath], list[IndoorArea]],
+        area_at: Callable[[QPoint], IndoorArea | None],
+        areas_in: Callable[[QPainterPath], list[IndoorArea]],
         create: Callable[[list[IndoorArea]], bool],
         show_picked: Callable[[list[IndoorArea]], None],
         hint: Callable[[], str],
         hover_text: Callable[[QPoint], str],
+        may_add: Callable[[list[IndoorArea], IndoorArea], bool] = lambda picked, area: True,
     ):
         super().__init__(
             view,
             self._clicked,
-            lambda path: self._open(silos_in(path)),
+            lambda path: self._open(areas_in(path)),
             hint,
-            is_target=lambda view_position: silo_at(view_position) is not None,
+            is_target=lambda view_position: area_at(view_position) is not None,
             hover_text=hover_text,
         )
 
-        self._silo_at = silo_at
+        self._area_at = area_at
         self._create = create
         self._show_picked = show_picked
+        self._may_add = may_add
         self.picked: list[IndoorArea] = []
         self._shift = False
 
@@ -46,17 +49,20 @@ class SiloPickTool(StationPickTool):
         return super().mouse_release(event)
 
     def _clicked(self, view_position: QPoint) -> bool:
-        silo = self._silo_at(view_position)
+        area = self._area_at(view_position)
 
-        if silo is None:
+        if area is None:
             return False
 
         if self._shift:
-            others = [area for area in self.picked if area != silo]
-            self._set_picked(others if silo in self.picked else self.picked + [silo])
+            if area in self.picked:
+                self._set_picked([other for other in self.picked if other != area])
+            elif self._may_add(self.picked, area):
+                self._set_picked(self.picked + [area])
+
             return True
 
-        return self._open(self.picked if silo in self.picked else [silo])
+        return self._open(self.picked if area in self.picked else [area])
 
     def confirm(self) -> bool:
         return bool(self.picked) and self._open(self.picked)
@@ -71,17 +77,17 @@ class SiloPickTool(StationPickTool):
         self._set_picked([])
         return True
 
-    def _open(self, silos: list[IndoorArea]) -> bool:
-        if not silos:
+    def _open(self, areas: list[IndoorArea]) -> bool:
+        if not areas:
             return False
 
-        self._set_picked(silos)
+        self._set_picked(areas)
 
         try:
-            return self._create(silos)
+            return self._create(areas)
         finally:
             self._set_picked([])
 
-    def _set_picked(self, silos: list[IndoorArea]):
-        self.picked = silos
-        self._show_picked(silos)
+    def _set_picked(self, areas: list[IndoorArea]):
+        self.picked = areas
+        self._show_picked(areas)

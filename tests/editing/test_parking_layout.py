@@ -18,6 +18,7 @@ from autodrive_editor.editing.parking_layout import (
     from_template,
     plan_parking,
     plan_rows,
+    plan_sheds,
     rows,
     side_angle,
     template_values,
@@ -217,6 +218,18 @@ def test_a_row_shares_one_entry_and_one_exit_line():
     assert (entry_start[0], entry_end[0]) == pytest.approx((-7.5 - 6.2, 38.5 + 3.8))
     markers = [piece.points[node] for node, _, _ in piece.markers]
     assert [round(x, 1) for x, _, _ in markers] == [-7.5, 7.5, 23.5, 38.5]
+
+
+def test_marker_numbers_run_on_across_sheds_in_row_order():
+    values = settings(bays=2, gaps=(0.0,), left_offset=0.0, right_offset=0.0)
+    piece = plan_sheds([FAR, RIGHT, SHED], values)
+
+    assert [(name, group) for _, name, group in piece.markers] == [
+        (f"Shed {n}", "G") for n in range(3, 9)
+    ]
+    # FAR has its own lines, SHED and RIGHT share theirs: two ends per line.
+    assert len(piece.open_ends) == 8
+    assert [round(piece.points[node][0], 1) for node, _, _ in piece.markers[:2]] == [62.5, 77.5]
 
 
 def test_plan_on_the_map_is_rotated_with_the_shed():

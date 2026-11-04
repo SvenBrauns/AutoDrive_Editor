@@ -135,7 +135,7 @@ Curves leave and join the road with a slight kink (20°) and then bend in an arc
 
 ### Parking spots in sheds
 
-The editor creates AutoDrive parking spots in the sheds of a savegame. Choose the task `Parking spots` of the Generate tool; pointing at a shed shows the building's name and category. Left-click a shed outline. The dialog shows a top view of the shed, turned so the open side is at the bottom, with an arrow to north, and updates while you type. The planned spots are also drawn on the map; while the dialog is open the map can be moved, zoomed and rotated, but not edited.
+The editor creates AutoDrive parking spots in the sheds of a savegame. Choose the task `Parking spots` of the Generate tool; pointing at a shed shows the building's name and category. Left-click a shed outline, or pick several sheds of one type: `Shift`+click them and press `Enter` (or click one of them), or right-drag a box around them; `Esc` drops the pick. The dialog shows a top view of the shed, turned so the open side is at the bottom, with an arrow to north, and updates while you type. The planned spots are also drawn on the map; while the dialog is open the map can be moved, zoomed and rotated, but not edited.
 
 - **Mode**: *Back in* (vehicles reverse into the bay, the marker is at the back wall) or *Drive through* (one forward line per bay through the shed, the exit is on the opposite side).
 - **Open side** / **Entry side**: the side the vehicles come in. Click a side or its compass label in the top view to change it.
@@ -148,6 +148,8 @@ The editor creates AutoDrive parking spots in the sheds of a savegame. Choose th
 When backing in, the side view below shows the line of one bay, which all bays use. Click a segment to change its length, "+" splits a segment in half, `Delete` removes the selected node. The points where the entry and exit lines branch off can be dragged to another node. In drive-through mode the side view only shows the line.
 
 `Create` adds all nodes as subprio nodes at the shed's height, as one undo step. Running it twice creates the spots twice. Afterwards the four open ends of the entry and exit lines still need to be connected to the road network. `Reset shed settings` brings back the default layout.
+
+**Several sheds.** The same settings apply to all picked sheds; `Shed:` chooses which one the top and side views show, and the map shows the spots of all. Neighbouring sheds facing the same way (within 10°, open sides in line within 3 m, at most 5 m apart) form a row and share one entry and one exit line. The marker numbers run on from shed to shed, row by row and from left to right seen from the open side: two sheds with four bays give "Shed 1" … "Shed 8". Sheds of different types cannot be picked together, as templates are kept per shed type.
 
 **Templates.** `Save as template…` stores the mode, side, number of bays, distances, parking positions and bay line under a name for this shed type, so it works for the same building on any map. Line directions, marker name, start number and group are not stored. `Load template…` lists the templates of the shed type, where they can also be deleted. The dialog opens with the template saved or loaded last for the shed type.
 

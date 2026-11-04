@@ -26,10 +26,11 @@ from autodrive_editor.editing.parking_layout import (
     default_open_side,
     drive_through_line,
     from_template,
-    marker_count,
     marker_depth,
     plan_parking,
+    plan_sheds,
     positions_fit,
+    rows,
     side_angle,
     template_values,
 )
@@ -46,10 +47,14 @@ DEFAULTS = ParkingSettings()
 
 
 class ParkingSpotDialog(QDialog):
-    """Asks how the parking spots of a shed are laid out and named, with a live top view."""
+    """Asks how the parking spots of one or more sheds of one type are laid out and named, with
+    a live top view. One layout for all; the views show one shed, chosen in the area list; the
+    map shows the whole plan."""
 
-    # The shed frame and the planned network (None while the settings don't fit).
-    plan_changed = Signal(object, object)
+    # The planned network of all areas as a piece in map points, or None while it doesn't fit.
+    area_plan_changed = Signal(object)
+
+    AREA_TEXT = tr("Shed:")
 
     EMPTY_NAME_TEXT = tr("Please enter a marker name.")
     EMPTY_GROUP_TEXT = tr("Please choose or enter a group.")
@@ -58,7 +63,7 @@ class ParkingSpotDialog(QDialog):
 
     def __init__(
         self,
-        area: IndoorArea,
+        areas: list[IndoorArea],
         groups: list[str],
         taken_names: set[tuple[str, str]],
         app_settings: AppSettings,
@@ -68,9 +73,12 @@ class ParkingSpotDialog(QDialog):
 
         self.setWindowTitle(tr("Create parking spots"))
 
-        self.area = area
+        self.areas = list(areas)
+        # The area the views show.
+        self.area = self.areas[0]
         # Templates are kept per building type.
-        self.template_file = area.building_file
+        self.template_file = self.area.building_file
+        self.area_plan = None
         self.groups = list(groups)
         self.taken_names = set(taken_names)
         self.app_settings = app_settings
@@ -82,7 +90,7 @@ class ParkingSpotDialog(QDialog):
         self.side_input = QComboBox(self)
 
         for side, name in SIDE_NAMES.items():
-            compass = compass_name(side_angle(area, side))
+            compass = compass_name(side_angle(self.area, side))
             self.side_input.addItem(f"{name} ({compass})", side)
 
         self.bays_input = QSpinBox(self)
@@ -152,7 +160,11 @@ class ParkingSpotDialog(QDialog):
         self.load_button.clicked.connect(self._load_clicked)
         self.save_button.clicked.connect(self._save_clicked)
 
+        self.area_input = QComboBox(self)
+
         form = QFormLayout()
+        form.addRow(self.AREA_TEXT, self.area_input)
+        form.setRowVisible(self.area_input, len(self.areas) > 1)
         form.addRow(tr("Mode:"), self.mode_input)
         self.side_label = QLabel(self)
         form.addRow(self.side_label, self.side_input)
@@ -211,6 +223,10 @@ class ParkingSpotDialog(QDialog):
 
         self.name_input.textChanged.connect(self._update)
         self.group_input.currentTextChanged.connect(self._update)
+
+        self._fill_areas()
+        self.side_input.currentIndexChanged.connect(self._fill_areas)
+        self.area_input.currentIndexChanged.connect(self._area_chosen)
 
         self._update()
 
@@ -390,7 +406,28 @@ class ParkingSpotDialog(QDialog):
     def _direction_inputs(self):
         return (self.entry_direction_input, self.exit_direction_input)
 
+    def area_label(self, index: int, area: IndoorArea) -> str:
+        return f"{index + 1} – {area.name}"
+
+    def _fill_areas(self):
+        """The areas in the order their markers are numbered, from the open side."""
+
+        order = [area for row in rows(self.areas, self.side_input.currentData()) for area in row]
+        self.area_input.blockSignals(True)
+        self.area_input.clear()
+
+        for index, area in enumerate(order):
+            self.area_input.addItem(self.area_label(index, area), area)
+
+        self.area_input.setCurrentIndex(order.index(self.area))
+        self.area_input.blockSignals(False)
+
+    def _area_chosen(self):
+        self.area = self.area_input.currentData()
+        self._update()
+
     def _update(self):
+        self.area_plan = None
         settings = self.settings
         back_in = settings.mode == ParkingMode.BACK_IN
 
@@ -419,8 +456,6 @@ class ParkingSpotDialog(QDialog):
         network = plan_parking(frame, settings) if fits else None
 
         self.preview.show_plan(self.area, frame, settings, network)
-        self.plan = (frame, network)
-        self.plan_changed.emit(frame, network)
         self.create_button.setEnabled(problem is None)
 
         if not inside or not positions_inside:
@@ -434,6 +469,8 @@ class ParkingSpotDialog(QDialog):
             self.hint_label.setText(tr("The group “{name}” will be created.", name=settings.group))
         else:
             self.hint_label.setText(problem or "")
+
+        self.area_plan_changed.emit(self.area_plan)
 
     def _problem(self, settings, frame, too_narrow, line_fits, positions_inside) -> str | None:
         if too_narrow:
@@ -451,16 +488,22 @@ class ParkingSpotDialog(QDialog):
         return self._names_problem(settings)
 
     def _names_problem(self, settings) -> str | None:
+        """Plans all sheds (shown on the map even while the names are missing) and checks the
+        names."""
+
+        try:
+            self.area_plan = plan_sheds(self.areas, settings)
+        except ValueError:
+            return tr("The settings don't fit every shed.")
+
         if not settings.marker_name:
             return self.EMPTY_NAME_TEXT
 
         if not settings.group:
             return self.EMPTY_GROUP_TEXT
 
-        for number in range(settings.start_number, settings.start_number + marker_count(settings)):
-            name = f"{settings.marker_name} {number}"
-
-            if (name, settings.group) in self.taken_names:
+        for _, name, group in self.area_plan.markers:
+            if (name, group) in self.taken_names:
                 return tr("A marker in this group already has the name “{name}”.", name=name)
 
         return None

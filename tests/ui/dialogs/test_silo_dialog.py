@@ -28,17 +28,17 @@ def test_defaults_are_the_silo_layout_and_patterns(qapp):
         "Farm-KS-A: KS-A-1 … KS-A-5",
         "Farm-KS-B (new): KS-B-1 … KS-B-5",
     ]
-    assert len(silo_dialog.silo_plan.markers) == 10
+    assert len(silo_dialog.area_plan.markers) == 10
 
 
 def test_silo_choice_switches_the_preview_and_is_hidden_for_one_silo(qapp):
     silo_dialog = dialog()
 
-    assert silo_dialog.silo_input.count() == 2
-    silo_dialog.silo_input.setCurrentIndex(1)
-    assert silo_dialog.preview.area == silo_dialog.silo_input.itemData(1)
+    assert silo_dialog.area_input.count() == 2
+    silo_dialog.area_input.setCurrentIndex(1)
+    assert silo_dialog.preview.area == silo_dialog.area_input.itemData(1)
 
-    assert not dialog([LEFT]).form.isRowVisible(dialog([LEFT]).silo_input)
+    assert not dialog([LEFT]).form.isRowVisible(dialog([LEFT]).area_input)
 
 
 def test_drive_through_swaps_patterns_and_marker_distance(qapp):
@@ -62,4 +62,4 @@ def test_bad_or_taken_names_disable_create(qapp, name, taken):
     silo_dialog.name_input.setText(name)
 
     assert not silo_dialog.is_valid
-    assert silo_dialog.silo_plan is None
+    assert silo_dialog.area_plan is None

@@ -626,7 +626,7 @@ TEXTS = {
     "Number: {number}": "Nummer: {number}",
     # Parking spots
     "Parking spots": "Parkplätze",
-    "Click a shed to create parking spots in it": "Eine Halle anklicken, um darin Parkplätze anzulegen",
+    "Click a shed, Shift-click or right-drag a box to pick several of one type": "Eine Halle anklicken; mehrere eines Typs mit Umschalt-Klick oder einem Rahmen mit der rechten Maustaste wählen",
     "No sheds shown: open a savegame": "Keine Hallen angezeigt: ein Savegame öffnen",
     "Create parking spots": "Parkplätze anlegen",
     "{count} parking spots created; the line ends still need to be connected to the network": "{count} Parkplätze angelegt; die Linienenden müssen noch mit dem Netz verbunden werden",
@@ -894,4 +894,8 @@ TEXTS = {
     "Two lanes would get the name “{name}”: add {{n}}.": "Zwei Spuren bekämen den Namen „{name}“: {{n}} ergänzen.",
     " (new)": " (neu)",
     "Placeholders: {building} the building's name, {letter} the silo's letter when several are picked (A, B, …), {n} the lane's number.": "Platzhalter: {building} der Name des Gebäudes, {letter} der Buchstabe des Silos, wenn mehrere gewählt sind (A, B, …), {n} die Nummer der Spur.",
+    "The sheds are of different types: pick sheds of one type": "Die Hallen sind von verschiedenem Typ: Hallen eines Typs wählen",
+    "{count} sheds picked: Enter or a click on one of them creates their parking spots, Esc drops the pick": "{count} Hallen gewählt: Enter oder ein Klick auf eine davon legt ihre Parkplätze an, Esc verwirft die Auswahl",
+    "Shed:": "Halle:",
+    "The settings don't fit every shed.": "Die Einstellungen passen nicht in jede Halle.",
 }

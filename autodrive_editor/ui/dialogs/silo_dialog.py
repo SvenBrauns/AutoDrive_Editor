@@ -1,8 +1,5 @@
 from dataclasses import replace
 
-from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QComboBox
-
 from autodrive_editor.editing.bunker_silo import (
     BACK_WALL_TO_MARKER,
     MARKER_PAST_SILO,
@@ -10,7 +7,7 @@ from autodrive_editor.editing.bunker_silo import (
     plan_silos,
     silo_settings,
 )
-from autodrive_editor.editing.parking_layout import ParkingMode, ParkingSettings, rows
+from autodrive_editor.editing.parking_layout import ParkingMode, ParkingSettings
 from autodrive_editor.file_io.navigation_costmap import NavigationCostmap
 from autodrive_editor.file_io.savegame_sheds import IndoorArea
 from autodrive_editor.i18n import tr
@@ -29,8 +26,7 @@ class SiloDialog(ParkingSpotDialog):
     name and group as patterns with {building}, {letter} and {n}. The views show one silo, chosen
     by its letter; the map shows the whole plan."""
 
-    # The planned lanes of all silos as a piece in map points, or None while they don't fit.
-    silos_changed = Signal(object)
+    AREA_TEXT = tr("Silo:")
 
     MARKER_OUTSIDE_TEXT = tr("The marker must be inside the silo.")
     LINE_INSIDE_TEXT = tr("The entry line must be at least {distance} m outside the silo.")
@@ -45,26 +41,17 @@ class SiloDialog(ParkingSpotDialog):
         parent=None,
     ):
         # Read by the methods the shed dialog calls while it is set up.
-        self.areas = list(areas)
         self.costmap = costmap
         self.patterns = app_settings.silo_patterns
-        self.silo_plan = None
         self.mode = None
 
-        super().__init__(areas[0], groups, taken_names, app_settings, parent)
+        super().__init__(areas, groups, taken_names, app_settings, parent)
 
         self.setWindowTitle(tr("Create silo lanes"))
         self.reset_button.setText(tr("Reset silo settings"))
         self.form.labelForField(self.bays_input).setText(tr("Number of lanes:"))
         self.form.labelForField(self.bay_width_label).setText(tr("Lane width:"))
 
-        self.silo_input = QComboBox(self)
-        self.form.insertRow(0, tr("Silo:"), self.silo_input)
-        self.form.setRowVisible(self.silo_input, len(self.areas) > 1)
-        self._fill_silos()
-
-        self.side_input.currentIndexChanged.connect(self._fill_silos)
-        self.silo_input.currentIndexChanged.connect(self._silo_chosen)
         self.mode_input.currentIndexChanged.connect(self._mode_changed)
 
         self._update()
@@ -109,25 +96,10 @@ class SiloDialog(ParkingSpotDialog):
         if abs(self.back_input.value() - MARKER_DISTANCES[old]) < 1e-6:
             self.back_input.setValue(MARKER_DISTANCES[new])
 
-    def _fill_silos(self):
-        """The silos with their letters, in the order they get them from the open side."""
-
-        order = [area for row in rows(self.areas, self.side_input.currentData()) for area in row]
-        self.silo_input.blockSignals(True)
-        self.silo_input.clear()
-
-        for index, area in enumerate(order):
-            self.silo_input.addItem(f"{chr(ord('A') + index)} – {area.name}", area)
-
-        self.silo_input.setCurrentIndex(order.index(self.area))
-        self.silo_input.blockSignals(False)
-
-    def _silo_chosen(self):
-        self.area = self.silo_input.currentData()
-        self._update()
+    def area_label(self, index: int, area: IndoorArea) -> str:
+        return f"{chr(ord('A') + index)} – {area.name}"
 
     def _update(self):
-        self.silo_plan = None
         super()._update()
 
         back_in = self.mode_input.currentData() == ParkingMode.BACK_IN
@@ -135,10 +107,8 @@ class SiloDialog(ParkingSpotDialog):
         self.form.setRowVisible(self.positions_input, False)
         self.form.setRowVisible(self.spacing_input, False)
 
-        if self.silo_plan is not None:
+        if self.area_plan is not None:
             self.hint_label.setText(self._names_text())
-
-        self.silos_changed.emit(self.silo_plan)
 
     def _names_problem(self, settings) -> str | None:
         problem = pattern_problem(settings.marker_name) or pattern_problem(
@@ -162,7 +132,7 @@ class SiloDialog(ParkingSpotDialog):
             if (name, group) in self.taken_names:
                 return tr("A marker in this group already has the name “{name}”.", name=name)
 
-        self.silo_plan = piece
+        self.area_plan = piece
         return None
 
     def _names_text(self) -> str:
@@ -170,7 +140,7 @@ class SiloDialog(ParkingSpotDialog):
 
         groups: dict[str, list[str]] = {}
 
-        for _, name, group in self.silo_plan.markers:
+        for _, name, group in self.area_plan.markers:
             groups.setdefault(group, []).append(name)
 
         lines = []
