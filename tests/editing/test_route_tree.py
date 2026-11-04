@@ -66,3 +66,41 @@ def test_a_waypoint_several_routes_pass_gets_one_heading_halfway_between_theirs(
     headings = shared_headings([(0, 1, 2), (0, 1, 3), (0, 2)], points)
 
     assert headings == {1: pytest.approx(math.radians(22.5))}
+
+
+def through(start, *legs):
+    """A route along straight pieces; each leg is the list of its corners after its start."""
+
+    points, indices = [start], [0]
+
+    for leg in legs:
+        for corner in leg:
+            points += line(points[-1], corner)
+
+        indices.append(len(points) - 1)
+
+    return Route(points, indices, [False] * len(points))
+
+
+@pytest.mark.parametrize(
+    "second_leg",
+    [
+        # The same line as the first route, but its end lies a rounding error past the
+        # waypoint, so it is nearer to the first route's next leg.
+        [(-12.71, -13.71)],
+        [(-5, -8), (-12.7, -13.7)],  # Its search ran up to 2 m beside the first route.
+    ],
+)
+def test_routes_through_the_same_waypoints_share_the_nodes_of_that_leg(second_leg):
+    # Start 0, shared waypoint 1, ends 2 and 3. Both routes leave the waypoint in the same
+    # direction and split later.
+    positions = {1: (0, 0), 2: (-12.7, -13.7), 3: (-6, -26.4), 4: (-19.1, -39.2)}
+    nodes = TreeNodes({0: 1, 1: 2, 2: 3, 3: 4}, positions, (), 5.0, 3.5, 10)
+    routes = [
+        TreeRoute((0, 1, 2), through((0, 0), [(-12.7, -13.7)], [(-17, -18.3), (-6, -26.4)])),
+        TreeRoute((0, 1, 3), through((0, 0), second_leg, [(-19.1, -39.2)])),
+    ]
+
+    first, second = tree_chains(routes, nodes).chains
+
+    assert second[: second.index(2) + 1] == first[: first.index(2) + 1]
