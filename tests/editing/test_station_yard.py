@@ -205,3 +205,9 @@ def test_branch_leaves_the_road_on_a_straight_not_on_the_corner_arc():
 
         assert plan.problems == []
         assert (fork_z == pytest.approx(0) and x <= 93) or (x == pytest.approx(100) and fork_z >= 7)
+
+
+def test_road_part_just_over_the_spacing_gets_no_longer_connection():
+    # The yard helper checks every connection is at most the spacing; this branch's rejoin
+    # point once left a 12.2 m road piece with no node in it.
+    yard(stop(85, 10), road=yard_road([(0, 0), (100, 0), (100, 100)], radius=6.0))
