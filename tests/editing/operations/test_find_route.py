@@ -1,3 +1,4 @@
+import math
 import time
 from pathlib import Path
 from types import SimpleNamespace
@@ -449,6 +450,19 @@ def test_a_click_with_several_ends_adds_a_waypoint_all_routes_share(route):
     assert route.operation.routes[-1][1:-1] == (key,)
 
 
+def test_routes_through_a_shared_waypoint_run_as_one_up_to_it(route):
+    route.data.add_node(NodeData(5, 60, 0, 30))
+    find_tree(route, [1], [2, 5])
+
+    route.operation.add_waypoint(45, 0)
+    route.wait()
+
+    first, second = route.operation.current_routes
+    assert first.points[: first.waypoint_indices[1] + 1] == pytest.approx(
+        second.points[: second.waypoint_indices[1] + 1]
+    )
+
+
 def test_a_waypoint_on_one_route_searches_only_that_route_again(route):
     route.data.add_node(NodeData(5, 60, 0, 30))
     find_tree(route, [1], [2, 5])
@@ -462,6 +476,19 @@ def test_a_waypoint_on_one_route_searches_only_that_route_again(route):
     first, second = route.operation.current_routes
     assert first is kept
     assert second is not edited and second.is_clear
+
+
+def test_pressing_just_past_where_routes_split_inserts_into_all_of_them(route):
+    route.data.add_node(NodeData(5, 60, 0, 30))
+    find_tree(route, [1], [2, 5])
+    first, second = route.operation.current_routes
+
+    split = next(
+        i for i, p in enumerate(second.points) if min(math.dist(p, q) for q in first.points) > 1.5
+    )
+
+    assert route.operation.legs_at(*second.points[split + 4], 1.0) == {0: 0, 1: 0}
+    assert route.operation.legs_at(*second.points[-5], 1.0) == {1: 0}
 
 
 def test_a_route_that_is_not_clear_is_named_and_nothing_is_added(route):

@@ -1,3 +1,6 @@
+import math
+
+import pytest
 from test_route_nodes import data_with, line
 
 from autodrive_editor.editing.route_finder import Route
@@ -5,6 +8,7 @@ from autodrive_editor.editing.route_tree import (
     TreeNodes,
     TreeRoute,
     runs_beside,
+    shared_headings,
     tree_chains,
     tree_connections,
 )
@@ -53,3 +57,12 @@ def test_connections_of_several_chains_are_added_once_and_dual_when_driven_both_
     connections = tree_connections(data, [[1, 2, 3], [1, 2], [3, 2]])
 
     assert connections == [(1, 2, REGULAR), (2, 3, DUAL)]
+
+
+def test_a_waypoint_several_routes_pass_gets_one_heading_halfway_between_theirs():
+    points = {0: (0, 0), 1: (10, 0), 2: (20, 0), 3: (10, 10)}
+
+    # Straight on to 2 (0°) and a right angle to 3 (45° alone): halfway is 22.5°.
+    headings = shared_headings([(0, 1, 2), (0, 1, 3), (0, 2)], points)
+
+    assert headings == {1: pytest.approx(math.radians(22.5))}

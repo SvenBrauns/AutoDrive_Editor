@@ -8,6 +8,7 @@ they have in common, so routes with the same start run together and branch off l
 """
 
 import math
+from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from itertools import pairwise
@@ -26,6 +27,7 @@ from autodrive_editor.editing.route_nodes import (
     chain_connections,
     route_nodes,
 )
+from autodrive_editor.editing.route_pipeline import bisector
 from autodrive_editor.model.autodrive_data import AutoDriveData
 from autodrive_editor.model.connections import CONNECTION_STATES, ConnectionState, ConnectionType
 
@@ -121,6 +123,24 @@ def tree_chains(routes: list[TreeRoute], nodes: TreeNodes) -> TreeChains:
     result.lanes = [lane for _, _, lane in leg_lanes]
 
     return result
+
+
+def shared_headings(routes: list[tuple[int, ...]], points: dict[int, Point]) -> dict[int, float]:
+    """The heading at each inner waypoint that several routes pass: halfway between the headings
+    each route alone would pass it at (see bisector). So the routes pass it alike and can run
+    as one up to there."""
+
+    headings = defaultdict(list)
+
+    for keys in routes:
+        for before, key, after in zip(keys, keys[1:], keys[2:], strict=False):
+            headings[key].append(bisector(points[before], points[key], points[after]))
+
+    return {
+        key: math.atan2(sum(map(math.sin, values)), sum(map(math.cos, values)))
+        for key, values in headings.items()
+        if len(values) > 1
+    }
 
 
 def tree_connections(

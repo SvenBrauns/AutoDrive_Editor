@@ -17,11 +17,12 @@ from autodrive_editor.editing.route_finder import (
     RouteRequest,
     Vehicle,
 )
-from autodrive_editor.editing.route_nodes import node_headings, planned_lanes
+from autodrive_editor.editing.route_nodes import SNAP_DISTANCE, node_headings, planned_lanes
 from autodrive_editor.editing.route_tree import (
     TreeNodes,
     TreeRoute,
     TreeSearch,
+    shared_headings,
     tree_chains,
     tree_connections,
 )
@@ -36,6 +37,9 @@ from autodrive_editor.model.connections import (
 )
 
 logger = logging.getLogger(__name__)
+
+# A waypoint inserted this close to where routes split or merge goes into all of them.
+SPLIT_DISTANCE = 5.0
 
 
 @dataclass(frozen=True)
@@ -57,11 +61,11 @@ class Waypoint:
 
 @dataclass
 class _Found:
-    """The route last found for a start and end, and the waypoints it was searched with; None
-    once the network changed."""
+    """The route last found for a start and end, and what it was searched with (see
+    _searched_with); None once the network changed."""
 
     route: Route | None
-    searched: tuple[Waypoint, ...] | None
+    searched: tuple | None
 
 
 class FindRouteOperation(EditOperation):
@@ -327,26 +331,40 @@ class FindRouteOperation(EditOperation):
 
     def legs_at(self, x: float, z: float, tolerance: float) -> dict[int, int]:
         """Per route whose shown route passes within `tolerance` of the point, the leg there:
-        leg k runs from the route's waypoint k to k + 1. Outdated routes are left out."""
+        leg k runs from the route's waypoint k to k + 1. Routes that run together with one of
+        these within SPLIT_DISTANCE of the point, as just past where they split, are included
+        too. Outdated routes are left out."""
 
-        legs = {}
+        shown = [
+            (index, route)
+            for index, (keys, route) in enumerate(zip(self.routes, self.shown_routes, strict=True))
+            if route is not None and route.points and len(route.waypoint_indices) == len(keys)
+        ]
+        legs, nearests, close = {}, {}, []
 
-        for index, (keys, route) in enumerate(zip(self.routes, self.shown_routes, strict=True)):
-            if route is None or not route.points or len(route.waypoint_indices) != len(keys):
-                continue
-
+        for index, route in shown:
             nearest = min(
                 range(len(route.points)), key=lambda i: math.dist(route.points[i], (x, z))
             )
+            nearests[index] = nearest
 
-            if math.dist(route.points[nearest], (x, z)) > tolerance:
-                continue
+            if math.dist(route.points[nearest], (x, z)) <= tolerance:
+                legs[index] = nearest
+                close += [p for p in route.points if math.dist(p, (x, z)) <= SPLIT_DISTANCE]
 
-            legs[index] = max(
-                leg for leg, start in enumerate(route.waypoint_indices[:-1]) if start <= nearest
+        for index, route in shown:
+            if index not in legs and any(
+                math.dist(p, q) <= SNAP_DISTANCE for p in route.points for q in close
+            ):
+                legs[index] = nearests[index]
+
+        return {
+            index: max(
+                leg for leg, start in enumerate(route.waypoint_indices[:-1]) if start <= legs[index]
             )
-
-        return legs
+            for index, route in shown
+            if index in legs
+        }
 
     def insert_waypoint(self, x: float, z: float, legs: dict[int, int]) -> int:
         """Adds a free waypoint to each route of `legs` (see legs_at), in its leg there.
@@ -512,11 +530,23 @@ class FindRouteOperation(EditOperation):
     def _route_waypoints(self, keys: tuple[int, ...]) -> tuple[Waypoint, ...]:
         return tuple(self.points[key] for key in keys)
 
+    def _shared_headings(self) -> dict[int, float]:
+        points = {key: (waypoint.x, waypoint.z) for key, waypoint in self.points.items()}
+
+        return shared_headings(self.routes, points)
+
+    def _searched_with(self, keys: tuple[int, ...], shared: dict[int, float]) -> tuple:
+        """What a route is searched with: its waypoints and their fixed headings."""
+
+        return self._route_waypoints(keys), tuple(shared.get(key) for key in keys)
+
     def _is_current(self, pair: tuple[int, int]) -> bool:
         found = self._found.get(pair)
         keys = (pair[0], *self._vias.get(pair, ()), pair[1])
 
-        return found is not None and found.searched == self._route_waypoints(keys)
+        return found is not None and found.searched == self._searched_with(
+            keys, self._shared_headings()
+        )
 
     def _outdate(self):
         """Marks all routes for a new search, e.g. after the network changed, and starts it."""
@@ -550,8 +580,10 @@ class FindRouteOperation(EditOperation):
             return
 
         search = self._tree_search(autodrive_data)
+        shared = self._shared_headings()
         searched = {
-            pair: self._route_waypoints(keys) for pair, keys in zip(pairs, self.routes, strict=True)
+            pair: self._searched_with(keys, shared)
+            for pair, keys in zip(pairs, self.routes, strict=True)
         }
         self._search_number += 1
         finder = RouteFinder(self.costmap_provider(), self.vehicle_provider())
@@ -594,6 +626,7 @@ class FindRouteOperation(EditOperation):
 
     def _tree_search(self, autodrive_data: AutoDriveData) -> TreeSearch:
         lanes = tuple((lane.source, lane.target) for lane in self._lanes(autodrive_data))
+        shared = self._shared_headings()
         requests = [
             RouteRequest(
                 tuple((waypoint.x, waypoint.z) for waypoint in self._route_waypoints(keys)),
@@ -601,6 +634,7 @@ class FindRouteOperation(EditOperation):
                 self._headings(autodrive_data, self.points[keys[-1]]),
                 lanes,
                 turning_radius=self.curve_radius_provider(),
+                waypoint_headings=tuple(shared.get(key) for key in keys),
             )
             for keys in self.routes
         ]
