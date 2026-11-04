@@ -15,6 +15,7 @@ from autodrive_editor.rendering.display_style import DisplayStyle
 from autodrive_editor.rendering.layers.connection_layer import ConnectionLayerItem
 from autodrive_editor.rendering.layers.drivability_layer import DrivabilityLayerItem
 from autodrive_editor.rendering.layers.marker_layer import MarkerLayerItem
+from autodrive_editor.rendering.layers.neighbor_layer import NeighborLayerItem
 from autodrive_editor.rendering.layers.network_tiles import NetworkTiles
 from autodrive_editor.rendering.layers.node_label_layer import NodeLabelLayerItem
 from autodrive_editor.rendering.layers.node_layer import (
@@ -76,6 +77,8 @@ class SceneRenderer:
         self.selected_node_ids: set[int] = set()
         # Nodes the open plan changed.
         self.plan_node_ids: set[int] = set()
+        # The node under the pointer; its neighbours are highlighted.
+        self.hovered_node_id: int | None = None
 
         self.autodrive_data: AutoDriveData | None = None
         # Area of all nodes. It only grows while editing, which is enough for the layer bounds.
@@ -86,6 +89,7 @@ class SceneRenderer:
         self.node_label_layer: NodeLabelLayerItem | None = None
         self.marker_layer: MarkerLayerItem | None = None
         self.selection_layer: SelectionLayerItem | None = None
+        self.neighbor_layer: NeighborLayerItem | None = None
         self.plan_layer: PlanLayerItem | None = None
         self.shed_layer: ShedLayerItem | None = None
         self.station_layer: StationLayerItem | None = None
@@ -105,6 +109,7 @@ class SceneRenderer:
                 self.node_label_layer,
                 self.marker_layer,
                 self.selection_layer,
+                self.neighbor_layer,
             )
             if layer is not None
         ]
@@ -126,6 +131,7 @@ class SceneRenderer:
         self.marker_layer.set_names_visible(self.marker_names_visible)
         self.marker_layer.set_parking_markers(self.parking_markers)
         self.selection_layer = SelectionLayerItem(style)
+        self.neighbor_layer = NeighborLayerItem(style)
         self.plan_layer = PlanLayerItem(style)
         self.shed_layer = ShedLayerItem(style)
         self.station_layer = StationLayerItem(style)
@@ -154,6 +160,7 @@ class SceneRenderer:
         self.node_label_layer = None
         self.marker_layer = None
         self.selection_layer = None
+        self.neighbor_layer = None
         self.plan_layer = None
         self.shed_layer = None
         self.station_layer = None
@@ -169,6 +176,7 @@ class SceneRenderer:
 
         self.selected_node_ids.clear()
         self.plan_node_ids.clear()
+        self.hovered_node_id = None
         self.autodrive_data = None
         self.network_bounds = QRectF()
 
@@ -232,6 +240,7 @@ class SceneRenderer:
 
         self._refresh_selection()
         self._refresh_plan()
+        self._refresh_neighbors()
 
         for layer in self.layers:
             layer.update()
@@ -252,6 +261,29 @@ class SceneRenderer:
 
         self.selection_layer.set_nodes(
             nodes[node_id] for node_id in self.selected_node_ids if node_id in nodes
+        )
+
+    def set_hovered_node_id(self, node_id: int | None):
+        if node_id != self.hovered_node_id:
+            self.hovered_node_id = node_id
+            self._refresh_neighbors()
+
+    def _refresh_neighbors(self):
+        if self.neighbor_layer is None or self.autodrive_data is None:
+            return
+
+        nodes = self.autodrive_data.nodes
+
+        if self.hovered_node_id not in nodes:
+            self.hovered_node_id = None
+
+        neighbor_ids = (
+            self.connection_spatial_index.neighbor_ids(self.hovered_node_id)
+            if self.hovered_node_id is not None
+            else ()
+        )
+        self.neighbor_layer.set_nodes(
+            nodes[node_id] for node_id in neighbor_ids if node_id in nodes
         )
 
     def set_plan_node_ids(self, node_ids):

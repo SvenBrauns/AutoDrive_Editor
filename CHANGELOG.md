@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- The nodes connected to the node under the pointer are drawn purple, in every tool, as in AutoDrive
 - `File → Settings → Generators`: curve radius and node spacing on straights (default 12 m) for Find route, Junction and station lanes, vehicle width and safety margin, the lane lengths of station lanes, and a marker name pattern (`{building}`, `{type}`, `{n}`) and group per stop type. The Stations dialog opens it with `Generator settings…`
 - Save names the vehicles whose target marker was deleted (they would go to marker 1, a parking target is removed) and asks `Save` or `Cancel` before writing, instead of telling afterwards
 - `Edit → Keep heights when pasting` (off by default, remembered): pasted nodes keep their copied heights, e.g. on a bridge or ramp; off, they get the terrain height at the new place

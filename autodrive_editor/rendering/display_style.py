@@ -67,6 +67,9 @@ class DisplayStyle:
     plan_color: tuple[int, int, int, int] = (30, 144, 255, 150)
     plan_halo_min_px: float = 10.0
 
+    # Nodes connected to the node under the pointer.
+    neighbor_node_color: tuple[int, int, int] = (160, 60, 255)
+
     drivability_z: float = -30.0
     shed_z: float = -20.0
     station_z: float = -15.0
@@ -75,3 +78,4 @@ class DisplayStyle:
     node_z: float = 0.0
     marker_z: float = 10.0
     selected_node_z: float = 110.0
+    neighbor_node_z: float = 120.0

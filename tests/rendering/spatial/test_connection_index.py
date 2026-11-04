@@ -201,3 +201,14 @@ def test_changed_drawing_tiles_are_reported_once():
     assert index.take_changed_tiles() == {(0, 0), (2, 0)}
     assert index.take_changed_tiles() == set()
     assert (2, 0) in index.connections_by_drawing_tile
+
+
+def test_neighbors_are_found_in_both_directions_including_reverse_connections():
+    # 4 -> 2 is reverse: only 4.outgoing knows about it.
+    data = build_data()
+    data.add_node(NodeData(node_id=4, x=50, y=0, z=50, outgoing={2}))
+    index = build_index(data)
+
+    assert index.neighbor_ids(2) == {1, 3, 4}
+    assert index.neighbor_ids(4) == {2}
+    assert index.neighbor_ids(99) == set()
