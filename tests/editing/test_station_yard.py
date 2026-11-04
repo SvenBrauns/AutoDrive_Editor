@@ -191,3 +191,17 @@ def test_yard_command_adds_road_stops_and_lanes_in_one_step_on_the_joined_nodes(
 
 def _out(piece, index):
     return sum(1 for source, _, _ in piece.connections if source == index)
+
+
+def test_branch_leaves_the_road_on_a_straight_not_on_the_corner_arc():
+    # The arc runs from (94, 0) to (100, 6); 15 m before the lane would be on it.
+    road = yard_road([(0, 0), (100, 0), (100, 100)], radius=6.0)
+
+    for z in (25, 30):
+        plan = yard(stop(110, z, heading=180.0), road=road)
+        points, connections = plan.piece.points, plan.piece.connections
+        fork = next(s for s in range(len(points)) if sum(c[0] == s for c in connections) == 2)
+        x, fork_z = points[fork]
+
+        assert plan.problems == []
+        assert (fork_z == pytest.approx(0) and x <= 93) or (x == pytest.approx(100) and fork_z >= 7)

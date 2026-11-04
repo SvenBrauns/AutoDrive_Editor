@@ -52,6 +52,9 @@ CHAIN_GAP = 15.0
 # How far along the road (in metres) a branch leaves before its lane and rejoins after it:
 # preferred first, then farther, then closer.
 FORK_TRIES = (*range(15, 41), *range(14, 5, -1))
+# A branch leaves or joins the road on an arc only where no straight is left: within this many
+# metres of a place the road must not turn.
+ARC_CHECK = 1.0
 # A bay's stub lies this far beside the road, is this long, and its line has nodes this close.
 BAY_SIDE = 6.0
 BAY_STUB = 15.0
@@ -127,6 +130,16 @@ class _Road:
             return distance % self.length
 
         return distance if 0 <= distance <= self.length else None
+
+    def on_arc(self, distance: float) -> bool:
+        """Whether the road turns within ARC_CHECK of the distance."""
+
+        before, after = (self.wrapped(distance + d) for d in (-ARC_CHECK, ARC_CHECK))
+        before = distance if before is None else before
+        after = distance if after is None else after
+        turn = math.remainder(self.pose(after)[2] - self.pose(before)[2], math.tau)
+
+        return abs(turn) > math.radians(0.5)
 
     def pose(self, distance: float) -> Pose:
         index = min(max(bisect.bisect_right(self.walked, distance) - 1, 0), len(self.line) - 2)
@@ -469,12 +482,7 @@ def _fork(ring: _Road, goal: Pose, radius: float) -> tuple[float, list[Point]] |
 
     along, _ = ring.foot(goal[:2])
 
-    for back in FORK_TRIES:
-        distance = ring.wrapped(along - back)
-
-        if distance is None:
-            continue
-
+    for distance in _places(ring, [along - back for back in FORK_TRIES]):
         x, z, heading = ring.pose(distance)
         start = (x, z, kinked(CurveKind.IN, (x, z), heading, goal[:2]))
         path = shortest_path(start, goal, radius)
@@ -490,12 +498,7 @@ def _merge(ring: _Road, start: Pose, radius: float) -> tuple[float, list[Point]]
 
     along, _ = ring.foot(start[:2])
 
-    for ahead in FORK_TRIES:
-        distance = ring.wrapped(along + ahead)
-
-        if distance is None:
-            continue
-
+    for distance in _places(ring, [along + ahead for ahead in FORK_TRIES]):
         x, z, heading = ring.pose(distance)
         goal = (x, z, kinked(CurveKind.OUT, (x, z), heading, start[:2]))
         path = shortest_path(start, goal, radius)
@@ -504,6 +507,15 @@ def _merge(ring: _Road, start: Pose, radius: float) -> tuple[float, list[Point]]
             return float(distance), [pose[:2] for pose in path.sample(LINE_STEP)]
 
     return None
+
+
+def _places(ring: _Road, distances: list[float]) -> list[float]:
+    """The distances that lie on the road, those on its straights first (in their order), as
+    branches leave and join on straights where they can."""
+
+    on_road = [d for d in map(ring.wrapped, distances) if d is not None]
+
+    return sorted(on_road, key=ring.on_arc)
 
 
 def _along_road(ring: _Road, choice: StopChoice) -> tuple[float, float]:
