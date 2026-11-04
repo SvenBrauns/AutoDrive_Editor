@@ -51,18 +51,14 @@ class ParkingSpotOperation(EditOperation):
             return x, area.height, z
 
         piece = plan_parking(frame, settings).moved(to_map)
-        node_ids = push_piece(
+        push_piece(
             self.edit_history, self.autodrive_data_provider(), piece, tr("Create parking spots")
         )
 
-        if self.node_selection is not None:
-            open_ends = [node_ids[index] for index in piece.open_ends]
-            self.node_selection.replace(set(open_ends), open_ends[0])
-
         self.status_changed.emit(
             tr(
-                "{count} parking spots created; the selected line ends still need to be "
-                "connected to the network",
+                "{count} parking spots created; the line ends still need to be connected to the "
+                "network",
                 count=len(piece.markers),
             )
         )

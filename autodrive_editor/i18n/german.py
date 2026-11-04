@@ -629,7 +629,7 @@ TEXTS = {
     "Click a shed to create parking spots in it": "Eine Halle anklicken, um darin Parkplätze anzulegen",
     "No sheds shown: open a savegame": "Keine Hallen angezeigt: ein Savegame öffnen",
     "Create parking spots": "Parkplätze anlegen",
-    "{count} parking spots created; the selected line ends still need to be connected to the network": "{count} Parkplätze angelegt; die ausgewählten Linienenden müssen noch mit dem Netz verbunden werden",
+    "{count} parking spots created; the line ends still need to be connected to the network": "{count} Parkplätze angelegt; die Linienenden müssen noch mit dem Netz verbunden werden",
     "Mode:": "Modus:",
     "Back in": "Rückwärts einparken",
     "Drive through": "Durchfahren",

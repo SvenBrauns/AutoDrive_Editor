@@ -46,7 +46,7 @@ def test_click_on_a_shed_creates_its_parking_spots(parking_window):
 
     assert parking_window.asked == [SHED]
     assert [marker.name for marker in data.markers.values()] == ["Shed 1", "Shed 2"]
-    assert len(parking_window.node_selection.selected_node_ids) == 4
+    assert parking_window.node_selection.selected_node_ids == set()
     assert parking_window.status.text().startswith("2 parking spots created")
 
     parking_window.edit_history.undo()

@@ -147,7 +147,7 @@ Der Editor legt AutoDrive-Parkplätze in den Hallen eines Savegames an. Beim Wer
 
 Beim Rückwärts-Einparken zeigt die Seitenansicht darunter die Linie eines Stellplatzes, die für alle Stellplätze gilt. Ein Segment anklicken, um seine Länge zu ändern; „+“ teilt ein Segment in der Mitte, `Entf` löscht die ausgewählte Node. Die Punkte, an denen Zufahrts- und Abfahrtslinie abzweigen, lassen sich auf eine andere Node ziehen. Beim Durchfahren zeigt die Seitenansicht die Linie nur an.
 
-`Anlegen` erzeugt alle Nodes als Subprio-Nodes auf der Höhe der Halle, als ein Rückgängig-Schritt. Zweimal ausgeführt entstehen die Parkplätze zweimal. Danach sind die vier offenen Enden von Zufahrts- und Abfahrtslinie ausgewählt, damit man sie ans Straßennetz anschließen kann. `Halleneinstellungen zurücksetzen` stellt die Standardaufteilung wieder her.
+`Anlegen` erzeugt alle Nodes als Subprio-Nodes auf der Höhe der Halle, als ein Rückgängig-Schritt. Zweimal ausgeführt entstehen die Parkplätze zweimal. Danach müssen die vier offenen Enden von Zufahrts- und Abfahrtslinie noch ans Straßennetz angeschlossen werden. `Halleneinstellungen zurücksetzen` stellt die Standardaufteilung wieder her.
 
 **Vorlagen.** `Als Vorlage speichern…` speichert Modus, Seite, Anzahl Stellplätze, Abstände, Parkpositionen und Stellplatzlinie unter einem Namen für diesen Hallentyp; die Vorlage gilt so für dasselbe Gebäude auf jeder Karte. Linienrichtungen, Markername, Startnummer und Gruppe werden nicht gespeichert. `Vorlage laden…` listet die Vorlagen des Hallentyps, dort lassen sie sich auch löschen. Der Dialog öffnet mit der zuletzt gespeicherten oder geladenen Vorlage des Hallentyps.
 

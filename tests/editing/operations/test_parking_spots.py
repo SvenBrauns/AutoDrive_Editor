@@ -54,12 +54,8 @@ def test_creates_the_network_in_one_undo_step(setup):
     neighbour = data.nodes[next(iter(marker.outgoing))]
     assert get_connection_type(marker, neighbour) == ConnectionType.DUAL
 
-    # The four open line ends are selected.
-    assert len(selection.selected_node_ids) == 4
-    assert all(
-        len(data.nodes[i].incoming | data.nodes[i].outgoing) == 1
-        for i in selection.selected_node_ids
-    )
+    # The line ends are not selected.
+    assert selection.selected_node_ids == set()
 
     edits.undo()
 
