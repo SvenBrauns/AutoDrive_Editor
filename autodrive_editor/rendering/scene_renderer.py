@@ -364,6 +364,18 @@ class SceneRenderer:
 
         return _area_at(self.shown_shed_areas, x, z) if self.visibility.sheds else None
 
+    def get_sheds_in_path(self, path: QPainterPath) -> list[IndoorArea]:
+        """The shown sheds whose centre is inside the scene path, while sheds are shown."""
+
+        if not self.visibility.sheds:
+            return []
+
+        return [area for area in self.shown_shed_areas if path.contains(_centre(area))]
+
+    def set_picked_sheds(self, areas: list[IndoorArea]):
+        if self.shed_layer is not None:
+            self.shed_layer.set_picked(areas)
+
     def get_silo_at(self, x: float, z: float) -> IndoorArea | None:
         """The bunker silo whose inner area contains the scene point, while silos are shown."""
 

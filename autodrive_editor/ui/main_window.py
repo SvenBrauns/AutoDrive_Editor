@@ -32,7 +32,10 @@ from autodrive_editor.editing.operations.move_nodes import MoveNodesOperation
 from autodrive_editor.editing.operations.network_check import NetworkCheckOperation
 from autodrive_editor.editing.operations.node_position import NodePositionOperation
 from autodrive_editor.editing.operations.node_types import NodeTypeOperation
-from autodrive_editor.editing.operations.parking_spots import ParkingSpotOperation
+from autodrive_editor.editing.operations.parking_spots import (
+    MIXED_TYPES_TEXT,
+    ParkingSpotOperation,
+)
 from autodrive_editor.editing.operations.reverse_direction import ReverseDirectionOperation
 from autodrive_editor.editing.operations.rotate_selection import RotateSelectionOperation
 from autodrive_editor.editing.operations.stations import StationOperation
@@ -98,6 +101,7 @@ from autodrive_editor.ui.picture_capture_controller import PictureCaptureControl
 from autodrive_editor.ui.planning_controller import PlanningController
 from autodrive_editor.ui.reload_controller import ReloadController
 from autodrive_editor.ui.theme import apply_theme
+from autodrive_editor.ui.tools.area_pick_tool import AreaPickTool
 from autodrive_editor.ui.tools.connect_nodes_tool import ConnectNodesTool
 from autodrive_editor.ui.tools.create_node_tool import CreateNodeTool
 from autodrive_editor.ui.tools.delete_nodes_tool import DeleteNodesTool
@@ -114,7 +118,6 @@ from autodrive_editor.ui.tools.node_click_tool import NodeClickTool
 from autodrive_editor.ui.tools.path_tool import PathTool
 from autodrive_editor.ui.tools.rotate_selection_tool import RotateSelectionTool
 from autodrive_editor.ui.tools.select_tool import SelectTool
-from autodrive_editor.ui.tools.silo_pick_tool import SiloPickTool
 from autodrive_editor.ui.tools.station_pick_tool import StationPickTool
 from autodrive_editor.ui.tools.toggle_node_type_tool import ToggleNodeTypeTool
 from autodrive_editor.ui.update_controller import UpdateController
@@ -397,22 +400,13 @@ class MainWindow(QMainWindow):
 
         return dialog.values if dialog.exec() else None
 
-    def _ask_parking_settings(self, area, autodrive_data):
+    def _ask_parking_settings(self, areas, autodrive_data):
         taken_names = {(marker.name, marker.group) for marker in autodrive_data.markers.values()}
         dialog = ParkingSpotDialog(
-            area, autodrive_data.marker_group_names(), taken_names, self.settings, parent=self
+            areas, autodrive_data.marker_group_names(), taken_names, self.settings, parent=self
         )
-        overlay = ParkingMapOverlay(self.scene_renderer.display_style)
-        overlay.set_plan(*dialog.plan)
-        dialog.plan_changed.connect(overlay.set_plan)
-        self.scene.addItem(overlay)
 
-        try:
-            accepted = self._run_beside_map(dialog)
-        finally:
-            self.scene.removeItem(overlay)
-
-        return dialog.settings if accepted else None
+        return self._run_area_dialog(dialog, areas)
 
     def _ask_silo_settings(self, areas, autodrive_data):
         taken_names = {(marker.name, marker.group) for marker in autodrive_data.markers.values()}
@@ -424,13 +418,19 @@ class MainWindow(QMainWindow):
             self.settings,
             parent=self,
         )
+
+        return self._run_area_dialog(dialog, areas)
+
+    def _run_area_dialog(self, dialog, areas):
+        """Runs a shed or silo dialog beside the areas, with its plan on the map."""
+
         overlay = ParkingMapOverlay(self.scene_renderer.display_style)
 
         def show(piece):
             overlay.set_network(piece, [] if piece is None else [p[::2] for p in piece.points])
 
-        show(dialog.silo_plan)
-        dialog.silos_changed.connect(show)
+        show(dialog.area_plan)
+        dialog.area_plan_changed.connect(show)
         self.scene.addItem(overlay)
         place_beside(dialog, self.view, [corner for area in areas for corner in area.corners])
 
@@ -632,9 +632,8 @@ class MainWindow(QMainWindow):
 
         self.parking_spot_operation = ParkingSpotOperation(
             context,
-            shed_at=self._get_shed_at,
             # Looked up on each call, so tests can replace _ask_parking_settings.
-            ask_settings=lambda area, data: self._ask_parking_settings(area, data),
+            ask_settings=lambda areas, data: self._ask_parking_settings(areas, data),
             parent=self,
         )
 
@@ -918,16 +917,19 @@ class MainWindow(QMainWindow):
             color_provider=lambda: self.scene_renderer.display_style.regular_connection_color,
             z_value=display_style.selected_node_z + 1,
         )
-        parking_tool = NodeClickTool(
+        parking_tool = AreaPickTool(
             self.view,
-            self.parking_spot_operation.create_at,
+            self._get_shed_at,
+            self.scene_renderer.get_sheds_in_path,
+            self.parking_spot_operation.create_for,
+            self._show_picked_sheds,
             lambda: (
-                tr("Click a shed to create parking spots in it")
+                tr("Click a shed, Shift-click or right-drag a box to pick several of one type")
                 if self.scene_renderer.shown_shed_areas
                 else tr("No sheds shown: open a savegame")
             ),
-            is_target=lambda view_position: self._get_shed_at(view_position) is not None,
             hover_text=self._get_shed_name_at,
+            may_add=self._may_pick_shed,
         )
         station_tool = StationPickTool(
             self.view,
@@ -945,7 +947,7 @@ class MainWindow(QMainWindow):
             is_target=lambda view_position: bool(self._get_station_stops_at(view_position)),
             hover_text=self._get_station_name_at,
         )
-        silo_tool = SiloPickTool(
+        silo_tool = AreaPickTool(
             self.view,
             self._get_silo_at,
             self.scene_renderer.get_silos_in_path,
@@ -1148,6 +1150,25 @@ class MainWindow(QMainWindow):
         area = self._get_shed_at(view_position)
 
         return f"{area.name} – {area.category_label}" if area is not None else ""
+
+    def _show_picked_sheds(self, areas):
+        self.scene_renderer.set_picked_sheds(areas)
+
+        if len(areas) > 1:
+            self._set_status(
+                tr(
+                    "{count} sheds picked: Enter or a click on one of them creates their parking "
+                    "spots, Esc drops the pick",
+                    count=len(areas),
+                )
+            )
+
+    def _may_pick_shed(self, picked, area) -> bool:
+        if picked and area.building_file != picked[0].building_file:
+            self._set_status(MIXED_TYPES_TEXT)
+            return False
+
+        return True
 
     def _get_silo_at(self, view_position):
         scene_position = self.view.mapToScene(view_position)

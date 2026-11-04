@@ -394,6 +394,21 @@ def plan_parking(frame: ShedFrame, settings: ParkingSettings) -> PlannedPiece:
     return network
 
 
+def plan_sheds(areas: list[IndoorArea], settings: ParkingSettings) -> PlannedPiece:
+    """The bays of the picked sheds as map points; neighbours share the lines. The marker numbers
+    run on from shed to shed in the order of the rows."""
+
+    count = marker_count(settings)
+
+    def names(index: int, area: IndoorArea) -> list[tuple[str, str]]:
+        first = settings.start_number + index * count
+        return [
+            (f"{settings.marker_name} {n}", settings.group) for n in range(first, first + count)
+        ]
+
+    return plan_rows(areas, settings, names)
+
+
 def rows(areas: list[IndoorArea], side: str) -> list[list[IndoorArea]]:
     """The areas in rows of neighbours, each from left to right seen from outside the given side;
     the rows in the order of their first area."""
