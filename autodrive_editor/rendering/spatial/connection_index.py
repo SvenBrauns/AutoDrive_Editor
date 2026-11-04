@@ -167,6 +167,19 @@ class ConnectionSpatialIndex:
 
         self.connection_count = len(self._connections_by_key)
 
+    def neighbor_ids(self, node_id: int) -> set[int]:
+        """Nodes connected to the node, in either direction."""
+
+        neighbors = set()
+
+        for connection_key in self._connection_keys_by_node_id.get(node_id, ()):
+            connection = self._connections_by_key[connection_key]
+            neighbors.update((connection.source_id, connection.target_id))
+
+        neighbors.discard(node_id)
+
+        return neighbors
+
     def get_connections_in_rect(self, visible_rect: QRectF):
         if visible_rect.isEmpty():
             return []

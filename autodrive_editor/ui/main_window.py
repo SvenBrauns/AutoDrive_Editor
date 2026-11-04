@@ -544,6 +544,7 @@ class MainWindow(QMainWindow):
         )
 
         self.view.set_node_finder(self.selection_coordinator.get_node_at)
+        self.view.hovered_node_changed.connect(self.scene_renderer.set_hovered_node_id)
 
         self.measurement_coordinator = MeasurementCoordinator(
             view=self.view,

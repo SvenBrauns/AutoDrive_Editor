@@ -1,15 +1,17 @@
 import pytest
 from drawing_helpers import ORANGE, RED, paint_scene
 from PySide6.QtCore import QRectF
-from PySide6.QtGui import QPainterPath
+from PySide6.QtGui import QColor, QPainterPath
 from PySide6.QtWidgets import QGraphicsScene
 
 from autodrive_editor.model.autodrive_data import SUBPRIO_FLAG, AutoDriveData, MarkerData, NodeData
 from autodrive_editor.paths import MARKER_ICON_PATH
+from autodrive_editor.rendering.display_style import DisplayStyle
 from autodrive_editor.rendering.scene_renderer import SceneRenderer
 from autodrive_editor.rendering.visibility import Visibility
 
 WHITE = "#ffffff"
+PURPLE = QColor(*DisplayStyle().neighbor_node_color).name()
 
 
 def everything():
@@ -212,3 +214,26 @@ def test_reset_clears_parking_markers(renderer):
     renderer.reset()
 
     assert renderer.parking_markers == []
+
+
+def test_neighbors_of_the_hovered_node_are_highlighted(renderer):
+    renderer.set_hovered_node_id(1)
+
+    assert paint(renderer, (50, 0)).color_at(50, 0) == PURPLE
+    assert paint(renderer, (0, 0)).color_at(0, 0) == RED
+
+    renderer.set_hovered_node_id(None)
+
+    assert paint(renderer, (50, 0)).color_at(50, 0) == RED
+
+
+def test_hover_highlight_follows_edits(renderer):
+    renderer.set_hovered_node_id(2)
+    move_node(renderer, 1, 10, 20)
+
+    assert paint(renderer, (10, 20)).color_at(10, 20) == PURPLE
+
+    delete_node(renderer, 2)
+
+    assert renderer.hovered_node_id is None
+    assert paint(renderer, (10, 20)).color_at(10, 20) == RED

@@ -47,6 +47,9 @@ class MapView(QGraphicsView):
 
     interaction_mode_changed = Signal(object)
 
+    # Id of the node under the pointer, or None. Sent in every tool.
+    hovered_node_changed = Signal(object)
+
     def __init__(self):
         super().__init__()
 
@@ -64,6 +67,7 @@ class MapView(QGraphicsView):
         self._rotation_drag = DragGesture()
 
         self._node_finder: Callable[[QPoint], object | None] = lambda view_position: None
+        self._hovered_node_id: int | None = None
 
         self._configure_view()
 
@@ -358,6 +362,8 @@ class MapView(QGraphicsView):
             handled = self.active_tool.mouse_move(event)
 
         self.refresh_cursor(mouse_position)
+        node = self._node_finder(mouse_position)
+        self._set_hovered_node_id(None if node is None else node.node_id)
 
         if handled:
             event.accept()
@@ -367,8 +373,14 @@ class MapView(QGraphicsView):
 
     def leaveEvent(self, event):
         self.active_tool.mouse_leave()
+        self._set_hovered_node_id(None)
 
         super().leaveEvent(event)
+
+    def _set_hovered_node_id(self, node_id: int | None):
+        if node_id != self._hovered_node_id:
+            self._hovered_node_id = node_id
+            self.hovered_node_changed.emit(node_id)
 
     def mouseReleaseEvent(self, event: QMouseEvent):
         mouse_position = event.position().toPoint()

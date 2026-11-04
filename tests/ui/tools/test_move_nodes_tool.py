@@ -2,7 +2,7 @@
 
 import pytest
 from drawing_helpers import RED, drawn_color
-from mouse_helpers import drag, press_escape, send_mouse, view_pos
+from mouse_helpers import drag, hover, press_escape, send_mouse, view_pos
 from PySide6.QtCore import QEvent, QPoint, QRectF, Qt
 from PySide6.QtGui import QPainterPath
 
@@ -65,6 +65,8 @@ def test_undo_and_redo_restore_data_and_drawing(editor):
     start = view_pos(editor, 0, 0)
     drag(editor, start, start + QPoint(40, 0))
     moved = node_xz(editor, 1)
+    # Node 1 now lies on node 2; with the pointer on it, node 2 would be highlighted.
+    hover(editor, view_pos(editor, 0, 30))
 
     editor.actions.undo_action.trigger()
     assert node_xz(editor, 1) == (0, 0)
