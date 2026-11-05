@@ -143,3 +143,34 @@ def test_delete_is_blocked_during_a_node_drag(zoomed_window, qapp):
     press_delete_key(zoomed_window, qapp)
 
     assert sorted(data(zoomed_window).nodes) == [1, 2, 3]
+
+
+# --- Delete and reconnect ---------------------------------------------------
+
+
+def test_reconnect_click_deletes_the_node_and_joins_its_neighbours(zoomed_window):
+    zoomed_window.set_interaction_mode(InteractionMode.DELETE_RECONNECT)
+
+    click(zoomed_window, view_pos(zoomed_window, 10, 0))
+
+    assert data(zoomed_window).get_node(1).outgoing == {3}
+    assert zoomed_window.actions.undo_action.text() == "Undo: Delete and reconnect node"
+
+
+def test_reconnect_on_a_road_end_is_refused_with_a_message(zoomed_window):
+    zoomed_window.set_interaction_mode(InteractionMode.DELETE_RECONNECT)
+
+    click(zoomed_window, view_pos(zoomed_window, 0, 0))
+
+    assert sorted(data(zoomed_window).nodes) == [1, 2, 3]
+    assert "Node 1" in zoomed_window.status.text()
+
+
+def test_delete_reconnect_action_works_on_the_selection(zoomed_window):
+    action = zoomed_window.actions.delete_reconnect_action
+    select_area(zoomed_window, QRectF(5, -5, 10, 10))  # node 2
+    assert action.isEnabled()
+
+    action.trigger()
+
+    assert data(zoomed_window).get_node(1).outgoing == {3}

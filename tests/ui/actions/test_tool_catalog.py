@@ -38,4 +38,5 @@ def test_variant_text_names_tool_and_variant():
         InteractionMode.DRAW_LINE,
         InteractionMode.DRAW_ARC,
         InteractionMode.DRAW_BEZIER,
+        InteractionMode.DRAW_PARALLEL,
     )

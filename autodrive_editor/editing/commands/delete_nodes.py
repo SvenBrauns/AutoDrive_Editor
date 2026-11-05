@@ -1,6 +1,13 @@
+import dataclasses
+
 from autodrive_editor.editing.commands.edit_command import DataChange, EditCommand
 from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData, MarkerData, NodeData
+from autodrive_editor.model.connections import (
+    NO_CONNECTION,
+    ConnectionState,
+    write_connection_state,
+)
 
 
 class DeleteNodesCommand(EditCommand):
@@ -85,3 +92,44 @@ class DeleteNodesCommand(EditCommand):
 
     def _neighbor_ids(self) -> frozenset[int]:
         return frozenset(neighbor_id for neighbor_id, _, _ in self._removed_references)
+
+
+class DeleteAndReconnectCommand(DeleteNodesCommand):
+    """Deletes nodes and connects the kept nodes around them, so the road stays connected.
+    The new connections come from road_edits.plan_reconnect() and did not exist before."""
+
+    def __init__(
+        self,
+        autodrive_data: AutoDriveData,
+        node_ids,
+        connections: list[tuple[int, int, ConnectionState]],
+    ):
+        super().__init__(autodrive_data, node_ids)
+
+        self.setText(
+            tr("Delete and reconnect node")
+            if len(self.node_ids) == 1
+            else tr("Delete and reconnect {count} nodes", count=len(self.node_ids))
+        )
+        self.connections = list(connections)
+
+    def apply(self) -> DataChange:
+        change = super().apply()
+
+        for source, target, state in self.connections:
+            write_connection_state(self.autodrive_data, source, target, state)
+
+        return self._with_ends(change)
+
+    def revert(self) -> DataChange:
+        for source, target, _ in self.connections:
+            write_connection_state(self.autodrive_data, source, target, NO_CONNECTION)
+
+        return self._with_ends(super().revert())
+
+    def _with_ends(self, change: DataChange) -> DataChange:
+        ends = frozenset(
+            node_id for source, target, _ in self.connections for node_id in (source, target)
+        )
+
+        return dataclasses.replace(change, connection_node_ids=change.connection_node_ids | ends)

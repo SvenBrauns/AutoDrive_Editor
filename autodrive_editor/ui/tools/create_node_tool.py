@@ -9,8 +9,9 @@ from autodrive_editor.ui.tools.map_tool import MapTool
 
 class CreateNodeTool(MapTool):
     """Left click on empty map creates an unconnected node with the
-    tool's flag (regular or subprio). Clicking an existing node does
-    nothing. Left dragging pans."""
+    tool's flag (regular or subprio), on a connection it inserts the
+    node there. Clicking an existing node does nothing. Left dragging
+    pans."""
 
     def __init__(self, view, create_nodes_operation: CreateNodesOperation, flag: int):
         super().__init__(view)
@@ -31,7 +32,10 @@ class CreateNodeTool(MapTool):
     def status_hint(self) -> str | None:
         node_type = "Regular" if self.flag == REGULAR_FLAG else "Subprio"
 
-        return tr("Click on free ground to create a {type} node", type=node_type)
+        return tr(
+            "Click on free ground to create a {type} node, on a connection to insert one",
+            type=node_type,
+        )
 
     def cursor_at(self, view_position: QPoint) -> Qt.CursorShape:
         if self._pan.is_dragging:

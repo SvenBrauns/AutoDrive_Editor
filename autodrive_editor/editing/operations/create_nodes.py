@@ -1,23 +1,27 @@
 import math
+from collections.abc import Callable
 
 from PySide6.QtCore import QPoint
 
 from autodrive_editor.editing.commands.create_node import CreateNodeCommand
 from autodrive_editor.editing.edit_context import EditContext, EditOperation
+from autodrive_editor.editing.road_edits import split_connection
 from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import REGULAR_FLAG, AutoDriveData
 
 
 class CreateNodesOperation(EditOperation):
-    """Creates single unconnected nodes on the map."""
+    """Creates single unconnected nodes on the map, or a node inside a connection."""
 
-    def __init__(self, context: EditContext, parent=None):
+    def __init__(self, context: EditContext, connection_at: Callable | None = None, parent=None):
         super().__init__(context, parent)
+
+        self.connection_at = connection_at
 
     def create_node_at(self, view_position: QPoint, flag: int = REGULAR_FLAG) -> int | None:
         """Creates a node with the given flag (regular or subprio) at
-        the view position. Returns the new node id, or None if nothing
-        was created."""
+        the view position; on a connection the node splits it. Returns
+        the new node id, or None if nothing was created."""
 
         autodrive_data = self.autodrive_data_provider()
 
@@ -36,6 +40,25 @@ class CreateNodesOperation(EditOperation):
 
         x = scene_position.x()
         z = scene_position.y()
+
+        connection = self.connection_at(view_position) if self.connection_at else None
+
+        if connection is not None:
+            node_id = self.next_node_id(autodrive_data)
+            self.edit_history.push(
+                split_connection(
+                    autodrive_data, connection.source_id, connection.target_id, x, z, node_id, flag
+                )
+            )
+            self.status_changed.emit(
+                tr(
+                    "Node {node} inserted between {source} and {target}",
+                    node=node_id,
+                    source=connection.source_id,
+                    target=connection.target_id,
+                )
+            )
+            return node_id
 
         if self.snap_point is not None:
             x, z = self.snap_point(x, z)

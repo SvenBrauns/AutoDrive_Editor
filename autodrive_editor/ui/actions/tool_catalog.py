@@ -175,12 +175,20 @@ ROTATE_TOOL = ToolDefinition(
     "R",
 )
 
-DELETE_TOOL = ToolDefinition(
+DELETE_NODES_TOOL = ToolDefinition(
     InteractionMode.DELETE_NODES,
-    tr("Delete"),
+    tr("Node"),
     tr("Left-click a node or the selection to delete it"),
     "delete",
     "L",
+)
+
+DELETE_RECONNECT_TOOL = ToolDefinition(
+    InteractionMode.DELETE_RECONNECT,
+    tr("Reconnect"),
+    tr("Left-click a road node or the selection to delete it and keep the road connected"),
+    "delete_reconnect",
+    "Shift+L",
 )
 
 CONNECT_REGULAR_TOOL = ToolDefinition(
@@ -264,6 +272,14 @@ ARC_TOOL = ToolDefinition(
     "K",
 )
 
+PARALLEL_TOOL = ToolDefinition(
+    InteractionMode.DRAW_PARALLEL,
+    tr("Parallel"),
+    tr("Right-drag to select a road, point beside it and click: a lane at that distance"),
+    "draw_parallel",
+    "Shift+I",
+)
+
 ADD_MARKER_TOOL = ToolDefinition(
     InteractionMode.ADD_MARKER,
     tr("Add"),
@@ -331,12 +347,13 @@ CREATE_TOOL = MergedTool(tr("Create"), (CREATE_REGULAR_TOOL, CREATE_SUBPRIO_TOOL
 CONNECT_TOOL = MergedTool(
     tr("Connect"), (CONNECT_REGULAR_TOOL, CONNECT_DUAL_TOOL, CONNECT_REVERSE_TOOL)
 )
-DRAW_TOOL = MergedTool(tr("Draw"), (LINE_TOOL, ARC_TOOL, BEZIER_TOOL))
+DELETE_TOOL = MergedTool(tr("Delete"), (DELETE_NODES_TOOL, DELETE_RECONNECT_TOOL))
+DRAW_TOOL = MergedTool(tr("Draw"), (LINE_TOOL, ARC_TOOL, BEZIER_TOOL, PARALLEL_TOOL))
 MARKER_TOOL = MergedTool(
     tr("Marker"), (ADD_MARKER_TOOL, EDIT_MARKER_TOOL, MOVE_MARKER_TOOL, DELETE_MARKER_TOOL)
 )
 MEASURE_TOOL = MergedTool(tr("Measure"), (MEASURE_DISTANCE_TOOL, MEASURE_ANGLE_TOOL))
-MERGED_TOOLS = (CREATE_TOOL, CONNECT_TOOL, DRAW_TOOL, MARKER_TOOL, MEASURE_TOOL)
+MERGED_TOOLS = (CREATE_TOOL, CONNECT_TOOL, DELETE_TOOL, DRAW_TOOL, MARKER_TOOL, MEASURE_TOOL)
 
 
 def merged_tool_of(mode: InteractionMode) -> MergedTool | None:

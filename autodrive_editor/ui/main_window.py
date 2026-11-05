@@ -32,6 +32,7 @@ from autodrive_editor.editing.operations.move_nodes import MoveNodesOperation
 from autodrive_editor.editing.operations.network_check import NetworkCheckOperation
 from autodrive_editor.editing.operations.node_position import NodePositionOperation
 from autodrive_editor.editing.operations.node_types import NodeTypeOperation
+from autodrive_editor.editing.operations.parallel_lane import ParallelLaneOperation
 from autodrive_editor.editing.operations.parking_spots import (
     MIXED_TYPES_TEXT,
     ParkingSpotOperation,
@@ -67,7 +68,7 @@ from autodrive_editor.terrain.background_map import Background, BackgroundMap
 from autodrive_editor.terrain.heightmap import Heightmap
 from autodrive_editor.terrain.map_cache import MapCache
 from autodrive_editor.ui.actions.main_window_actions import MainWindowActions
-from autodrive_editor.ui.actions.tool_catalog import MEASURE_TOOL, MERGED_TOOLS
+from autodrive_editor.ui.actions.tool_catalog import CONNECT_TOOL, MEASURE_TOOL, MERGED_TOOLS
 from autodrive_editor.ui.controls.grid_coordinator import GridCoordinator
 from autodrive_editor.ui.dialogs.building_types_dialog import BuildingTypesDialog
 from autodrive_editor.ui.dialogs.marker_dialog import MarkerDialog
@@ -86,6 +87,7 @@ from autodrive_editor.ui.map_view.map_view import MapView
 from autodrive_editor.ui.map_view.rotation_controller import ViewRotationController
 from autodrive_editor.ui.network_check_controller import NetworkCheckController
 from autodrive_editor.ui.panels.check_dock import CheckDock
+from autodrive_editor.ui.panels.connect_options import ConnectOptionsWidget
 from autodrive_editor.ui.panels.debug_dock import DebugDock
 from autodrive_editor.ui.panels.debug_dock_coordinator import DebugDockCoordinator
 from autodrive_editor.ui.panels.display_options_dialog import DisplayOptionsDialog
@@ -95,6 +97,7 @@ from autodrive_editor.ui.panels.marker_dock import MarkerDock
 from autodrive_editor.ui.panels.node_info_formatter import NodeInfoFormatter
 from autodrive_editor.ui.panels.open_screen import OpenScreen
 from autodrive_editor.ui.panels.options_bar import OptionsBar
+from autodrive_editor.ui.panels.parallel_lane_options import ParallelLaneOptionsWidget
 from autodrive_editor.ui.panels.path_options import PathOptionsWidget
 from autodrive_editor.ui.panels.rotate_options import RotateOptionsWidget
 from autodrive_editor.ui.picture_capture_controller import PictureCaptureController
@@ -115,6 +118,7 @@ from autodrive_editor.ui.tools.measure_tool import MeasureTool
 from autodrive_editor.ui.tools.move_nodes_tool import MoveNodesTool
 from autodrive_editor.ui.tools.navigate_tool import NavigateTool
 from autodrive_editor.ui.tools.node_click_tool import NodeClickTool
+from autodrive_editor.ui.tools.parallel_lane_tool import ParallelLaneTool
 from autodrive_editor.ui.tools.path_tool import PathTool
 from autodrive_editor.ui.tools.rotate_selection_tool import RotateSelectionTool
 from autodrive_editor.ui.tools.select_tool import SelectTool
@@ -289,6 +293,9 @@ class MainWindow(QMainWindow):
         # Delete on a Find route waypoint removes the waypoint, not the selection.
         if not self.view.active_tool.remove_hovered():
             self.delete_nodes_operation.delete_selection()
+
+    def delete_selection_and_reconnect(self):
+        self.delete_nodes_operation.delete_selection(reconnect=True)
 
     def align_view_to_measurement(self):
         self.measurement_coordinator.align_view_to_measurement()
@@ -624,10 +631,19 @@ class MainWindow(QMainWindow):
 
         self.move_nodes_operation = MoveNodesOperation(context, parent=self)
         self.delete_nodes_operation = DeleteNodesOperation(context, parent=self)
-        self.connect_nodes_operation = ConnectNodesOperation(context, parent=self)
+        self.connect_nodes_operation = ConnectNodesOperation(
+            context,
+            connection_at=self._get_connection_at,
+            height_for_new_node=lambda *args: self.create_nodes_operation.height_for_new_node(
+                *args
+            ),
+            parent=self,
+        )
         self.rotate_selection_operation = RotateSelectionOperation(context, parent=self)
         self.rotate_selection_operation.snap_angle = self.settings.rotate_snap_angle
-        self.create_nodes_operation = CreateNodesOperation(context, parent=self)
+        self.create_nodes_operation = CreateNodesOperation(
+            context, connection_at=self._get_connection_at, parent=self
+        )
         self.node_type_operation = NodeTypeOperation(context, parent=self)
         self.align_nodes_operation = AlignNodesOperation(context, parent=self)
 
@@ -637,6 +653,7 @@ class MainWindow(QMainWindow):
             parent=self,
         )
         self.create_path_operation.set_options(self.settings.path_options)
+        self.parallel_lane_operation = ParallelLaneOperation(context, parent=self)
 
         self.clipboard_operation = ClipboardOperation(
             context,
@@ -723,6 +740,7 @@ class MainWindow(QMainWindow):
             self.node_type_operation,
             self.align_nodes_operation,
             self.create_path_operation,
+            self.parallel_lane_operation,
             self.clipboard_operation,
             self.node_position_operation,
             self.parking_spot_operation,
@@ -853,6 +871,10 @@ class MainWindow(QMainWindow):
         self.view.register_tool(
             InteractionMode.DELETE_NODES, DeleteNodesTool(self.view, self.delete_nodes_operation)
         )
+        self.view.register_tool(
+            InteractionMode.DELETE_RECONNECT,
+            DeleteNodesTool(self.view, self.delete_nodes_operation, reconnect=True),
+        )
 
         connect_tools = (
             (InteractionMode.CONNECT_REGULAR, ConnectionType.REGULAR, "regular_connection_color"),
@@ -929,6 +951,18 @@ class MainWindow(QMainWindow):
 
         for interaction_mode in shapes:
             self.view.register_tool(interaction_mode, path_tool)
+
+        self.view.register_tool(
+            InteractionMode.DRAW_PARALLEL,
+            ParallelLaneTool(
+                self.view,
+                self.selection_coordinator,
+                self.parallel_lane_operation,
+                color_provider=lambda: self.scene_renderer.display_style.regular_connection_color,
+                node_diameter=display_style.node_diameter,
+                z_value=display_style.selected_node_z + 1,
+            ),
+        )
 
     def _register_generate_tool(self):
         display_style = self.scene_renderer.display_style
@@ -1051,6 +1085,11 @@ class MainWindow(QMainWindow):
         self.generate_options.clear_requested.connect(self.find_route_operation.clear)
         self.options_bar.add_options([InteractionMode.GENERATE], self.generate_options)
 
+        self.connect_options = ConnectOptionsWidget(
+            lambda flag: setattr(self.connect_nodes_operation, "node_flag", flag)
+        )
+        self.options_bar.add_options(CONNECT_TOOL.modes, self.connect_options)
+
         # One options widget for the three draw tools.
         self.path_options = PathOptionsWidget(self.create_path_operation.options)
         self.path_options.options_changed.connect(self._apply_path_options)
@@ -1059,6 +1098,13 @@ class MainWindow(QMainWindow):
             [InteractionMode.DRAW_LINE, InteractionMode.DRAW_ARC, InteractionMode.DRAW_BEZIER],
             self.path_options,
         )
+
+        operation = self.parallel_lane_operation
+        self.parallel_lane_options = ParallelLaneOptionsWidget(operation.options)
+        self.parallel_lane_options.options_changed.connect(operation.set_options)
+        self.parallel_lane_options.apply_requested.connect(operation.apply)
+        operation.distance_changed.connect(self.parallel_lane_options.set_distance)
+        self.options_bar.add_options([InteractionMode.DRAW_PARALLEL], self.parallel_lane_options)
 
         def update_apply_button():
             self.path_options.apply_button.setEnabled(self.create_path_operation.is_adjusting)
@@ -1401,7 +1447,7 @@ class MainWindow(QMainWindow):
         )
 
         self.node_selection.selection_changed.connect(
-            lambda node_ids, primary_node_id: self.actions.delete_selection_action.setEnabled(
+            lambda node_ids, primary_node_id: self.actions.set_selection_actions_enabled(
                 bool(node_ids)
             )
         )

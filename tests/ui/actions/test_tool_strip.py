@@ -161,6 +161,16 @@ def test_shift_e_picks_subprio_create_tool(window, qapp):
     assert window.view.interaction_mode == InteractionMode.CREATE_SUBPRIO_NODES
 
 
+def test_shift_l_picks_delete_and_reconnect(window, qapp):
+    window.activateWindow()
+    window.view.setFocus()
+
+    QTest.keyClick(window.view, Qt.Key_L, Qt.ShiftModifier)
+    qapp.processEvents()
+
+    assert window.view.interaction_mode == InteractionMode.DELETE_RECONNECT
+
+
 def test_n_is_free(window):
     assert not [a for a in window.findChildren(QAction) if a.shortcut().toString() == "N"]
 

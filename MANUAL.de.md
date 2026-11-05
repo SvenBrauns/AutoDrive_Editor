@@ -52,27 +52,36 @@ Maus: Das **Mausrad** zoomt (Tasten: `+` und `-` zoomen um die Kartenmitte), **l
 
 ## Werkzeuge
 
-Die Werkzeugspalte enthält 17 Werkzeuge in Gruppen. Anlegen, Verbinden, Zeichnen, Marker, Messen und Erzeugen haben **Varianten**: Knöpfe links in der Optionsleiste. Die Taste einer Variante wählt Werkzeug und Variante zugleich; ein Klick auf das Werkzeug in der Spalte wählt es mit der zuletzt benutzten Variante. Der Knopf in der Spalte zeigt die aktuelle Variante. Auswahl ist das Startwerkzeug.
+Die Werkzeugspalte enthält 17 Werkzeuge in Gruppen. Anlegen, Verbinden, Löschen, Zeichnen, Marker, Messen und Erzeugen haben **Varianten**: Knöpfe links in der Optionsleiste. Die Taste einer Variante wählt Werkzeug und Variante zugleich; ein Klick auf das Werkzeug in der Spalte wählt es mit der zuletzt benutzten Variante. Der Knopf in der Spalte zeigt die aktuelle Variante. Auswahl ist das Startwerkzeug.
 
 | Werkzeug | Taste | Was es tut |
 | --- | --- | --- |
 | Auswahl | `A` | Per Klick oder Rechtsziehen auswählen; Umschalt + Rechtsziehen für freie Auswahl; Strg ergänzt die Auswahl |
 | Verschieben | `V` | Node oder Auswahl ziehen; Umschalt bewegt nur entlang einer Rasterachse |
 | Erzeugen | `G` | Startet den Planungsmodus und erzeugt eine Route, eine Einmündung, die Parkplätze einer Halle oder die Spuren von Stationen (siehe [Planen und Erzeugen](#planen-und-erzeugen)) |
-| Anlegen (Regular / Subprio) | `E` / `Umschalt+E` | Node auf freier Fläche anlegen |
-| Verbinden (Regular / Dual / Reverse) | `1` / `2` / `3` | Nodes nacheinander anklicken, um sie zu verbinden |
-| Löschen | `L` | Node oder Auswahl löschen |
+| Anlegen (Regular / Subprio) | `E` / `Umschalt+E` | Node auf freier Fläche anlegen; ein Klick auf eine Connection fügt die Node in sie ein (auf der Linie, Höhe zwischen den Enden, Art und Richtung bleiben) |
+| Verbinden (Regular / Dual / Reverse) | `1` / `2` / `3` | Nodes nacheinander anklicken, um sie zu verbinden. Ein Klick auf freie Fläche legt eine Node an, ein Klick auf eine Connection fügt eine ein; beide werden von der vorigen Node aus verbunden, so entsteht eine Straße mit einem Werkzeug. Node-Typ in der Optionsleiste; Esc oder Rechtsklick beendet die Kette |
+| Löschen (Node / Verbinden) | `L` / `Umschalt+L` | Node: eine Node oder die Auswahl löschen. Verbinden: Nodes mitten in einer Straße löschen und ihre beiden Enden gleich verbinden (A→N→B wird A→B, Dual bleibt Dual); abgelehnt bei Abzweigungen, Straßenenden und Connections verschiedener Art. Auch `Bearbeiten → Auswahl löschen und verbinden` (`Umschalt+Entf`) |
 | Typ wechseln | `T` | Zwischen Regular und Subprio wechseln |
 | Richtung umkehren | `U` | Connection anklicken, um sie umzukehren; in einer Auswahl werden alle Connections der Auswahl umgekehrt |
 | Rotieren | `R` | Auswahl am Ring drehen; Umschalt rastet in Schritten ein (Standard 15°, `Rasterschritt` in der Optionsleiste) |
 | Position eingeben | `P` | X/Y/Z einer Node als Zahlen eingeben |
 | Horizontal / vertikal ausrichten | `H` / `J` | Auswahl auf die Linie durch eine Referenz-Node legen |
 | Höhe wie Referenz / Höhe aus Heightmap | `Y` / `Umschalt+Y` | Höhen der Auswahl setzen |
-| Zeichnen (Linie / Kreisbogen / Bézier) | `I` / `K` / `B` | Linie: gerader Abschnitt mit gleichmäßigem Node-Abstand. Kreisbogen und Bézier: Start und Ende anklicken, Griffe ziehen, Enter drücken; die Bézierkurve hat einen oder zwei Kontrollpunkte. Abstand, Connection-Art, Node-Typ und Kontrollpunkte stehen in der Optionsleiste. Ein Wechsel der Variante beim Zeichnen behält Start und Ende |
+| Zeichnen (Linie / Kreisbogen / Bézier / Parallel) | `I` / `K` / `B` / `Umschalt+I` | Linie: gerader Abschnitt mit gleichmäßigem Node-Abstand. Kreisbogen und Bézier: Start und Ende anklicken, Griffe ziehen, Enter drücken; die Bézierkurve hat einen oder zwei Kontrollpunkte. Abstand, Connection-Art, Node-Typ und Kontrollpunkte stehen in der Optionsleiste. Ein Wechsel der Variante beim Zeichnen behält Start und Ende. Parallel: eine Spur neben den ausgewählten Straßen, siehe [Parallele Spur](#parallele-spur) |
 | Marker (Hinzufügen / Bearbeiten / Verschieben / Löschen) | `M` / `Umschalt+M` / `Strg+M` / `Strg+Umschalt+M` | Marker hinzufügen oder bearbeiten (Name und Gruppe), auf eine andere Node verschieben oder löschen |
 | Messen (Abstand / Winkel) | `D` / `Umschalt+D` | Punkt A und Punkt B anklicken (Node oder freie Fläche), einen Punkt ziehen, um ihn zu verschieben. `Ansicht an Linie ausrichten` in der Optionsleiste dreht die Ansicht entlang der Linie. Esc ohne etwas zu löschen kehrt zum vorher benutzten Werkzeug zurück |
 
 Außerdem im Menü `Bearbeiten` und in der Werkzeugleiste: Rückgängig und Wiederholen (`Strg+Z` / `Strg+Y`), Kopieren, Ausschneiden und Einfügen (`Strg+C/X/V`; `Strg+Umschalt+V` fügt an der Originalposition ein; eingefügte Nodes bekommen die Geländehöhe am neuen Ort, außer `Beim Einfügen Höhen beibehalten` ist an, z. B. für eine Brücke oder Rampe), Auswahl löschen (`Entf`) und Am Raster einrasten (`S`). Alle Tasten lassen sich unter `Datei → Einstellungen → Tastenkürzel` ändern.
+
+### Parallele Spur
+
+`Zeichnen → Parallel` (`Umschalt+I`) legt neben jede ausgewählte Straße eine Spur, z. B. die zweite Spur eines Paars von Einbahnstraßen. Die Straßen vorher oder im Werkzeug auswählen: Rechtsziehen für ein Rechteck, Umschalt + Rechtsziehen für ein Lasso, Strg+Klick schaltet eine Node um, ein Rechtsklick leert die Auswahl. Dann neben eine Straße zeigen: die gestrichelte Vorschau folgt dem Zeiger, der Seite und Abstand bestimmt (in Schritten von 0,5 m, angezeigt in `Spurabstand`). Ein Klick erstellt die Spuren dort; `Enter` oder `Anwenden` erstellt sie im Abstand aus dem Feld.
+
+- Jede ausgewählte Straße bekommt ihre Spur auf derselben Seite ihrer eigenen Fahrtrichtung, so entstehen die Spuren mehrerer Einbahnstraßen auf einmal.
+- Die Spur wird wie die Straße verbunden (Regular, Dual oder Reverse); `Richtung` wählt die gleiche oder die Gegenrichtung. Die Nodes liegen gleichmäßig verteilt (`Abstand`) und bekommen die Geländehöhe oder die Höhe der Straße daneben; `Node-Typ` bestimmt ihren Typ.
+- Die Enden bleiben offen und die neuen Nodes werden nicht ausgewählt; ein Rückgängig-Schritt entfernt alle Spuren.
+- Abgelehnt mit einer Meldung in der Statusleiste: eine Abzweigung in der Auswahl, ein geschlossener Ring, eine Straße mit Connections verschiedener Art oder Richtung oder eine Kurve, die auf der Innenseite enger ist als der Abstand.
 
 ## Darstellung
 

@@ -97,7 +97,7 @@ class MainWindowActions:
             (
                 tr("Edit"),
                 ("undo", "redo", "copy", "cut", "paste", "paste_at_original")
-                + ("delete_selection", "find", "grid_snap", "planning_mode"),
+                + ("delete_selection", "delete_reconnect", "find", "grid_snap", "planning_mode"),
             ),
             (
                 tr("View"),
@@ -490,6 +490,17 @@ class MainWindowActions:
 
         self.delete_selection_action.triggered.connect(self.window.delete_selection)
 
+        self.delete_reconnect_action = QAction(tr("Delete selection and reconnect"), self.window)
+        self.delete_reconnect_action.setShortcut(QKeySequence("Shift+Del"))
+        self.delete_reconnect_action.setEnabled(False)
+        self.delete_reconnect_action.triggered.connect(
+            lambda: self.window.delete_selection_and_reconnect()
+        )
+
+    def set_selection_actions_enabled(self, enabled: bool):
+        self.delete_selection_action.setEnabled(enabled)
+        self.delete_reconnect_action.setEnabled(enabled)
+
     def _create_clipboard_actions(self):
         clipboard = self.window.clipboard_operation
 
@@ -591,6 +602,7 @@ class MainWindowActions:
         edit_menu.addSeparator()
 
         edit_menu.addAction(self.delete_selection_action)
+        edit_menu.addAction(self.delete_reconnect_action)
 
         edit_menu.addSeparator()
 
