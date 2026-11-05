@@ -19,6 +19,7 @@ class Visibility:
     silos: bool = True
     stations: bool = True
     drivability: bool = False
+    scale_bar: bool = True
     hidden_selectable: bool = False
 
     def shows_connection(self, connection_type: ConnectionType) -> bool:

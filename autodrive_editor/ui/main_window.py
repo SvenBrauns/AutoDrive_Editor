@@ -186,6 +186,7 @@ class MainWindow(QMainWindow):
         self.scene_renderer.set_marker_names_visible(self.settings.marker_names_visible)
         self.background_map.set_background(self.settings.background)
         self.scene_renderer.set_visibility(self.settings.visibility)
+        self.view.set_scale_bar_visible(self.settings.visibility.scale_bar)
         self.scene_renderer.set_building_types(
             self.settings.building_groups, self.settings.hidden_building_types
         )
@@ -352,6 +353,7 @@ class MainWindow(QMainWindow):
 
     def set_visibility(self, visibility: Visibility):
         self.scene_renderer.set_visibility(visibility)
+        self.view.set_scale_bar_visible(visibility.scale_bar)
         self.settings.set_visibility(visibility)
 
     def focus_marker(self, node_id: int):
@@ -1250,6 +1252,18 @@ class MainWindow(QMainWindow):
         self.status = QLabel(self.NO_FILE_STATUS)
 
         self.statusBar().addWidget(self.status, 1)
+
+        self.pointer_position = QLabel()
+        self.pointer_position.setMinimumWidth(180)
+        self.statusBar().addPermanentWidget(self.pointer_position)
+        self.view.pointer_moved.connect(self._show_pointer_position)
+
+    def _show_pointer_position(self, position):
+        if position is None or self.view.logo_visible:
+            self.pointer_position.clear()
+            return
+
+        self.pointer_position.setText(tr("X {x:.1f}   Z {z:.1f}", x=position.x(), z=position.y()))
 
     def _create_central_widget(self):
         # The options bar and the planning bar sit above the map.

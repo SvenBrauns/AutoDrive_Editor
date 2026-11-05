@@ -51,6 +51,7 @@ SHOW_GROUPS = (
         ("stations", tr("Stations")),
         ("drivability", tr("Drivability map")),
     ),
+    (("scale_bar", tr("Scale bar")),),
     (("hidden_selectable", tr("Hidden items can be selected")),),
 )
 

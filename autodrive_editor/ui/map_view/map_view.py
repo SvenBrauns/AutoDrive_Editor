@@ -15,6 +15,7 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import QApplication, QGraphicsView, QWidget
 
 from autodrive_editor.paths import APP_ICON_PATH
+from autodrive_editor.rendering.scale_bar import draw_scale_bar
 from autodrive_editor.settings.view_state import ViewState
 from autodrive_editor.ui.map_view.rotation_controller import ViewRotationController
 from autodrive_editor.ui.map_view.zoom_controller import ViewZoomController
@@ -37,6 +38,9 @@ class MapView(QGraphicsView):
     NOTICE_COLOR = QColor(0, 0, 0, 170)
     NOTICE_PIXEL_SIZE = 16
 
+    # Corner of the map the scale bar is drawn in; repainted after scrolling.
+    SCALE_BAR_AREA = QRect(0, 0, 180, 48)
+
     # Space around the selection after Zoom to selection, in pixels.
     FIT_MARGIN = 40
 
@@ -49,6 +53,9 @@ class MapView(QGraphicsView):
     visible_scene_rect_changed = Signal(QRectF)
 
     interaction_mode_changed = Signal(object)
+
+    # Map position (QPointF) under the pointer, or None when it leaves the map.
+    pointer_moved = Signal(object)
 
     # Id of the node under the pointer, or None. Sent in every tool.
     hovered_node_changed = Signal(object)
@@ -77,6 +84,8 @@ class MapView(QGraphicsView):
         # Until a file is shown.
         self.logo_visible = True
         self._logo = QIcon(str(APP_ICON_PATH))
+
+        self.scale_bar_visible = True
 
         # Drawn in the middle of the map while a file loads.
         self.notice_text = ""
@@ -221,11 +230,30 @@ class MapView(QGraphicsView):
     def drawForeground(self, painter: QPainter, rect: QRectF):
         super().drawForeground(painter, rect)
 
+        if self.scale_bar_visible and not self.logo_visible:
+            painter.save()
+            painter.resetTransform()
+            draw_scale_bar(painter, self.viewport().rect().bottomLeft(), self.zoom_level)
+            painter.restore()
+
         if self.notice_text:
             painter.save()
             painter.resetTransform()
             self._draw_notice(painter)
             painter.restore()
+
+    def set_scale_bar_visible(self, visible: bool):
+        self.scale_bar_visible = visible
+        self.viewport().update()
+
+    def scrollContentsBy(self, dx: int, dy: int):
+        super().scrollContentsBy(dx, dy)
+
+        # The map is scrolled as a picture; the bar must not move with it.
+        if self.scale_bar_visible:
+            area = QRect(self.SCALE_BAR_AREA)
+            area.moveBottomLeft(self.viewport().rect().bottomLeft())
+            self.viewport().update(area.adjusted(-abs(dx), -abs(dy), abs(dx), abs(dy)))
 
     def set_zoom_level(self, zoom_level):
         self._zoom_controller.set_zoom_level(zoom_level)
@@ -371,6 +399,7 @@ class MapView(QGraphicsView):
             handled = self.active_tool.mouse_move(event)
 
         self.refresh_cursor(mouse_position)
+        self.pointer_moved.emit(self.mapToScene(mouse_position))
         node = self._node_finder(mouse_position)
         self._set_hovered_node_id(None if node is None else node.node_id)
 
@@ -383,6 +412,7 @@ class MapView(QGraphicsView):
     def leaveEvent(self, event):
         self.active_tool.mouse_leave()
         self._set_hovered_node_id(None)
+        self.pointer_moved.emit(None)
 
         super().leaveEvent(event)
 
