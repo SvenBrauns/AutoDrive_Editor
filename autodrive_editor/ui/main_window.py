@@ -956,6 +956,7 @@ class MainWindow(QMainWindow):
             InteractionMode.DRAW_PARALLEL,
             ParallelLaneTool(
                 self.view,
+                self.selection_coordinator,
                 self.parallel_lane_operation,
                 color_provider=lambda: self.scene_renderer.display_style.regular_connection_color,
                 node_diameter=display_style.node_diameter,

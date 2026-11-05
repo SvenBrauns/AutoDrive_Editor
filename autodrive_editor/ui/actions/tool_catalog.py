@@ -275,7 +275,7 @@ ARC_TOOL = ToolDefinition(
 PARALLEL_TOOL = ToolDefinition(
     InteractionMode.DRAW_PARALLEL,
     tr("Parallel"),
-    tr("Select a road, point beside it and click: a lane at that distance"),
+    tr("Right-drag to select a road, point beside it and click: a lane at that distance"),
     "draw_parallel",
     "Shift+I",
 )

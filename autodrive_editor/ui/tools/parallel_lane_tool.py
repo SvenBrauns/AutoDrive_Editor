@@ -1,27 +1,31 @@
 from collections.abc import Callable
 
-from PySide6.QtCore import QPointF, Qt
+from PySide6.QtCore import QPoint, QPointF, Qt
 from PySide6.QtGui import QColor, QMouseEvent, QPainterPath, QPen
 from PySide6.QtWidgets import QGraphicsPathItem
 
 from autodrive_editor.editing.operations.parallel_lane import ParallelLaneOperation
 from autodrive_editor.i18n import tr
-from autodrive_editor.ui.tools.map_tool import MapTool, is_alive_in_scene
+from autodrive_editor.ui.tools.map_tool import is_alive_in_scene
+from autodrive_editor.ui.tools.select_tool import SelectTool
 
 
-class ParallelLaneTool(MapTool):
+class ParallelLaneTool(SelectTool):
     """Shows the lanes beside the selected roads as a dashed preview that follows the pointer.
-    A click or Enter creates them; left dragging pans."""
+    A click or Enter creates them; left dragging pans. The roads are selected as with the Select
+    tool: right-drag box, Shift+right-drag lasso, Ctrl+click toggles a node; a right-click
+    without dragging clears the selection."""
 
     def __init__(
         self,
         view,
+        selection_coordinator,
         operation: ParallelLaneOperation,
         color_provider: Callable[[], tuple[int, int, int]],
         node_diameter: float,
         z_value: float,
     ):
-        super().__init__(view)
+        super().__init__(view, selection_coordinator)
 
         self.operation = operation
         self._color_provider = color_provider
@@ -42,26 +46,34 @@ class ParallelLaneTool(MapTool):
         self._active = False
         self._update_preview()
 
-    def mouse_press(self, event: QMouseEvent) -> bool:
-        if event.button() != Qt.LeftButton:
-            return False
-
-        self._begin_pan(event)
-
-        return True
-
     def mouse_move(self, event: QMouseEvent) -> bool:
-        if not self._continue_pan(event):
+        if not super().mouse_move(event):
             self.operation.pointer_moved(event.position().toPoint())
 
         return True
 
     def mouse_release(self, event: QMouseEvent) -> bool:
+        if event.button() == Qt.RightButton:
+            area_dragged = self._area_selection.drag_active
+            super().mouse_release(event)
+
+            if not area_dragged:
+                self.selection_coordinator.node_selection.clear()
+
+            return True
+
         if event.button() != Qt.LeftButton:
             return False
 
-        if not self._end_pan():
-            self.operation.pointer_moved(event.position().toPoint())
+        if self._end_pan():
+            return True
+
+        position = event.position().toPoint()
+
+        if event.modifiers() & Qt.ControlModifier:
+            self.selection_coordinator.handle_click(position, event.modifiers())
+        else:
+            self.operation.pointer_moved(position)
             self.operation.apply()
 
         return True
@@ -70,7 +82,16 @@ class ParallelLaneTool(MapTool):
         return self.operation.apply()
 
     def status_hint(self) -> str | None:
-        return tr("Select a road, then point beside it. A click or Enter creates the lane")
+        return tr(
+            "Right-drag or Ctrl+click selects the road, then point beside it. "
+            "A click or Enter creates the lane"
+        )
+
+    def cursor_at(self, view_position: QPoint) -> Qt.CursorShape:
+        if self._pan.is_dragging:
+            return Qt.ClosedHandCursor
+
+        return Qt.CrossCursor
 
     @property
     def preview_path(self) -> QPainterPath | None:
