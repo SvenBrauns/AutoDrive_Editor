@@ -69,6 +69,8 @@ TEXTS = {
     "Connecting finished": "Verbinden beendet",
     "Load an AutoDrive XML first": "Bitte zuerst eine AutoDrive-XML laden",
     "Node {node} created": "Node {node} erstellt",
+    "Insert node": "Node einfügen",
+    "Node {node} inserted between {source} and {target}": "Node {node} zwischen {source} und {target} eingefügt",
     "Subprio node {node} created": "Subprio-Node {node} erstellt",
     "Line": "Linie",
     "Bézier curve": "Bézierkurve",
@@ -576,7 +578,7 @@ TEXTS = {
     "Tools": "Werkzeuge",
     # ui/tools
     "Click the start node, then more nodes. The same type removes a connection. Esc or right-click finishes": "Start-Node, dann weitere Nodes anklicken. Gleicher Typ entfernt eine Connection. Esc oder Rechtsklick beendet",
-    "Click on free ground to create a {type} node": "Auf freie Fläche klicken, um eine {type}-Node zu erstellen",
+    "Click on free ground to create a {type} node, on a connection to insert one": "Auf freie Fläche klicken, um eine {type}-Node zu erstellen, auf eine Connection, um sie einzufügen",
     "Click a node to delete it; a selected node deletes the whole selection": "Node anklicken zum Löschen; eine ausgewählte Node löscht die ganze Auswahl",
     "Create nodes (Regular)": "Nodes erstellen (Regular)",
     "Create nodes (Subprio)": "Nodes erstellen (Subprio)",

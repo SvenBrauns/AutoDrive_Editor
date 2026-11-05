@@ -119,6 +119,15 @@ def test_undo_removes_node_and_its_drawing(creating):
     assert drawn_color(creating, node.x, node.z) != RED
 
 
+def test_click_on_a_connection_inserts_the_node_into_it(creating):
+    click(creating, view_pos(creating, 5, 0.5))
+
+    nodes = data(creating).nodes
+    assert (nodes[4].x, nodes[4].z) == pytest.approx((5, 0), abs=0.3)
+    assert nodes[1].outgoing == {4} and nodes[4].outgoing == {2}
+    assert creating.actions.undo_action.text() == "Undo: Insert node"
+
+
 def test_new_node_can_be_connected(creating):
     click(creating, view_pos(creating, *EMPTY))
     creating.set_interaction_mode(InteractionMode.CONNECT_REGULAR)

@@ -627,7 +627,9 @@ class MainWindow(QMainWindow):
         self.connect_nodes_operation = ConnectNodesOperation(context, parent=self)
         self.rotate_selection_operation = RotateSelectionOperation(context, parent=self)
         self.rotate_selection_operation.snap_angle = self.settings.rotate_snap_angle
-        self.create_nodes_operation = CreateNodesOperation(context, parent=self)
+        self.create_nodes_operation = CreateNodesOperation(
+            context, connection_at=self._get_connection_at, parent=self
+        )
         self.node_type_operation = NodeTypeOperation(context, parent=self)
         self.align_nodes_operation = AlignNodesOperation(context, parent=self)
 
