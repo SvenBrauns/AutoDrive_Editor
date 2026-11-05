@@ -120,6 +120,15 @@ def test_kind_comes_from_the_sections_around_the_trigger(tmp_path, sections, kin
     assert [stop.kind for stop in stops(tmp_path, sections)] == [kind]
 
 
+def test_a_production_stop_knows_whether_it_loads_or_unloads(tmp_path):
+    sections = (
+        '<productionPoint><unloadTrigger exactFillRootNode="exactFillRootNode"/>'
+        '<loadTrigger triggerNode="farAway"/></productionPoint>'
+    )
+
+    assert [stop.loads for stop in stops(tmp_path, sections)] == [False, True]
+
+
 def test_triggers_whose_node_is_missing_are_left_out(tmp_path):
     sections = """<sellingStation>
         <unloadTrigger exactFillRootNode="noSuchNode"/>

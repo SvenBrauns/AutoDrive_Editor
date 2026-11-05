@@ -392,7 +392,7 @@ class AppSettings:
                 and len(value) == 2
                 and all(isinstance(v, str) for v in value)
             ):
-                if value[1].strip() and pattern_problem(value[0]) is None:
+                if pattern_problem(value[0]) is None and pattern_problem(value[1], True) is None:
                     rules[kind] = MarkerRule(*value)
 
         return rules

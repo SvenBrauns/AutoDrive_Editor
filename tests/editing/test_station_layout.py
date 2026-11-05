@@ -3,6 +3,7 @@ import math
 import pytest
 from costmap_helpers import make_costmap
 
+from autodrive_editor.editing.fill_type_names import fill_type_name
 from autodrive_editor.editing.station_layout import (
     LaneEnd,
     MarkerRule,
@@ -34,8 +35,12 @@ def stop(
     name="Grain store ",
     ai_node=True,
     building=(0.0, 0.0),
+    fill_types=("WHEAT",),
+    loads=False,
 ) -> Stop:
-    return Stop("store.xml", "7", name, kind, ("WHEAT",), position, heading, ai_node, building)
+    return Stop(
+        "store.xml", "7", name, kind, fill_types, position, heading, ai_node, building, loads
+    )
 
 
 def test_lane_runs_along_the_arrow_with_a_node_at_the_stop():
@@ -165,6 +170,28 @@ def test_default_marker_name_and_group():
     assert all(default_group(kind) for kind in StopKind)
 
 
+def test_productions_are_named_by_fill_type_and_action_in_a_group_per_building():
+    production = StopKind.PRODUCTION
+    stops = [
+        stop(kind=production, name="Distillery", fill_types=("DIESEL",)),
+        stop(kind=production, name="Distillery", fill_types=("WHISKEY", "RUM"), loads=True),
+        stop(kind=production, name="Distillery", fill_types=("SUGARBEET_CUT",)),
+        stop(kind=production, name="Distillery", fill_types=()),
+    ]
+
+    assert marker_names(stops, default_marker_rules(), set()) == [
+        ("Diesel-unload", "prod.Distillery"),
+        ("Whiskey-load", "prod.Distillery"),
+        ("Sugarbeet cut-unload", "prod.Distillery"),
+        ("Distillery-unload", "prod.Distillery"),
+    ]
+
+
+def test_fill_type_names_are_translated_or_made_readable(german):
+    assert fill_type_name("WATER") == "Wasser"
+    assert fill_type_name("farmSilo") == "Farm silo"
+
+
 def test_marker_names_follow_the_rule_of_the_stop_type():
     rules = default_marker_rules() | {StopKind.PRODUCTION: MarkerRule("VK-{building}", "VK")}
     stops = [stop(kind=StopKind.PRODUCTION), stop(), stop(kind=StopKind.PRODUCTION)]
@@ -189,6 +216,9 @@ def test_numbers_count_per_group_and_skip_taken_names():
 
 def test_pattern_problem():
     assert pattern_problem("{n:03}-{building} ({type})") is None
+    assert pattern_problem("{fill}-{action}") is None
+    assert pattern_problem("prod.{building}", group=True) is None
+    assert pattern_problem("G-{n}", group=True) is not None
     assert "{name}" in pattern_problem("VK-{name}")
     assert pattern_problem("VK-{building") is not None
     assert pattern_problem("{n:x.}") is not None

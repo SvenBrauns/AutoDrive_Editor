@@ -59,8 +59,8 @@ def gaps(chain, positions):
     return [(math.dist(a, b), a) for a, b in pairwise(points)]
 
 
-def test_free_nodes_are_spaced_like_autodrive_records_a_drive():
-    # 30 m east, then a quarter circle of 6 m radius to the north.
+def test_free_nodes_are_spaced_like_autodrive_records_a_drive_and_curves_by_turn():
+    # 30 m east, then a quarter circle of 6 m radius to the north: a node each 15°, ~1.6 m.
     angles = [i / 40 * math.pi / 2 for i in range(1, 41)]
     arc = [(30 + 6 * math.sin(a), 6 - 6 * math.cos(a)) for a in angles]
     positions = {1: (0, 0), 2: arc[-1]}
@@ -70,7 +70,8 @@ def test_free_nodes_are_spaced_like_autodrive_records_a_drive():
     straight = [gap for gap, start in gaps(chain, positions) if start[0] < 30]
     curve = [gap for gap, start in gaps(chain, positions) if start[0] > 30]
     assert max(straight) == pytest.approx(12)
-    assert curve and 0.5 <= min(curve) and max(curve) <= 1.5
+    # The last gap is what is left before the end.
+    assert curve and 1.2 <= min(curve[:-1]) and max(curve) <= 2.0 and curve[-1] >= 0.5
 
 
 def test_the_last_free_node_is_not_squeezed_against_the_end():

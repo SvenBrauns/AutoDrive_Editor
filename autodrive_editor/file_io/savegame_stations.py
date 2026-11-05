@@ -78,6 +78,8 @@ class LocalStop:
     position: Point
     direction: Point
     from_ai_node: bool
+    # True for a load trigger (the vehicle takes goods), False for an unload trigger.
+    loads: bool = False
 
 
 @dataclass(frozen=True)
@@ -97,6 +99,8 @@ class Stop:
     from_ai_node: bool
     # Map position (x, z) of the building's origin.
     building_position: tuple[float, float] = (0.0, 0.0)
+    # True for a load trigger (the vehicle takes goods), False for an unload trigger.
+    loads: bool = False
 
 
 def local_stops(definition, scene: BuildingScene) -> list[LocalStop]:
@@ -139,6 +143,7 @@ def local_stops(definition, scene: BuildingScene) -> list[LocalStop]:
                 transform[1],
                 direction,
                 bool(ai_node),
+                trigger.tag == "loadTrigger",
             )
         )
 
@@ -161,6 +166,7 @@ def placed_stop(
         heading=math.degrees(math.atan2(dx, -dz)) % 360,
         from_ai_node=stop.from_ai_node,
         building_position=(origin_x, origin_z),
+        loads=stop.loads,
     )
 
 

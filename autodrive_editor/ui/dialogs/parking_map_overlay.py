@@ -3,6 +3,7 @@ from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
 from PySide6.QtWidgets import QGraphicsItem
 
 from autodrive_editor.editing.planned_piece import PlannedPiece
+from autodrive_editor.model.autodrive_data import REGULAR_FLAG
 from autodrive_editor.rendering.display_style import DisplayStyle
 from autodrive_editor.ui.dialogs.parking_painting import MARKER_COLOR, paint_connection
 from autodrive_editor.ui.dialogs.parking_preview import ParkingPreview
@@ -72,9 +73,11 @@ class ParkingMapOverlay(QGraphicsItem):
             )
 
         painter.setPen(Qt.NoPen)
-        painter.setBrush(QColor(*self.display_style.subprio_node_color))
+        regular = QColor(*self.display_style.regular_node_color)
+        subprio = QColor(*self.display_style.subprio_node_color)
 
-        for point in points:
+        for point, flag in zip(points, self.network.flags, strict=True):
+            painter.setBrush(regular if flag == REGULAR_FLAG else subprio)
             painter.drawEllipse(point, ParkingPreview.NODE_PX / 2, ParkingPreview.NODE_PX / 2)
 
         painter.setBrush(MARKER_COLOR)

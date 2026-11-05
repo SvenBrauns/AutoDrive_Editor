@@ -87,8 +87,9 @@ class GeneratorSettingsWidget(QWidget):
         markers = QGroupBox(tr("Markers"), self)
         markers_note = QLabel(
             tr(
-                "Placeholders: {building} the building's name, {type} the stop type, {n} a "
-                "number counted per group ({n:03} with three digits)."
+                "Placeholders: {building} the building's name, {type} the stop type, {fill} its "
+                "first fill type, {action} unload or load, {n} a number counted per group "
+                "({n:03} with three digits). Groups may use them too, except {n}."
             ),
             markers,
         )
@@ -188,6 +189,9 @@ class GeneratorSettingsWidget(QWidget):
 
             if problem is None and not rule.group:
                 problem = tr("Every stop type needs a group.")
+
+            if problem is None:
+                problem = pattern_problem(rule.group, group=True)
 
             if problem is not None:
                 return f"{kind.label}: {problem}"

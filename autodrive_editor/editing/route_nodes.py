@@ -24,20 +24,20 @@ SNAP_DISTANCE = 1.5
 SNAP_ALIGNMENT = 0.9
 # Shorter stretches along a lane get their own nodes.
 MIN_SHARED_LENGTH = 3.0
-# AutoDrive's recording rule: how far a new node may lie from the last one, by how many degrees
-# the direction turns from the last connection (below the angle, metres). Routes are walked in
-# RECORDING_STEP steps like the recorder samples a drive.
+# How far a new node may lie from the last one, by how many degrees the direction turns from the
+# last connection (below the angle, metres): AutoDrive's recording rule on gentle bends. Routes
+# are walked in RECORDING_STEP steps like the recorder samples a drive.
 RECORDING_LIMITS = (
     (0.5, 12.0),
     (1, 6.0),
     (2, 4.0),
     (4, 3.0),
-    (7, 2.0),
-    (14, 1.0),
-    (27, 0.5),
-    (math.inf, 0.25),
+    (math.inf, 2.0),
 )
 RECORDING_STEP = 0.25
+# In curves a node each time the direction has turned this many degrees, as course authors space
+# them (about 1.6 m on a 6 m arc); AutoDrive's recorder puts them closer.
+MAX_NODE_TURN = 15.0
 
 
 @dataclass(frozen=True)
@@ -292,8 +292,9 @@ def _add_free(chain: list, free_points: list[Point], end: Point, spacing: float)
 
 def _recorded(polyline: list[Point], spacing: float) -> list[Point]:
     """Points along the polyline, both ends included, the way AutoDrive records a drive: up to
-    `spacing` apart where the line runs straight, closer the more it turns. The last point
-    before the end moves back where it would be less than half its gap from the end."""
+    `spacing` apart where the line runs straight, closer the more it turns, and in curves one
+    each MAX_NODE_TURN degrees. The last point before the end moves back where it would be less
+    than half its gap from the end."""
 
     dense = [polyline[0]]
 
@@ -314,7 +315,12 @@ def _recorded(polyline: list[Point], spacing: float) -> list[Point]:
         turn = abs(math.degrees(_turn(heading, _heading(last, point))))
         limit = min(spacing, next(metres for angle, metres in RECORDING_LIMITS if turn < angle))
 
-        if distance >= limit and index < len(dense) - 1:
+        if turn > MAX_NODE_TURN and index > indices[-1] + 1 and index < len(dense) - 1:
+            # The point before turned less: the node goes there.
+            points.append(dense[index - 1])
+            indices.append(index - 1)
+            heading = _heading(last, points[-1])
+        elif distance >= limit and (index < len(dense) - 1 or distance > limit + 1e-9):
             # Back to where the distance is the limit, between the dense points.
             before = math.dist(last, dense[index - 1])
             fraction = max(0.0, (limit - before) / (distance - before))
