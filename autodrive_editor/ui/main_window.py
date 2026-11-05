@@ -67,7 +67,7 @@ from autodrive_editor.terrain.background_map import Background, BackgroundMap
 from autodrive_editor.terrain.heightmap import Heightmap
 from autodrive_editor.terrain.map_cache import MapCache
 from autodrive_editor.ui.actions.main_window_actions import MainWindowActions
-from autodrive_editor.ui.actions.tool_catalog import MEASURE_TOOL, MERGED_TOOLS
+from autodrive_editor.ui.actions.tool_catalog import CONNECT_TOOL, MEASURE_TOOL, MERGED_TOOLS
 from autodrive_editor.ui.controls.grid_coordinator import GridCoordinator
 from autodrive_editor.ui.dialogs.building_types_dialog import BuildingTypesDialog
 from autodrive_editor.ui.dialogs.marker_dialog import MarkerDialog
@@ -86,6 +86,7 @@ from autodrive_editor.ui.map_view.map_view import MapView
 from autodrive_editor.ui.map_view.rotation_controller import ViewRotationController
 from autodrive_editor.ui.network_check_controller import NetworkCheckController
 from autodrive_editor.ui.panels.check_dock import CheckDock
+from autodrive_editor.ui.panels.connect_options import ConnectOptionsWidget
 from autodrive_editor.ui.panels.debug_dock import DebugDock
 from autodrive_editor.ui.panels.debug_dock_coordinator import DebugDockCoordinator
 from autodrive_editor.ui.panels.display_options_dialog import DisplayOptionsDialog
@@ -627,7 +628,14 @@ class MainWindow(QMainWindow):
 
         self.move_nodes_operation = MoveNodesOperation(context, parent=self)
         self.delete_nodes_operation = DeleteNodesOperation(context, parent=self)
-        self.connect_nodes_operation = ConnectNodesOperation(context, parent=self)
+        self.connect_nodes_operation = ConnectNodesOperation(
+            context,
+            connection_at=self._get_connection_at,
+            height_for_new_node=lambda *args: self.create_nodes_operation.height_for_new_node(
+                *args
+            ),
+            parent=self,
+        )
         self.rotate_selection_operation = RotateSelectionOperation(context, parent=self)
         self.rotate_selection_operation.snap_angle = self.settings.rotate_snap_angle
         self.create_nodes_operation = CreateNodesOperation(
@@ -1059,6 +1067,11 @@ class MainWindow(QMainWindow):
         self.generate_options.remove_last_requested.connect(self.find_route_operation.remove_last)
         self.generate_options.clear_requested.connect(self.find_route_operation.clear)
         self.options_bar.add_options([InteractionMode.GENERATE], self.generate_options)
+
+        self.connect_options = ConnectOptionsWidget(
+            lambda flag: setattr(self.connect_nodes_operation, "node_flag", flag)
+        )
+        self.options_bar.add_options(CONNECT_TOOL.modes, self.connect_options)
 
         # One options widget for the three draw tools.
         self.path_options = PathOptionsWidget(self.create_path_operation.options)

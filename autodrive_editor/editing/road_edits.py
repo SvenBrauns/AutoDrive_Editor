@@ -23,10 +23,12 @@ def split_connection(
     z: float,
     node_id: int,
     flag: int,
+    text: str = "",
+    more_connections: list[tuple[int, int, ConnectionState]] = (),
 ) -> AddRouteCommand:
     """Command that puts a new node on the connection source–target at the point closest to
     (x, z). Both halves get the connection's entries, so type and direction stay; the height is
-    taken between the two ends."""
+    taken between the two ends. more_connections are set in the same step, e.g. to the new node."""
 
     source = autodrive_data.nodes[source_id]
     target = autodrive_data.nodes[target_id]
@@ -44,13 +46,14 @@ def split_connection(
     state = read_connection_state(autodrive_data, source_id, target_id)
 
     return AddRouteCommand(
-        tr("Insert node"),
+        text or tr("Insert node"),
         autodrive_data,
         [node],
         [
             (source_id, target_id, NO_CONNECTION),
             (source_id, node_id, state),
             (node_id, target_id, state),
+            *more_connections,
         ],
     )
 

@@ -12,9 +12,9 @@ from autodrive_editor.ui.tools.map_tool import MapTool, is_alive_in_scene
 
 class ConnectNodesTool(MapTool):
     """Click nodes one after another to connect them with one
-    connection type. A dashed line shows the next connection. Left
-    dragging pans; a click on empty map, Esc or a right-click ends the
-    chain."""
+    connection type; a click on free ground or a connection adds a node
+    there. A dashed line shows the next connection. Left dragging pans;
+    Esc or a right-click ends the chain."""
 
     def __init__(
         self,
@@ -78,8 +78,8 @@ class ConnectNodesTool(MapTool):
 
     def status_hint(self) -> str | None:
         return tr(
-            "Click the start node, then more nodes. The same type removes a connection. "
-            "Esc or right-click finishes"
+            "Click nodes, free ground or connections one after another. The same type removes a "
+            "connection. Esc or right-click finishes"
         )
 
     def cursor_at(self, view_position: QPoint) -> Qt.CursorShape:
@@ -89,10 +89,7 @@ class ConnectNodesTool(MapTool):
         if self.view.has_node_at(view_position):
             return Qt.PointingHandCursor
 
-        if self.connect_nodes_operation.start_node is not None:
-            return Qt.CrossCursor
-
-        return Qt.OpenHandCursor
+        return Qt.CrossCursor
 
     @property
     def preview_line(self) -> QLineF | None:

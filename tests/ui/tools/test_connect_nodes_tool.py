@@ -121,15 +121,33 @@ def test_undo_restores_connection_and_drawing(connecting):
     ]
 
 
-def test_click_on_empty_map_ends_chain(connecting):
-    window = connecting(ConnectionType.REGULAR)
-    click(window, view_pos(window, 0, 0))
-
-    click(window, view_pos(window, *EMPTY))
+def test_clicks_on_free_ground_draw_a_connected_road(connecting):
+    window = connecting(ConnectionType.DUAL)
     click(window, view_pos(window, 20, 0))
 
-    assert state(window, 1, 3) == NO_CONNECTION
-    assert window.connect_nodes_operation.start_node.node_id == 3
+    click(window, view_pos(window, 20, 20))
+    click(window, view_pos(window, 30, 20))
+
+    nodes = data(window).nodes
+    assert (nodes[4].x, nodes[4].z) == pytest.approx((20, 20), abs=0.3)
+    assert state(window, 3, 4) == state(window, 4, 5) == CONNECTION_STATES[ConnectionType.DUAL]
+    assert window.connect_nodes_operation.start_node.node_id == 5
+    assert window.actions.undo_action.text() == "Undo: Add connected node"
+
+
+def test_click_on_a_connection_inserts_a_node_and_connects_it(connecting):
+    window = connecting(ConnectionType.REGULAR)
+    window.connect_options.flag_box.setCurrentIndex(1)  # Subprio
+    click(window, view_pos(window, 5, 20))
+
+    click(window, view_pos(window, 15, 0.5))
+    window.actions.undo_action.trigger()
+    window.actions.redo_action.trigger()
+
+    nodes = data(window).nodes
+    assert nodes[5].is_subprio
+    assert nodes[2].outgoing == {5} and nodes[5].outgoing == {3}
+    assert state(window, 4, 5) == CONNECTION_STATES[ConnectionType.REGULAR]
 
 
 def test_escape_ends_chain(connecting):
