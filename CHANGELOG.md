@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Find a marker or node: `Edit → Find marker or node…` (`Ctrl+F`) opens the search field of the Markers dock, which filters markers by name or group; a node number offers that node. `Enter` shows the first result
+- The status bar shows the map position under the pointer, and a scale bar sits in the bottom-left corner of the map (`View → Show → Scale bar`)
+- `+` and `-` zoom; `View → Zoom to selection` (`F`) fits the selected nodes into the window
 - Station yards: `Draw yard road` in the Stations dialog draws a road past the picked stops from clicked corners, one way from first to last corner, or a loop with a two-way road in and out. Each stop is attached as a branch, a chain of close stops sharing one branch, a back-in bay (animal barns) or its own lane (stops far from the road), chosen in the new `Shape` column. `Create` adds it all as one undo step
 - Station marker names and groups can use `{fill}` (first fill type) and `{action}` (unload or load); groups are patterns too. Productions are named like `Diesel-unload` in `prod.Distillery` by default
 - Curves of Find route, junctions and station lanes get a node every 15° (about 1.6 m on a 6 m arc), as course authors space them
