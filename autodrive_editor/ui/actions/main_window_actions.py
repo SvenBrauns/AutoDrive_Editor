@@ -106,7 +106,7 @@ class MainWindowActions:
                     "background_ground",
                     "background_picture",
                 )
-                + ("show_whole_map", "reset_rotation"),
+                + ("zoom_in", "zoom_out", "zoom_to_selection", "show_whole_map", "reset_rotation"),
             ),
             (tr("Check"), ("check_network",)),
             (tr("Generate"), ("building_types",)),
@@ -327,6 +327,21 @@ class MainWindowActions:
         self.show_whole_map_action.setShortcut(QKeySequence("Home"))
         self.show_whole_map_action.setEnabled(False)
         self.show_whole_map_action.triggered.connect(self.window.project_coordinator.show_whole_map)
+
+        self.zoom_in_action = QAction(tr("Zoom in"), self.window)
+        self.zoom_in_action.setShortcuts([QKeySequence("+"), QKeySequence("Num++")])
+        self.zoom_in_action.triggered.connect(lambda: self.window.view.zoom_step(True))
+
+        self.zoom_out_action = QAction(tr("Zoom out"), self.window)
+        self.zoom_out_action.setShortcuts([QKeySequence("-"), QKeySequence("Num+-")])
+        self.zoom_out_action.triggered.connect(lambda: self.window.view.zoom_step(False))
+
+        self.zoom_to_selection_action = QAction(tr("Zoom to selection"), self.window)
+        self.zoom_to_selection_action.setShortcut(QKeySequence("F"))
+        self.zoom_to_selection_action.triggered.connect(self.window.zoom_to_selection)
+
+        for action in (self.zoom_in_action, self.zoom_out_action, self.zoom_to_selection_action):
+            action.setEnabled(False)
 
         self.reset_rotation_action = QAction(tr("Reset rotation"), self.window)
 
@@ -614,6 +629,12 @@ class MainWindowActions:
                 )
 
         view_menu.addSeparator()
+
+        view_menu.addAction(self.zoom_in_action)
+
+        view_menu.addAction(self.zoom_out_action)
+
+        view_menu.addAction(self.zoom_to_selection_action)
 
         view_menu.addAction(self.show_whole_map_action)
 

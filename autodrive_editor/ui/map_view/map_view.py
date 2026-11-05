@@ -1,7 +1,7 @@
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 
-from PySide6.QtCore import QPoint, QRect, QRectF, Qt, Signal
+from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, Qt, Signal
 from PySide6.QtGui import (
     QColor,
     QCursor,
@@ -36,6 +36,9 @@ class MapView(QGraphicsView):
 
     NOTICE_COLOR = QColor(0, 0, 0, 170)
     NOTICE_PIXEL_SIZE = 16
+
+    # Space around the selection after Zoom to selection, in pixels.
+    FIT_MARGIN = 40
 
     zoom_changed = Signal(float)
 
@@ -226,6 +229,12 @@ class MapView(QGraphicsView):
 
     def set_zoom_level(self, zoom_level):
         self._zoom_controller.set_zoom_level(zoom_level)
+
+    def zoom_step(self, zoom_in: bool):
+        self._zoom_controller.zoom_step(zoom_in)
+
+    def zoom_to_points(self, points: list[QPointF], max_zoom: float):
+        self._zoom_controller.zoom_to_points(points, max_zoom, self.FIT_MARGIN)
 
     def set_rotation_angle(self, rotation_angle: float):
         self._rotation_controller.set_rotation_angle(rotation_angle)

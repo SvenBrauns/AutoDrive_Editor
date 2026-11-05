@@ -1,7 +1,7 @@
 from collections.abc import Iterator
 from contextlib import contextmanager
 
-from PySide6.QtCore import QEventLoop, Qt
+from PySide6.QtCore import QEventLoop, QPointF, Qt
 from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import (
     QApplication,
@@ -381,6 +381,21 @@ class MainWindow(QMainWindow):
 
         self.view.centerOn(node.x, node.z)
         self.node_selection.replace(set(node_ids), node.node_id)
+
+    def zoom_to_selection(self):
+        """Fits the selected nodes into the map."""
+
+        autodrive_data = self._get_autodrive_data()
+        node_ids = self.node_selection.selected_node_ids
+
+        if autodrive_data is None or not node_ids:
+            self._set_status(tr("Nothing selected"))
+            return
+
+        nodes = [autodrive_data.nodes[node_id] for node_id in node_ids]
+        self.view.zoom_to_points(
+            [QPointF(node.x, node.z) for node in nodes], self.FOCUS_MARKER_ZOOM
+        )
 
     def rename_marker_group(self, name: str):
         new_name = self._ask_group_name(name)
@@ -1409,7 +1424,13 @@ class MainWindow(QMainWindow):
 
         self.setWindowModified(False)
         self.actions.reload_action.setEnabled(True)
-        self.actions.show_whole_map_action.setEnabled(True)
+        for action in (
+            self.actions.show_whole_map_action,
+            self.actions.zoom_in_action,
+            self.actions.zoom_out_action,
+            self.actions.zoom_to_selection_action,
+        ):
+            action.setEnabled(True)
         self.view.set_logo_visible(False)
         self.actions.save_xml_action.setEnabled(True)
         self.actions.save_xml_as_action.setEnabled(True)
