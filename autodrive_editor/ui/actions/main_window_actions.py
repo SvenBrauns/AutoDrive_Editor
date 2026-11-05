@@ -97,7 +97,7 @@ class MainWindowActions:
             (
                 tr("Edit"),
                 ("undo", "redo", "copy", "cut", "paste", "paste_at_original")
-                + ("delete_selection", "grid_snap", "planning_mode"),
+                + ("delete_selection", "find", "grid_snap", "planning_mode"),
             ),
             (
                 tr("View"),
@@ -328,6 +328,10 @@ class MainWindowActions:
         self.show_whole_map_action.setShortcut(QKeySequence("Home"))
         self.show_whole_map_action.setEnabled(False)
         self.show_whole_map_action.triggered.connect(self.window.project_coordinator.show_whole_map)
+
+        self.find_action = QAction(tr("Find marker or node…"), self.window)
+        self.find_action.setShortcut(QKeySequence.Find)
+        self.find_action.triggered.connect(self.window.marker_dock.start_search)
 
         self.zoom_in_action = QAction(tr("Zoom in"), self.window)
         self.zoom_in_action.setShortcuts([QKeySequence("+"), QKeySequence("Num++")])
@@ -587,6 +591,10 @@ class MainWindowActions:
         edit_menu.addSeparator()
 
         edit_menu.addAction(self.delete_selection_action)
+
+        edit_menu.addSeparator()
+
+        edit_menu.addAction(self.find_action)
 
         edit_menu.addSeparator()
 

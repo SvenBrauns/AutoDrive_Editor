@@ -4,6 +4,8 @@ import pytest
 from drawing_helpers import shown_marker_names
 from mouse_helpers import click, drag, press_escape, view_pos
 from PySide6.QtCore import QPoint, Qt
+from PySide6.QtGui import QKeySequence
+from PySide6.QtTest import QTest
 
 from autodrive_editor.model.autodrive_data import MarkerData, MarkerGroup
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
@@ -286,6 +288,72 @@ def test_clicking_a_marker_centers_and_selects_it(marker_window):
     # only check that the marker is in view.
     assert marker_window.view.get_visible_scene_rect().contains(0, 0)
     assert marker_window.node_selection.selected_node_ids == {1}
+
+
+def shown_items(window):
+    """Texts of the items the search leaves, groups with their shown markers."""
+
+    tree = window.marker_dock.tree
+    shown = []
+
+    for i in range(tree.topLevelItemCount()):
+        item = tree.topLevelItem(i)
+
+        if not item.isHidden():
+            children = [item.child(j) for j in range(item.childCount())]
+            shown.append((item.text(0), [c.text(0) for c in children if not c.isHidden()]))
+
+    return shown
+
+
+@pytest.fixture
+def search_window(marker_window):
+    data = marker_window.data
+    data.marker_groups.append(MarkerGroup("Felder", 2))
+    data.add_marker(MarkerData(2, "Feld 7", "Felder"))
+    data.add_marker(MarkerData(3, "Hofsilo", "Felder"))
+    marker_window.marker_dock.set_data(data)
+    return marker_window
+
+
+def test_search_filters_markers_by_name_and_group(search_window):
+    search = search_window.marker_dock.search
+
+    search.setText("hof")
+    assert shown_items(search_window) == [("All (1)", ["Hof"]), ("Felder (2)", ["Hofsilo"])]
+
+    search.setText("feld")
+    assert shown_items(search_window) == [("Felder (2)", ["Feld 7", "Hofsilo"])]
+
+    search.clear()
+    assert len(shown_items(search_window)) == 2
+
+
+def test_search_keeps_its_filter_when_the_markers_change(search_window):
+    search_window.marker_dock.search.setText("silo")
+
+    search_window.marker_dock.set_data(search_window.data)
+
+    assert shown_items(search_window) == [("Felder (2)", ["Hofsilo"])]
+
+
+def test_ctrl_f_and_a_node_number_jump_to_the_node(search_window):
+    QTest.keySequence(search_window, QKeySequence.Find)
+    search = search_window.marker_dock.search
+    assert search.hasFocus()
+
+    QTest.keyClicks(search, "3")
+    QTest.keyClick(search, Qt.Key_Return)
+
+    assert search_window.node_selection.selected_node_ids == {3}
+    assert search_window.view.get_visible_scene_rect().contains(20, 0)
+
+
+def test_enter_shows_the_first_marker_found(search_window):
+    QTest.keyClicks(search_window.marker_dock.search, "feld 7")
+    QTest.keyClick(search_window.marker_dock.search, Qt.Key_Return)
+
+    assert search_window.node_selection.selected_node_ids == {2}
 
 
 def test_double_click_edits_the_marker(marker_window):
