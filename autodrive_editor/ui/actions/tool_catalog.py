@@ -272,6 +272,14 @@ ARC_TOOL = ToolDefinition(
     "K",
 )
 
+PARALLEL_TOOL = ToolDefinition(
+    InteractionMode.DRAW_PARALLEL,
+    tr("Parallel"),
+    tr("Select a road, point beside it and click: a lane at that distance"),
+    "draw_parallel",
+    "Shift+I",
+)
+
 ADD_MARKER_TOOL = ToolDefinition(
     InteractionMode.ADD_MARKER,
     tr("Add"),
@@ -340,7 +348,7 @@ CONNECT_TOOL = MergedTool(
     tr("Connect"), (CONNECT_REGULAR_TOOL, CONNECT_DUAL_TOOL, CONNECT_REVERSE_TOOL)
 )
 DELETE_TOOL = MergedTool(tr("Delete"), (DELETE_NODES_TOOL, DELETE_RECONNECT_TOOL))
-DRAW_TOOL = MergedTool(tr("Draw"), (LINE_TOOL, ARC_TOOL, BEZIER_TOOL))
+DRAW_TOOL = MergedTool(tr("Draw"), (LINE_TOOL, ARC_TOOL, BEZIER_TOOL, PARALLEL_TOOL))
 MARKER_TOOL = MergedTool(
     tr("Marker"), (ADD_MARKER_TOOL, EDIT_MARKER_TOOL, MOVE_MARKER_TOOL, DELETE_MARKER_TOOL)
 )

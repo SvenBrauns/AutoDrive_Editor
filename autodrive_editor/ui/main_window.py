@@ -32,6 +32,7 @@ from autodrive_editor.editing.operations.move_nodes import MoveNodesOperation
 from autodrive_editor.editing.operations.network_check import NetworkCheckOperation
 from autodrive_editor.editing.operations.node_position import NodePositionOperation
 from autodrive_editor.editing.operations.node_types import NodeTypeOperation
+from autodrive_editor.editing.operations.parallel_lane import ParallelLaneOperation
 from autodrive_editor.editing.operations.parking_spots import (
     MIXED_TYPES_TEXT,
     ParkingSpotOperation,
@@ -96,6 +97,7 @@ from autodrive_editor.ui.panels.marker_dock import MarkerDock
 from autodrive_editor.ui.panels.node_info_formatter import NodeInfoFormatter
 from autodrive_editor.ui.panels.open_screen import OpenScreen
 from autodrive_editor.ui.panels.options_bar import OptionsBar
+from autodrive_editor.ui.panels.parallel_lane_options import ParallelLaneOptionsWidget
 from autodrive_editor.ui.panels.path_options import PathOptionsWidget
 from autodrive_editor.ui.panels.rotate_options import RotateOptionsWidget
 from autodrive_editor.ui.picture_capture_controller import PictureCaptureController
@@ -116,6 +118,7 @@ from autodrive_editor.ui.tools.measure_tool import MeasureTool
 from autodrive_editor.ui.tools.move_nodes_tool import MoveNodesTool
 from autodrive_editor.ui.tools.navigate_tool import NavigateTool
 from autodrive_editor.ui.tools.node_click_tool import NodeClickTool
+from autodrive_editor.ui.tools.parallel_lane_tool import ParallelLaneTool
 from autodrive_editor.ui.tools.path_tool import PathTool
 from autodrive_editor.ui.tools.rotate_selection_tool import RotateSelectionTool
 from autodrive_editor.ui.tools.select_tool import SelectTool
@@ -650,6 +653,7 @@ class MainWindow(QMainWindow):
             parent=self,
         )
         self.create_path_operation.set_options(self.settings.path_options)
+        self.parallel_lane_operation = ParallelLaneOperation(context, parent=self)
 
         self.clipboard_operation = ClipboardOperation(
             context,
@@ -736,6 +740,7 @@ class MainWindow(QMainWindow):
             self.node_type_operation,
             self.align_nodes_operation,
             self.create_path_operation,
+            self.parallel_lane_operation,
             self.clipboard_operation,
             self.node_position_operation,
             self.parking_spot_operation,
@@ -947,6 +952,17 @@ class MainWindow(QMainWindow):
         for interaction_mode in shapes:
             self.view.register_tool(interaction_mode, path_tool)
 
+        self.view.register_tool(
+            InteractionMode.DRAW_PARALLEL,
+            ParallelLaneTool(
+                self.view,
+                self.parallel_lane_operation,
+                color_provider=lambda: self.scene_renderer.display_style.regular_connection_color,
+                node_diameter=display_style.node_diameter,
+                z_value=display_style.selected_node_z + 1,
+            ),
+        )
+
     def _register_generate_tool(self):
         display_style = self.scene_renderer.display_style
         route_tool = FindRouteTool(
@@ -1081,6 +1097,13 @@ class MainWindow(QMainWindow):
             [InteractionMode.DRAW_LINE, InteractionMode.DRAW_ARC, InteractionMode.DRAW_BEZIER],
             self.path_options,
         )
+
+        operation = self.parallel_lane_operation
+        self.parallel_lane_options = ParallelLaneOptionsWidget(operation.options)
+        self.parallel_lane_options.options_changed.connect(operation.set_options)
+        self.parallel_lane_options.apply_requested.connect(operation.apply)
+        operation.distance_changed.connect(self.parallel_lane_options.set_distance)
+        self.options_bar.add_options([InteractionMode.DRAW_PARALLEL], self.parallel_lane_options)
 
         def update_apply_button():
             self.path_options.apply_button.setEnabled(self.create_path_operation.is_adjusting)
