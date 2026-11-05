@@ -52,27 +52,36 @@ Mouse: the **wheel** zooms (keys: `+` and `-` zoom around the middle of the map)
 
 ## Tools
 
-The tool strip holds 17 tools in groups. Create, Connect, Draw, Marker, Measure and Generate have **variants**: buttons at the left of the options bar. A variant's key picks the tool and that variant at once; clicking the tool in the strip picks it with the variant used last. The strip button shows the current variant. Selection is the start tool.
+The tool strip holds 17 tools in groups. Create, Connect, Delete, Draw, Marker, Measure and Generate have **variants**: buttons at the left of the options bar. A variant's key picks the tool and that variant at once; clicking the tool in the strip picks it with the variant used last. The strip button shows the current variant. Selection is the start tool.
 
 | Tool | Key | What it does |
 | --- | --- | --- |
 | Selection | `A` | Click or right-drag to select; Shift + right-drag for freehand selection; Ctrl adds to the selection |
 | Move | `V` | Drag a node or the selection; Shift moves along one grid axis only |
 | Generate | `G` | Starts planning mode and generates a route, a junction, the parking spots of a shed or the lanes of stations (see [Planning and generating](#planning-and-generating)) |
-| Create (Regular / Subprio) | `E` / `Shift+E` | Create a node on free ground |
-| Connect (Regular / Dual / Reverse) | `1` / `2` / `3` | Click nodes one after another to connect them |
-| Delete | `L` | Delete a node or the selection |
+| Create (Regular / Subprio) | `E` / `Shift+E` | Create a node on free ground; a click on a connection inserts the node into it (on the line, height between the ends, type and direction kept) |
+| Connect (Regular / Dual / Reverse) | `1` / `2` / `3` | Click nodes one after another to connect them. A click on free ground creates a node, a click on a connection inserts one; either is connected from the previous node, so a road is drawn with one tool. Node type in the options bar; Esc or right-click ends the chain |
+| Delete (Node / Reconnect) | `L` / `Shift+L` | Node: delete a node or the selection. Reconnect: delete nodes in the middle of a road and join its two ends the same way (A→N→B becomes A→B, dual stays dual); refused for junctions, road ends and connections of different types. Also `Edit → Delete selection and reconnect` (`Shift+Del`) |
 | Toggle type | `T` | Switch between Regular and Subprio |
 | Reverse direction | `U` | Click a connection to reverse it; inside a selection, all connections of the selection are reversed |
 | Rotate | `R` | Rotate the selection using the ring; Shift snaps in steps (default 15°, `Snap step` in the options bar) |
 | Enter position | `P` | Enter a node's X/Y/Z as numbers |
 | Align horizontally / vertically | `H` / `J` | Put the selection on the line through a reference node |
 | Height like reference / Height from heightmap | `Y` / `Shift+Y` | Set the heights of the selection |
-| Draw (Line / Arc / Bézier) | `I` / `K` / `B` | Line: straight section with even node spacing. Arc and Bézier: click start and end, drag the handles, press Enter; the Bézier curve has one or two control points. Spacing, connection type, node type and control points are in the options bar. Switching the variant while drawing keeps start and end |
+| Draw (Line / Arc / Bézier / Parallel) | `I` / `K` / `B` / `Shift+I` | Line: straight section with even node spacing. Arc and Bézier: click start and end, drag the handles, press Enter; the Bézier curve has one or two control points. Spacing, connection type, node type and control points are in the options bar. Switching the variant while drawing keeps start and end. Parallel: a lane beside the selected roads, see [Parallel lane](#parallel-lane) |
 | Marker (Add / Edit / Move / Delete) | `M` / `Shift+M` / `Ctrl+M` / `Ctrl+Shift+M` | Add or edit a marker (name and group), move it to another node or delete it |
 | Measure (Distance / Angle) | `D` / `Shift+D` | Click point A and point B (node or free ground), drag a point to move it. `Align view to line` in the options bar rotates the view along the line. Esc with nothing to clear goes back to the tool used before |
 
 Also in the `Edit` menu and the toolbar: Undo and Redo (`Ctrl+Z` / `Ctrl+Y`), Copy, Cut and Paste (`Ctrl+C/X/V`; `Ctrl+Shift+V` pastes at the original position; pasted nodes get the terrain height at the new place, unless `Keep heights when pasting` is on, e.g. for a bridge or ramp), Delete selection (`Del`) and Snap to grid (`S`). All keys can be changed under `File → Settings → Shortcuts`.
+
+### Parallel lane
+
+`Draw → Parallel` (`Shift+I`) adds a lane beside each selected road, e.g. the second lane of a pair of one-way roads. Select the roads first or in the tool: right-drag a box, Shift + right-drag a lasso, Ctrl+click toggles a node, a right-click clears the selection. Then point beside a road: the dashed preview follows the pointer, which sets the side and the distance (in steps of 0.5 m, shown in `Lane distance`). A click creates the lanes there; `Enter` or `Apply` creates them at the distance in the box.
+
+- Every selected road gets its lane on the same side of its own driving direction, so the lanes of several one-way roads are added at once.
+- The lane is connected like the road (regular, dual or reverse); `Direction` sets the same or the opposite driving direction. The nodes are spaced evenly (`Spacing`) and get the terrain height, or the height of the road beside them; `Node type` sets their type.
+- The ends stay open and the new nodes are not selected; one undo step removes all lanes.
+- Refused with a status message: a junction in the selection, a closed ring, a road whose connections differ in type or direction, or a curve tighter than the distance on the inner side.
 
 ## Display
 
