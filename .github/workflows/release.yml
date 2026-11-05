@@ -32,6 +32,8 @@ jobs:
           --icon packaging/app.ico --version-file build/version_info.txt
           --add-data "autodrive_editor/resources;autodrive_editor/resources"
           --add-data "CHANGELOG.md;."
+          --add-data "MANUAL.md;."
+          --add-data "MANUAL.de.md;."
           main.py
 
       - name: Add license files and zip

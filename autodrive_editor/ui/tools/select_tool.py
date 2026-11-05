@@ -8,7 +8,8 @@ from autodrive_editor.ui.tools.map_tool import MapTool
 
 
 class SelectTool(MapTool):
-    """Left click selects a node, Ctrl + left click toggles it.
+    """Left click selects a node, Ctrl + left click toggles it. A double-click selects the
+    whole road piece, Ctrl + double-click adds it.
     Right dragging selects all nodes in a box, Shift + right dragging
     in a freehand lasso. Left dragging pans."""
 
@@ -32,6 +33,9 @@ class SelectTool(MapTool):
 
         self._right_button_pressed = False
 
+        # The release after a double-click must not select the single node again.
+        self._double_clicked = False
+
     def deactivate(self):
         super().deactivate()
         self._cancel_area_selection()
@@ -47,6 +51,17 @@ class SelectTool(MapTool):
             return True
 
         return super().mouse_press(event)
+
+    def mouse_double_click(self, event: QMouseEvent) -> bool:
+        if event.button() != Qt.LeftButton:
+            return False
+
+        self._double_clicked = True
+        self.selection_coordinator.handle_double_click(
+            event.position().toPoint(), event.modifiers()
+        )
+
+        return True
 
     def mouse_move(self, event: QMouseEvent) -> bool:
         if self._right_button_pressed and event.buttons() & Qt.RightButton:
@@ -69,7 +84,10 @@ class SelectTool(MapTool):
         if event.button() != Qt.LeftButton:
             return False
 
-        if not self._end_pan():
+        if self._double_clicked:
+            self._double_clicked = False
+
+        elif not self._end_pan():
             self.selection_coordinator.handle_click(event.position().toPoint(), event.modifiers())
 
         return True
@@ -84,8 +102,8 @@ class SelectTool(MapTool):
 
     def status_hint(self) -> str | None:
         return tr(
-            "Click selects a node, Ctrl+click toggles, right-drag selects an area, "
-            "Shift+right-drag draws a lasso"
+            "Click selects a node, Ctrl+click toggles, double-click selects the road piece, "
+            "right-drag selects an area, Shift+right-drag draws a lasso"
         )
 
     def cursor_at(self, view_position: QPoint) -> Qt.CursorShape:

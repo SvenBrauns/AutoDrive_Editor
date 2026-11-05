@@ -26,6 +26,7 @@ from autodrive_editor.ui.controls.rotation_controls import RotationControls
 from autodrive_editor.ui.dialogs.help_dialogs import (
     open_log_folder,
     show_about,
+    show_manual,
     show_version_history,
 )
 from autodrive_editor.ui.tools.generate_tool import GenerateTask
@@ -97,6 +98,7 @@ class MainWindowActions:
             (
                 tr("Edit"),
                 ("undo", "redo", "copy", "cut", "paste", "paste_at_original")
+                + ("select_all", "select_road_piece")
                 + ("delete_selection", "delete_reconnect", "find", "grid_snap", "planning_mode"),
             ),
             (
@@ -111,7 +113,10 @@ class MainWindowActions:
             ),
             (tr("Check"), ("check_network",)),
             (tr("Generate"), ("building_types",)),
-            (tr("Help"), ("version_history", "check_updates", "open_log_folder", "about")),
+            (
+                tr("Help"),
+                ("manual", "version_history", "check_updates", "open_log_folder", "about"),
+            ),
         )
 
         for group, names in groups:
@@ -266,6 +271,10 @@ class MainWindowActions:
         self.about_action = QAction(tr("About AutoDrive FS25 Editor"), self.window)
 
         self.about_action.triggered.connect(lambda: show_about(self.window))
+
+        self.manual_action = QAction(tr("Manual"), self.window)
+        self.manual_action.setShortcut(QKeySequence("F1"))
+        self.manual_action.triggered.connect(lambda: show_manual(self.window))
 
         self.version_history_action = QAction(tr("Version history"), self.window)
 
@@ -497,9 +506,25 @@ class MainWindowActions:
             lambda: self.window.delete_selection_and_reconnect()
         )
 
+        self.select_all_action = QAction(tr("Select all"), self.window)
+        self.select_all_action.setShortcut(QKeySequence.SelectAll)
+        self.select_all_action.triggered.connect(
+            lambda: self.window.selection_coordinator.select_all()
+        )
+
+        self.select_road_piece_action = QAction(tr("Select road piece"), self.window)
+        self.select_road_piece_action.setStatusTip(
+            tr("Extend the selection to the whole road pieces, up to the next junctions")
+        )
+        self.select_road_piece_action.setEnabled(False)
+        self.select_road_piece_action.triggered.connect(
+            lambda: self.window.selection_coordinator.grow_to_road_pieces()
+        )
+
     def set_selection_actions_enabled(self, enabled: bool):
         self.delete_selection_action.setEnabled(enabled)
         self.delete_reconnect_action.setEnabled(enabled)
+        self.select_road_piece_action.setEnabled(enabled)
 
     def _create_clipboard_actions(self):
         clipboard = self.window.clipboard_operation
@@ -601,6 +626,11 @@ class MainWindowActions:
 
         edit_menu.addSeparator()
 
+        edit_menu.addAction(self.select_all_action)
+        edit_menu.addAction(self.select_road_piece_action)
+
+        edit_menu.addSeparator()
+
         edit_menu.addAction(self.delete_selection_action)
         edit_menu.addAction(self.delete_reconnect_action)
 
@@ -673,6 +703,7 @@ class MainWindowActions:
 
         help_menu = menu_bar.addMenu(tr("Help"))
 
+        help_menu.addAction(self.manual_action)
         help_menu.addAction(self.version_history_action)
 
         help_menu.addAction(self.check_updates_action)

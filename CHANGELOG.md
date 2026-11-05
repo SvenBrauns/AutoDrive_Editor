@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `Edit → Select all` (`Ctrl+A`). A double-click with the Select tool selects the whole road piece of a node or connection, up to the next junctions (`Ctrl` adds it); `Edit → Select road piece` grows the selection the same way
+- `Help → Manual` (`F1`) shows the manual in the editor, in English or German
 - Road editing: Create (`E`/`Shift+E`) inserts a node into a clicked connection, keeping type and direction. Delete got the variant Reconnect (`Shift+L`, or `Edit → Delete selection and reconnect`, `Shift+Del`): nodes in the middle of a road are deleted and its ends joined the same way. Connect (`1`/`2`/`3`) draws a road: a click on free ground or a connection adds a node connected from the previous one. `Draw → Parallel` (`Shift+I`) adds a lane beside the selected roads at the distance of the pointer, in the same or the opposite direction
 - Find a marker or node: `Edit → Find marker or node…` (`Ctrl+F`) opens the search field of the Markers dock, which filters markers by name or group; a node number offers that node. `Enter` shows the first result
 - The status bar shows the map position under the pointer, and a scale bar sits in the bottom-left corner of the map (`View → Show → Scale bar`)

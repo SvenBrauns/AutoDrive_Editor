@@ -21,6 +21,9 @@ TOOL_ICON_DIRECTORY = ICON_DIRECTORY / "tools"
 # Shown under Help → Version history; the release build copies it next to the package.
 CHANGELOG_PATH = PROJECT_ROOT / "CHANGELOG.md"
 
+# Shown under Help → Manual, in the language of the editor; bundled like the changelog.
+MANUAL_PATHS = {"en": PROJECT_ROOT / "MANUAL.md", "de": PROJECT_ROOT / "MANUAL.de.md"}
+
 # Environment variable to use another user data folder, e.g. in tests.
 USER_DATA_DIRECTORY_VARIABLE = "AUTODRIVE_EDITOR_DATA_DIR"
 
