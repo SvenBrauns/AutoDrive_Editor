@@ -27,9 +27,9 @@ def test_a_tool_without_options_shows_only_its_name(qapp):
 
 
 def test_the_window_shows_the_active_tool_in_the_options_bar(window):
-    window.set_interaction_mode(InteractionMode.DELETE_NODES)
+    window.set_interaction_mode(InteractionMode.TOGGLE_NODE_TYPE)
 
-    assert window.options_bar.name_label.text() == "Delete nodes"
+    assert window.options_bar.name_label.text() == "Toggle node type"
     assert window.options_bar.isVisible()
 
 

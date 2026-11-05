@@ -290,6 +290,9 @@ class MainWindow(QMainWindow):
         if not self.view.active_tool.remove_hovered():
             self.delete_nodes_operation.delete_selection()
 
+    def delete_selection_and_reconnect(self):
+        self.delete_nodes_operation.delete_selection(reconnect=True)
+
     def align_view_to_measurement(self):
         self.measurement_coordinator.align_view_to_measurement()
 
@@ -855,6 +858,10 @@ class MainWindow(QMainWindow):
         self.view.register_tool(
             InteractionMode.DELETE_NODES, DeleteNodesTool(self.view, self.delete_nodes_operation)
         )
+        self.view.register_tool(
+            InteractionMode.DELETE_RECONNECT,
+            DeleteNodesTool(self.view, self.delete_nodes_operation, reconnect=True),
+        )
 
         connect_tools = (
             (InteractionMode.CONNECT_REGULAR, ConnectionType.REGULAR, "regular_connection_color"),
@@ -1403,7 +1410,7 @@ class MainWindow(QMainWindow):
         )
 
         self.node_selection.selection_changed.connect(
-            lambda node_ids, primary_node_id: self.actions.delete_selection_action.setEnabled(
+            lambda node_ids, primary_node_id: self.actions.set_selection_actions_enabled(
                 bool(node_ids)
             )
         )

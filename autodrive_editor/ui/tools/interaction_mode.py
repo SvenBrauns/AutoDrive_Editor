@@ -16,6 +16,7 @@ class InteractionMode(Enum):
     EDIT_NODE_POSITION = auto()
     ROTATE_SELECTION = auto()
     DELETE_NODES = auto()
+    DELETE_RECONNECT = auto()
     CONNECT_REGULAR = auto()
     CONNECT_DUAL = auto()
     CONNECT_REVERSE = auto()
@@ -46,6 +47,7 @@ class InteractionMode(Enum):
             InteractionMode.EDIT_NODE_POSITION: tr("Enter position"),
             InteractionMode.ROTATE_SELECTION: tr("Rotate selection"),
             InteractionMode.DELETE_NODES: tr("Delete nodes"),
+            InteractionMode.DELETE_RECONNECT: tr("Delete and reconnect"),
             InteractionMode.CONNECT_REGULAR: tr("Connect (Regular)"),
             InteractionMode.CONNECT_DUAL: tr("Connect (Dual)"),
             InteractionMode.CONNECT_REVERSE: tr("Connect (Reverse)"),

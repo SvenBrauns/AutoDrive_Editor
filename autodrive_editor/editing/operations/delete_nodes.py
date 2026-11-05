@@ -1,17 +1,22 @@
 from PySide6.QtCore import QPoint
 
-from autodrive_editor.editing.commands.delete_nodes import DeleteNodesCommand
+from autodrive_editor.editing.commands.delete_nodes import (
+    DeleteAndReconnectCommand,
+    DeleteNodesCommand,
+)
 from autodrive_editor.editing.edit_context import EditContext, EditOperation
+from autodrive_editor.editing.road_edits import ReconnectError, plan_reconnect
 from autodrive_editor.i18n import tr
 
 
 class DeleteNodesOperation(EditOperation):
-    """Deletes nodes as one undoable step."""
+    """Deletes nodes as one undoable step; with reconnect, the road around them stays
+    connected."""
 
     def __init__(self, context: EditContext, parent=None):
         super().__init__(context, parent)
 
-    def delete_node_at(self, view_position: QPoint) -> bool:
+    def delete_node_at(self, view_position: QPoint, reconnect: bool = False) -> bool:
         """Deletes the node at the view position, or the whole
         selection if that node is selected. Returns False if there is
         no node at the position."""
@@ -24,14 +29,14 @@ class DeleteNodesOperation(EditOperation):
         selected_node_ids = self.node_selection.selected_node_ids
 
         if clicked_node.node_id in selected_node_ids:
-            return self.delete_nodes(selected_node_ids)
+            return self.delete_nodes(selected_node_ids, reconnect)
 
-        return self.delete_nodes({clicked_node.node_id})
+        return self.delete_nodes({clicked_node.node_id}, reconnect)
 
-    def delete_selection(self) -> bool:
-        return self.delete_nodes(self.node_selection.selected_node_ids)
+    def delete_selection(self, reconnect: bool = False) -> bool:
+        return self.delete_nodes(self.node_selection.selected_node_ids, reconnect)
 
-    def delete_nodes(self, node_ids) -> bool:
+    def delete_nodes(self, node_ids, reconnect: bool = False) -> bool:
         autodrive_data = self.autodrive_data_provider()
 
         if (
@@ -47,7 +52,17 @@ class DeleteNodesOperation(EditOperation):
         if not node_ids:
             return False
 
-        self.edit_history.push(DeleteNodesCommand(autodrive_data, node_ids))
+        if reconnect:
+            try:
+                connections = plan_reconnect(autodrive_data, node_ids)
+            except ReconnectError as error:
+                self.status_changed.emit(str(error))
+                return False
+
+            self.edit_history.push(DeleteAndReconnectCommand(autodrive_data, node_ids, connections))
+
+        else:
+            self.edit_history.push(DeleteNodesCommand(autodrive_data, node_ids))
 
         self.status_changed.emit(
             tr("Node deleted")
