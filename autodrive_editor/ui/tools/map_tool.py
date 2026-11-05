@@ -117,6 +117,11 @@ class MapTool:
 
         return True
 
+    def mouse_double_click(self, event: QMouseEvent) -> bool:
+        """Called for the second press of a double-click. Returns False to treat it as a press."""
+
+        return False
+
     def mouse_leave(self):
         """The pointer left the map."""
 

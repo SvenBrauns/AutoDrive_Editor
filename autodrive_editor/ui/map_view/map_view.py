@@ -440,6 +440,13 @@ class MapView(QGraphicsView):
         else:
             super().mouseReleaseEvent(event)
 
+    def mouseDoubleClickEvent(self, event: QMouseEvent):
+        if event.button() == Qt.LeftButton and self.active_tool.mouse_double_click(event):
+            event.accept()
+            return
+
+        self.mousePressEvent(event)
+
     def keyPressEvent(self, event: QKeyEvent):
         if event.key() == Qt.Key_Escape and self.active_tool.cancel():
             self.refresh_cursor()

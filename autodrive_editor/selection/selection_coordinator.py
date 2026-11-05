@@ -7,6 +7,7 @@ from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
 from autodrive_editor.rendering.scene_renderer import SceneRenderer
 from autodrive_editor.selection.node_selection import NodeSelection
+from autodrive_editor.selection.road_piece import connection_piece, road_piece
 from autodrive_editor.ui.map_view.map_view import MapView
 from autodrive_editor.ui.panels.node_info_formatter import NodeInfoFormatter
 
@@ -29,6 +30,7 @@ class SelectionCoordinator(QObject):
         node_selection: NodeSelection,
         node_info_formatter: NodeInfoFormatter,
         autodrive_data_provider: Callable[[], AutoDriveData | None],
+        connection_at: Callable | None = None,
         parent=None,
     ):
         super().__init__(parent)
@@ -56,6 +58,8 @@ class SelectionCoordinator(QObject):
         self.node_info_formatter = node_info_formatter
 
         self._autodrive_data_provider = autodrive_data_provider
+
+        self._connection_at = connection_at
 
         self.node_selection.selection_changed.connect(self._handle_selection_changed)
 
@@ -91,6 +95,49 @@ class SelectionCoordinator(QObject):
             self.node_selection.replace(
                 {clicked_node.node_id}, primary_node_id=(clicked_node.node_id)
             )
+
+    def handle_double_click(self, view_position: QPoint, modifiers):
+        """Selects the road piece of the node or connection under the pointer; Ctrl adds it."""
+
+        autodrive_data = self._autodrive_data_provider()
+        node = self.get_node_at(view_position)
+        connection = None
+
+        if node is None and self._connection_at is not None:
+            connection = self._connection_at(view_position)
+
+        if autodrive_data is None or (node is None and connection is None):
+            return
+
+        if node is not None:
+            node_ids, primary_node_id = road_piece(autodrive_data, {node.node_id}), node.node_id
+
+        else:
+            source_id, target_id = connection.source_id, connection.target_id
+            node_ids, primary_node_id = (
+                connection_piece(autodrive_data, source_id, target_id),
+                source_id,
+            )
+
+        if modifiers & Qt.ControlModifier:
+            self.node_selection.add(node_ids, primary_node_id=primary_node_id)
+
+        else:
+            self.node_selection.replace(node_ids, primary_node_id=primary_node_id)
+
+    def select_all(self):
+        autodrive_data = self._autodrive_data_provider()
+
+        if autodrive_data is not None:
+            self.node_selection.replace(autodrive_data.nodes)
+
+    def grow_to_road_pieces(self):
+        """Extends the selection to the whole road pieces of the selected nodes."""
+
+        autodrive_data = self._autodrive_data_provider()
+
+        if autodrive_data is not None:
+            self.node_selection.add(road_piece(autodrive_data, self.selected_node_ids))
 
     def handle_area(self, selection_path: QPainterPath, modifiers):
         selected_nodes = self.renderer.get_nodes_in_selection_path(selection_path)

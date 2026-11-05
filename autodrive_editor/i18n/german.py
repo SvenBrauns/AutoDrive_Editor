@@ -628,7 +628,7 @@ TEXTS = {
     "1: quadratic curve, 2: cubic curve": "1: quadratische Kurve, 2: kubische Kurve",
     "Control points": "Kontrollpunkte",
     "Select at least two nodes to rotate": "Zum Rotieren mindestens zwei Nodes auswählen",
-    "Click selects a node, Ctrl+click toggles, right-drag selects an area, Shift+right-drag draws a lasso": "Klick wählt eine Node, Strg+Klick schaltet um, Rechtsziehen wählt einen Bereich, Umschalt+Rechtsziehen zeichnet ein Lasso",
+    "Click selects a node, Ctrl+click toggles, double-click selects the road piece, right-drag selects an area, Shift+right-drag draws a lasso": "Klick wählt eine Node, Strg+Klick schaltet um, Doppelklick wählt das Straßenstück, Rechtsziehen wählt einen Bereich, Umschalt+Rechtsziehen zeichnet ein Lasso",
     "Click a node to switch between regular and subprio": "Node anklicken, um zwischen Regular und Subprio zu wechseln",
     # Recently opened files
     "Open recent": "Zuletzt geöffnet",
@@ -640,6 +640,11 @@ TEXTS = {
     "The file no longer exists:\n{path}": "Die Datei existiert nicht mehr:\n{path}",
     # Help menu and unexpected errors
     "Help": "Hilfe",
+    "Manual": "Anleitung",
+    "The manual could not be found.": "Die Anleitung wurde nicht gefunden.",
+    "Select all": "Alles auswählen",
+    "Select road piece": "Straßenstück auswählen",
+    "Extend the selection to the whole road pieces, up to the next junctions": "Auswahl auf die ganzen Straßenstücke bis zu den nächsten Abzweigungen erweitern",
     "About AutoDrive FS25 Editor": "Über AutoDrive FS25 Editor",
     "Version history": "Versionsverlauf",
     "Open log folder": "Log-Ordner öffnen",

@@ -1,9 +1,11 @@
+import re
 import tomllib
 
+import pytest
 from PySide6.QtWidgets import QMessageBox, QTextBrowser
 
 from autodrive_editor import __version__
-from autodrive_editor.paths import CHANGELOG_PATH, PROJECT_ROOT
+from autodrive_editor.paths import CHANGELOG_PATH, MANUAL_PATHS, PROJECT_ROOT
 from autodrive_editor.ui.dialogs import help_dialogs
 from autodrive_editor.ui.dialogs.error_dialog import create_error_box
 
@@ -47,6 +49,7 @@ def test_help_menu_has_the_entries(window):
     ]
 
     assert [action.text() for action in help_menu.actions() if action.text()] == [
+        "Manual",
         "Version history",
         "Check for updates",
         "Debug info",
@@ -54,6 +57,25 @@ def test_help_menu_has_the_entries(window):
         "Open log folder",
         "About AutoDrive FS25 Editor",
     ]
+
+
+@pytest.mark.parametrize(("language", "title"), [("en", "Manual"), ("de", "Anleitung")])
+def test_manual_is_shown_in_the_editor_language(window, monkeypatch, language, title):
+    monkeypatch.setattr(help_dialogs, "current_language", lambda: language)
+
+    dialog = help_dialogs.create_manual_dialog(window)
+
+    assert (
+        dialog.findChild(QTextBrowser).toPlainText().startswith(f"AutoDrive FS25 Editor – {title}")
+    )
+
+
+@pytest.mark.parametrize("path", MANUAL_PATHS.values(), ids=lambda path: path.name)
+def test_every_link_of_the_manual_contents_has_a_heading(path):
+    text = path.read_text(encoding="utf-8")
+    anchors = {help_dialogs.heading_anchor(h) for h in re.findall(r"^#+ (.+)$", text, re.M)}
+
+    assert set(re.findall(r"\]\(#([^)]+)\)", text)) <= anchors
 
 
 def test_error_box_shows_message_details_and_log_button(window):

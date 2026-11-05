@@ -600,6 +600,7 @@ class MainWindow(QMainWindow):
             node_selection=self.node_selection,
             node_info_formatter=self.node_info_formatter,
             autodrive_data_provider=self._get_autodrive_data,
+            connection_at=self._get_connection_at,
             parent=self,
         )
 
