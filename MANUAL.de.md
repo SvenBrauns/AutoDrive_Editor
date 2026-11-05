@@ -56,7 +56,7 @@ Die Werkzeugspalte enthält 17 Werkzeuge in Gruppen. Anlegen, Verbinden, Lösche
 
 | Werkzeug | Taste | Was es tut |
 | --- | --- | --- |
-| Auswahl | `A` | Per Klick oder Rechtsziehen auswählen; Umschalt + Rechtsziehen für freie Auswahl; Strg ergänzt die Auswahl |
+| Auswahl | `A` | Per Klick oder Rechtsziehen auswählen; Umschalt + Rechtsziehen für freie Auswahl; Strg ergänzt die Auswahl. Ein Doppelklick auf eine Node oder Verbindung wählt das ganze Straßenstück bis zu den nächsten Abzweigungen oder Straßenenden (mit diesen) oder bis zu einem Wechsel von Verbindungs- oder Node-Typ |
 | Verschieben | `V` | Node oder Auswahl ziehen; Umschalt bewegt nur entlang einer Rasterachse |
 | Erzeugen | `G` | Startet den Planungsmodus und erzeugt eine Route, eine Einmündung, die Parkplätze einer Halle oder die Spuren von Stationen (siehe [Planen und Erzeugen](#planen-und-erzeugen)) |
 | Anlegen (Regular / Subprio) | `E` / `Umschalt+E` | Node auf freier Fläche anlegen; ein Klick auf eine Connection fügt die Node in sie ein (auf der Linie, Höhe zwischen den Enden, Art und Richtung bleiben) |
@@ -72,7 +72,7 @@ Die Werkzeugspalte enthält 17 Werkzeuge in Gruppen. Anlegen, Verbinden, Lösche
 | Marker (Hinzufügen / Bearbeiten / Verschieben / Löschen) | `M` / `Umschalt+M` / `Strg+M` / `Strg+Umschalt+M` | Marker hinzufügen oder bearbeiten (Name und Gruppe), auf eine andere Node verschieben oder löschen |
 | Messen (Abstand / Winkel) | `D` / `Umschalt+D` | Punkt A und Punkt B anklicken (Node oder freie Fläche), einen Punkt ziehen, um ihn zu verschieben. `Ansicht an Linie ausrichten` in der Optionsleiste dreht die Ansicht entlang der Linie. Esc ohne etwas zu löschen kehrt zum vorher benutzten Werkzeug zurück |
 
-Außerdem im Menü `Bearbeiten` und in der Werkzeugleiste: Rückgängig und Wiederholen (`Strg+Z` / `Strg+Y`), Kopieren, Ausschneiden und Einfügen (`Strg+C/X/V`; `Strg+Umschalt+V` fügt an der Originalposition ein; eingefügte Nodes bekommen die Geländehöhe am neuen Ort, außer `Beim Einfügen Höhen beibehalten` ist an, z. B. für eine Brücke oder Rampe), Auswahl löschen (`Entf`) und Am Raster einrasten (`S`). Alle Tasten lassen sich unter `Datei → Einstellungen → Tastenkürzel` ändern.
+Außerdem im Menü `Bearbeiten` und in der Werkzeugleiste: Rückgängig und Wiederholen (`Strg+Z` / `Strg+Y`), Kopieren, Ausschneiden und Einfügen (`Strg+C/X/V`; `Strg+Umschalt+V` fügt an der Originalposition ein; eingefügte Nodes bekommen die Geländehöhe am neuen Ort, außer `Beim Einfügen Höhen beibehalten` ist an, z. B. für eine Brücke oder Rampe), Alles auswählen (`Strg+A`), Straßenstück auswählen (erweitert die Auswahl auf ganze Straßenstücke), Auswahl löschen (`Entf`) und Am Raster einrasten (`S`). Alle Tasten lassen sich unter `Datei → Einstellungen → Tastenkürzel` ändern.
 
 ### Parallele Spur
 
@@ -232,4 +232,4 @@ Ungespeicherte Änderungen werden alle paar Minuten automatisch gesichert (Absta
 
 ## Hilfe und Fehler
 
-`Hilfe → Versionsverlauf` zeigt, was sich in jeder Version geändert hat (auf Englisch), `Hilfe → Über` zeigt Version und Lizenz. Tritt ein unerwarteter Fehler auf, zeigt der Editor eine Meldung und läuft weiter. Die Details landen in einer Log-Datei (`Hilfe → Log-Ordner öffnen`, in `%APPDATA%\AutoDrive Editor\logs`); bitte bei Fehlermeldungen anhängen. `Hilfe → Debug-Log` schreibt zusätzlich ausführliche Einträge ins Log, z. B. zu jeder Routensuche (Start, Ziel, Richtungen, warum keine Route gefunden wurde); einschalten, das Problem wiederholen und das Log anhängen. `Hilfe → Debuganzeige` zeigt Laufzeitwerte wie die Zahl der Nodes und der zwischengespeicherten Kartenkacheln.
+`Hilfe → Anleitung` (`F1`) öffnet diese Anleitung in der Sprache des Editors. `Hilfe → Versionsverlauf` zeigt, was sich in jeder Version geändert hat (auf Englisch), `Hilfe → Über` zeigt Version und Lizenz. Tritt ein unerwarteter Fehler auf, zeigt der Editor eine Meldung und läuft weiter. Die Details landen in einer Log-Datei (`Hilfe → Log-Ordner öffnen`, in `%APPDATA%\AutoDrive Editor\logs`); bitte bei Fehlermeldungen anhängen. `Hilfe → Debug-Log` schreibt zusätzlich ausführliche Einträge ins Log, z. B. zu jeder Routensuche (Start, Ziel, Richtungen, warum keine Route gefunden wurde); einschalten, das Problem wiederholen und das Log anhängen. `Hilfe → Debuganzeige` zeigt Laufzeitwerte wie die Zahl der Nodes und der zwischengespeicherten Kartenkacheln.

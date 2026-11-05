@@ -56,7 +56,7 @@ The tool strip holds 17 tools in groups. Create, Connect, Delete, Draw, Marker, 
 
 | Tool | Key | What it does |
 | --- | --- | --- |
-| Selection | `A` | Click or right-drag to select; Shift + right-drag for freehand selection; Ctrl adds to the selection |
+| Selection | `A` | Click or right-drag to select; Shift + right-drag for freehand selection; Ctrl adds to the selection. A double-click on a node or connection selects its whole road piece, up to the next junctions or road ends (ends included) or a change of connection or node type |
 | Move | `V` | Drag a node or the selection; Shift moves along one grid axis only |
 | Generate | `G` | Starts planning mode and generates a route, a junction, the parking spots of a shed or the lanes of stations (see [Planning and generating](#planning-and-generating)) |
 | Create (Regular / Subprio) | `E` / `Shift+E` | Create a node on free ground; a click on a connection inserts the node into it (on the line, height between the ends, type and direction kept) |
@@ -72,7 +72,7 @@ The tool strip holds 17 tools in groups. Create, Connect, Delete, Draw, Marker, 
 | Marker (Add / Edit / Move / Delete) | `M` / `Shift+M` / `Ctrl+M` / `Ctrl+Shift+M` | Add or edit a marker (name and group), move it to another node or delete it |
 | Measure (Distance / Angle) | `D` / `Shift+D` | Click point A and point B (node or free ground), drag a point to move it. `Align view to line` in the options bar rotates the view along the line. Esc with nothing to clear goes back to the tool used before |
 
-Also in the `Edit` menu and the toolbar: Undo and Redo (`Ctrl+Z` / `Ctrl+Y`), Copy, Cut and Paste (`Ctrl+C/X/V`; `Ctrl+Shift+V` pastes at the original position; pasted nodes get the terrain height at the new place, unless `Keep heights when pasting` is on, e.g. for a bridge or ramp), Delete selection (`Del`) and Snap to grid (`S`). All keys can be changed under `File → Settings → Shortcuts`.
+Also in the `Edit` menu and the toolbar: Undo and Redo (`Ctrl+Z` / `Ctrl+Y`), Copy, Cut and Paste (`Ctrl+C/X/V`; `Ctrl+Shift+V` pastes at the original position; pasted nodes get the terrain height at the new place, unless `Keep heights when pasting` is on, e.g. for a bridge or ramp), Select all (`Ctrl+A`), Select road piece (grows the selection to whole road pieces), Delete selection (`Del`) and Snap to grid (`S`). All keys can be changed under `File → Settings → Shortcuts`.
 
 ### Parallel lane
 
@@ -232,4 +232,4 @@ Unsaved changes are backed up automatically every few minutes (interval under `F
 
 ## Help and errors
 
-`Help → Version history` shows what changed in each version, `Help → About` shows the version and license. If an unexpected error occurs, the editor shows a message and keeps running. The details are written to a log file (`Help → Open log folder`, in `%APPDATA%\AutoDrive Editor\logs`); please attach it when reporting a bug. `Help → Debug log` adds detailed entries to the log, e.g. for each route search (start, goal, headings, why no route was found); turn it on, repeat what went wrong, and attach the log. `Help → Debug info` shows runtime numbers such as the node count and the cached map tiles.
+`Help → Manual` (`F1`) opens this manual in the editor's language. `Help → Version history` shows what changed in each version, `Help → About` shows the version and license. If an unexpected error occurs, the editor shows a message and keeps running. The details are written to a log file (`Help → Open log folder`, in `%APPDATA%\AutoDrive Editor\logs`); please attach it when reporting a bug. `Help → Debug log` adds detailed entries to the log, e.g. for each route search (start, goal, headings, why no route was found); turn it on, repeat what went wrong, and attach the log. `Help → Debug info` shows runtime numbers such as the node count and the cached map tiles.
