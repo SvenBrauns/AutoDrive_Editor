@@ -1,6 +1,6 @@
 import math
 
-from PySide6.QtCore import QObject, QPoint, QRectF, QTimer, Signal
+from PySide6.QtCore import QObject, QPoint, QPointF, QRectF, QTimer, Signal
 from PySide6.QtWidgets import QGraphicsView
 
 
@@ -53,6 +53,36 @@ class ViewZoomController(QObject):
         )
 
         self.notify_transform_changed()
+
+    def zoom_step(self, zoom_in: bool):
+        """Zooms one wheel step around the middle of the map."""
+
+        factor = self.ZOOM_FACTOR if zoom_in else 1.0 / self.ZOOM_FACTOR
+        self.set_zoom_level(self.zoom_level * factor)
+
+    def zoom_to_points(self, points: list[QPointF], max_zoom: float, margin: int):
+        """Fits the points into the map with a margin in pixels, keeping the rotation, but
+        zooms in no further than max_zoom."""
+
+        transform = self.view.transform()
+        mapped = [transform.map(point) for point in points]
+        xs = [point.x() for point in mapped]
+        ys = [point.y() for point in mapped]
+        viewport = self.view.viewport().rect()
+        target = max_zoom
+
+        for extent, room in (
+            (max(xs) - min(xs), viewport.width()),
+            (max(ys) - min(ys), viewport.height()),
+        ):
+            if extent > 0:
+                target = min(target, self.zoom_level * max(room - 2 * margin, 1) / extent)
+
+        center = transform.inverted()[0].map(
+            QPointF((min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2)
+        )
+        self.set_zoom_level(target)
+        self.view.centerOn(center)
 
     def zoom_by_wheel_delta(self, wheel_delta: int, view_position: QPoint) -> bool:
         wheel_delta = int(wheel_delta)

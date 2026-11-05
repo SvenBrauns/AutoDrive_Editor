@@ -1,7 +1,7 @@
 from collections.abc import Iterator
 from contextlib import contextmanager
 
-from PySide6.QtCore import QEventLoop, Qt
+from PySide6.QtCore import QEventLoop, QPointF, Qt
 from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import (
     QApplication,
@@ -186,6 +186,7 @@ class MainWindow(QMainWindow):
         self.scene_renderer.set_marker_names_visible(self.settings.marker_names_visible)
         self.background_map.set_background(self.settings.background)
         self.scene_renderer.set_visibility(self.settings.visibility)
+        self.view.set_scale_bar_visible(self.settings.visibility.scale_bar)
         self.scene_renderer.set_building_types(
             self.settings.building_groups, self.settings.hidden_building_types
         )
@@ -352,6 +353,7 @@ class MainWindow(QMainWindow):
 
     def set_visibility(self, visibility: Visibility):
         self.scene_renderer.set_visibility(visibility)
+        self.view.set_scale_bar_visible(visibility.scale_bar)
         self.settings.set_visibility(visibility)
 
     def focus_marker(self, node_id: int):
@@ -381,6 +383,21 @@ class MainWindow(QMainWindow):
 
         self.view.centerOn(node.x, node.z)
         self.node_selection.replace(set(node_ids), node.node_id)
+
+    def zoom_to_selection(self):
+        """Fits the selected nodes into the map."""
+
+        autodrive_data = self._get_autodrive_data()
+        node_ids = self.node_selection.selected_node_ids
+
+        if autodrive_data is None or not node_ids:
+            self._set_status(tr("Nothing selected"))
+            return
+
+        nodes = [autodrive_data.nodes[node_id] for node_id in node_ids]
+        self.view.zoom_to_points(
+            [QPointF(node.x, node.z) for node in nodes], self.FOCUS_MARKER_ZOOM
+        )
 
     def rename_marker_group(self, name: str):
         new_name = self._ask_group_name(name)
@@ -1236,6 +1253,18 @@ class MainWindow(QMainWindow):
 
         self.statusBar().addWidget(self.status, 1)
 
+        self.pointer_position = QLabel()
+        self.pointer_position.setMinimumWidth(180)
+        self.statusBar().addPermanentWidget(self.pointer_position)
+        self.view.pointer_moved.connect(self._show_pointer_position)
+
+    def _show_pointer_position(self, position):
+        if position is None or self.view.logo_visible:
+            self.pointer_position.clear()
+            return
+
+        self.pointer_position.setText(tr("X {x:.1f}   Z {z:.1f}", x=position.x(), z=position.y()))
+
     def _create_central_widget(self):
         # The options bar and the planning bar sit above the map.
         self.options_bar = OptionsBar(self)
@@ -1409,7 +1438,13 @@ class MainWindow(QMainWindow):
 
         self.setWindowModified(False)
         self.actions.reload_action.setEnabled(True)
-        self.actions.show_whole_map_action.setEnabled(True)
+        for action in (
+            self.actions.show_whole_map_action,
+            self.actions.zoom_in_action,
+            self.actions.zoom_out_action,
+            self.actions.zoom_to_selection_action,
+        ):
+            action.setEnabled(True)
         self.view.set_logo_visible(False)
         self.actions.save_xml_action.setEnabled(True)
         self.actions.save_xml_as_action.setEnabled(True)

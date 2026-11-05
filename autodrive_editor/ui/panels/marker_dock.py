@@ -1,7 +1,9 @@
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QDockWidget,
     QHBoxLayout,
+    QLineEdit,
     QMenu,
     QPushButton,
     QTreeWidget,
@@ -17,7 +19,8 @@ from autodrive_editor.model.autodrive_data import AutoDriveData
 class MarkerDock(QDockWidget):
     """All marker groups with their markers. Clicking a marker shows it on
     the map, double-clicking edits it. Groups can be renamed, empty groups
-    deleted."""
+    deleted. The search field above filters the markers by name or group, and a node number
+    offers that node."""
 
     marker_activated = Signal(int)
     edit_requested = Signal(int)
@@ -26,6 +29,8 @@ class MarkerDock(QDockWidget):
 
     NODE_ROLE = Qt.ItemDataRole.UserRole
     GROUP_ROLE = Qt.ItemDataRole.UserRole + 1
+    # The "Node N" item the search offers for a number; not a marker.
+    FOUND_NODE_ROLE = Qt.ItemDataRole.UserRole + 2
 
     EMPTY_TEXT = tr("No markers")
 
@@ -34,6 +39,22 @@ class MarkerDock(QDockWidget):
 
         self.setObjectName("marker_dock")
         self.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
+
+        self._autodrive_data: AutoDriveData | None = None
+        self._found_node_item: QTreeWidgetItem | None = None
+        # Groups collapsed before the search expanded them; restored when it is cleared.
+        self._collapsed_before_search: set[str] | None = None
+
+        self.search = QLineEdit(self)
+        self.search.setPlaceholderText(tr("Find marker or node number"))
+        self.search.setClearButtonEnabled(True)
+        self.search.textChanged.connect(self._apply_search)
+        self.search.returnPressed.connect(self._activate_first_result)
+        clear_search = QAction(self.search)
+        clear_search.setShortcut(QKeySequence(Qt.Key_Escape))
+        clear_search.setShortcutContext(Qt.ShortcutContext.WidgetShortcut)
+        clear_search.triggered.connect(self.search.clear)
+        self.search.addAction(clear_search)
 
         self.tree = QTreeWidget(self)
         self.tree.setHeaderHidden(True)
@@ -62,6 +83,7 @@ class MarkerDock(QDockWidget):
         content = QWidget(self)
         layout = QVBoxLayout(content)
         layout.setContentsMargins(4, 4, 4, 4)
+        layout.addWidget(self.search)
         layout.addWidget(self.tree)
         layout.addLayout(buttons)
 
@@ -72,18 +94,23 @@ class MarkerDock(QDockWidget):
         """Rebuilds the tree. Collapsed groups, the current item and the
         scroll position stay."""
 
-        collapsed = {
-            item.data(0, self.GROUP_ROLE) for item in self._group_items() if not item.isExpanded()
-        }
+        if self._collapsed_before_search is not None:
+            collapsed = self._collapsed_before_search
+        else:
+            collapsed = self._collapsed_groups()
+
         current = self._current_key()
         scroll_position = self.tree.verticalScrollBar().value()
 
+        self._autodrive_data = autodrive_data
+        self._found_node_item = None
         self.tree.clear()
 
         if autodrive_data is None or not (autodrive_data.markers or autodrive_data.marker_groups):
             placeholder = QTreeWidgetItem([self.EMPTY_TEXT])
             placeholder.setFlags(Qt.ItemFlag.NoItemFlags)
             self.tree.addTopLevelItem(placeholder)
+            self._apply_search()
             self._update_buttons()
             return
 
@@ -113,9 +140,92 @@ class MarkerDock(QDockWidget):
 
             group_item.setExpanded(group_name not in collapsed)
 
+        self._apply_search()
         self._restore_current(current)
         self.tree.verticalScrollBar().setValue(scroll_position)
         self._update_buttons()
+
+    def start_search(self):
+        """Shows the dock and puts the cursor in the search field (Ctrl+F)."""
+
+        self.show()
+        self.raise_()
+        self.search.setFocus()
+        self.search.selectAll()
+
+    def _apply_search(self):
+        """Hides markers whose name and group do not contain the text; a group whose name
+        contains it keeps all its markers. A whole number adds its node at the top."""
+
+        text = self.search.text().strip().casefold()
+
+        if text and self._collapsed_before_search is None:
+            self._collapsed_before_search = self._collapsed_groups()
+
+        for group_item in self._group_items():
+            group_matches = text in group_item.data(0, self.GROUP_ROLE).casefold()
+            any_shown = False
+
+            for index in range(group_item.childCount()):
+                child = group_item.child(index)
+                shown = group_matches or text in child.text(0).casefold()
+                child.setHidden(not shown)
+                any_shown = any_shown or shown
+
+            group_item.setHidden(not (group_matches or any_shown))
+
+            if text:
+                group_item.setExpanded(True)
+            elif self._collapsed_before_search is not None:
+                group_item.setExpanded(
+                    group_item.data(0, self.GROUP_ROLE) not in self._collapsed_before_search
+                )
+
+        if not text:
+            self._collapsed_before_search = None
+
+        self._show_found_node(int(text) if text.isdigit() else None)
+
+    def _show_found_node(self, node_id: int | None):
+        if self._found_node_item is not None:
+            self.tree.takeTopLevelItem(self.tree.indexOfTopLevelItem(self._found_node_item))
+            self._found_node_item = None
+
+        if node_id is None or self._autodrive_data is None:
+            return
+
+        if node_id not in self._autodrive_data.nodes:
+            return
+
+        self._found_node_item = QTreeWidgetItem([tr("Node {node}", node=node_id)])
+        self._found_node_item.setData(0, self.FOUND_NODE_ROLE, node_id)
+        self.tree.insertTopLevelItem(0, self._found_node_item)
+
+    def _activate_first_result(self):
+        """Enter in the search field shows the first node or marker that is left."""
+
+        for index in range(self.tree.topLevelItemCount()):
+            item = self.tree.topLevelItem(index)
+
+            if item.isHidden():
+                continue
+
+            if item.data(0, self.FOUND_NODE_ROLE) is not None:
+                self._handle_click(item, 0)
+                return
+
+            for child_index in range(item.childCount()):
+                child = item.child(child_index)
+
+                if not child.isHidden():
+                    self.tree.setCurrentItem(child)
+                    self._handle_click(child, 0)
+                    return
+
+    def _collapsed_groups(self) -> set[str]:
+        return {
+            item.data(0, self.GROUP_ROLE) for item in self._group_items() if not item.isExpanded()
+        }
 
     def marker_item(self, node_id: int) -> QTreeWidgetItem | None:
         for group_item in self._group_items():
@@ -173,6 +283,9 @@ class MarkerDock(QDockWidget):
 
     def _handle_click(self, item: QTreeWidgetItem, column: int):
         node_id = item.data(0, self.NODE_ROLE)
+
+        if node_id is None:
+            node_id = item.data(0, self.FOUND_NODE_ROLE)
 
         if node_id is not None:
             self.marker_activated.emit(node_id)
