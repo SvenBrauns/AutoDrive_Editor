@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Station yards: `Draw yard road` in the Stations dialog draws a road past the picked stops from clicked corners, one way from first to last corner, or a loop with a two-way road in and out. Each stop is attached as a branch, a chain of close stops sharing one branch, a back-in bay (animal barns) or its own lane (stops far from the road), chosen in the new `Shape` column. `Create` adds it all as one undo step
+- Station marker names and groups can use `{fill}` (first fill type) and `{action}` (unload or load); groups are patterns too. Productions are named like `Diesel-unload` in `prod.Distillery` by default
+- Curves of Find route, junctions and station lanes get a node every 15° (about 1.6 m on a 6 m arc), as course authors space them
+
 - Parking spots: `Create` no longer selects the line ends, as for station lanes
 - Parking spots in several sheds of one type at once: `Shift`+click them and press `Enter`, or right-drag a box. One layout for all, `Shed:` picks the shed the views show, neighbouring sheds share one entry and one exit line, and the marker numbers run on from shed to shed
 - Bunker silos (Generate tool, task `Bunker silos`): `View → Show → Bunker silos` draws the silos' floors. Click a silo, or `Shift`+click several and press `Enter`, or right-drag a box; the parking spots dialog then lays out the lanes: back in or drive through and the open side from the drivability map, one lane per ~5.5 m of width, the silo's distances, marker name and group as patterns with the new placeholder `{letter}` (defaults `KS-{letter}-{n}` in `{building}-KS-{letter}`, `DS-…` for drive through, set on `File → Settings → Generators`). Neighbouring silos facing the same way share one entry and one exit line

@@ -173,7 +173,16 @@ Choose the task `Stations` of the Generate tool. Left-click a stop arrow or the 
 
 The lanes are drawn on the map. Drag the marker of a lane to turn it around its stop (`Shift`: 15° steps), or type the angle. Drag the first or last node of a lane to bend that end in an arc from the stop, e.g. where there is no room for a straight lane; turning the lane straightens it again. Drop an end on a node of the network to join the lane there; the end must fit the node's driving direction. `Create` adds a one-way lane of subprio nodes per chosen stop with the marker on the node at the stop, into the plan as one undo step. Lane ends not dropped on a node are still open and need to be connected to the network, e.g. with Find route.
 
-`Generator settings…` in the dialog opens the page `File → Settings → Generators`, which holds for station lanes the lane length before the stop and after the marker (default 10 m each), the marker distance, the node spacing, and the marker name and group per stop type. A name is a pattern with the placeholders `{building}` (the building's name), `{type}` (the stop type) and `{n}` (a number counted per group, `{n:03}` with three digits, starting at `Numbers start at`), e.g. `VK-{n:02}`. A name already in the network in the same group is not used twice.
+**Yard road.** For a yard with several stops, e.g. a production, `Draw yard road` draws a road past them. Click its corners on the map; a corner on a node joins the road there, right-click removes the last corner. `Enter` finishes a road that runs one way from the first corner to the last. A click on an earlier corner closes a loop instead: the corners up to that one become a two-way road in and out, the rest a one-way ring in the order clicked. Corners are rounded with the curve radius, and the corners can be dragged afterwards. The `Shape` column then says how each stop is attached to the road:
+
+- **Branch**: a one-way subprio lane over the stop that leaves the road some metres before it and rejoins it after, in the road's direction.
+- **Chain**: stops close together along the road (less than 15 m) share one branch.
+- **Back-in bay**: as in sheds, a line from the marker away from the road and a stub beside the road to drive past it and back in. The default for animal barns.
+- **Lane**: the stop keeps its own lane with open ends. The default for stops more than 30 m from the road.
+
+The note says when a shape does not fit, e.g. no room to leave the road before a stop. `Create` adds the road, its branches and bays and the remaining lanes as one undo step. `Remove yard road` goes back to a lane per stop.
+
+`Generator settings…` in the dialog opens the page `File → Settings → Generators`, which holds for station lanes the lane length before the stop and after the marker (default 10 m each), the marker distance, the node spacing, and the marker name and group per stop type. A name is a pattern with the placeholders `{building}` (the building's name), `{type}` (the stop type), `{fill}` (the stop's first fill type), `{action}` (`unload` or `load`) and `{n}` (a number counted per group, `{n:03}` with three digits, starting at `Numbers start at`), e.g. `VK-{n:02}`. The group is a pattern too, without `{n}`. Productions are named as course authors do, e.g. `Diesel-unload` in `prod.Distillery` (`{fill}-{action}` in `prod.{building}`). A name already in the network in the same group is not used twice.
 
 ## Checking the network
 
