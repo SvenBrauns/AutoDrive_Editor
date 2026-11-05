@@ -1,5 +1,6 @@
-"""What the editor read from the game and mod files about buildings, kept between sessions:
-the map's own buildings from the map scene (1.4 s on Thüringen) and the building definitions.
+"""What the editor read from the game and mod files about buildings and the map, kept between
+sessions: the map's own buildings from the map scene (1.4 s on Thüringen), the building
+definitions and the traffic lanes (12 s on Thüringen).
 
 An entry is used while the file it was read from has the same size and modification time (for a
 zipped mod those of the zip). The file can be deleted; it is written again.
