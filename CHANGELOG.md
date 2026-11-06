@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Roads (Generate tool, task `Roads`): AutoDrive roads along the map's traffic lanes, which are drawn while the task is active. Build the whole map, the roads in a right-dragged box, or a clicked road from junction to junction; existing roads are skipped and joined, or replaced; two one-way lanes or one two-way lane, by default as in the existing network. Junctions of three or four roads get a junction box, others use the map's own lanes. Places to look at (missing turns, dead ends, kept junctions, unjoined ends) are listed in the new `Road network` group of the Check dock
 - `Edit → Select all` (`Ctrl+A`). A double-click with the Select tool selects the whole road piece of a node or connection, up to the next junctions (`Ctrl` adds it); `Edit → Select road piece` grows the selection the same way
 - `Help → Manual` (`F1`) shows the manual in the editor, in English or German
 - Road editing: Create (`E`/`Shift+E`) inserts a node into a clicked connection, keeping type and direction. Delete got the variant Reconnect (`Shift+L`, or `Edit → Delete selection and reconnect`, `Shift+Del`): nodes in the middle of a road are deleted and its ends joined the same way. Connect (`1`/`2`/`3`) draws a road: a click on free ground or a connection adds a node connected from the previous one. `Draw → Parallel` (`Shift+I`) adds a lane beside the selected roads at the distance of the pointer, in the same or the opposite direction

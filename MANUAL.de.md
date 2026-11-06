@@ -117,7 +117,7 @@ Bei geöffnetem Savegame liest der Editor seine Gebäude: die Hallen zum Parken 
 
 Der Planungsknopf am rechten Ende der Werkzeugleiste (`Bearbeiten → Planungsmodus`, `Strg+P`) beginnt einen Plan. Alle Werkzeuge arbeiten wie gewohnt, die Änderungen werden aber im Plan gesammelt: Ein blauer Balken über der Karte zeigt, wie viele Nodes der Plan geändert hat, und diese Nodes bekommen einen blauen Hof. Rückgängig und Wiederholen arbeiten innerhalb des Plans und halten an seinem Anfang. `Plan übernehmen` fügt den ganzen Plan als einen Rückgängig-Schritt in den Verlauf ein; `Plan verwerfen` nimmt ihn vollständig zurück. Ein weiterer Klick auf den Planungsknopf, das Öffnen einer anderen Datei oder das Schließen des Editors fragt, ob der Plan übernommen oder verworfen werden soll. Solange ein Plan offen ist, kann nicht gespeichert werden; beim Start eines Plans werden die Änderungen davor gesichert, danach pausiert die automatische Sicherung, bis der Plan übernommen oder verworfen ist.
 
-Das Werkzeug Erzeugen (`G`) startet den Planungsmodus und erzeugt, was mit den Aufgabenknöpfen in der Optionsleiste gewählt ist: eine Route, eine Einmündung, die Parkplätze einer Halle, die Spuren von Stationen oder von Fahrsilos. Das Menü `Erzeugen` enthält dieselben fünf Aufgaben.
+Das Werkzeug Erzeugen (`G`) startet den Planungsmodus und erzeugt, was mit den Aufgabenknöpfen in der Optionsleiste gewählt ist: eine Route, eine Einmündung, die Parkplätze einer Halle, die Spuren von Stationen oder von Fahrsilos oder die Straßen der Karte. Das Menü `Erzeugen` enthält dieselben sechs Aufgaben.
 
 ### Route finden
 
@@ -194,6 +194,24 @@ Die Spuren werden auf der Karte gezeichnet. Den Marker einer Spur ziehen, um sie
 Der Hinweis sagt, wenn eine Form nicht passt, z. B. kein Platz, um vor einer Haltestelle abzuzweigen. `Anlegen` fügt die Straße, ihre Abzweige und Buchten und die übrigen Spuren als ein Rückgängig-Schritt ein. `Hofstraße entfernen` kehrt zu einer Spur je Haltestelle zurück.
 
 `Generator-Einstellungen…` im Dialog öffnet die Seite `Datei → Einstellungen → Generatoren`. Dort stehen für Stationsspuren die Spurlänge vor der Haltestelle und nach dem Marker (Standard je 10 m), der Markerabstand, der Knotenabstand sowie Markername und Gruppe je Halteart. Ein Name ist ein Muster mit den Platzhaltern `{building}` (der Name des Gebäudes), `{type}` (die Halteart), `{fill}` (die erste Fruchtsorte der Haltestelle), `{action}` (`abladen` oder `laden`) und `{n}` (eine pro Gruppe gezählte Nummer, `{n:03}` mit drei Ziffern, beginnend bei `Nummern beginnen bei`), z. B. `VK-{n:02}`. Auch die Gruppe ist ein Muster, ohne `{n}`. Produktionen werden benannt wie von Kursautoren, z. B. `Diesel-abladen` in `prod.Destillerie` (`{fill}-{action}` in `prod.{building}`). Ein Name, der in derselben Gruppe schon im Netz steht, wird nicht noch einmal vergeben.
+
+### Straßen
+
+Mit der Aufgabe `Straßen` des Werkzeugs Erzeugen entstehen AutoDrive-Straßen entlang der Verkehrsspuren der Karte, auf denen der Verkehr des Spiels fährt. Sie werden beim ersten Wählen der Aufgabe aus der Karte gelesen (mit Fortschrittsfenster und `Abbrechen`; danach liegen sie im Cache) und als dünne Linien gezeigt, solange die Aufgabe aktiv ist. Die Aufgabe braucht ein geöffnetes Savegame. Auf Karten ohne Verkehrsspuren geht sie nicht; besteht das Verkehrsnetz einer Karte nur aus wenigen Schleifen ohne Kreuzungen, bittet die Statusleiste, die Straßen an den Kreuzungspunkten zu prüfen.
+
+**Modus** in der Optionsleiste:
+
+- *Ganze Karte*: `Anlegen` (oder `Enter`) baut die Straßen der ganzen Karte.
+- *Box*: mit der rechten Maustaste einen Rahmen aufziehen; die Straßen darin werden gebaut, am Rahmen abgeschnitten, dazu die Kreuzungen, deren Mitte darin liegt.
+- *Straße anklicken*: Ein Klick auf eine Straße baut sie von Kreuzung zu Kreuzung; über einer Straße wird der Mauszeiger zur Hand. Die Kreuzungen an ihren Enden werden nicht gebaut.
+
+**Vorhanden**: *Überspringen und anschließen* (Standard) lässt die Straßen im Netz, wie sie sind: Neue Straßen entstehen nur, wo noch keine verläuft, und ihre Enden werden an die vorhandenen Spuren angeschlossen. Eine Kreuzung mit vorhandenen Nodes darin bleibt, wie sie ist. *Ersetzen* entfernt die vorhandenen normalen Nodes entlang der neuen Straßen, auch die innerhalb einer Kreuzungsbox, und schließt ihre Abzweige an die neuen Spuren an; Marker wandern auf die nächste neue Node. Subprio-Spuren werden nie entfernt.
+
+**Spuren**: *Zwei Einbahnspuren* baut zwei Einbahnspuren im Spurabstand der Aufgabe Einmündung, *Beide Richtungen* eine Spur in beide Richtungen. *Automatisch* (Standard) nimmt, was der größte Teil des vorhandenen Netzes nutzt, in einem leeren Netz zwei Einbahnspuren.
+
+Die Straßen folgen den Verkehrsspuren, mit Node-Abständen wie bei einer in AutoDrive aufgezeichneten Fahrt. Wo drei oder vier Straßen mit beiden Richtungen zusammentreffen, entsteht eine Kreuzungsbox wie bei der Aufgabe Einmündung; bei Spuren in beide Richtungen treffen sich die Straßen in einer gemeinsamen Node. Andere Kreuzungen (Kreisverkehre, Abfahrten, Gabelungen, fünf oder mehr Straßen) nutzen die Spuren der Karte darin. Das Ergebnis kommt als ein Rückgängig-Schritt in den Plan.
+
+Danach prüft der Editor, ob jeder Abbiegeweg, den die Verkehrsspuren durch eine Kreuzung erlauben, befahrbar ist, ob die neuen Spuren weiterführen und erreicht werden und ob sie nicht über gesperrten Boden der Befahrbarkeitskarte führen. Stellen zum Ansehen stehen in der Gruppe `Straßennetz` des Fensters `Prüfen`, z. B. „Keine Kreuzungsbox“, „Bestehende Kreuzung beibehalten“, „2 von 6 Abbiegewegen fehlen“, „Sackgasse“ oder „Straßenende nicht mit dem Netz verbunden“; ein Klick zeigt die Stelle auf der Karte. Stellen nahe dem Rand eines Rahmens oder einer angeklickten Straße werden nicht gelistet, da die Straßen dort absichtlich enden.
 
 ## Netz prüfen
 

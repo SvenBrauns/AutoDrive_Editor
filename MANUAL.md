@@ -117,7 +117,7 @@ With a savegame open, the editor reads its buildings: the sheds to park in and t
 
 The planning button at the right end of the toolbar (`Edit → Planning mode`, `Ctrl+P`) starts a plan. All tools work as usual, but the edits are collected in the plan: a blue bar above the map shows how many nodes the plan changed, and those nodes get a blue halo. Undo and Redo work inside the plan and stop at its start. `Apply plan` adds the whole plan to the history as one undo step; `Discard plan` reverts all of it. Clicking the planning button again, opening another file or closing the editor asks whether to apply or discard the plan. While a plan is open, saving is not possible; starting a plan backs up the edits made before it, and autosave then pauses until the plan is applied or discarded.
 
-The Generate tool (`G`) starts planning mode and creates what is picked with the task buttons in the options bar: a route, a junction, the parking spots of a shed, the lanes of stations or of bunker silos. The `Generate` menu has the same five tasks.
+The Generate tool (`G`) starts planning mode and creates what is picked with the task buttons in the options bar: a route, a junction, the parking spots of a shed, the lanes of stations or of bunker silos, or the roads of the map. The `Generate` menu has the same six tasks.
 
 ### Find route
 
@@ -194,6 +194,24 @@ The lanes are drawn on the map. Drag the marker of a lane to turn it around its 
 The note says when a shape does not fit, e.g. no room to leave the road before a stop. `Create` adds the road, its branches and bays and the remaining lanes as one undo step. `Remove yard road` goes back to a lane per stop.
 
 `Generator settings…` in the dialog opens the page `File → Settings → Generators`, which holds for station lanes the lane length before the stop and after the marker (default 10 m each), the marker distance, the node spacing, and the marker name and group per stop type. A name is a pattern with the placeholders `{building}` (the building's name), `{type}` (the stop type), `{fill}` (the stop's first fill type), `{action}` (`unload` or `load`) and `{n}` (a number counted per group, `{n:03}` with three digits, starting at `Numbers start at`), e.g. `VK-{n:02}`. The group is a pattern too, without `{n}`. Productions are named as course authors do, e.g. `Diesel-unload` in `prod.Distillery` (`{fill}-{action}` in `prod.{building}`). A name already in the network in the same group is not used twice.
+
+### Roads
+
+Choose the task `Roads` of the Generate tool to build AutoDrive roads along the map's own traffic lanes, the lanes the game's traffic drives on. They are read from the map when the task is chosen first (with a progress window and `Cancel`; afterwards they are kept in the cache) and drawn as thin lines while the task is active. The task needs a savegame open. Maps without traffic lanes cannot use it; on maps whose traffic lanes are only a few loops without junctions, the status bar asks to check the roads where they cross.
+
+**Mode** in the options bar:
+
+- *Whole map*: `Create` (or `Enter`) builds the roads of the whole map.
+- *Box*: right-drag a box; the roads in it are built, cut off at the box edge, with the junctions whose middle lies inside.
+- *Click road*: click a road to build it from junction to junction; the pointer becomes a hand over a road. The junctions at its ends are not built.
+
+**Existing**: *Skip and connect* (default) leaves the roads already in the network as they are: new roads are built only where none run yet, and their ends join the existing lanes. A junction with existing nodes in it is kept as it is. *Replace* removes the existing regular nodes along the new roads, including those inside a junction box, and joins their side branches to the new lanes; markers move to the nearest new node. Subprio lanes are never removed.
+
+**Lanes**: *Two one-way* builds two one-way lanes at the lane gap of the Junction task, *Two-way* one two-way lane. *Auto* (default) uses what most of the existing network uses, and two one-way lanes in an empty network.
+
+The roads follow the traffic lanes with nodes spaced as AutoDrive records a drive. Where three or four two-way roads meet, a junction box is built as by the Junction task; in the two-way style the roads meet at one shared node. Other junctions (roundabouts, slip roads, forks, five or more roads) use the map's own lanes inside them. The result goes into the plan as one undo step.
+
+Afterwards the editor checks that every turn the traffic lanes allow through a junction can be driven, that the new lanes lead on and are reached, and that they stay off blocked ground of the drivability map. Places to look at are listed in the group `Road network` of the Check dock, e.g. "No junction box", "Existing junction kept", "2 of 6 turns missing", "Dead end" or "Road end not joined to the network"; a click shows the place on the map. Places near the edge of a box or clicked road are not listed, as the roads end there on purpose.
 
 ## Checking the network
 
