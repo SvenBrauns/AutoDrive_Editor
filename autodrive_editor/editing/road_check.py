@@ -44,6 +44,8 @@ FIND_ANGLE = 45.0  # ... and head along it within this (degrees)
 END_REACH = 15.0  # lane ends this close to the end of a map lane are no dead ends
 SAMPLE_STEP = 1.0  # connections are checked on the drivability map every metre
 REPORT_SPACING = 20.0  # blocked points this close to a listed one are not listed again
+MAP_LANE_REACH = 10.0  # not listed either where the map lane this close is blocked too ...
+MAP_EDGE = 30.0  # ... or this close to the map edge
 
 
 def check_road_network(
@@ -59,7 +61,7 @@ def check_road_network(
     listed += _missing_moves(graph, network.groups, result)
     listed += _dead_ends(graph, network.piece, result)
     if costmap is not None:
-        listed += _blocked(network.piece, autodrive_data, costmap)
+        listed += _blocked(graph, network.piece, autodrive_data, costmap)
     return replace(network, listed=listed)
 
 
@@ -250,19 +252,40 @@ def _dead_ends(graph: RoadGraph, piece: PlannedPiece, result: _Result) -> list:
     return listed
 
 
-def _blocked(piece: PlannedPiece, autodrive_data: AutoDriveData, costmap) -> list:
-    """Places where new connections run over blocked cells, one entry per REPORT_SPACING."""
+def _blocked(graph: RoadGraph, piece: PlannedPiece, autodrive_data: AutoDriveData, costmap):
+    """Places where new connections run over blocked cells and the map's lanes do not, away from
+    the map edge; one entry per REPORT_SPACING."""
     nodes = autodrive_data.nodes
     segments = [(piece.points[a], piece.points[b]) for a, b, _ in piece.connections]
     segments += [(piece.points[i], (nodes[n].x, nodes[n].y, nodes[n].z)) for i, n, _ in piece.joins]
+    map_lanes = Grid(MAP_LANE_REACH)
+    for s in graph.stretches:
+        for a, b in pairwise(s.points):
+            map_lanes.add_segment(a, b, (a, b))
     seen, listed = Grid(REPORT_SPACING), []
-    for a, b in segments:
-        steps = max(1, math.ceil(flat_distance(a, b) / SAMPLE_STEP))
-        for k in range(steps + 1):
-            p = lerp(a, b, k / steps)
-            if costmap.value_at(p[0], p[2]) < BLOCKED_VALUE:
-                continue
-            if not any(flat_distance(p, q) <= REPORT_SPACING for q in seen.near(p[0], p[2])):
-                seen.add(p[0], p[2], p)
-                listed.append((p, tr("Road over blocked ground")))
+    for p in (lerp(a, b, t) for a, b in segments for t in _steps(a, b)):
+        if costmap.value_at(p[0], p[2]) < BLOCKED_VALUE or _at_edge(p, costmap):
+            continue
+        if any(flat_distance(p, q) <= REPORT_SPACING for q in seen.near(p[0], p[2])):
+            continue
+        near = set(map_lanes.near(p[0], p[2]))
+        if any(
+            costmap.value_at(q[0], q[2]) >= BLOCKED_VALUE
+            for a, b in near
+            for q in (lerp(a, b, t) for t in _steps(a, b))
+            if flat_distance(p, q) <= MAP_LANE_REACH
+        ):
+            continue
+        seen.add(p[0], p[2], p)
+        listed.append((p, tr("Road over blocked ground")))
     return listed
+
+
+def _steps(a: Point3, b: Point3) -> list[float]:
+    """Where along a segment its points SAMPLE_STEP apart lie (0 to 1)."""
+    steps = max(1, math.ceil(flat_distance(a, b) / SAMPLE_STEP))
+    return [k / steps for k in range(steps + 1)]
+
+
+def _at_edge(p: Point3, costmap: NavigationCostmap) -> bool:
+    return abs(p[0]) > costmap.width / 2 - MAP_EDGE or abs(p[2]) > costmap.height / 2 - MAP_EDGE

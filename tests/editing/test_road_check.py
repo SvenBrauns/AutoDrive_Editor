@@ -70,14 +70,27 @@ def test_moves_through_a_kept_existing_junction_count():
     assert checked(T, network, data) == []
 
 
-def test_new_connections_over_blocked_cells_are_listed_every_20_m():
-    size = 400
+def blocked_costmap(x0, x1, z0=-200, z1=200, size=400):
     cells = bytearray(size * size)
-    for row in range(size):  # blocked from x = -60 to -10, across the whole map
-        for column in range(size // 2 - 60, size // 2 - 10):
+    for row in range(z0 + size // 2, z1 + size // 2):
+        for column in range(x0 + size // 2, x1 + size // 2):
             cells[row * size + column] = BLOCKED_VALUE
-    costmap = NavigationCostmap(size, size, bytes(cells))
+    return NavigationCostmap(size, size, bytes(cells))
 
-    listed = checked(T, costmap=costmap)
-    assert listed and all(-62 <= p[0] <= -8 for p, _ in listed)
+
+def test_blocked_ground_under_the_map_lanes_too_is_not_listed():
+    assert checked(T, costmap=blocked_costmap(-60, -10)) == []
+
+
+def test_new_connections_off_the_map_lanes_over_blocked_cells_are_listed_every_20_m():
+    network = build_road_network(build_road_graph(T))
+    piece = network.piece
+    moved = [i for i, p in enumerate(piece.points) if -80 < p[0] < -40]
+    for i in moved:  # the lanes swing 30 m off the road there
+        x, y, z = piece.points[i]
+        piece.points[i] = (x, y, z + 30)
+    costmap = blocked_costmap(-90, -30, 20, 40)
+
+    listed = [(p, text) for p, text in checked(T, network, costmap=costmap) if p[2] > 15]
+    assert listed and all(-92 <= p[0] <= -28 for p, _ in listed)
     assert all(math.dist(p, q) > 20 for (p, _), (q, _) in zip(listed, listed[1:], strict=False))
