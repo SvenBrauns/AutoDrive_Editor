@@ -46,16 +46,15 @@ def stop(
 def test_lane_runs_along_the_arrow_with_a_node_at_the_stop():
     points, index = lane_points(stop(), StationSettings(10, 10, 5, 0), 90)
 
-    assert points == pytest.approx(
-        [(90, 5, 200), (95, 5, 200), (100, 5, 200), (105, 5, 200), (110, 5, 200)]
-    )
+    expected = [(90, 5, 200), (95, 5, 200), (100, 5, 200), (105, 5, 200), (110, 5, 200)]
+    assert points == [pytest.approx(p) for p in expected]
     assert index == 2
 
 
 def test_heading_zero_points_up_the_map():
     points, _ = lane_points(stop(), StationSettings(5, 5, 5, 0), 0)
 
-    assert points == pytest.approx([(100, 5, 205), (100, 5, 200), (100, 5, 195)])
+    assert points == [pytest.approx(p) for p in [(100, 5, 205), (100, 5, 200), (100, 5, 195)]]
 
 
 def test_lane_heading_west_starts_east_of_the_stop():

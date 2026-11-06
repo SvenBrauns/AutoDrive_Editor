@@ -460,9 +460,9 @@ def test_routes_through_a_shared_waypoint_run_as_one_up_to_it(route):
     route.wait()
 
     first, second = route.operation.current_routes
-    assert first.points[: first.waypoint_indices[1] + 1] == pytest.approx(
-        second.points[: second.waypoint_indices[1] + 1]
-    )
+    assert first.points[: first.waypoint_indices[1] + 1] == [
+        pytest.approx(p) for p in second.points[: second.waypoint_indices[1] + 1]
+    ]
 
 
 def test_a_waypoint_on_one_route_searches_only_that_route_again(route):

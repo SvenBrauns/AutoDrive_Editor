@@ -87,4 +87,4 @@ def test_sampled_points_are_close_together_and_end_exactly():
 def test_the_corners_of_rounded_pieces_are_the_merged_corners():
     pieces = fillet([(0, 0), (20, 0), (22, 2), (22, 25)], 6)
 
-    assert corners_of(pieces) == pytest.approx([(0, 0), (22, 0), (22, 25)])
+    assert corners_of(pieces) == [pytest.approx(p) for p in [(0, 0), (22, 0), (22, 25)]]

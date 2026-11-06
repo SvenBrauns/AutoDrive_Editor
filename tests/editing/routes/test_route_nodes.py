@@ -48,7 +48,7 @@ def test_free_route_gets_evenly_spaced_new_nodes():
     chain = route_nodes(line((0, 0), (20, 0)), 1, 2, {1: (0, 0), 2: (20, 0)}, [], 5.0)
 
     assert chain[0] == 1 and chain[-1] == 2
-    assert chain[1:-1] == pytest.approx([(5, 0), (10, 0), (15, 0)])
+    assert chain[1:-1] == [pytest.approx(p) for p in [(5, 0), (10, 0), (15, 0)]]
 
 
 def gaps(chain, positions):
