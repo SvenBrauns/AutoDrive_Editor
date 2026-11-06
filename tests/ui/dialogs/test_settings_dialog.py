@@ -3,7 +3,7 @@ from base_game_helpers import make_installation
 from game_folder_helpers import make_game_folder
 from PySide6.QtGui import QAction, QKeySequence
 
-from autodrive_editor.editing.route_finder import Vehicle
+from autodrive_editor.editing.routes.route_finder import Vehicle
 from autodrive_editor.game.game_folder import GameFolder
 from autodrive_editor.game.game_installation import GameInstallation
 from autodrive_editor.settings import app_settings

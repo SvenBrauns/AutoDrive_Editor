@@ -1,7 +1,7 @@
 from collections.abc import Callable
 
 from autodrive_editor.editing.edit_context import EditContext, EditOperation
-from autodrive_editor.editing.parking_layout import ParkingSettings, plan_sheds
+from autodrive_editor.editing.parking.parking_layout import ParkingSettings, plan_sheds
 from autodrive_editor.editing.planned_piece import push_piece
 from autodrive_editor.file_io.savegame_sheds import IndoorArea
 from autodrive_editor.i18n import tr

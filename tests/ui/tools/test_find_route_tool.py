@@ -50,10 +50,12 @@ def test_clicks_on_free_ground_and_nodes_add_waypoints_and_show_the_route(window
 
 def test_a_gap_is_drawn_where_no_route_was_found(window, monkeypatch):
     # No built leg, and the search gets stuck at once.
-    monkeypatch.setattr("autodrive_editor.editing.route_pipeline.LegBuilder.build", lambda *a: None)
-    monkeypatch.setattr("autodrive_editor.editing.route_finder.MAX_EXPANSIONS", 1)
     monkeypatch.setattr(
-        "autodrive_editor.editing.route_finder._Search._dubins_end", lambda *a: None
+        "autodrive_editor.editing.routes.route_pipeline.LegBuilder.build", lambda *a: None
+    )
+    monkeypatch.setattr("autodrive_editor.editing.routes.route_finder.MAX_EXPANSIONS", 1)
+    monkeypatch.setattr(
+        "autodrive_editor.editing.routes.route_finder._Search._dubins_end", lambda *a: None
     )
     click(window, view_pos(window, 0, 20))
     click(window, view_pos(window, 40, 20))

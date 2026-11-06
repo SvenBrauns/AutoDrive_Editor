@@ -7,10 +7,10 @@ from costmap_helpers import make_costmap
 
 from autodrive_editor.editing.edit_context import EditContext
 from autodrive_editor.editing.edit_history import EditHistory
-from autodrive_editor.editing.junction import CurveKind, JunctionPlan, Stem, lane_poses
-from autodrive_editor.editing.junction_box import BoxPlan, Style
+from autodrive_editor.editing.junctions.junction import CurveKind, JunctionPlan, Stem, lane_poses
+from autodrive_editor.editing.junctions.junction_box import BoxPlan, Style
 from autodrive_editor.editing.operations.junction import JunctionOperation
-from autodrive_editor.editing.route_finder import Vehicle
+from autodrive_editor.editing.routes.route_finder import Vehicle
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
 from autodrive_editor.model.connections import (
     CONNECTION_STATES,
@@ -149,7 +149,7 @@ def test_a_failing_search_ends_with_an_error_message(qapp, monkeypatch):
     def broken(*args):
         raise RuntimeError("broken")
 
-    monkeypatch.setattr("autodrive_editor.editing.route_finder.RouteFinder.find", broken)
+    monkeypatch.setattr("autodrive_editor.editing.routes.route_finder.RouteFinder.find", broken)
     costmap = make_costmap(blocked=[(-90, 3, 10, 8), (30, 3, 90, 8)])
     fixture = Fixture(qapp, costmap)
     fixture.history.start_plan()
@@ -166,7 +166,7 @@ def test_a_failing_search_ends_with_an_error_message(qapp, monkeypatch):
 def test_pieces_left_out_stay_shown_as_gaps_until_esc(qapp, monkeypatch):
     # A wall west of the junction; the search finds no way round it.
     monkeypatch.setattr(
-        "autodrive_editor.editing.route_finder.RouteFinder.find", lambda *args: None
+        "autodrive_editor.editing.routes.route_finder.RouteFinder.find", lambda *args: None
     )
     fixture = Fixture(qapp, make_costmap(blocked=[(-100, 3, 1, 8)]))
     fixture.history.start_plan()

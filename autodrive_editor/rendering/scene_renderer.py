@@ -4,7 +4,7 @@ from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QPainterPath, QPolygonF
 from PySide6.QtWidgets import QGraphicsScene
 
-from autodrive_editor.editing.station_layout import building_stops_at, default_heading
+from autodrive_editor.editing.stations.station_layout import building_stops_at, default_heading
 from autodrive_editor.file_io.navigation_costmap import NavigationCostmap
 from autodrive_editor.file_io.savegame_buildings import BuildingGroup, SavegameBuildings
 from autodrive_editor.file_io.savegame_sheds import IndoorArea

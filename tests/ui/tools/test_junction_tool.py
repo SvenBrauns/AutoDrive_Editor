@@ -6,8 +6,8 @@ from PySide6.QtCore import QEvent, Qt
 from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import QApplication
 
-from autodrive_editor.editing.junction import Stem
-from autodrive_editor.editing.junction_box import Style
+from autodrive_editor.editing.junctions.junction import Stem
+from autodrive_editor.editing.junctions.junction_box import Style
 from autodrive_editor.ui.tools.generate_tool import GenerateTask
 
 

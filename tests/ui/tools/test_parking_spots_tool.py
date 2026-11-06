@@ -6,7 +6,7 @@ from PySide6.QtCore import QEvent, Qt, QTimer
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QDialog, QLabel
 
-from autodrive_editor.editing.parking_layout import ParkingSettings
+from autodrive_editor.editing.parking.parking_layout import ParkingSettings
 from autodrive_editor.file_io.savegame_buildings import (
     BuildingGroup,
     BuildingType,

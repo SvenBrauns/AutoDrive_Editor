@@ -6,7 +6,7 @@ from PySide6.QtCore import QEvent, Qt, QTimer
 from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import QApplication
 
-from autodrive_editor.editing.station_layout import StationSettings, StopChoice
+from autodrive_editor.editing.stations.station_layout import StationSettings, StopChoice
 from autodrive_editor.file_io.savegame_buildings import (
     BuildingGroup,
     BuildingType,

@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from autodrive_editor.editing.station_layout import (
+from autodrive_editor.editing.stations.station_layout import (
     LaneEnd,
     StationSettings,
     StopChoice,
@@ -27,7 +27,7 @@ from autodrive_editor.editing.station_layout import (
     occupied,
     plan_stations,
 )
-from autodrive_editor.editing.station_yard import (
+from autodrive_editor.editing.stations.station_yard import (
     StopShape,
     YardPlan,
     YardStop,
@@ -35,7 +35,7 @@ from autodrive_editor.editing.station_yard import (
     joined_ends,
     plan_yard,
 )
-from autodrive_editor.editing.yard_road import YardRoad, yard_road
+from autodrive_editor.editing.stations.yard_road import YardRoad, yard_road
 from autodrive_editor.file_io.savegame_stations import Stop
 from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData

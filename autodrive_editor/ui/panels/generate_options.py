@@ -10,8 +10,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from autodrive_editor.editing.junction import Stem
-from autodrive_editor.editing.junction_box import Style
+from autodrive_editor.editing.junctions.junction import Stem
+from autodrive_editor.editing.junctions.junction_box import Style
 from autodrive_editor.editing.operations.road_network import RoadLanes, RoadMode, RoadSettings
 from autodrive_editor.i18n import tr
 from autodrive_editor.ui.tools.generate_tool import GenerateTask

@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from autodrive_editor.editing.parking_layout import (
+from autodrive_editor.editing.parking.parking_layout import (
     ENTRY_LINE_OUTSIDE,
     MIN_BAY_WIDTH,
     BayLine,

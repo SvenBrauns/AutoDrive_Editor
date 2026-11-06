@@ -1,13 +1,13 @@
 from dataclasses import replace
 
-from autodrive_editor.editing.bunker_silo import (
+from autodrive_editor.editing.parking.bunker_silo import (
     BACK_WALL_TO_MARKER,
     MARKER_PAST_SILO,
     pattern_problem,
     plan_silos,
     silo_settings,
 )
-from autodrive_editor.editing.parking_layout import ParkingMode, ParkingSettings
+from autodrive_editor.editing.parking.parking_layout import ParkingMode, ParkingSettings
 from autodrive_editor.file_io.navigation_costmap import NavigationCostmap
 from autodrive_editor.file_io.savegame_sheds import IndoorArea
 from autodrive_editor.i18n import tr

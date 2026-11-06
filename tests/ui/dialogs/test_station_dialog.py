@@ -2,12 +2,12 @@ import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
 
-from autodrive_editor.editing.station_layout import (
+from autodrive_editor.editing.stations.station_layout import (
     LaneEnd,
     MarkerRule,
     StationSettings,
 )
-from autodrive_editor.editing.station_yard import StopShape
+from autodrive_editor.editing.stations.station_yard import StopShape
 from autodrive_editor.file_io.savegame_stations import Stop, StopKind
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
 from autodrive_editor.settings.app_settings import AppSettings
