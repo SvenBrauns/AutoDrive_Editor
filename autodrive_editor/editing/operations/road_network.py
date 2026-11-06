@@ -8,11 +8,11 @@ from PySide6.QtCore import Signal
 
 from autodrive_editor.editing.edit_context import EditContext, EditOperation
 from autodrive_editor.editing.planned_piece import push_piece
-from autodrive_editor.editing.road_check import check_road_network
-from autodrive_editor.editing.road_existing import fit_to_existing, mostly_two_way
-from autodrive_editor.editing.road_graph import RoadGraph, build_road_graph, flat_distance
-from autodrive_editor.editing.road_network import RoadNetwork, RoadOptions, build_road_network
-from autodrive_editor.editing.road_selection import Part, box_part, road_at, road_part
+from autodrive_editor.editing.roads.road_check import check_road_network
+from autodrive_editor.editing.roads.road_existing import fit_to_existing, mostly_two_way
+from autodrive_editor.editing.roads.road_graph import RoadGraph, build_road_graph, flat_distance
+from autodrive_editor.editing.roads.road_network import RoadNetwork, RoadOptions, build_road_network
+from autodrive_editor.editing.roads.road_selection import Part, box_part, road_at, road_part
 from autodrive_editor.file_io.navigation_costmap import NavigationCostmap
 from autodrive_editor.file_io.traffic_splines import TrafficLane
 from autodrive_editor.i18n import tr

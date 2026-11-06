@@ -6,9 +6,8 @@ from itertools import pairwise
 
 from PySide6.QtCore import Signal
 
-from autodrive_editor.editing.dubins import Pose
 from autodrive_editor.editing.edit_context import EditContext, EditOperation
-from autodrive_editor.editing.junction import (
+from autodrive_editor.editing.junctions.junction import (
     BOTH,
     LANE_GAP,
     JunctionPlan,
@@ -24,9 +23,10 @@ from autodrive_editor.editing.junction import (
     stem_poses,
     uses_two_lanes,
 )
-from autodrive_editor.editing.junction_box import BoxPlan, Style, box_command, plan_box
+from autodrive_editor.editing.junctions.junction_box import BoxPlan, Style, box_command, plan_box
 from autodrive_editor.editing.operations.background_search import BackgroundSearch
-from autodrive_editor.editing.route_finder import CURVE_RADIUS, RouteFinder, Vehicle
+from autodrive_editor.editing.routes.dubins import Pose
+from autodrive_editor.editing.routes.route_finder import CURVE_RADIUS, RouteFinder, Vehicle
 from autodrive_editor.file_io.navigation_costmap import NavigationCostmap
 from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData

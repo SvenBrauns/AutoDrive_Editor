@@ -1,7 +1,7 @@
 from PySide6.QtGui import QAction
 
-from autodrive_editor.editing.junction import Stem
-from autodrive_editor.editing.junction_box import Style
+from autodrive_editor.editing.junctions.junction import Stem
+from autodrive_editor.editing.junctions.junction_box import Style
 from autodrive_editor.editing.operations.road_network import RoadMode, RoadSettings
 from autodrive_editor.ui.panels.generate_options import GenerateOptionsWidget
 from autodrive_editor.ui.tools.generate_tool import GenerateTask

@@ -28,7 +28,7 @@ def silo_window(zoomed_window):
         window.asked.append(areas)
         return None
 
-    window._ask_silo_settings = ask
+    window.generators.ask_silo_settings = ask
     silo_type = BuildingType("silo.xml", "Silo", "silos", BuildingGroup.BUNKER_SILOS, 1)
     window.scene_renderer.set_buildings(SavegameBuildings(types=[silo_type], silos=[LEFT, RIGHT]))
     window.set_generate_task(GenerateTask.BUNKER_SILOS)
@@ -101,9 +101,11 @@ def test_dialog_shows_the_lanes_of_all_silos_on_the_map(zoomed_window, monkeypat
         seen["markers"] = len(overlays[0].network.markers)
         return True
 
-    monkeypatch.setattr(window, "_run_beside_map", run)
+    monkeypatch.setattr(window.generators, "_run_beside_map", run)
 
-    settings = window._ask_silo_settings([LEFT, RIGHT], window.project_coordinator.autodrive_data)
+    settings = window.generators.ask_silo_settings(
+        [LEFT, RIGHT], window.project_coordinator.autodrive_data
+    )
 
     # 9 m wide: 2 lanes each.
     assert seen["markers"] == 4

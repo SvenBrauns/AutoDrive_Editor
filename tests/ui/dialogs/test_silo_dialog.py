@@ -1,6 +1,6 @@
 import pytest
 
-from autodrive_editor.editing.parking_layout import ParkingMode
+from autodrive_editor.editing.parking.parking_layout import ParkingMode
 from autodrive_editor.file_io.savegame_sheds import IndoorArea
 from autodrive_editor.settings.app_settings import AppSettings
 from autodrive_editor.ui.dialogs.silo_dialog import SiloDialog

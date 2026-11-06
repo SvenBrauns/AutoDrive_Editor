@@ -18,10 +18,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from autodrive_editor.editing.bunker_silo import pattern_problem as silo_pattern_problem
-from autodrive_editor.editing.parking_layout import ParkingMode
-from autodrive_editor.editing.route_finder import Vehicle
-from autodrive_editor.editing.station_layout import MarkerRule, StationSettings, pattern_problem
+from autodrive_editor.editing.parking.bunker_silo import pattern_problem as silo_pattern_problem
+from autodrive_editor.editing.parking.parking_layout import ParkingMode
+from autodrive_editor.editing.routes.route_finder import Vehicle
+from autodrive_editor.editing.stations.station_layout import (
+    MarkerRule,
+    StationSettings,
+    pattern_problem,
+)
 from autodrive_editor.file_io.savegame_stations import StopKind
 from autodrive_editor.i18n import tr
 from autodrive_editor.settings.app_settings import AppSettings

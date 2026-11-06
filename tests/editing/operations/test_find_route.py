@@ -12,7 +12,7 @@ from autodrive_editor.editing.edit_context import EditContext
 from autodrive_editor.editing.edit_history import EditHistory
 from autodrive_editor.editing.operations.find_route import FindRouteOperation, Waypoint
 from autodrive_editor.editing.plan_changes import PlanChanges
-from autodrive_editor.editing.route_finder import Vehicle
+from autodrive_editor.editing.routes.route_finder import Vehicle
 from autodrive_editor.model.autodrive_data import AutoDriveData, MarkerData, NodeData
 from autodrive_editor.model.connections import (
     CONNECTION_STATES,
@@ -179,8 +179,10 @@ def test_route_through_a_wall_is_marked_and_not_added(qapp):
 
 def test_a_route_with_a_gap_names_the_waypoint_and_is_not_added(qapp, monkeypatch):
     # No built leg, and too few search steps to get through the corridor.
-    monkeypatch.setattr("autodrive_editor.editing.route_pipeline.LegBuilder.build", lambda *a: None)
-    monkeypatch.setattr("autodrive_editor.editing.route_finder.MAX_EXPANSIONS", 5)
+    monkeypatch.setattr(
+        "autodrive_editor.editing.routes.route_pipeline.LegBuilder.build", lambda *a: None
+    )
+    monkeypatch.setattr("autodrive_editor.editing.routes.route_finder.MAX_EXPANSIONS", 5)
     route = Fixture(qapp)
     route.start_plan()
 
@@ -211,7 +213,7 @@ def test_a_failing_search_ends_with_an_error_message(route, monkeypatch):
     def broken(*args):
         raise RuntimeError("broken")
 
-    monkeypatch.setattr("autodrive_editor.editing.route_finder.RouteFinder.find", broken)
+    monkeypatch.setattr("autodrive_editor.editing.routes.route_finder.RouteFinder.find", broken)
 
     assert route.find(1, 2) is None
     assert not route.operation.is_searching
@@ -366,7 +368,7 @@ def test_stop_search_waits_until_the_running_search_has_ended(qapp, monkeypatch)
 
         ended.append(1)
 
-    monkeypatch.setattr("autodrive_editor.editing.route_finder.RouteFinder.find", find)
+    monkeypatch.setattr("autodrive_editor.editing.routes.route_finder.RouteFinder.find", find)
     route = Fixture(qapp)
     route.operation.add_waypoint(0, 0, 1)
     route.operation.add_waypoint(0, 0, 2)

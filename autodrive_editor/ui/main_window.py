@@ -1,11 +1,10 @@
 from collections.abc import Iterator
 from contextlib import contextmanager
 
-from PySide6.QtCore import QEventLoop, QPointF, Qt, QTimer
+from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import (
     QApplication,
-    QDialog,
     QGraphicsScene,
     QInputDialog,
     QLabel,
@@ -34,11 +33,10 @@ from autodrive_editor.editing.operations.node_position import NodePositionOperat
 from autodrive_editor.editing.operations.node_types import NodeTypeOperation
 from autodrive_editor.editing.operations.parallel_lane import ParallelLaneOperation
 from autodrive_editor.editing.operations.parking_spots import (
-    MIXED_TYPES_TEXT,
     ParkingSpotOperation,
 )
 from autodrive_editor.editing.operations.reverse_direction import ReverseDirectionOperation
-from autodrive_editor.editing.operations.road_network import RoadMode, RoadNetworkOperation
+from autodrive_editor.editing.operations.road_network import RoadNetworkOperation
 from autodrive_editor.editing.operations.rotate_selection import RotateSelectionOperation
 from autodrive_editor.editing.operations.stations import StationOperation
 from autodrive_editor.editing.path_shapes import PathShape
@@ -46,7 +44,6 @@ from autodrive_editor.error_log import set_debug_logging
 from autodrive_editor.file_io.autodrive_xml import ConfigFormat
 from autodrive_editor.file_io.building_cache import BuildingCache
 from autodrive_editor.file_io.game_files import GameFiles
-from autodrive_editor.file_io.traffic_splines import map_traffic_lanes
 from autodrive_editor.i18n import tr
 from autodrive_editor.measurement.coordinator import MeasurementCoordinator
 from autodrive_editor.model.autodrive_data import (
@@ -76,16 +73,10 @@ from autodrive_editor.ui.dialogs.building_types_dialog import BuildingTypesDialo
 from autodrive_editor.ui.dialogs.marker_dialog import MarkerDialog
 from autodrive_editor.ui.dialogs.messages import APP_TITLE
 from autodrive_editor.ui.dialogs.node_position_dialog import NodePositionDialog
-from autodrive_editor.ui.dialogs.parking_map_overlay import ParkingMapOverlay
-from autodrive_editor.ui.dialogs.parking_spot_dialog import ParkingSpotDialog
-from autodrive_editor.ui.dialogs.progress_dialog import GeneratorFailed, run_with_progress
 from autodrive_editor.ui.dialogs.settings_dialog import SettingsDialog
-from autodrive_editor.ui.dialogs.silo_dialog import SiloDialog
-from autodrive_editor.ui.dialogs.station_dialog import StationDialog
 from autodrive_editor.ui.file_controller import FileController
+from autodrive_editor.ui.generator_controller import GeneratorController
 from autodrive_editor.ui.map_import_controller import MapImportController
-from autodrive_editor.ui.map_view.dialog_placement import place_beside
-from autodrive_editor.ui.map_view.map_only_input import MapOnlyInput
 from autodrive_editor.ui.map_view.map_view import MapView
 from autodrive_editor.ui.map_view.rotation_controller import ViewRotationController
 from autodrive_editor.ui.network_check_controller import NetworkCheckController
@@ -94,7 +85,6 @@ from autodrive_editor.ui.panels.connect_options import ConnectOptionsWidget
 from autodrive_editor.ui.panels.debug_dock import DebugDock
 from autodrive_editor.ui.panels.debug_dock_coordinator import DebugDockCoordinator
 from autodrive_editor.ui.panels.display_options_dialog import DisplayOptionsDialog
-from autodrive_editor.ui.panels.generate_options import GenerateOptionsWidget
 from autodrive_editor.ui.panels.inspector_dock import InspectorDock
 from autodrive_editor.ui.panels.marker_dock import MarkerDock
 from autodrive_editor.ui.panels.node_info_formatter import NodeInfoFormatter
@@ -107,26 +97,18 @@ from autodrive_editor.ui.picture_capture_controller import PictureCaptureControl
 from autodrive_editor.ui.planning_controller import PlanningController
 from autodrive_editor.ui.reload_controller import ReloadController
 from autodrive_editor.ui.theme import apply_theme
-from autodrive_editor.ui.tools.area_pick_tool import AreaPickTool
 from autodrive_editor.ui.tools.connect_nodes_tool import ConnectNodesTool
 from autodrive_editor.ui.tools.create_node_tool import CreateNodeTool
 from autodrive_editor.ui.tools.delete_nodes_tool import DeleteNodesTool
-from autodrive_editor.ui.tools.find_route_tool import FindRouteTool
-from autodrive_editor.ui.tools.generate_tool import GenerateTask, GenerateTool
+from autodrive_editor.ui.tools.generate_tool import GenerateTask
 from autodrive_editor.ui.tools.interaction_mode import InteractionMode
-from autodrive_editor.ui.tools.junction_tool import JunctionTool
-from autodrive_editor.ui.tools.lane_handle_tool import LaneHandleTool
-from autodrive_editor.ui.tools.map_tool import MapTool
 from autodrive_editor.ui.tools.measure_tool import MeasureTool
 from autodrive_editor.ui.tools.move_nodes_tool import MoveNodesTool
-from autodrive_editor.ui.tools.navigate_tool import NavigateTool
 from autodrive_editor.ui.tools.node_click_tool import NodeClickTool
 from autodrive_editor.ui.tools.parallel_lane_tool import ParallelLaneTool
 from autodrive_editor.ui.tools.path_tool import PathTool
-from autodrive_editor.ui.tools.roads_tool import RoadsTool
 from autodrive_editor.ui.tools.rotate_selection_tool import RotateSelectionTool
 from autodrive_editor.ui.tools.select_tool import SelectTool
-from autodrive_editor.ui.tools.station_pick_tool import StationPickTool
 from autodrive_editor.ui.tools.toggle_node_type_tool import ToggleNodeTypeTool
 from autodrive_editor.ui.update_controller import UpdateController
 
@@ -153,8 +135,6 @@ class MainWindow(QMainWindow):
 
     # How far from a connection line a click still hits it, in pixels.
     CONNECTION_CLICK_TOLERANCE = 6.0
-    # How close to a stop arrow a click picks its station, in pixels.
-    STOP_CLICK_TOLERANCE = 12.0
 
     # Zoom used when jumping to a marker from the marker list.
     FOCUS_MARKER_ZOOM = 2.0
@@ -183,6 +163,7 @@ class MainWindow(QMainWindow):
         self._create_project_coordinator()
         self._create_file_controllers()
         self._create_planning()
+        self._create_generators()
 
         self._create_status_widgets()
         self._create_central_widget()
@@ -428,104 +409,6 @@ class MainWindow(QMainWindow):
 
         return dialog.values if dialog.exec() else None
 
-    def _ask_parking_settings(self, areas, autodrive_data):
-        taken_names = {(marker.name, marker.group) for marker in autodrive_data.markers.values()}
-        dialog = ParkingSpotDialog(
-            areas, autodrive_data.marker_group_names(), taken_names, self.settings, parent=self
-        )
-
-        return self._run_area_dialog(dialog, areas)
-
-    def _ask_silo_settings(self, areas, autodrive_data):
-        taken_names = {(marker.name, marker.group) for marker in autodrive_data.markers.values()}
-        dialog = SiloDialog(
-            areas,
-            self.scene_renderer.costmap,
-            autodrive_data.marker_group_names(),
-            taken_names,
-            self.settings,
-            parent=self,
-        )
-
-        return self._run_area_dialog(dialog, areas)
-
-    def _run_area_dialog(self, dialog, areas):
-        """Runs a shed or silo dialog beside the areas, with its plan on the map."""
-
-        overlay = ParkingMapOverlay(self.scene_renderer.display_style)
-
-        def show(piece):
-            overlay.set_network(piece, [] if piece is None else [p[::2] for p in piece.points])
-
-        show(dialog.area_plan)
-        dialog.area_plan_changed.connect(show)
-        self.scene.addItem(overlay)
-        place_beside(dialog, self.view, [corner for area in areas for corner in area.corners])
-
-        try:
-            accepted = self._run_beside_map(dialog)
-        finally:
-            self.scene.removeItem(overlay)
-
-        return dialog.settings if accepted else None
-
-    def _ask_station_choices(self, stops, autodrive_data):
-        taken_names = {(marker.name, marker.group) for marker in autodrive_data.markers.values()}
-        headings = self.scene_renderer.stop_headings
-        dialog = StationDialog(
-            stops,
-            [headings.get(stop, stop.heading) for stop in stops],
-            taken_names,
-            autodrive_data,
-            self.settings,
-            parent=self,
-        )
-        overlay = ParkingMapOverlay(self.scene_renderer.display_style)
-        dialog.plan_changed.connect(overlay.set_network)
-        dialog.plan_changed.connect(
-            lambda *_: overlay.set_handles([(x, z) for _, _, x, z in dialog.handles()])
-        )
-        dialog._update()
-        self.scene.addItem(overlay)
-        handle_tool = LaneHandleTool(
-            self.view,
-            dialog.handles,
-            dialog.drag_handle,
-            self.selection_coordinator.get_node_at,
-            drawing=dialog,
-        )
-
-        place_beside(dialog, self.view, [stop.position[::2] for stop in stops])
-
-        try:
-            # Enter and Esc on the map finish drawing the yard road.
-            keys = {Qt.Key_Return, Qt.Key_Enter, Qt.Key_Escape}
-            accepted = self._run_beside_map(dialog, handle_tool, keys)
-        finally:
-            self.scene.removeItem(overlay)
-
-        return (dialog.lane_choices, dialog.settings, dialog.yard) if accepted else None
-
-    def _run_beside_map(self, dialog: QDialog, tool: MapTool | None = None, map_keys=()) -> bool:
-        """Runs the dialog without blocking the map: it can be moved, zoomed and rotated, but
-        nothing else in the window reacts until the dialog is closed. tool, if given, handles
-        the mouse on the map instead of plain navigation, and the keys in map_keys."""
-
-        loop = QEventLoop()
-        dialog.finished.connect(loop.quit)
-        input_filter = MapOnlyInput(self, self.view, map_keys)
-        QApplication.instance().installEventFilter(input_filter)
-        self.view.set_override_tool(tool or NavigateTool(self.view))
-
-        try:
-            dialog.show()
-            loop.exec()
-        finally:
-            QApplication.instance().removeEventFilter(input_filter)
-            self.view.set_override_tool(None)
-
-        return dialog.result() == QDialog.DialogCode.Accepted
-
     def _ask_marker(self, title, marker, group, groups, taken_names):
         dialog = MarkerDialog(
             title,
@@ -677,22 +560,22 @@ class MainWindow(QMainWindow):
 
         self.parking_spot_operation = ParkingSpotOperation(
             context,
-            # Looked up on each call, so tests can replace _ask_parking_settings.
-            ask_settings=lambda areas, data: self._ask_parking_settings(areas, data),
+            # Looked up on each call: the generator controller is created later.
+            ask_settings=lambda areas, data: self.generators.ask_parking_settings(areas, data),
             parent=self,
         )
 
         self.bunker_silo_operation = BunkerSiloOperation(
             context,
-            # Looked up on each call, so tests can replace _ask_silo_settings.
-            ask_settings=lambda areas, data: self._ask_silo_settings(areas, data),
+            # Looked up on each call: the generator controller is created later.
+            ask_settings=lambda areas, data: self.generators.ask_silo_settings(areas, data),
             parent=self,
         )
 
         self.station_operation = StationOperation(
             context,
-            # Looked up on each call, so tests can replace _ask_station_choices.
-            ask_choices=lambda stops, data: self._ask_station_choices(stops, data),
+            # Looked up on each call: the generator controller is created later.
+            ask_choices=lambda stops, data: self.generators.ask_station_choices(stops, data),
             height_for_new_node=self.create_nodes_operation.height_for_new_node,
             parent=self,
         )
@@ -739,15 +622,13 @@ class MainWindow(QMainWindow):
         self.road_network_operation = RoadNetworkOperation(
             context,
             savegame_provider=lambda: self.project_coordinator.savegame_folder(),
-            read_lanes=self._read_traffic_lanes,
+            read_lanes=lambda savegame: self.generators.read_traffic_lanes(savegame),
             costmap_provider=lambda: self.scene_renderer.costmap,
             gap_provider=lambda: self.settings.junction_stem[1],
-            run=self._run_generator,
+            run=lambda title, work: self.generators.run_generator(title, work),
             parent=self,
         )
         self.road_network_operation.places_found.connect(self._show_road_places)
-        # The Roads task is active, so its traffic lanes are shown.
-        self._roads_shown = False
 
         self.edit_operations = [
             self.move_nodes_operation,
@@ -837,6 +718,27 @@ class MainWindow(QMainWindow):
         )
         self.files.confirm_end_plan = self.planning.confirm_end_plan
 
+    def _create_generators(self):
+        self.generators = GeneratorController(
+            self,
+            self.view,
+            self.scene_renderer,
+            self.selection_coordinator,
+            self.settings,
+            self.planning,
+            self.project_coordinator,
+            self._game_files,
+            self._get_connection_at,
+            find_route=self.find_route_operation,
+            move_nodes=self.move_nodes_operation,
+            junction=self.junction_operation,
+            parking_spots=self.parking_spot_operation,
+            bunker_silos=self.bunker_silo_operation,
+            stations=self.station_operation,
+            roads=self.road_network_operation,
+        )
+        self.view.register_tool(InteractionMode.GENERATE, self.generators.tool)
+
     def _register_map_tools(self):
         self.view.register_tool(
             InteractionMode.SELECT, SelectTool(self.view, self.selection_coordinator)
@@ -921,8 +823,6 @@ class MainWindow(QMainWindow):
 
         self._register_marker_tools()
 
-        self._register_generate_tool()
-
         self._tool_before_measuring = self.view.interaction_mode
         measure_tool = MeasureTool(self.view, self.measurement_coordinator, self.end_measuring)
 
@@ -983,182 +883,6 @@ class MainWindow(QMainWindow):
             ),
         )
 
-    def _register_generate_tool(self):
-        display_style = self.scene_renderer.display_style
-        route_tool = FindRouteTool(
-            self.view,
-            self.find_route_operation,
-            self.move_nodes_operation,
-            node_at=self.selection_coordinator.get_node_at,
-            connection_at=self._get_connection_at,
-            color_provider=lambda: self.scene_renderer.display_style.regular_connection_color,
-            z_value=display_style.selected_node_z + 1,
-        )
-        parking_tool = AreaPickTool(
-            self.view,
-            self._get_shed_at,
-            self.scene_renderer.get_sheds_in_path,
-            self.parking_spot_operation.create_for,
-            self._show_picked_sheds,
-            lambda: (
-                tr("Click a shed, Shift-click or right-drag a box to pick several of one type")
-                if self.scene_renderer.shown_shed_areas
-                else tr("No sheds shown: open a savegame")
-            ),
-            hover_text=self._get_shed_name_at,
-            may_add=self._may_pick_shed,
-        )
-        station_tool = StationPickTool(
-            self.view,
-            lambda view_position: self.station_operation.create_for(
-                self._get_station_stops_at(view_position)
-            ),
-            lambda path: self.station_operation.create_for(
-                self.scene_renderer.get_stops_in_path(path)
-            ),
-            lambda: (
-                tr("Click a station or right-drag a box around several to create their lanes")
-                if self.scene_renderer.shown_stops
-                else tr("No stations shown: open a savegame")
-            ),
-            is_target=lambda view_position: bool(self._get_station_stops_at(view_position)),
-            hover_text=self._get_station_name_at,
-        )
-        silo_tool = AreaPickTool(
-            self.view,
-            self._get_silo_at,
-            self.scene_renderer.get_silos_in_path,
-            self.bunker_silo_operation.create_for,
-            self._show_picked_silos,
-            lambda: (
-                tr("Click a bunker silo, Shift-click or right-drag a box to pick several")
-                if self.scene_renderer.shown_silo_areas
-                else tr("No bunker silos shown: open a savegame")
-            ),
-            hover_text=self._get_silo_name_at,
-        )
-        junction_tool = JunctionTool(
-            self.view,
-            self.junction_operation,
-            connection_at=self._get_connection_at,
-            node_at=self._get_node_id_at,
-            color_provider=lambda: self.scene_renderer.display_style.regular_connection_color,
-            missing_costmap_message=self.find_route_operation.missing_costmap_message,
-            z_value=display_style.selected_node_z + 1,
-        )
-        roads_tool = RoadsTool(
-            self.view,
-            click=self._create_road_at,
-            pick_area=self._create_roads_in,
-            create=self._create_roads,
-            shown=self._show_roads,
-            hint=self._roads_hint,
-            is_target=lambda view_position: self._road_at(view_position) is not None,
-        )
-        self.generate_tool = GenerateTool(
-            self.view,
-            {
-                GenerateTask.ROUTE: route_tool,
-                GenerateTask.JUNCTION: junction_tool,
-                GenerateTask.PARKING_SPOTS: parking_tool,
-                GenerateTask.STATIONS: station_tool,
-                GenerateTask.BUNKER_SILOS: silo_tool,
-                GenerateTask.ROADS: roads_tool,
-            },
-            start_planning=lambda: self.planning.start_plan(),
-        )
-        self.view.register_tool(InteractionMode.GENERATE, self.generate_tool)
-
-    def _read_traffic_lanes(self, savegame):
-        cache = self.project_coordinator.building_cache
-
-        with self._game_files() as files:
-            lanes = map_traffic_lanes(savegame, files, cache)
-
-        cache.save()
-        return lanes
-
-    def _run_generator(self, title: str, work):
-        """Runs the work with the progress dialog: its result, or None after Cancel or a
-        failure (the status says so)."""
-
-        try:
-            return run_with_progress(title, work, self)
-        except GeneratorFailed:
-            self._set_status(tr("The generator failed. Details are in the log file"))
-            return None
-
-    def _show_roads(self, shown: bool):
-        self._roads_shown = shown
-
-        if not shown:
-            self.scene_renderer.set_traffic_lanes([])
-            return
-
-        # After the tool change: reading the lanes may show the progress dialog.
-        QTimer.singleShot(0, self._prepare_roads)
-
-    def _prepare_roads(self):
-        if self._roads_shown:
-            self.road_network_operation.prepare()
-            self.scene_renderer.set_traffic_lanes(self.road_network_operation.lanes)
-
-    def _create_roads(self) -> bool:
-        """Builds the roads of the whole map into the plan, in the Whole map mode."""
-
-        return self._build_roads(RoadMode.WHOLE_MAP, self.road_network_operation.create)
-
-    def _create_roads_in(self, path) -> bool:
-        """Builds the roads in the dragged box or lasso, in the Box mode."""
-
-        box = [(point.x(), point.y()) for point in path.toFillPolygon()]
-
-        return self._build_roads(
-            RoadMode.BOX, lambda: self.road_network_operation.create_in_box(box)
-        )
-
-    def _road_at(self, view_position) -> int | None:
-        """The road under the pointer, in the Click road mode."""
-
-        if self.road_network_operation.settings.mode != RoadMode.CLICK_ROAD:
-            return None
-
-        position = self.view.mapToScene(view_position)
-        reach = self.STOP_CLICK_TOLERANCE / self.view.zoom_level
-
-        return self.road_network_operation.road_at(position.x(), position.y(), reach)
-
-    def _create_road_at(self, view_position) -> bool:
-        position = self.view.mapToScene(view_position)
-        reach = self.STOP_CLICK_TOLERANCE / self.view.zoom_level
-
-        return self._build_roads(
-            RoadMode.CLICK_ROAD,
-            lambda: self.road_network_operation.create_at(position.x(), position.y(), reach),
-        )
-
-    def _build_roads(self, mode: RoadMode, create) -> bool:
-        operation = self.road_network_operation
-
-        if operation.settings.mode != mode or not operation.prepare():
-            return False
-
-        self.scene_renderer.set_traffic_lanes(operation.lanes)
-        self.planning.start_plan()
-        return create()
-
-    def _roads_hint(self) -> str:
-        if not self.road_network_operation.lanes:
-            return tr(
-                "Roads are built from the map's traffic lanes: open a savegame of a map with them"
-            )
-
-        return {
-            RoadMode.BOX: tr("Right-drag a box around the roads to build"),
-            RoadMode.WHOLE_MAP: tr("Enter or Create builds the roads of the whole map"),
-            RoadMode.CLICK_ROAD: tr("Click a road to build it from junction to junction"),
-        }[self.road_network_operation.settings.mode]
-
     def _show_road_places(self, places):
         self.check_dock.set_road_places(places)
 
@@ -1177,9 +901,7 @@ class MainWindow(QMainWindow):
     def set_generate_task(self, task: GenerateTask):
         """Picks what the Generate tool creates and selects the tool."""
 
-        self.generate_tool.set_task(task)
-        self.actions.show_generate_task(task)
-        self.generate_options.set_task(task)
+        self.generators.set_task(task)
         self.set_interaction_mode(InteractionMode.GENERATE)
 
     def _create_tool_options(self):
@@ -1206,23 +928,9 @@ class MainWindow(QMainWindow):
         align_button.setAutoRaise(True)
         self.options_bar.add_options(MEASURE_TOOL.modes, align_button)
 
-        self.generate_options = GenerateOptionsWidget(
-            self.actions.generate_task_actions,
-            self.generate_tool.task,
-            *self.settings.junction_stem,
-            self.settings.junction_style,
-            self.road_network_operation.settings,
+        self.options_bar.add_options(
+            [InteractionMode.GENERATE], self.generators.create_options(self.actions)
         )
-        self.actions.show_generate_task(self.generate_tool.task)
-        self.generate_options.stem_changed.connect(self.settings.set_junction_stem)
-        self.generate_options.style_changed.connect(self.settings.set_junction_style)
-        self.generate_options.remove_last_requested.connect(self.find_route_operation.remove_last)
-        self.generate_options.clear_requested.connect(self.find_route_operation.clear)
-        self.generate_options.road_settings_changed.connect(
-            lambda settings: setattr(self.road_network_operation, "settings", settings)
-        )
-        self.generate_options.create_roads_requested.connect(self._create_roads)
-        self.options_bar.add_options([InteractionMode.GENERATE], self.generate_options)
 
         self.connect_options = ConnectOptionsWidget(
             lambda flag: setattr(self.connect_nodes_operation, "node_flag", flag)
@@ -1349,77 +1057,6 @@ class MainWindow(QMainWindow):
         scene_position = self.view.mapToScene(view_position)
 
         return scene_position.x(), scene_position.y()
-
-    def _get_shed_at(self, view_position):
-        scene_position = self.view.mapToScene(view_position)
-
-        return self.scene_renderer.get_shed_at(scene_position.x(), scene_position.y())
-
-    def _get_shed_name_at(self, view_position) -> str:
-        area = self._get_shed_at(view_position)
-
-        return f"{area.name} – {area.category_label}" if area is not None else ""
-
-    def _show_picked_sheds(self, areas):
-        self.scene_renderer.set_picked_sheds(areas)
-
-        if len(areas) > 1:
-            self._set_status(
-                tr(
-                    "{count} sheds picked: Enter or a click on one of them creates their parking "
-                    "spots, Esc drops the pick",
-                    count=len(areas),
-                )
-            )
-
-    def _may_pick_shed(self, picked, area) -> bool:
-        if picked and area.building_file != picked[0].building_file:
-            self._set_status(MIXED_TYPES_TEXT)
-            return False
-
-        return True
-
-    def _get_silo_at(self, view_position):
-        scene_position = self.view.mapToScene(view_position)
-
-        return self.scene_renderer.get_silo_at(scene_position.x(), scene_position.y())
-
-    def _get_silo_name_at(self, view_position) -> str:
-        area = self._get_silo_at(view_position)
-
-        return area.name if area is not None else ""
-
-    def _show_picked_silos(self, areas):
-        self.scene_renderer.set_picked_silos(areas)
-
-        if len(areas) > 1:
-            self._set_status(
-                tr(
-                    "{count} bunker silos picked: Enter or a click on one of them creates their "
-                    "lanes, Esc drops the pick",
-                    count=len(areas),
-                )
-            )
-
-    def _get_station_stops_at(self, view_position):
-        scene_position = self.view.mapToScene(view_position)
-        tolerance = self.STOP_CLICK_TOLERANCE / self.view.zoom_level
-
-        return self.scene_renderer.get_station_stops_at(
-            scene_position.x(), scene_position.y(), tolerance
-        )
-
-    def _get_station_name_at(self, view_position) -> str:
-        names = dict.fromkeys(
-            stop.name.strip() for stop in self._get_station_stops_at(view_position)
-        )
-
-        return ", ".join(names)
-
-    def _get_node_id_at(self, view_position) -> int | None:
-        node = self.selection_coordinator.get_node_at(view_position)
-
-        return None if node is None else node.node_id
 
     def _get_connection_at(self, view_position):
         scene_position = self.view.mapToScene(view_position)
@@ -1570,6 +1207,7 @@ class MainWindow(QMainWindow):
 
         self.picture_capture.status_changed.connect(self._set_status)
         self.reload.status_changed.connect(self._set_status)
+        self.generators.status_changed.connect(self._set_status)
         self.picture_capture.picture_shown.connect(self._show_captured_picture)
         self.picture_capture.running_changed.connect(
             lambda running: self.actions.capture_picture_action.setEnabled(not running)
@@ -1620,11 +1258,8 @@ class MainWindow(QMainWindow):
 
         self.network_check.network_loaded()
 
-        # Another savegame may have another map: its lanes are read when Roads needs them.
-        self.road_network_operation.forget()
+        self.generators.network_loaded()
         self.check_dock.set_road_places([])
-        self.scene_renderer.set_traffic_lanes([])
-        self._show_roads(self._roads_shown)
 
         self.open_screen.hide()
 

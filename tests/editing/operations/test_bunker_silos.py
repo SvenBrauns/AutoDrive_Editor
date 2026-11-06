@@ -1,7 +1,7 @@
-from autodrive_editor.editing.bunker_silo import silo_settings
 from autodrive_editor.editing.edit_context import EditContext
 from autodrive_editor.editing.edit_history import EditHistory
 from autodrive_editor.editing.operations.bunker_silos import BunkerSiloOperation
+from autodrive_editor.editing.parking.bunker_silo import silo_settings
 from autodrive_editor.file_io.savegame_sheds import IndoorArea
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
 from autodrive_editor.selection.node_selection import NodeSelection

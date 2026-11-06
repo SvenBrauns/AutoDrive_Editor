@@ -1,7 +1,7 @@
 import pytest
 
-from autodrive_editor.editing.parking_layout import ParkingMode
-from autodrive_editor.editing.station_layout import MarkerRule, StationSettings
+from autodrive_editor.editing.parking.parking_layout import ParkingMode
+from autodrive_editor.editing.stations.station_layout import MarkerRule, StationSettings
 from autodrive_editor.file_io.savegame_stations import StopKind
 from autodrive_editor.settings.app_settings import AppSettings
 from autodrive_editor.ui.dialogs.generator_settings_widget import GeneratorSettingsDialog

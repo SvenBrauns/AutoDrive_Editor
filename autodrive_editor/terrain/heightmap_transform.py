@@ -16,26 +16,6 @@ class HeightmapTransform:
         return cls.BASE_MAP_SIZE * map_scale
 
     @classmethod
-    def calculate_units_per_pixel(cls, image_size, map_scale):
-        image_size = int(image_size)
-
-        if image_size < 2:
-            raise ValueError(tr("The heightmap needs at least two pixels per axis."))
-
-        world_size = cls.calculate_world_size(map_scale)
-
-        pixel_intervals = image_size - 1
-
-        return world_size / pixel_intervals
-
-    @classmethod
-    def world_to_pixel(cls, world_x, world_z, image_width, image_height, map_scale, clamp=False):
-        pixel_x, pixel_y = cls.world_to_pixel_position(
-            world_x, world_z, image_width, image_height, map_scale, clamp
-        )
-        return round(pixel_x), round(pixel_y)
-
-    @classmethod
     def world_to_pixel_position(
         cls, world_x, world_z, image_width, image_height, map_scale, clamp=False
     ):
@@ -67,40 +47,3 @@ class HeightmapTransform:
         normalized_z = max(0.0, min(normalized_z, 1.0))
 
         return normalized_x * (image_width - 1), normalized_z * (image_height - 1)
-
-    @classmethod
-    def pixel_to_world(cls, pixel_x, pixel_y, image_width, image_height, map_scale):
-        image_width = int(image_width)
-
-        image_height = int(image_height)
-
-        if image_width < 2 or image_height < 2:
-            raise ValueError(tr("The heightmap must be at least 2 × 2 pixels."))
-
-        pixel_x = int(pixel_x)
-
-        pixel_y = int(pixel_y)
-
-        if pixel_x < 0 or pixel_x >= image_width:
-            raise ValueError(
-                tr("The pixel X coordinate {value} is outside the heightmap.", value=pixel_x)
-            )
-
-        if pixel_y < 0 or pixel_y >= image_height:
-            raise ValueError(
-                tr("The pixel Y coordinate {value} is outside the heightmap.", value=pixel_y)
-            )
-
-        normalized_x = pixel_x / (image_width - 1)
-
-        normalized_y = pixel_y / (image_height - 1)
-
-        world_size = cls.calculate_world_size(map_scale)
-
-        half_world_size = world_size / 2
-
-        world_x = normalized_x * world_size - half_world_size
-
-        world_z = normalized_y * world_size - half_world_size
-
-        return world_x, world_z

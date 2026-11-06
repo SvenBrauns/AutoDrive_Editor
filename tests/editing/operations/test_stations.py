@@ -3,9 +3,9 @@ import pytest
 from autodrive_editor.editing.edit_context import EditContext
 from autodrive_editor.editing.edit_history import EditHistory
 from autodrive_editor.editing.operations.stations import StationOperation
-from autodrive_editor.editing.station_layout import StationSettings, StopChoice
-from autodrive_editor.editing.station_yard import plan_yard
-from autodrive_editor.editing.yard_road import yard_road
+from autodrive_editor.editing.stations.station_layout import StationSettings, StopChoice
+from autodrive_editor.editing.stations.station_yard import plan_yard
+from autodrive_editor.editing.stations.yard_road import yard_road
 from autodrive_editor.file_io.savegame_stations import Stop, StopKind
 from autodrive_editor.model.autodrive_data import AutoDriveData, NodeData
 from autodrive_editor.model.connections import ConnectionType, get_connection_type

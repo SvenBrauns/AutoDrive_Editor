@@ -56,10 +56,6 @@ class MeasurementHandleItem(QGraphicsObject):
 
         self._text_font.setPixelSize(10)
 
-    @property
-    def is_movable(self) -> bool:
-        return self._movable
-
     def boundingRect(self) -> QRectF:
         margin = 2.0
 

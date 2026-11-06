@@ -5,7 +5,7 @@ from PySide6.QtCore import QPoint, QPointF, Qt
 from PySide6.QtGui import QColor, QMouseEvent, QPainterPath, QPen
 from PySide6.QtWidgets import QGraphicsEllipseItem, QGraphicsItem, QGraphicsPathItem
 
-from autodrive_editor.editing.junction import lane_poses
+from autodrive_editor.editing.junctions.junction import lane_poses
 from autodrive_editor.editing.operations.junction import JunctionOperation
 from autodrive_editor.i18n import tr
 from autodrive_editor.rendering.connections.connection_data import ConnectionData

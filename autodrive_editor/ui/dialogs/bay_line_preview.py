@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from autodrive_editor.editing.parking_layout import (
+from autodrive_editor.editing.parking.parking_layout import (
     ENTRY_BRANCH_BACK,
     ENTRY_LINE_INSIDE,
     EXIT_BRANCH_ALONG,

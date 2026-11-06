@@ -8,17 +8,17 @@ from PySide6.QtCore import Signal
 
 from autodrive_editor.editing.commands.add_route import AddRouteCommand
 from autodrive_editor.editing.edit_context import EditContext, EditOperation
-from autodrive_editor.editing.join_rules import join_problem
 from autodrive_editor.editing.operations.background_search import BackgroundSearch
-from autodrive_editor.editing.route_finder import (
+from autodrive_editor.editing.routes.join_rules import join_problem
+from autodrive_editor.editing.routes.route_finder import (
     CURVE_RADIUS,
     Route,
     RouteFinder,
     RouteRequest,
     Vehicle,
 )
-from autodrive_editor.editing.route_nodes import SNAP_DISTANCE, node_headings, planned_lanes
-from autodrive_editor.editing.route_tree import (
+from autodrive_editor.editing.routes.route_nodes import SNAP_DISTANCE, node_headings, planned_lanes
+from autodrive_editor.editing.routes.route_tree import (
     TreeNodes,
     TreeRoute,
     TreeSearch,

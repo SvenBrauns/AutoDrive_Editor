@@ -7,14 +7,14 @@ from pathlib import Path
 
 from PySide6.QtCore import QByteArray, QSettings
 
-from autodrive_editor.editing.bunker_silo import DEFAULT_PATTERNS
-from autodrive_editor.editing.bunker_silo import pattern_problem as silo_pattern_problem
-from autodrive_editor.editing.junction import LANE_GAP, Stem
-from autodrive_editor.editing.junction_box import Style
-from autodrive_editor.editing.parking_layout import ParkingMode
+from autodrive_editor.editing.junctions.junction import LANE_GAP, Stem
+from autodrive_editor.editing.junctions.junction_box import Style
+from autodrive_editor.editing.parking.bunker_silo import DEFAULT_PATTERNS
+from autodrive_editor.editing.parking.bunker_silo import pattern_problem as silo_pattern_problem
+from autodrive_editor.editing.parking.parking_layout import ParkingMode
 from autodrive_editor.editing.path_shapes import PathOptions
-from autodrive_editor.editing.route_finder import CURVE_RADIUS, Vehicle
-from autodrive_editor.editing.station_layout import (
+from autodrive_editor.editing.routes.route_finder import CURVE_RADIUS, Vehicle
+from autodrive_editor.editing.stations.station_layout import (
     MarkerRule,
     StationSettings,
     default_marker_rules,

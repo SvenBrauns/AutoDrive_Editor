@@ -4,7 +4,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from autodrive_editor.editing.parking_layout import (
+from autodrive_editor.editing.parking.parking_layout import (
     SIDE_CORNERS,
     ParkingMode,
     ParkingSettings,

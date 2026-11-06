@@ -1,8 +1,12 @@
 from collections.abc import Callable
 
 from autodrive_editor.editing.edit_context import EditContext, EditOperation
-from autodrive_editor.editing.station_layout import StationSettings, StopChoice, stations_command
-from autodrive_editor.editing.station_yard import YardPlan, yard_command
+from autodrive_editor.editing.stations.station_layout import (
+    StationSettings,
+    StopChoice,
+    stations_command,
+)
+from autodrive_editor.editing.stations.station_yard import YardPlan, yard_command
 from autodrive_editor.file_io.savegame_stations import Stop
 from autodrive_editor.i18n import tr
 from autodrive_editor.model.autodrive_data import AutoDriveData

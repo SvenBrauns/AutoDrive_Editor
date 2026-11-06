@@ -6,7 +6,7 @@ from PySide6.QtCore import QEvent, Qt, QTimer
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QDialog, QLabel
 
-from autodrive_editor.editing.parking_layout import ParkingSettings
+from autodrive_editor.editing.parking.parking_layout import ParkingSettings
 from autodrive_editor.file_io.savegame_buildings import (
     BuildingGroup,
     BuildingType,
@@ -35,7 +35,7 @@ def parking_window(zoomed_window):
         window.asked.append(areas)
         return ParkingSettings(bays=2, gaps=(0.0,), marker_name="Shed", group="Farm")
 
-    window._ask_parking_settings = ask
+    window.generators.ask_parking_settings = ask
     types = [
         BuildingType("shed.xml", "Farm barn", "sheds", BuildingGroup.SHEDS, 2),
         BuildingType("barn.xml", "Barn", "sheds", BuildingGroup.SHEDS, 1),
@@ -143,9 +143,9 @@ def test_dialog_shows_its_plan_on_the_map_and_keeps_the_map_movable(zoomed_windo
         dialog.group_input.setCurrentText("Farm")
         return True
 
-    monkeypatch.setattr(window, "_run_beside_map", run)
+    monkeypatch.setattr(window.generators, "_run_beside_map", run)
 
-    settings = window._ask_parking_settings([SHED], data)
+    settings = window.generators.ask_parking_settings([SHED], data)
 
     assert seen["markers"] > 1 and seen["after_change"] == 1
     assert settings.bays == 1
@@ -165,7 +165,7 @@ def test_only_the_map_can_be_used_while_the_dialog_is_open(zoomed_window):
 
     QTimer.singleShot(0, check)
 
-    assert window._run_beside_map(dialog)
+    assert window.generators._run_beside_map(dialog)
     assert isinstance(seen["tool"], NavigateTool) and seen["tool"] is not before
     assert seen["visible"]
     assert window.view.active_tool is before

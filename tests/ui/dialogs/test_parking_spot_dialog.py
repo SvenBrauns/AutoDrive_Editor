@@ -2,7 +2,7 @@ import pytest
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtTest import QTest
 
-from autodrive_editor.editing.parking_layout import ParkingMode
+from autodrive_editor.editing.parking.parking_layout import ParkingMode
 from autodrive_editor.file_io.savegame_sheds import IndoorArea
 from autodrive_editor.settings.app_settings import AppSettings
 from autodrive_editor.ui.dialogs.parking_preview import compass_name

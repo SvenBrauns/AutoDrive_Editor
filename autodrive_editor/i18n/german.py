@@ -185,10 +185,7 @@ TEXTS = {
     "Invalid raw heightmap value: {value}": "Ungültiger Heightmap-Rohwert: {value}",
     "The height scale must be greater than 0.": "Der Height-Scale muss größer als 0 sein.",
     "The heightmap format is not supported.": "Das Heightmap-Format wird nicht unterstützt.",
-    "The heightmap needs at least two pixels per axis.": "Die Heightmap muss mindestens zwei Pixel pro Achse besitzen.",
     "The heightmap must be at least 2 × 2 pixels.": "Die Heightmap muss mindestens 2 × 2 Pixel groß sein.",
-    "The pixel X coordinate {value} is outside the heightmap.": "Die Pixel-X-Koordinate {value} liegt außerhalb der Heightmap.",
-    "The pixel Y coordinate {value} is outside the heightmap.": "Die Pixel-Y-Koordinate {value} liegt außerhalb der Heightmap.",
     "The X coordinate {value} is outside the map.": "Die X-Koordinate {value} liegt außerhalb der Karte.",
     "The Z coordinate {value} is outside the map.": "Die Z-Koordinate {value} liegt außerhalb der Karte.",
     # ui/actions
@@ -757,7 +754,7 @@ TEXTS = {
     "{routes} routes with {count} new nodes added": "{routes} Routen mit {count} neuen Nodes hinzugefügt",
     "With several starts or ends, all starts and ends are nodes": "Bei mehreren Starts oder Zielen sind alle Starts und Ziele Nodes",
     "Not clear yet (red): {routes}. Move or add waypoints there": "Noch nicht frei (rot): {routes}. Dort Wegpunkte verschieben oder hinzufügen",
-    # editing/join_rules.py
+    # editing/routes/join_rules.py
     "Node {id} is a marker: other routes would lead through it": "Node {id} ist ein Marker: andere Routen würden durch ihn führen",
     "Nothing drives to node {id}, so the route cannot be reached": "Zu Node {id} führt nichts, die Route ist also nicht erreichbar",
     "Node {id} leads nowhere, so the route ends in a dead end": "Node {id} führt nirgendwohin, die Route endet also in einer Sackgasse",
@@ -768,7 +765,7 @@ TEXTS = {
     "Vehicle width:": "Fahrzeugbreite:",
     "Debug log": "Debug-Log",
     "Write detailed entries to the log file, e.g. for each route search": "Ausführliche Einträge in die Logdatei schreiben, z. B. zu jeder Routensuche",
-    # editing/station_layout, editing/operations/stations, ui/dialogs/station_dialog
+    # editing/stations/station_layout, editing/operations/stations, ui/dialogs/station_dialog
     "Unloading points": "Abladestellen",
     "Loading points": "Ladestellen",
     "Buying stations": "Kaufstellen",

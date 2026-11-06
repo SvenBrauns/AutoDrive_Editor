@@ -3,7 +3,7 @@ import pytest
 from autodrive_editor.editing.edit_context import EditContext
 from autodrive_editor.editing.edit_history import EditHistory
 from autodrive_editor.editing.operations.parking_spots import ParkingSpotOperation
-from autodrive_editor.editing.parking_layout import ParkingSettings
+from autodrive_editor.editing.parking.parking_layout import ParkingSettings
 from autodrive_editor.file_io.savegame_sheds import IndoorArea
 from autodrive_editor.model.autodrive_data import AutoDriveData, MarkerGroup, NodeData
 from autodrive_editor.model.connections import ConnectionType, get_connection_type
