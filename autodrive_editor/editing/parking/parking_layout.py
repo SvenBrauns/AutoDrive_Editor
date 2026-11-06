@@ -30,7 +30,6 @@ class ParkingMode(Enum):
 # Sides of an indoor area relative to the building, by their corners (start, width end, opposite,
 # height end). The front is the side at the end of the height (the building's +Z).
 SIDE_CORNERS = {"front": (3, 2), "back": (0, 1), "left": (0, 3), "right": (1, 2)}
-OPPOSITE_SIDE = {"front": "back", "back": "front", "left": "right", "right": "left"}
 
 MIN_BAY_WIDTH = 3.0
 

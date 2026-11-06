@@ -175,9 +175,6 @@ class BackgroundMap:
     def has_background(self):
         return self.background_item is not None
 
-    def has_file(self):
-        return self.file_path is not None
-
     def _replace_background(self, pixmap):
         self.remove_from_scene(preserve_file_path=True)
 

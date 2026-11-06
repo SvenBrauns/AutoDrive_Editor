@@ -82,9 +82,6 @@ class Heightmap:
     def has_heightmap(self):
         return self.heightmap_data is not None
 
-    def set_height_scale(self, height_scale):
-        self.height_scale = self._validate_height_scale(height_scale)
-
     def get_height_at(self, world_x, world_z, map_scale, clamp=False):
         heightmap_data = self._require_heightmap()
 
@@ -112,20 +109,6 @@ class Heightmap:
             normalized_value=normalized_value,
             height=height,
         )
-
-    def get_image_information(self):
-        heightmap_data = self._require_heightmap()
-
-        return {
-            "file_path": str(heightmap_data.file_path),
-            "format": (heightmap_data.format_description),
-            "image_mode": (heightmap_data.image_mode),
-            "width": heightmap_data.width,
-            "height": heightmap_data.height,
-            "bands": heightmap_data.bands,
-            "extrema": heightmap_data.extrema,
-            "height_scale": self.height_scale,
-        }
 
     def _require_heightmap(self) -> HeightmapData:
         if self.heightmap_data is None:

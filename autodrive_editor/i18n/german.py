@@ -185,10 +185,7 @@ TEXTS = {
     "Invalid raw heightmap value: {value}": "Ungültiger Heightmap-Rohwert: {value}",
     "The height scale must be greater than 0.": "Der Height-Scale muss größer als 0 sein.",
     "The heightmap format is not supported.": "Das Heightmap-Format wird nicht unterstützt.",
-    "The heightmap needs at least two pixels per axis.": "Die Heightmap muss mindestens zwei Pixel pro Achse besitzen.",
     "The heightmap must be at least 2 × 2 pixels.": "Die Heightmap muss mindestens 2 × 2 Pixel groß sein.",
-    "The pixel X coordinate {value} is outside the heightmap.": "Die Pixel-X-Koordinate {value} liegt außerhalb der Heightmap.",
-    "The pixel Y coordinate {value} is outside the heightmap.": "Die Pixel-Y-Koordinate {value} liegt außerhalb der Heightmap.",
     "The X coordinate {value} is outside the map.": "Die X-Koordinate {value} liegt außerhalb der Karte.",
     "The Z coordinate {value} is outside the map.": "Die Z-Koordinate {value} liegt außerhalb der Karte.",
     # ui/actions
