@@ -20,7 +20,7 @@ ruff check .
 ruff format .
 ```
 
-The route finder benchmark (`tests/editing/test_route_benchmark.py`) searches 59 hand-made route pieces of the Thüringen course again and compares the results with them. It is skipped by default; run it with `python -m pytest -m benchmark -s -n0` before and after changes to the route finder. It fails when the results are worse than its recorded baseline.
+The route finder benchmark (`tests/editing/routes/test_route_benchmark.py`) searches 59 hand-made route pieces of the Thüringen course again and compares the results with them. It is skipped by default; run it with `python -m pytest -m benchmark -s -n0` before and after changes to the route finder. It fails when the results are worse than its recorded baseline.
 
 GitHub Actions checks every push and pull request with `ruff` and `pytest`. A tag such as `v0.1.0` builds the Windows version with PyInstaller and publishes it as a release. Before tagging, raise the version in `autodrive_editor/__init__.py` and `pyproject.toml` (a test checks that they match) and turn the `Unreleased` section of `CHANGELOG.md` into the new version; the app shows that file under `Help → Version history`. The release stops if the tag does not match the version, and its notes are the version's section of `CHANGELOG.md`.
 
@@ -38,7 +38,15 @@ autodrive_editor/
   terrain/      background map, heightmap, terrain height for moved nodes
   editing/
     commands/   undoable changes to the data model
-    operations/ editing workflows of the tools (move, connect, …)
+    operations/ editing workflows of the tools (move, connect, …) and of the generators
+    routes/     Find route: route finder on the drivability map, Dubins paths, route geometry,
+                nodes of found routes, rules where new pieces meet the network
+    junctions/  junction templates and the junction box
+    parking/    parking spots in sheds, bunker silos
+    stations/   lanes and markers for station stops, yard road, fill type names
+    roads/      road network generator: road graph from the traffic lanes, centre lines,
+                fitting to the existing network, Box and Click selections, checks
+    planned_piece.py  nodes, connections and markers a generator builds before they are added
     edit_context.py  EditContext and the EditOperation base class
     edit_history.py  shared undo/redo history, with plans as one undo step
     plan_changes.py  nodes the open plan changed, for the highlight
@@ -57,6 +65,11 @@ autodrive_editor/
     file_controller.py  File menu: Open screen, save, save as route, load route, autosave
     map_import_controller.py  map import when a file opens, first start
     reload_controller.py  reload in the running game after saving
+    planning_controller.py  planning mode: the plan bar, apply or discard, highlight
+    generator_controller.py  Generate tool and its task tools, generator dialogs beside the map
+    picture_capture_controller.py  game picture: map tiles from the running game via the companion mod
+    network_check_controller.py  network check: runs it, fixes and ignores from the check dock
+    update_controller.py  check for a newer version
     actions/    tool catalog (tools, variants, keys), menus, toolbars, shortcuts
     map_view/   map view with zoom, rotation and area selection
     tools/      mouse handling per tool
@@ -78,7 +91,7 @@ packaging/      app icon, license texts and exe version info (version_info.py) f
 - After each change, the command reports a `DataChange`; the `SceneRenderer` then updates only the affected nodes.
 - Nodes, node IDs, connections, markers and the selection are not graphics items. Five layer items paint them straight from the spatial indexes, using drawing data cached per 256 m tile; after an edit only the changed tiles are rebuilt. This keeps networks with over 100,000 nodes responsive. Clicks find nodes through `SceneRenderer.get_node_at()`.
 - Each editing workflow is an `EditOperation` under `editing/operations/`; it gets the shared parts (history, data, selection, view, terrain height, snapping) through one `EditContext`.
-- Each tool is a `MapTool` subclass under `ui/tools/` and is described in `ui/actions/tool_catalog.py` with its icon and shortcut. A tool with variants (Create, Connect, Draw, Marker, Measure) is a `MergedTool`: one button in the tool strip, one `InteractionMode` and key per variant, the variant buttons in the options bar. Generate is one mode; its four tasks (`GENERATE_TASKS`) are its variant buttons.
+- Each tool is a `MapTool` subclass under `ui/tools/` and is described in `ui/actions/tool_catalog.py` with its icon and shortcut. A tool with variants (Create, Connect, Draw, Marker, Measure) is a `MergedTool`: one button in the tool strip, one `InteractionMode` and key per variant, the variant buttons in the options bar. Generate is one mode; its tasks (`GENERATE_TASKS`) are its variant buttons.
 - The options bar (`ui/panels/options_bar.py`) shows the active tool's name, its variant buttons and its options widget (`add_options()` per mode); tool options live there, not in menus.
 - Actions whose shortcut can be changed are registered in `MainWindowActions._create_shortcut_registry()` under a fixed name; settings.ini stores only the shortcuts that differ from the defaults, by that name. A new menu entry or tool should be registered there too.
 
