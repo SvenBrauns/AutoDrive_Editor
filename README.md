@@ -11,54 +11,41 @@ Edit [AutoDrive](https://github.com/Stephan-S/FS25_AutoDrive) route networks for
 
 > **Disclaimer:** This project is fully vibe coded. All code, tests and documentation were written by an AI coding assistant, guided and tested by a human.
 
-![The editor with a whole route network on the map](docs/images/overview.png)
+![The editor with a whole route network on the game picture of the map](docs/images/overview.png)
 
 ## Highlights
 
-- **Your maps, found automatically.** Open a savegame and its map comes with it: map image, heightmap and size are imported from your `mods` folder or the base game the first time, no extra step.
-- **Savegames, routes and XML files.** Pick a savegame or a RoutesManager route on one Open screen. With the companion mod `FS25_AutoDriveEditorLink`, Save reloads the network in the running game, no restart needed.
-- **Drawing tools.** Lines, Bézier curves and arcs with even node spacing. Rotate, align, set heights from the terrain, and copy and paste whole sections.
-- **Network check.** Finds overlapping nodes, nodes outside the map, wrong heights, invalid connection references and nodes without connections. Click an entry to jump to it, fix it with one click, or ignore it.
+- **Generators for the hard parts.** The Generate tool builds what takes longest by hand, as a plan you can still change:
+  - **Junctions:** drag from a road towards a yard and get a crossing box or turn curves, with lanes that join the road like hand-made forks.
+  - **Stations:** a one-way lane with a marker over each stop of selling points, productions, silos and barns, and a yard road past them.
+  - **Routes:** click waypoints and get a drivable route over the savegame's drivability map, with your curve radius and vehicle width.
+  - **Roads:** AutoDrive roads along the map's own traffic lanes, for a clicked road, a box or the whole map, joined to the roads you have.
+  - **Parking spots** in sheds and **lanes in bunker silos**, with markers, for one building or many at once.
+- **Planning mode.** Edit with every tool, then apply the plan as one undo step or throw it away. Changed nodes are marked on the map.
+- **Game picture.** The companion mod renders the map from above in the running game: your yards, roads and buildings as they really are, as the editor's background.
+- **Reload in the game.** With the companion mod [`FS25_AutoDriveEditorLink`](https://github.com/SvenBrauns/FS25_AutoDriveEditorLink/releases/latest), Save reloads the network in the running game. No restart needed.
+- **Your maps, found automatically.** Open a savegame or a RoutesManager route and its map comes with it: map image, heightmap and size are imported from your `mods` folder or the base game the first time.
+- **Drawing and road editing.** Lines, Bézier curves and arcs with even node spacing, parallel lanes, inserting nodes into connections, deleting with reconnect. Rotate, align, set heights from the terrain, copy and paste whole sections.
+- **Find.** Search markers by name or group, or jump to a node by its number.
+- **Network check.** Finds overlapping nodes, wrong heights, broken connections, unconnected nodes and gaps in the road network. Click an entry to jump to it, fix it with one click, or ignore it.
 - **Built for large networks.** Handles networks with more than 100,000 waypoints, like the one in the screenshots.
-- **Safe to use.** Undo for every change, a backup before the first save, and autosave with restore after a crash.
+- **Safe to use.** Undo for every change, a backup before the first save, autosave with restore after a crash, and a warning when the game changed the file in the meantime.
 - **Your way.** English or German, light or dark theme, your own keyboard shortcuts.
 
-| Zoomed in, dark theme | Network check |
+| Junction | Station lanes |
 | --- | --- |
-| ![Nodes, connections and markers up close in the dark theme](docs/images/detail-dark.png) | ![The network check dock next to a problem on the map](docs/images/network-check.png) |
+| ![A crossing box on a two-lane road with a stem into a yard, in planning mode](docs/images/junction.png) | ![Lanes with markers over the stops of an oil mill](docs/images/stations.png) |
+| **Route** | **Bunker silos** |
+| ![A route found around a building through three waypoints](docs/images/route.png) | ![Drive-through lanes with markers in two bunker silos](docs/images/bunker-silos.png) |
 
 ## Getting started
 
 1. Download the zip from [Releases](https://github.com/SvenBrauns/AutoDrive_Editor/releases/latest), unzip it and start `AutoDrive Editor.exe`. No Python or Java is needed. The program is not signed, so Windows may show "Windows protected your PC": click `More info → Run anyway`.
 2. On first start, check the game folders the editor found.
 3. Pick a savegame or route on the Open screen. Its map is imported the first time.
+4. Optional: for the game picture and reloading in the game, put the zip of the companion mod [`FS25_AutoDriveEditorLink`](https://github.com/SvenBrauns/FS25_AutoDriveEditorLink/releases/latest) into your `mods` folder and activate it in the savegame.
 
 The [manual](MANUAL.md) explains all tools, shortcuts, the network check and saving.
-
-## Compared to the AutoDrive Course Editor
-
-This editor is a new FS25-only editor. Its first goal was everything the [AutoDrive Course Editor](https://github.com/KillBait/AutoDrive_Course_Editor) 1.1.1 can do.
-
-| | Course Editor 1.1.1 | AutoDrive FS25 Editor |
-| --- | :---: | :---: |
-| Games | FS19, FS22, FS25 | FS25 |
-| Runs as | Java program (Java 11+) | Windows program, nothing to install |
-| Interface language | English | English, German |
-| Map images | Import from .zip or download | Imported from your mods and the game when a file opens |
-| Routes, savegames and XML files | ✅ | ✅ |
-| Nodes, connections, markers, copy and paste, undo | ✅ | ✅ |
-| Lines, Bézier curves (1 or 2 control points), arcs | ✅ | ✅ |
-| Rotate, align, enter positions, grid snapping | ✅ | ✅ |
-| Show and hide connection types, markers, parking positions | ✅ | ✅ |
-| Find and fix overlapping nodes, nodes outside the map | ✅ | ✅ |
-| Height check against the heightmap | Only nodes below world bounds | ✅ |
-| Check results as a list: jump to each problem, ignore entries | | ✅ |
-| Freehand selection | | ✅ |
-| Distance and angle measurement | | ✅ |
-| Parking spots in sheds, with templates | | ✅ |
-| Rotate the map view | | ✅ |
-| Autosave, keyboard shortcuts, dark theme | ✅ | ✅ |
-| Experimental tools (road connection, scale, templates) | ✅ | |
 
 ## Thanks
 
@@ -68,7 +55,7 @@ This editor is a new FS25-only editor. Its first goal was everything the [AutoDr
 
 ## License
 
-GNU General Public License v3.0 or later, see [LICENSE](LICENSE). The Windows version contains PySide6/Qt (LGPLv3) and Pillow, see [THIRD_PARTY_NOTICES.md](packaging/THIRD_PARTY_NOTICES.md).
+GNU General Public License v3.0 or later, see [LICENSE](LICENSE). The Windows version contains PySide6/Qt (LGPLv3) and Pillow. Reading the map's `.i3d.shapes` files uses a port of [I3DShapesTool](https://github.com/Donkie/I3DShapesTool) by Daniel Hultgren (MIT). See [THIRD_PARTY_NOTICES.md](packaging/THIRD_PARTY_NOTICES.md).
 
 The editor contains no files from Farming Simulator or from map mods. Map images and heightmaps are read from your own installation. Only the screenshots in `docs/images` show part of a map mod. This project has no connection to GIANTS Software.
 
