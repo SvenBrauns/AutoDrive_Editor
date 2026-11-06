@@ -1048,12 +1048,12 @@ class MainWindow(QMainWindow):
         )
         roads_tool = RoadsTool(
             self.view,
-            click=lambda view_position: False,
-            pick_area=lambda path: False,
+            click=self._create_road_at,
+            pick_area=self._create_roads_in,
             create=self._create_roads,
             shown=self._show_roads,
             hint=self._roads_hint,
-            is_target=lambda view_position: False,
+            is_target=lambda view_position: self._road_at(view_position) is not None,
         )
         self.generate_tool = GenerateTool(
             self.view,
@@ -1106,14 +1106,46 @@ class MainWindow(QMainWindow):
     def _create_roads(self) -> bool:
         """Builds the roads of the whole map into the plan, in the Whole map mode."""
 
+        return self._build_roads(RoadMode.WHOLE_MAP, self.road_network_operation.create)
+
+    def _create_roads_in(self, path) -> bool:
+        """Builds the roads in the dragged box or lasso, in the Box mode."""
+
+        box = [(point.x(), point.y()) for point in path.toFillPolygon()]
+
+        return self._build_roads(
+            RoadMode.BOX, lambda: self.road_network_operation.create_in_box(box)
+        )
+
+    def _road_at(self, view_position) -> int | None:
+        """The road under the pointer, in the Click road mode."""
+
+        if self.road_network_operation.settings.mode != RoadMode.CLICK_ROAD:
+            return None
+
+        position = self.view.mapToScene(view_position)
+        reach = self.STOP_CLICK_TOLERANCE / self.view.zoom_level
+
+        return self.road_network_operation.road_at(position.x(), position.y(), reach)
+
+    def _create_road_at(self, view_position) -> bool:
+        position = self.view.mapToScene(view_position)
+        reach = self.STOP_CLICK_TOLERANCE / self.view.zoom_level
+
+        return self._build_roads(
+            RoadMode.CLICK_ROAD,
+            lambda: self.road_network_operation.create_at(position.x(), position.y(), reach),
+        )
+
+    def _build_roads(self, mode: RoadMode, create) -> bool:
         operation = self.road_network_operation
 
-        if operation.settings.mode != RoadMode.WHOLE_MAP or not operation.prepare():
+        if operation.settings.mode != mode or not operation.prepare():
             return False
 
         self.scene_renderer.set_traffic_lanes(operation.lanes)
         self.planning.start_plan()
-        return operation.create()
+        return create()
 
     def _roads_hint(self) -> str:
         if not self.road_network_operation.lanes:

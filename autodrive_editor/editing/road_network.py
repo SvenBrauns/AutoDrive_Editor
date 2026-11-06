@@ -75,7 +75,7 @@ class RoadOptions:
 class RoadNetwork:
     piece: PlannedPiece  # points as map positions (x, y, z)
     listed: list[tuple[Point3, str]] = field(default_factory=list)  # places to look at
-    areas: list[list[tuple[float, float]]] = field(default_factory=list)  # junction outlines (x, z)
+    areas: list[list[tuple[float, float]]] = field(default_factory=list)  # outline (x, z) per group
     groups: list[frozenset[int]] = field(default_factory=list)  # junctions built as one
 
 
@@ -146,7 +146,7 @@ def build_road_network(graph: RoadGraph, options: RoadOptions | None = None) -> 
     grouped = junction_groups(graph, pieces)
     network.groups = grouped.groups
     dropped = grouped.links | grouped.spawns
-    boxes, kept_inner = [], set()
+    boxes, kept_inner, area_of = [], set(), {}
     for group in grouped.groups:
         box = _plan_box(group, graph, pieces, dropped, options)
         if box is not None:
@@ -154,11 +154,9 @@ def build_road_network(graph: RoadGraph, options: RoadOptions | None = None) -> 
             continue
         group_inner = set().union(*(graph.junctions[j].inner for j in group))
         kept_inner |= group_inner
-        network.areas.append(
-            _outline(
-                [p for j in group for p in graph.junctions[j].points]
-                + [p for s in group_inner for p in graph.stretches[s].points]
-            )
+        area_of[group] = _outline(
+            [p for j in group for p in graph.junctions[j].points]
+            + [p for s in group_inner for p in graph.stretches[s].points]
         )
         network.listed.append((_middle(graph, group), tr("No junction box")))
     boxed = set().union(*(box.group for box in boxes))
@@ -193,11 +191,12 @@ def build_road_network(graph: RoadGraph, options: RoadOptions | None = None) -> 
         if options.two_way:  # the arms meet at the centre: the outline of a box that size
             reach = options.gap / 2 + BOX_MARGIN
             corners = [_from_centre(box, arm.heading, reach) for arm in box.arms]
-            network.areas.append(_outline([box.centre, *corners]))
+            area_of[box.group] = _outline([box.centre, *corners])
             continue
         box_lanes = _box_lanes(box, [_arm_ends(arm, piece_lanes[arm.piece]) for arm in box.arms])
-        network.areas.append(_outline([p for lane in box_lanes for p in lane.points]))
+        area_of[box.group] = _outline([p for lane in box_lanes for p in lane.points])
         lanes += box_lanes
+    network.areas = [area_of[group] for group in network.groups]
     joins = _snap_ends(lanes)
     _add_lanes(network.piece, lanes, joins, options.spacing)
     return network

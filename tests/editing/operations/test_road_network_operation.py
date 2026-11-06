@@ -98,3 +98,22 @@ def test_auto_lanes_follow_the_existing_network():
     assert new_lane_sides(two_way_network(), RoadSettings()) == {0.0}
     # Two one-way lanes when chosen.
     assert new_lane_sides(two_way_network(), RoadSettings(lanes=RoadLanes.PAIRS)) == {-2.75, 2.75}
+
+
+def test_box_and_clicked_road_reuse_the_whole_map_network(monkeypatch):
+    import autodrive_editor.editing.operations.road_network as module
+
+    builds = []
+    build = module.build_road_network
+    monkeypatch.setattr(module, "build_road_network", lambda *a: builds.append(1) or build(*a))
+    data = AutoDriveData()
+    roads = operation(data, junction([0, 90, 180], arm_length=150))
+    roads.prepare()
+
+    assert roads.create_in_box([(-60, -60), (60, -60), (60, 60), (-60, 60)])
+    assert all(max(abs(n.x), abs(n.z)) < 65 for n in data.nodes.values())
+    count = len(data.nodes)
+    assert roads.create_at(130.0, 2.0, reach=10.0)
+    assert len(data.nodes) > count
+    assert not roads.create_at(130.0, 80.0, reach=10.0)
+    assert len(builds) == 1

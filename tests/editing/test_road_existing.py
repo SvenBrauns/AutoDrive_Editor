@@ -176,3 +176,31 @@ def test_mostly_two_way_counts_regular_connections():
     assert not mostly_two_way(data)
     chain(data, [(0, 20), (10, 20), (20, 20)], ConnectionType.DUAL, flag=SUBPRIO_FLAG)
     assert not mostly_two_way(data)  # subprio does not count
+
+
+def kept_west_of(network, x):
+    return {i for i, p in enumerate(network.piece.points) if p[0] < x}
+
+
+def test_skip_joins_the_ends_left_out_by_keep_to_the_existing_road():
+    data = only_near(pushed(AutoDriveData(), plan().piece), lambda n: n.x >= 60)
+    network = plan()
+
+    result = fit_to_existing(network, data, replace=False, gap=5.5, keep=kept_west_of(network, 50))
+    pushed(data, result.piece)
+
+    assert all(p[0] < 50 for p in result.piece.points)
+    assert reaches(data, node_at(data, 0, EAST), node_at(data, 100, EAST))
+    assert reaches(data, node_at(data, 100, WEST), node_at(data, 0, WEST))
+
+
+def test_replace_with_keep_removes_only_the_kept_part_of_the_existing_road():
+    data = pushed(AutoDriveData(), plan(two_way=True).piece)
+    network = plan()
+
+    result = fit_to_existing(network, data, replace=True, gap=5.5, keep=kept_west_of(network, 50))
+
+    assert all(p[0] < 50 for p in result.piece.points)
+    assert result.piece.removed
+    assert all(data.nodes[i].x < 60 for i in result.piece.removed)
+    assert any(n.x > 60 for i, n in data.nodes.items() if i not in result.piece.removed)

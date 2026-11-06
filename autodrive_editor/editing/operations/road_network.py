@@ -1,3 +1,4 @@
+import dataclasses
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
@@ -9,11 +10,14 @@ from autodrive_editor.editing.edit_context import EditContext, EditOperation
 from autodrive_editor.editing.planned_piece import push_piece
 from autodrive_editor.editing.road_check import check_road_network
 from autodrive_editor.editing.road_existing import fit_to_existing, mostly_two_way
-from autodrive_editor.editing.road_graph import RoadGraph, build_road_graph
-from autodrive_editor.editing.road_network import RoadOptions, build_road_network
+from autodrive_editor.editing.road_graph import RoadGraph, build_road_graph, flat_distance
+from autodrive_editor.editing.road_network import RoadNetwork, RoadOptions, build_road_network
+from autodrive_editor.editing.road_selection import Part, box_part, road_at, road_part
 from autodrive_editor.file_io.navigation_costmap import NavigationCostmap
 from autodrive_editor.file_io.traffic_splines import TrafficLane
 from autodrive_editor.i18n import tr
+
+EDGE_REACH = 15.0  # places this close to where a box or road was cut off are not listed
 
 # work(report(done, total, text), cancelled()) → result
 Work = Callable[[Callable[[int, int, str], None], Callable[[], bool]], object]
@@ -41,8 +45,9 @@ class RoadSettings:
 
 
 class RoadNetworkOperation(EditOperation):
-    """Builds AutoDrive roads from the traffic lanes of the savegame's map (see road_network),
-    fitted to the existing network and checked, in one undo step."""
+    """Builds AutoDrive roads from the traffic lanes of the savegame's map (see road_network):
+    the whole map, a box or a clicked road (road_selection), fitted to the existing network and
+    checked, in one undo step."""
 
     # The places to look at of the last run: (point, text).
     places_found = Signal(list)
@@ -68,11 +73,14 @@ class RoadNetworkOperation(EditOperation):
         self.lanes: list[TrafficLane] = []
         self.graph: RoadGraph | None = None
         self._savegame: Path | None = None
+        # The whole map's network by (lane gap, two-way), built once per savegame.
+        self._networks: dict[tuple[float, bool], RoadNetwork] = {}
 
     def forget(self):
         """Drops the read lanes, e.g. when another file was opened."""
 
         self._savegame, self.lanes, self.graph = None, [], None
+        self._networks = {}
 
     def prepare(self) -> bool:
         """Reads the traffic lanes of the loaded savegame's map unless already read. False if
@@ -103,7 +111,7 @@ class RoadNetworkOperation(EditOperation):
             if result is None:
                 return False
 
-            self._savegame = savegame
+            self._savegame, self._networks = savegame, {}
             self.lanes, self.graph = result
 
         if not self.lanes:
@@ -125,6 +133,26 @@ class RoadNetworkOperation(EditOperation):
     def create(self) -> bool:
         """Builds the roads of the whole map into the plan."""
 
+        return self._create(None)
+
+    def create_in_box(self, box: list[tuple[float, float]]) -> bool:
+        """Builds the roads in the box (x, z corners), with the junctions whose middle is in it."""
+
+        return self.graph is not None and self._create(
+            lambda whole: box_part(whole, self.graph, box)
+        )
+
+    def road_at(self, x: float, z: float, reach: float) -> int | None:
+        return None if self.graph is None else road_at(self.graph, x, z, reach)
+
+    def create_at(self, x: float, z: float, reach: float) -> bool:
+        """Builds the road within reach of the map position, from junction to junction."""
+
+        road = self.road_at(x, z, reach)
+
+        return road is not None and self._create(lambda whole: road_part(whole, self.graph, road))
+
+    def _create(self, select: Callable[[RoadNetwork], Part] | None) -> bool:
         autodrive_data = self.autodrive_data_provider()
 
         if autodrive_data is None or self.edit_history.history_locked or self.graph is None:
@@ -137,26 +165,50 @@ class RoadNetworkOperation(EditOperation):
             RoadLanes.PAIRS: False,
             RoadLanes.TWO_WAY: True,
         }[settings.lanes]
+        whole = self._networks.get((gap, two_way))
 
         def work(report, cancelled):
-            report(0, 3, tr("Building the roads…"))
-            network = build_road_network(graph, RoadOptions(gap=gap, two_way=two_way))
+            built = whole
 
-            if cancelled():
-                return None
+            if built is None:
+                report(0, 3, tr("Building the roads…"))
+                built = build_road_network(graph, RoadOptions(gap=gap, two_way=two_way))
+
+                if cancelled():
+                    return None
+
+            part = select(built) if select else Part(built, None, [])
+
+            if part.keep is not None and not part.keep:
+                return built, None
 
             report(1, 3, tr("Fitting them to the existing network…"))
-            network = fit_to_existing(network, autodrive_data, settings.replace, gap)
+            network = fit_to_existing(
+                part.network, autodrive_data, settings.replace, gap, part.keep
+            )
 
             if cancelled():
                 return None
 
             report(2, 3, tr("Checking the roads…"))
-            return check_road_network(network, graph, autodrive_data, costmap)
+            network = check_road_network(network, graph, autodrive_data, costmap)
+            # The ends where the part was cut off are meant to be open.
+            listed = [
+                (p, text)
+                for p, text in network.listed
+                if all(flat_distance(p, edge) > EDGE_REACH for edge in part.edges)
+            ]
+            return built, dataclasses.replace(network, listed=listed)
 
-        network = self.run(tr("Roads"), work)
+        result = self.run(tr("Roads"), work)
+
+        if result is None:
+            return False
+
+        self._networks[gap, two_way], network = result
 
         if network is None:
+            self.status_changed.emit(tr("There are no roads in the box"))
             return False
 
         self.places_found.emit(network.listed)

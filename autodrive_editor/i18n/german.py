@@ -962,6 +962,7 @@ TEXTS = {
     "This map's traffic lanes are only a few loops without junctions: check the roads where they cross": "Die Verkehrsspuren dieser Karte sind nur wenige Schleifen ohne Kreuzungen: die Straßen dort prüfen, wo sie sich kreuzen",
     "Two one-way": "Zwei Einbahnspuren",
     "Whole map": "Ganze Karte",
+    "There are no roads in the box": "Im Rahmen sind keine Straßen",
     "The generator failed. Details are in the log file": "Der Generator ist fehlgeschlagen. Details stehen in der Logdatei",
     "No bunker silos shown: open a savegame": "Keine Fahrsilos angezeigt: ein Savegame öffnen",
     "{count} bunker silos picked: Enter or a click on one of them creates their lanes, Esc drops the pick": "{count} Fahrsilos gewählt: Enter oder ein Klick auf eines davon legt ihre Spuren an, Esc verwirft die Auswahl",

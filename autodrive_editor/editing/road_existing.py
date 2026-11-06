@@ -13,6 +13,7 @@ covered or removed.
 """
 
 import copy
+import dataclasses
 import math
 from collections import defaultdict
 
@@ -58,9 +59,17 @@ class _Net:
 
 
 def fit_to_existing(
-    network: RoadNetwork, autodrive_data: AutoDriveData, replace: bool, gap: float
+    network: RoadNetwork,
+    autodrive_data: AutoDriveData,
+    replace: bool,
+    gap: float,
+    keep: set[int] | None = None,
 ) -> RoadNetwork:
-    """The plan for *skip and connect* (replace False) or *replace*; gap is the lane gap."""
+    """The plan for *skip and connect* (replace False) or *replace*; gap is the lane gap. keep:
+    the planned nodes to build (None: all); when skipping, the ends left by the others join the
+    existing network like cut ends."""
+    if keep is not None and replace:
+        network = dataclasses.replace(network, piece=_only(network.piece, keep))
     nodes = autodrive_data.nodes
     points = {i: (n.x, n.y, n.z) for i, n in nodes.items()}
     edges = {(i, t) for i, n in nodes.items() for t in n.outgoing if i in nodes[t].incoming}
@@ -71,7 +80,20 @@ def fit_to_existing(
     reach = gap / 2 + ALONG_EXTRA
     if replace:
         return _replace(network, autodrive_data, planned, existing, road, regular, reach)
-    return _skip(network, autodrive_data, planned, road, regular, reach)
+    outside = set() if keep is None else set(planned.points) - keep
+    return _skip(network, autodrive_data, planned, road, regular, reach, outside)
+
+
+def _only(piece: PlannedPiece, keep: set[int]) -> PlannedPiece:
+    """The piece with only the kept nodes (before it was fitted: no joins or removals)."""
+    new = PlannedPiece()
+    index = {i: new.add(*piece.points[i], flag=piece.flags[i]) for i in sorted(keep)}
+    new.connections = [
+        (index[a], index[b], t) for a, b, t in piece.connections if a in index and b in index
+    ]
+    new.markers = [(index[i], name, group) for i, name, group in piece.markers if i in index]
+    new.open_ends = [index[i] for i in piece.open_ends if i in index]
+    return new
 
 
 def mostly_two_way(autodrive_data: AutoDriveData) -> bool:
@@ -95,12 +117,12 @@ def mostly_two_way(autodrive_data: AutoDriveData) -> bool:
     return two_way > one_way
 
 
-def _skip(network, autodrive_data, planned, road, regular, reach) -> RoadNetwork:
+def _skip(network, autodrive_data, planned, road, regular, reach, outside) -> RoadNetwork:
     listed = list(network.listed)
     road_grid = _edge_grid(road)
     road_nodes = _node_grid(road, regular)
     planned_nodes = _node_grid(planned, planned.points)
-    gone = set()
+    gone = set(outside)
     for area in network.areas:
         inside = _in_area(road_nodes, road, area)
         if inside:
