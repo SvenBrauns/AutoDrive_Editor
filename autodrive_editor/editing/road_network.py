@@ -76,6 +76,7 @@ class RoadNetwork:
     piece: PlannedPiece  # points as map positions (x, y, z)
     listed: list[tuple[Point3, str]] = field(default_factory=list)  # places to look at
     areas: list[list[tuple[float, float]]] = field(default_factory=list)  # junction outlines (x, z)
+    groups: list[frozenset[int]] = field(default_factory=list)  # junctions built as one
 
 
 Ends = tuple[Point3 | None, Point3 | None]  # where a lane's start and end belong
@@ -143,6 +144,7 @@ def build_road_network(graph: RoadGraph, options: RoadOptions | None = None) -> 
     network = RoadNetwork(PlannedPiece())
     pieces = road_pieces(graph)
     grouped = junction_groups(graph, pieces)
+    network.groups = grouped.groups
     dropped = grouped.links | grouped.spawns
     boxes, kept_inner = [], set()
     for group in grouped.groups:

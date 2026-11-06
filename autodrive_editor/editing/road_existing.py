@@ -145,7 +145,7 @@ def _skip(network, autodrive_data, planned, road, regular, reach) -> RoadNetwork
     _connect(new, edges)
     new.markers += [(index[i], name, group) for i, name, group in piece.markers if i in index]
     new.open_ends += [index[i] for i in piece.open_ends if i in index]
-    return RoadNetwork(new, listed, network.areas)
+    return RoadNetwork(new, listed, network.areas, network.groups)
 
 
 def _replace(network, autodrive_data, planned, existing, road, regular, reach) -> RoadNetwork:
@@ -174,7 +174,7 @@ def _replace(network, autodrive_data, planned, existing, road, regular, reach) -
         if p is None:
             p = min(planned.points, key=lambda i: flat_distance(planned.points[i], point))
         new.markers.append((p, marker.name, marker.group))
-    return RoadNetwork(new, listed, network.areas)
+    return RoadNetwork(new, listed, network.areas, network.groups)
 
 
 def _planned_net(piece: PlannedPiece) -> _Net:
