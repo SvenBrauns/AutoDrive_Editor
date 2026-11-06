@@ -18,6 +18,8 @@ from autodrive_editor.editing.road_graph import (
     samples,
 )
 
+MUTUAL_DISTANCE = 2.0  # from a lane point to the point found back from its partner
+
 
 @dataclass(frozen=True)
 class RoadPiece:
@@ -60,15 +62,18 @@ def road_pieces(graph: RoadGraph) -> list[RoadPiece]:
         for p, heading in along:
             partner = beside.find(p, heading, s)
             back = partner and beside.find(partner.point, partner.heading, partner.line)
-            partners.append(partner if back and back.line == s else None)
+            # Paired only both ways: from the partner the nearest point is this one again.
+            mutual = back and back.line == s and flat_distance(back.point, p) <= MUTUAL_DISTANCE
+            partners.append(partner if mutual else None)
         for other, run in groupby(
             range(len(along)), key=lambda n: partners[n] and partners[n].line
         ):
             run = list(run)
             if other is not None and other < s:
                 continue  # made from the other stretch
-            if other is None:
-                line = tuple(along[n][0] for n in run)
+            if other is None:  # the map lane, from the sample before to the one after the run
+                wider = range(max(0, run[0] - 1), min(len(along), run[-1] + 2))
+                line = tuple(along[n][0] for n in wider)
             else:
                 line = tuple(lerp(along[n][0], partners[n].point, 0.5) for n in run)
             if len(line) < 2:

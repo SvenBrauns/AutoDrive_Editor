@@ -70,3 +70,12 @@ def test_loops_crossing_are_cut_at_the_crossings():
 
     assert len(pieces) == 4
     assert all(p.two_way and {p.start, p.end} == {0, 1} for p in pieces)
+
+
+def test_road_is_two_way_only_where_both_lanes_find_each_other():
+    # The westbound lane turns away at x = 60; the eastbound lane must not lose a bit there.
+    pieces = pieces_of([lane((0, -2), (100, -2)), lane((100, 2), (60, 2), (40, 22), (0, 22))])
+
+    (two_way,) = [p for p in pieces if p.two_way]
+    (eastbound,) = [p for p in pieces if not p.two_way and p.forward == two_way.forward]
+    assert eastbound.points[-1][0] >= two_way.points[0][0]

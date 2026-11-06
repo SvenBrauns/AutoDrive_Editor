@@ -800,6 +800,7 @@ TEXTS = {
     "right turn from the {source} to the {target}": "Rechtsabbiegen von {source} nach {target}",
     "No {turn}": "Kein {turn}",
     "box": "Kreuzungsbox",
+    "Curve too tight for two lanes": "Kurve zu eng für zwei Fahrspuren",
     "Junction added": "Einmündung hinzugefügt",
     "Junction added; {details}": "Einmündung hinzugefügt; {details}",
     "missing: {missing}": "es fehlt: {missing}",
