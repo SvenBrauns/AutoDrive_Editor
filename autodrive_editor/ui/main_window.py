@@ -1,7 +1,7 @@
 from collections.abc import Iterator
 from contextlib import contextmanager
 
-from PySide6.QtCore import QEventLoop, QPointF, Qt
+from PySide6.QtCore import QEventLoop, QPointF, Qt, QTimer
 from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import (
     QApplication,
@@ -38,6 +38,7 @@ from autodrive_editor.editing.operations.parking_spots import (
     ParkingSpotOperation,
 )
 from autodrive_editor.editing.operations.reverse_direction import ReverseDirectionOperation
+from autodrive_editor.editing.operations.road_network import RoadMode, RoadNetworkOperation
 from autodrive_editor.editing.operations.rotate_selection import RotateSelectionOperation
 from autodrive_editor.editing.operations.stations import StationOperation
 from autodrive_editor.editing.path_shapes import PathShape
@@ -45,6 +46,7 @@ from autodrive_editor.error_log import set_debug_logging
 from autodrive_editor.file_io.autodrive_xml import ConfigFormat
 from autodrive_editor.file_io.building_cache import BuildingCache
 from autodrive_editor.file_io.game_files import GameFiles
+from autodrive_editor.file_io.traffic_splines import map_traffic_lanes
 from autodrive_editor.i18n import tr
 from autodrive_editor.measurement.coordinator import MeasurementCoordinator
 from autodrive_editor.model.autodrive_data import (
@@ -76,6 +78,7 @@ from autodrive_editor.ui.dialogs.messages import APP_TITLE
 from autodrive_editor.ui.dialogs.node_position_dialog import NodePositionDialog
 from autodrive_editor.ui.dialogs.parking_map_overlay import ParkingMapOverlay
 from autodrive_editor.ui.dialogs.parking_spot_dialog import ParkingSpotDialog
+from autodrive_editor.ui.dialogs.progress_dialog import GeneratorFailed, run_with_progress
 from autodrive_editor.ui.dialogs.settings_dialog import SettingsDialog
 from autodrive_editor.ui.dialogs.silo_dialog import SiloDialog
 from autodrive_editor.ui.dialogs.station_dialog import StationDialog
@@ -120,6 +123,7 @@ from autodrive_editor.ui.tools.navigate_tool import NavigateTool
 from autodrive_editor.ui.tools.node_click_tool import NodeClickTool
 from autodrive_editor.ui.tools.parallel_lane_tool import ParallelLaneTool
 from autodrive_editor.ui.tools.path_tool import PathTool
+from autodrive_editor.ui.tools.roads_tool import RoadsTool
 from autodrive_editor.ui.tools.rotate_selection_tool import RotateSelectionTool
 from autodrive_editor.ui.tools.select_tool import SelectTool
 from autodrive_editor.ui.tools.station_pick_tool import StationPickTool
@@ -732,6 +736,19 @@ class MainWindow(QMainWindow):
             parent=self,
         )
 
+        self.road_network_operation = RoadNetworkOperation(
+            context,
+            savegame_provider=lambda: self.project_coordinator.savegame_folder(),
+            read_lanes=self._read_traffic_lanes,
+            costmap_provider=lambda: self.scene_renderer.costmap,
+            gap_provider=lambda: self.settings.junction_stem[1],
+            run=self._run_generator,
+            parent=self,
+        )
+        self.road_network_operation.places_found.connect(self._show_road_places)
+        # The Roads task is active, so its traffic lanes are shown.
+        self._roads_shown = False
+
         self.edit_operations = [
             self.move_nodes_operation,
             self.delete_nodes_operation,
@@ -752,6 +769,7 @@ class MainWindow(QMainWindow):
             self.network_check_operation,
             self.find_route_operation,
             self.junction_operation,
+            self.road_network_operation,
         ]
 
     def _create_project_coordinator(self):
@@ -1028,6 +1046,15 @@ class MainWindow(QMainWindow):
             missing_costmap_message=self.find_route_operation.missing_costmap_message,
             z_value=display_style.selected_node_z + 1,
         )
+        roads_tool = RoadsTool(
+            self.view,
+            click=self._create_road_at,
+            pick_area=self._create_roads_in,
+            create=self._create_roads,
+            shown=self._show_roads,
+            hint=self._roads_hint,
+            is_target=lambda view_position: self._road_at(view_position) is not None,
+        )
         self.generate_tool = GenerateTool(
             self.view,
             {
@@ -1036,10 +1063,116 @@ class MainWindow(QMainWindow):
                 GenerateTask.PARKING_SPOTS: parking_tool,
                 GenerateTask.STATIONS: station_tool,
                 GenerateTask.BUNKER_SILOS: silo_tool,
+                GenerateTask.ROADS: roads_tool,
             },
             start_planning=lambda: self.planning.start_plan(),
         )
         self.view.register_tool(InteractionMode.GENERATE, self.generate_tool)
+
+    def _read_traffic_lanes(self, savegame):
+        cache = self.project_coordinator.building_cache
+
+        with self._game_files() as files:
+            lanes = map_traffic_lanes(savegame, files, cache)
+
+        cache.save()
+        return lanes
+
+    def _run_generator(self, title: str, work):
+        """Runs the work with the progress dialog: its result, or None after Cancel or a
+        failure (the status says so)."""
+
+        try:
+            return run_with_progress(title, work, self)
+        except GeneratorFailed:
+            self._set_status(tr("The generator failed. Details are in the log file"))
+            return None
+
+    def _show_roads(self, shown: bool):
+        self._roads_shown = shown
+
+        if not shown:
+            self.scene_renderer.set_traffic_lanes([])
+            return
+
+        # After the tool change: reading the lanes may show the progress dialog.
+        QTimer.singleShot(0, self._prepare_roads)
+
+    def _prepare_roads(self):
+        if self._roads_shown:
+            self.road_network_operation.prepare()
+            self.scene_renderer.set_traffic_lanes(self.road_network_operation.lanes)
+
+    def _create_roads(self) -> bool:
+        """Builds the roads of the whole map into the plan, in the Whole map mode."""
+
+        return self._build_roads(RoadMode.WHOLE_MAP, self.road_network_operation.create)
+
+    def _create_roads_in(self, path) -> bool:
+        """Builds the roads in the dragged box or lasso, in the Box mode."""
+
+        box = [(point.x(), point.y()) for point in path.toFillPolygon()]
+
+        return self._build_roads(
+            RoadMode.BOX, lambda: self.road_network_operation.create_in_box(box)
+        )
+
+    def _road_at(self, view_position) -> int | None:
+        """The road under the pointer, in the Click road mode."""
+
+        if self.road_network_operation.settings.mode != RoadMode.CLICK_ROAD:
+            return None
+
+        position = self.view.mapToScene(view_position)
+        reach = self.STOP_CLICK_TOLERANCE / self.view.zoom_level
+
+        return self.road_network_operation.road_at(position.x(), position.y(), reach)
+
+    def _create_road_at(self, view_position) -> bool:
+        position = self.view.mapToScene(view_position)
+        reach = self.STOP_CLICK_TOLERANCE / self.view.zoom_level
+
+        return self._build_roads(
+            RoadMode.CLICK_ROAD,
+            lambda: self.road_network_operation.create_at(position.x(), position.y(), reach),
+        )
+
+    def _build_roads(self, mode: RoadMode, create) -> bool:
+        operation = self.road_network_operation
+
+        if operation.settings.mode != mode or not operation.prepare():
+            return False
+
+        self.scene_renderer.set_traffic_lanes(operation.lanes)
+        self.planning.start_plan()
+        return create()
+
+    def _roads_hint(self) -> str:
+        if not self.road_network_operation.lanes:
+            return tr(
+                "Roads are built from the map's traffic lanes: open a savegame of a map with them"
+            )
+
+        return {
+            RoadMode.BOX: tr("Right-drag a box around the roads to build"),
+            RoadMode.WHOLE_MAP: tr("Enter or Create builds the roads of the whole map"),
+            RoadMode.CLICK_ROAD: tr("Click a road to build it from junction to junction"),
+        }[self.road_network_operation.settings.mode]
+
+    def _show_road_places(self, places):
+        self.check_dock.set_road_places(places)
+
+        if places:
+            self.check_dock.show()
+            self.check_dock.raise_()
+
+    def focus_place(self, x: float, z: float):
+        """Centres the map on a map position."""
+
+        if self.view.zoom_level < self.FOCUS_MARKER_ZOOM:
+            self.view.set_zoom_level(self.FOCUS_MARKER_ZOOM)
+
+        self.view.centerOn(x, z)
 
     def set_generate_task(self, task: GenerateTask):
         """Picks what the Generate tool creates and selects the tool."""
@@ -1078,12 +1211,17 @@ class MainWindow(QMainWindow):
             self.generate_tool.task,
             *self.settings.junction_stem,
             self.settings.junction_style,
+            self.road_network_operation.settings,
         )
         self.actions.show_generate_task(self.generate_tool.task)
         self.generate_options.stem_changed.connect(self.settings.set_junction_stem)
         self.generate_options.style_changed.connect(self.settings.set_junction_style)
         self.generate_options.remove_last_requested.connect(self.find_route_operation.remove_last)
         self.generate_options.clear_requested.connect(self.find_route_operation.clear)
+        self.generate_options.road_settings_changed.connect(
+            lambda settings: setattr(self.road_network_operation, "settings", settings)
+        )
+        self.generate_options.create_roads_requested.connect(self._create_roads)
         self.options_bar.add_options([InteractionMode.GENERATE], self.generate_options)
 
         self.connect_options = ConnectOptionsWidget(
@@ -1357,6 +1495,7 @@ class MainWindow(QMainWindow):
         self.check_dock.hide()
 
         self.check_dock.nodes_activated.connect(self.focus_nodes)
+        self.check_dock.place_activated.connect(self.focus_place)
 
         def network_path():
             source = self.project_coordinator.config_source
@@ -1480,6 +1619,12 @@ class MainWindow(QMainWindow):
         self.marker_dock.set_data(autodrive_data)
 
         self.network_check.network_loaded()
+
+        # Another savegame may have another map: its lanes are read when Roads needs them.
+        self.road_network_operation.forget()
+        self.check_dock.set_road_places([])
+        self.scene_renderer.set_traffic_lanes([])
+        self._show_roads(self._roads_shown)
 
         self.open_screen.hide()
 

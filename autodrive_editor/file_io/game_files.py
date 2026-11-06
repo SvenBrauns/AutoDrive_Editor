@@ -9,6 +9,7 @@ A name without prefix inside a mod's file is relative to that mod.
 
 import zipfile
 from pathlib import Path
+from typing import IO
 
 from autodrive_editor.file_io.mod_archive import ModArchive
 from autodrive_editor.i18n import tr
@@ -42,13 +43,19 @@ class GameFiles:
         self._archives: dict[str, ModArchive] = {}
 
     def read(self, mod: str | None, path: str) -> bytes:
+        with self.open(mod, path) as stream:
+            return stream.read()
+
+    def open(self, mod: str | None, path: str) -> IO[bytes]:
+        """The file as a stream, for large files that are read in parts."""
+
         if mod is not None:
-            return self._archive(mod).read(path)
+            return self._archive(mod).open(path)
 
         if self.install_directory is None:
             raise FileNotFoundError(tr("The FS25 install folder is not set"))
 
-        return (self.install_directory / path).read_bytes()
+        return (self.install_directory / path).open("rb")
 
     def stamp(self, mod: str | None, path: str) -> tuple[int, ...] | None:
         """Size and modification time of a file, for a zipped mod those of the zip; None if it is

@@ -56,3 +56,13 @@ def test_fixed_distances_close_together_or_to_an_end_share_a_node():
     gaps = [math.dist(a, b) for a, b in pairwise(points)]
     assert min(gaps) >= 0.5
     assert any(p == pytest.approx((20, 0)) for p in points)
+
+
+def test_road_points_stay_on_a_line_that_turns_sharply():
+    # A map turn lane (Thüringen): the nodes ran 140 m off the line after the sharp bend.
+    line = [(-2099.4, 2765.5), (-2094, 2761), (-2082, 2750), (-2074, 2761)]
+
+    points = road_points(line, 12.0)
+
+    assert all(-2100 <= x <= -2073 and 2749 <= z <= 2767 for x, z in points)
+    assert all(math.dist(a, b) <= 12 + 1e-9 for a, b in pairwise(points))

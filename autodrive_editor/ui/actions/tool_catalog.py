@@ -111,6 +111,10 @@ GENERATE_TASKS = {
         "generate_silos",
         tr("Click a bunker silo, Shift-click or right-drag a box to pick several"),
     ),
+    GenerateTask.ROADS: (
+        "generate_roads",
+        tr("Roads from the map's traffic lanes: the whole map, a box or a clicked road"),
+    ),
 }
 
 MOVE_TOOL = ToolDefinition(

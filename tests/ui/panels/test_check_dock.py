@@ -146,3 +146,19 @@ def test_setting_the_checks_is_not_reported_as_a_change(dock):
 
     assert dock.enabled_checks == {"overlap"}
     assert changes == []
+
+
+def test_road_places_stay_after_a_check_and_centre_the_map(dock):
+    activated, requested = [], []
+    dock.place_activated.connect(lambda x, z: activated.append((x, z)))
+    dock.fix_requested.connect(requested.append)
+
+    dock.set_road_places([((10.0, 0.0, 20.0), "2 of 6 turns missing")])
+    dock.set_results(RESULTS)
+    group = dock.group_item(5)
+    dock.tree.itemClicked.emit(group.child(0), 0)
+    dock.fix_all_button.click()
+
+    assert group.childCount() == 1
+    assert activated == [(10.0, 20.0)]
+    assert requested == [RESULTS]  # the places are no network problems to fix

@@ -31,7 +31,8 @@ class CheckDock(QDockWidget):
     """Results of the network check, one group per kind of problem, and a
     group of ignored entries. Clicking an entry shows its nodes on the map;
     entries can be fixed, ignored or no longer ignored. Each check can be
-    switched off."""
+    switched off. A last group lists the places to look at that the Roads
+    generator found; clicking one centres the map there."""
 
     check_requested = Signal()
     tolerances_changed = Signal(float, float)
@@ -40,11 +41,14 @@ class CheckDock(QDockWidget):
     fix_requested = Signal(object)
     ignore_requested = Signal(object)
     unignore_requested = Signal(object)
+    place_activated = Signal(float, float)
 
     # (kind, problem) of an entry, as in CheckResults.entries().
     ENTRY_ROLE = Qt.ItemDataRole.UserRole
     # True on the group of ignored entries and its entries.
     IGNORED_ROLE = Qt.ItemDataRole.UserRole + 1
+    # (x, z) of a place the Roads generator found; () on their group.
+    PLACE_ROLE = Qt.ItemDataRole.UserRole + 2
 
     NOT_CHECKED_TEXT = tr("The network has not been checked yet")
 
@@ -159,6 +163,7 @@ class CheckDock(QDockWidget):
         layout.addLayout(fix_buttons)
 
         self.setWidget(content)
+        self.road_places: list = []
         self.set_results(None)
 
     @property
@@ -218,7 +223,19 @@ class CheckDock(QDockWidget):
             ]:
                 item.setData(0, self.IGNORED_ROLE, True)
 
+        self._add_road_places()
         self._update_buttons()
+
+    def set_road_places(self, places):
+        """The places to look at, (point (x, y, z), text), of the last Roads run."""
+
+        self.road_places = list(places)
+
+        for item in self._group_items():
+            if item.data(0, self.PLACE_ROLE) is not None:
+                self.tree.takeTopLevelItem(self.tree.indexOfTopLevelItem(item))
+
+        self._add_road_places()
 
     def group_item(self, index: int) -> QTreeWidgetItem:
         """The group of overlapping nodes (0), outside the map (1), height
@@ -264,6 +281,21 @@ class CheckDock(QDockWidget):
             terrain=problem.terrain_height,
         )
 
+    def _add_road_places(self):
+        if not self.road_places:
+            return
+
+        group_item = QTreeWidgetItem([tr("Road network ({count})", count=len(self.road_places))])
+        group_item.setData(0, self.PLACE_ROLE, ())
+        self.tree.addTopLevelItem(group_item)
+
+        for (x, _, z), text in self.road_places:
+            item = QTreeWidgetItem([f"{text} ({x:.0f}, {z:.0f})"])
+            item.setData(0, self.PLACE_ROLE, (x, z))
+            group_item.addChild(item)
+
+        group_item.setExpanded(True)
+
     def _group_items(self) -> list[QTreeWidgetItem]:
         return [self.tree.topLevelItem(i) for i in range(self.tree.topLevelItemCount())]
 
@@ -274,7 +306,10 @@ class CheckDock(QDockWidget):
         entries = []
 
         for item in items:
-            if bool(item.data(0, self.IGNORED_ROLE)) != ignored:
+            if (
+                bool(item.data(0, self.IGNORED_ROLE)) != ignored
+                or item.data(0, self.PLACE_ROLE) is not None
+            ):
                 continue
 
             if item.data(0, self.ENTRY_ROLE) is not None:
@@ -298,6 +333,9 @@ class CheckDock(QDockWidget):
 
     def _handle_click(self, item: QTreeWidgetItem, column: int):
         entry = item.data(0, self.ENTRY_ROLE)
+        place = item.data(0, self.PLACE_ROLE)
 
-        if entry is not None:
+        if place:
+            self.place_activated.emit(*place)
+        elif entry is not None:
             self.nodes_activated.emit(problem_node_ids(*entry))

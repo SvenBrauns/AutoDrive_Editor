@@ -155,6 +155,7 @@ def test_menu_entry_and_button_pick_the_same_task(window):
         "Parking spots",
         "Stations",
         "Bunker silos",
+        "Roads",
         "Building types…",
     ]
 
@@ -244,7 +245,7 @@ def test_options_bar_buttons_remove_the_last_waypoint_and_clear(window):
     for x in (0, 10, 20):
         click(window, view_pos(window, x, 20))
     options = window.generate_options
-    assert options.route_options.isEnabled()
+    assert not options.route_options.isHidden()
 
     options.remove_last_button.click()
     assert len(window.find_route_operation.waypoints) == 2

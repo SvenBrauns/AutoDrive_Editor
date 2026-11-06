@@ -153,7 +153,7 @@ def read_preplaced(scene_data: bytes) -> dict[str, tuple[str, Transform]]:
         transform = IDENTITY
 
         for attributes in path:
-            transform = _combine(transform, _local_transform(attributes))
+            transform = combine(transform, local_transform(attributes))
 
         preplaced[building] = (building_file, transform)
 
@@ -271,12 +271,12 @@ def node_transform(scene, node_path: str) -> Transform:
 
     for index in filter(None, children.split("|")):
         element = list(element)[int(index)]
-        transform = _combine(transform, _local_transform(element))
+        transform = combine(transform, local_transform(element))
 
     return transform
 
 
-def _local_transform(element) -> Transform:
+def local_transform(element) -> Transform:
     matrix = rotation_matrix(floats(element.get("rotation", "0 0 0")))
     scale = floats(element.get("scale", "1 1 1"))
     scaled = tuple(tuple(row[i] * scale[i] for i in range(3)) for row in matrix)
@@ -316,7 +316,7 @@ def rotate(transform: Transform, direction) -> tuple[float, float, float]:
     return tuple(sum(transform[0][i][k] * direction[k] for k in range(3)) for i in range(3))
 
 
-def _combine(outer: Transform, inner: Transform) -> Transform:
+def combine(outer: Transform, inner: Transform) -> Transform:
     """The transform that applies inner first, then outer."""
 
     return _multiply(outer[0], inner[0]), apply_transform(outer, inner[1])
