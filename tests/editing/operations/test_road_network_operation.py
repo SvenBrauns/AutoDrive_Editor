@@ -45,12 +45,10 @@ def operation(data, lanes=ROAD, savegame=SAVEGAME, edits=None):
 
 def test_reads_the_lanes_once_per_savegame():
     roads = operation(AutoDriveData())
-    shown = []
-    roads.lanes_changed.connect(shown.append)
 
     assert roads.prepare() and roads.prepare()
     assert roads.reads == [SAVEGAME]
-    assert shown == [ROAD]
+    assert roads.lanes == ROAD
 
 
 def test_needs_a_savegame_with_traffic_lanes():

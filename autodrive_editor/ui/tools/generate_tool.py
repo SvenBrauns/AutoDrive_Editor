@@ -14,6 +14,7 @@ class GenerateTask(Enum):
     PARKING_SPOTS = "parking_spots"
     STATIONS = "stations"
     BUNKER_SILOS = "bunker_silos"
+    ROADS = "roads"
 
     @property
     def display_name(self) -> str:
@@ -23,6 +24,7 @@ class GenerateTask(Enum):
             GenerateTask.PARKING_SPOTS: tr("Parking spots"),
             GenerateTask.STATIONS: tr("Stations"),
             GenerateTask.BUNKER_SILOS: tr("Bunker silos"),
+            GenerateTask.ROADS: tr("Roads"),
         }[self]
 
 

@@ -44,8 +44,6 @@ class RoadNetworkOperation(EditOperation):
     """Builds AutoDrive roads from the traffic lanes of the savegame's map (see road_network),
     fitted to the existing network and checked, in one undo step."""
 
-    # The map's traffic lanes, after they were read or forgotten.
-    lanes_changed = Signal(list)
     # The places to look at of the last run: (point, text).
     places_found = Signal(list)
 
@@ -75,7 +73,6 @@ class RoadNetworkOperation(EditOperation):
         """Drops the read lanes, e.g. when another file was opened."""
 
         self._savegame, self.lanes, self.graph = None, [], None
-        self.lanes_changed.emit([])
 
     def prepare(self) -> bool:
         """Reads the traffic lanes of the loaded savegame's map unless already read. False if
@@ -108,7 +105,6 @@ class RoadNetworkOperation(EditOperation):
 
             self._savegame = savegame
             self.lanes, self.graph = result
-            self.lanes_changed.emit(self.lanes)
 
         if not self.lanes:
             self.status_changed.emit(
