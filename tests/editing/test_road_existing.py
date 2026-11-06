@@ -4,7 +4,7 @@ from road_lane_helpers import junction, lane
 
 from autodrive_editor.editing.edit_history import EditHistory
 from autodrive_editor.editing.planned_piece import push_piece
-from autodrive_editor.editing.road_existing import fit_to_existing
+from autodrive_editor.editing.road_existing import fit_to_existing, mostly_two_way
 from autodrive_editor.editing.road_graph import build_road_graph
 from autodrive_editor.editing.road_network import RoadOptions, build_road_network
 from autodrive_editor.model.autodrive_data import SUBPRIO_FLAG, AutoDriveData, MarkerData, NodeData
@@ -164,3 +164,15 @@ def test_replace_removes_the_old_road_and_joins_its_branch_and_marker():
         assert reaches(data, branch[0], node_at(data, x, z))
         assert reaches(data, node_at(data, 100 - x, z), branch[0])
     assert not result.listed
+
+
+def test_mostly_two_way_counts_regular_connections():
+    data = AutoDriveData()
+    assert not mostly_two_way(data)  # empty: one-way lanes
+    chain(data, [(0, 0), (10, 0), (20, 0)], ConnectionType.DUAL)
+    chain(data, [(0, 5), (10, 5)])
+    assert mostly_two_way(data)
+    chain(data, [(0, 9), (10, 9), (20, 9)])
+    assert not mostly_two_way(data)
+    chain(data, [(0, 20), (10, 20), (20, 20)], ConnectionType.DUAL, flag=SUBPRIO_FLAG)
+    assert not mostly_two_way(data)  # subprio does not count

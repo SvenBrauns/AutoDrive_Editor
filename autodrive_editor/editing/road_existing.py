@@ -74,6 +74,27 @@ def fit_to_existing(
     return _skip(network, autodrive_data, planned, road, regular, reach)
 
 
+def mostly_two_way(autodrive_data: AutoDriveData) -> bool:
+    """True if the existing network has more two-way than one-way connections between regular
+    nodes (reverse ones are not counted); an empty network is taken as one-way lanes."""
+    nodes = autodrive_data.nodes
+    one_way = two_way = 0
+    for i, node in nodes.items():
+        for t in node.outgoing:
+            other = nodes.get(t)
+            if (
+                other is None
+                or not (node.is_regular and other.is_regular)
+                or i not in other.incoming
+            ):
+                continue
+            if i not in other.outgoing:
+                one_way += 1
+            elif i < t:
+                two_way += 1
+    return two_way > one_way
+
+
 def _skip(network, autodrive_data, planned, road, regular, reach) -> RoadNetwork:
     listed = list(network.listed)
     road_grid = _edge_grid(road)

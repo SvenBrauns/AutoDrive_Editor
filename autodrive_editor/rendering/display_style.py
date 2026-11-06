@@ -65,6 +65,11 @@ class DisplayStyle:
     stop_arrow_min_px: float = 14.0
     stop_arrow_max_px: float = 36.0
 
+    # Traffic lanes of the map, while the Roads task is active.
+    traffic_lane_color: tuple[int, int, int] = (255, 120, 0)
+    traffic_lane_alpha: int = 140
+    traffic_lane_px: float = 2.0
+
     # Halo behind the nodes the open plan changed (RGBA).
     plan_color: tuple[int, int, int, int] = (30, 144, 255, 150)
     plan_halo_min_px: float = 10.0
@@ -75,6 +80,7 @@ class DisplayStyle:
     drivability_z: float = -30.0
     shed_z: float = -20.0
     station_z: float = -15.0
+    traffic_lane_z: float = -12.0
     connection_z: float = -10.0
     plan_z: float = -5.0
     node_z: float = 0.0
