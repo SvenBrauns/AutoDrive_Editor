@@ -2,252 +2,564 @@
 
 **English** | [Deutsch](MANUAL.de.md) · back to the [README](README.md)
 
-- [First start](#first-start)
-- [Opening](#opening)
-- [The window](#the-window)
-- [Tools](#tools)
-- [Display](#display)
-- [Game picture](#game-picture)
-- [Buildings of the savegame](#buildings-of-the-savegame)
-- [Planning and generating](#planning-and-generating)
-- [Checking the network](#checking-the-network)
-- [Saving](#saving)
-- [Settings](#settings)
-- [Help and errors](#help-and-errors)
+New here? Start with the [Quick start](#quick-start). The other parts can be read in any order.
 
-## First start
+1. [Quick start](#quick-start)
+2. [Basics](#basics)
+3. [Editing the network](#editing-the-network)
+4. [Planning and generators](#planning-and-generators)
+5. [The map underneath](#the-map-underneath)
+6. [Companion mod](#companion-mod)
+7. [Checking and saving](#checking-and-saving)
+8. [Reference](#reference)
 
-The editor looks for the FS25 user folder (usually `Documents\My Games\FarmingSimulator2025`) and the game's installation folder and shows both for you to check. You can change either later under `File → Settings`.
+## Quick start
 
-Map images are not shipped with the editor. They are imported from your `mods` folder or the base game the first time you open a file of that map (see [Opening](#opening)).
+This walks you through a first small edit: open a savegame, draw a road, add a marker and save.
 
-## Opening
+1. **Start the editor.** On the first start it shows the FS25 user folder it found (usually `Documents\My Games\FarmingSimulator2025`) and the game's installation folder. Check both and confirm.
+2. **Open a savegame.** The Open screen lists your savegames, newest first. Double-click one. The first time, its map is imported from your `mods` folder or the base game; a progress bar shows how far it is.
+3. **Find a place.** Turn the mouse wheel to zoom and drag the map with the left mouse button. `Home` shows the whole map.
+4. **Draw a road.** Press `1` (Connect). Click on free ground, then click again a bit further on, and again: each click creates a node and connects it from the one before. Click an existing node to join your road to it. Press `Esc` to end the road.
+5. **Add a marker.** Press `M` (Marker) and click the last node of your road. Enter a name, e.g. "My yard", and a group, then confirm.
+6. **Undo a mistake** with `Ctrl+Z`. Every change can be undone.
+7. **Save** with `Ctrl+S`. If the game is running this savegame with the [Companion mod](#companion-mod), AutoDrive drives on the new road right away. Otherwise it is there the next time you load the savegame.
 
-**Open screen.** While nothing is open, the Open screen lies on the map. `File → Open…` (`Ctrl+O`) and the Open button of the toolbar show the same screen as a dialog. It lists:
+> **Tip:** Building junctions, station lanes or whole routes by hand takes long. The [generators](#planning-and-generators) do most of it for you.
 
-- **Savegames**, newest first, with number, name, map and the time they were saved. A savegame without AutoDrive data is listed too ("no AutoDrive network"); it opens with an empty network, and Save creates its `AutoDrive_config.xml`.
-- **Routes (RoutesManager)**: all routes of AutoDrive's RoutesManager, with map, revision and date.
-- **Open other file…**: any AutoDrive XML file in either format.
+## Basics
 
-Double-click an entry or press `Open`. Without a game folder or savegames the screen says "No savegames found" and links to the settings. `File → Open recent` lists the last five opened files. At startup the editor opens the last one again, unless an autosave is restored; this can be turned off under `File → Settings`.
+### Words used in this manual
 
-**Savegame or route.** Open the **savegame** to edit the network you drive with: AutoDrive copies an imported route into the savegame, so the savegame holds its own full network. A savegame brings everything with it: the map, the savegame's heightmap (with its terraforming), the parking positions of its vehicles, its sheds and stations, the drivability map and the game picture. Open a **route** to edit a route that is not active in any savegame, or one to share. A route opens alone: its network on the map named in the RoutesManager, without vehicles, sheds, stations or drivability map.
+- **Node**: a point of the AutoDrive network. Vehicles drive from node to node.
+- **Connection**: the line between two nodes. Its color shows its type:
+  - **Regular**: one way, in the direction of the arrow.
+  - **Dual**: both ways.
+  - **Reverse**: one way, driven backwards.
+- **Regular and subprio nodes**: AutoDrive prefers regular nodes. Subprio nodes (drawn orange) are used only where a route must, e.g. lanes into parking spots or stations, so other routes don't lead through them.
+- **Marker**: a named node that vehicles can drive to, e.g. a field, a shed or a selling point. Markers are sorted into **groups**, which AutoDrive shows as folders.
+- **Savegame**: a game you play. It holds its own copy of the network, together with the map, vehicles and buildings.
+- **Route**: a network saved in AutoDrive's **RoutesManager**, to keep versions or share them. A route can be imported into a savegame.
+- **Plan**: a group of changes you can still throw away, see [Planning mode](#planning-mode).
 
-**Maps.** A map that is not imported yet is imported when the file opens, without asking, with a progress bar: a savegame names its map mod, for a route the mods are searched for its map name. Only a map that is not found asks: `Choose mod zip…` or `Continue without map`. Without a map the map size fits the network (2, 4, 8 or 16 km). A file that belongs to no imported map, e.g. a route file outside the RoutesManager, opens without a map; choose one under `File → Settings → Maps → Use this map for the open file` (see [Settings](#settings)). If the map's mod was updated since the map was imported, the editor offers to import it again: `Import`, `Not now` (asked again at the next start) or `Not for this version` (asked again after the next update of the mod).
-
-## The window
+### The window
 
 - **Menus** at the top: `File`, `Edit`, `View`, `Generate`, `Check`, `Help`.
-- **Toolbar** below them: Open, Save · Undo, Redo · Copy, Cut, Paste · Background (map image, ground map or game picture) · Grid (show, spacing, rotation) · Snap to grid · Rotation of the view (angle, step) · Refresh game picture tiles · Planning mode.
-- **Tool strip** at the left: all tools in one column, see [Tools](#tools).
-- **Options bar** above the map: the name of the active tool, its variant buttons and its options. Tools without options show only their name.
-- **Docks** at the right: `Inspector` (the selected node: type, coordinates, marker, height from the file and from the heightmap; "Nothing selected" otherwise) and `Markers` (all marker groups; a click centers a marker, a double-click edits it) share one place as tabs. The `Network check` dock opens with `Check → Check network`. `View` switches the docks on and off; `Help → Debug info` shows runtime numbers.
-- **Status bar** at the bottom: what the active tool expects next, and the results of saving and checking. At the right, the map position under the pointer (X and Z in metres).
+- **Toolbar** below them: Open, Save · Undo, Redo · Copy, Cut, Paste · Background · Grid (show, spacing, rotation) · Snap to grid · Rotation of the view (angle, step) · Refresh game picture tiles · Planning mode.
+- **Tool strip** at the left: all tools in one column, see [All tools and keys](#all-tools-and-keys).
+- **Options bar** above the map: the name of the active tool, its variant buttons and its options.
+- **Docks** at the right: `Inspector` (the selected node: type, coordinates, marker, height from the file and from the heightmap) and `Markers` (all markers by group) share one place as tabs. The `Network check` dock opens with `Check → Check network`. `View` switches the docks on and off.
+- **Status bar** at the bottom: what the active tool expects next, results of saving and checking, and at the right the map position under the pointer (X and Z in metres).
 
-**Find.** `Edit → Find marker or node…` (`Ctrl+F`) opens the `Markers` dock and puts the cursor in its search field. Typing filters the markers by name; a group whose name matches keeps all its markers. A node number offers that node (`Node 123`) at the top. `Enter` or a click centers and selects the first result, `Esc` clears the field.
+### Moving around the map
 
-**Remembered.** The window keeps its size, position and docks between starts. Each file in `File → Open recent` opens where its view was left (position, zoom, rotation); a file opened for the first time shows the whole network. `View → Show whole map` (`Home`) fits the network into the window and resets the rotation. `View → Zoom to selection` (`F`) fits the selected nodes into the window and keeps the rotation; it zooms in no further than a click on a marker does. While a file loads, the map shows "Loading …" and the pointer waits.
+| Action | How |
+| --- | --- |
+| Zoom | Mouse wheel; `+` and `-` zoom around the middle |
+| Move the map | Left-drag on free ground (in every tool) |
+| Rotate the view | Middle-drag |
+| Show the whole map | `Home` (`View → Show whole map`), also resets the rotation |
+| Zoom to the selection | `F` (`View → Zoom to selection`), keeps the rotation |
+| Cancel a tool's current step | Right-click or `Esc` |
+| Confirm a tool's step | `Enter`, e.g. for curves |
 
-Mouse: the **wheel** zooms (keys: `+` and `-` zoom around the middle of the map), **left drag** on free ground moves the map in every tool, **middle drag** rotates the view. **Right click** or **Esc** cancels the current step of a tool; **Enter** confirms it (for example for curves).
+The window keeps its size, position and docks. Each recent file opens where you left its view; a file opened for the first time shows the whole network.
 
-## Tools
+### Finding a marker or node
 
-The tool strip holds 17 tools in groups. Create, Connect, Delete, Draw, Marker, Measure and Generate have **variants**: buttons at the left of the options bar. A variant's key picks the tool and that variant at once; clicking the tool in the strip picks it with the variant used last. The strip button shows the current variant. Selection is the start tool.
+Press `Ctrl+F` (`Edit → Find marker or node…`). The `Markers` dock opens with the cursor in its search field.
 
-| Tool | Key | What it does |
+- Type part of a name: the markers are filtered. A group whose name matches keeps all its markers.
+- Type a node number: that node is offered at the top (`Node 123`).
+- `Enter` or a click centers and selects the first result; `Esc` clears the field.
+
+In the `Markers` dock, a click on a marker centers it and a double-click edits it.
+
+### Opening files
+
+`File → Open…` (`Ctrl+O`) shows the Open screen, which also lies on the map while nothing is open. It lists:
+
+- **Savegames**, newest first, with number, name, map and save time. A savegame without AutoDrive data is listed too ("no AutoDrive network"); it opens with an empty network, and Save creates its `AutoDrive_config.xml`.
+- **Routes (RoutesManager)**, with map, revision and date.
+- **Open other file…**: any AutoDrive XML file in either format.
+
+`File → Open recent` lists the last five files. At startup the editor opens the last one again (can be turned off under `File → Settings`), unless it restores an autosave.
+
+**Savegame or route?**
+
+- Open the **savegame** to edit the network you drive with. It brings everything with it: the map, the heightmap with its terraforming, the parking positions of its vehicles, its sheds and stations, the drivability map and the game picture.
+- Open a **route** to edit a network that isn't active in any savegame, or one to share. A route opens alone: its network on its map, without vehicles, buildings or drivability map.
+
+**Maps.** A map is imported automatically the first time a file of it opens. A savegame names its map mod; for a route, the mods are searched for its map name.
+
+- If the map is not found, choose `Choose mod zip…` or `Continue without map`. Without a map, the map size fits the network (2, 4, 8 or 16 km).
+- A file that belongs to no map (e.g. a route file outside the RoutesManager) opens without one. Choose a map under `File → Settings → Maps → Use this map for the open file`.
+- If the map's mod was updated, the editor offers to import it again: `Import`, `Not now` (asked again at the next start) or `Not for this version` (asked again after the next update).
+
+## Editing the network
+
+Each tool has a key; all keys are listed in [All tools and keys](#all-tools-and-keys). Some tools have **variants**, shown as buttons at the left of the options bar. A variant's key picks the tool and that variant at once.
+
+> **Tip:** While any tool is active, the nodes connected to the node under the pointer are drawn purple.
+
+### Selecting
+
+Press `A` (Selection).
+
+- Click a node, or right-drag a box. `Shift` + right-drag draws a freehand lasso. `Ctrl` adds to the selection.
+- Double-click a node or connection to select its whole **road piece**: up to the next junctions or road ends, or to where the connection or node type changes.
+- `Ctrl+A` selects everything; `Edit → Select road piece` grows the selection to whole road pieces.
+
+Hidden nodes and connections can't be selected unless `Hidden items can be selected` is on (see [Display options](#display-options)).
+
+### Creating and connecting nodes
+
+- **Create** (`E` regular, `Shift+E` subprio): click free ground to create a node. Click a connection to insert a node into it; it lies on the line, between the heights of the ends, and keeps the connection's type and direction.
+- **Connect** (`1` regular, `2` dual, `3` reverse): click nodes one after another to connect them. A click on free ground creates a node, a click on a connection inserts one, and either is connected from the previous node. So you can draw a whole road with this one tool. The node type is in the options bar. `Esc` or right-click ends the chain.
+- **Toggle type** (`T`): click a node to switch between regular and subprio.
+- **Reverse direction** (`U`): click a connection to turn it around. Inside a selection, all its connections are turned.
+
+### Drawing lines and curves
+
+Press `I` (Line), `K` (Arc) or `B` (Bézier).
+
+1. Click the start and the end.
+2. For Arc and Bézier, drag the handles to shape the curve. A Bézier curve has one or two control points.
+3. Press `Enter`.
+
+The nodes are spaced evenly. Spacing, connection type, node type and number of control points are in the options bar. Switching the variant while drawing keeps start and end.
+
+### Parallel lanes
+
+`Shift+I` (Draw → Parallel) adds a lane beside each selected road, e.g. the second lane of a pair of one-way roads.
+
+1. Select the roads, before or in the tool: right-drag a box, `Shift` + right-drag a lasso, `Ctrl`+click toggles a node, right-click clears.
+2. Point beside a road. The dashed preview follows the pointer, which sets the side and the distance (steps of 0.5 m, shown in `Lane distance`).
+3. Click to create the lanes there, or press `Enter` (`Apply`) to use the distance in the box.
+
+- Every road gets its lane on the same side of its own driving direction, so several one-way roads are done at once.
+- The lane is connected like its road (regular, dual or reverse). `Direction` sets the same or the opposite way. `Spacing` and `Node type` set the nodes; they get the terrain height, or the height of the road beside them.
+- The ends stay open and the new nodes aren't selected. One undo removes all lanes.
+- Refused, with a message: a junction in the selection, a closed ring, a road whose connections differ in type or direction, or a curve tighter than the distance on the inner side.
+
+### Moving, rotating and aligning
+
+- **Move** (`V`): drag a node or the selection. `Shift` moves along one grid axis only. `S` switches snap to grid.
+- **Rotate** (`R`): rotate the selection with the ring. `Shift` snaps in steps (`Snap step`, default 15°).
+- **Enter position** (`P`): type a node's X/Y/Z.
+- **Align horizontally / vertically** (`H` / `J`): put the selection on the line through a reference node.
+
+### Heights
+
+- **Height like reference** (`Y`): give the selection the height of a reference node.
+- **Height from heightmap** (`Shift+Y`): set the selection onto the terrain.
+
+### Deleting
+
+- **Delete node** (`L`, or `Del` for the selection): deletes nodes and their connections.
+- **Delete and reconnect** (`Shift+L`, or `Shift+Del` for the selection): deletes nodes in the middle of a road and joins its two ends the same way: A→N→B becomes A→B, dual stays dual. Refused for junctions, road ends and connections of different types.
+
+### Markers
+
+Press `M` and click a node to add a marker, with a name and a group. A new group name creates the group. The other variants:
+
+- **Edit** (`Shift+M`): change name and group.
+- **Move** (`Ctrl+M`): move the marker to another node.
+- **Delete** (`Ctrl+Shift+M`).
+
+### Measuring
+
+Press `D` (Distance) or `Shift+D` (Angle), then click point A and point B (a node or free ground). Drag a point to move it. `Align view to line` rotates the view along the line. `Esc` with nothing to clear returns to the tool used before.
+
+### Copy and paste
+
+`Ctrl+C`, `Ctrl+X`, `Ctrl+V` copy, cut and paste the selection. `Ctrl+Shift+V` pastes at the original position. Pasted nodes get the terrain height at their new place, unless `Keep heights when pasting` is on, e.g. for a bridge or ramp.
+
+### Undo
+
+`Ctrl+Z` undoes and `Ctrl+Y` redoes every change. To try something larger first, use [Planning mode](#planning-mode).
+
+## Planning and generators
+
+### Planning mode
+
+A plan collects changes so you can look at them before keeping them.
+
+1. Click the planning button at the right end of the toolbar (`Ctrl+P`, `Edit → Planning mode`). A blue bar appears above the map.
+2. Edit with any tool. The bar counts the changed nodes, which get a blue halo. Undo and Redo work inside the plan.
+3. Click `Apply plan` to keep everything as one undo step, or `Discard plan` to throw it away.
+
+Clicking the planning button again, opening another file or closing the editor asks whether to apply or discard. While a plan is open you can't save; the edits made before the plan are backed up, and autosave pauses until the plan ends.
+
+### The Generate tool
+
+Press `G` and choose a task in the options bar (or in the `Generate` menu). The tool starts planning mode by itself.
+
+| Task | Builds | Needs |
 | --- | --- | --- |
-| Selection | `A` | Click or right-drag to select; Shift + right-drag for freehand selection; Ctrl adds to the selection. A double-click on a node or connection selects its whole road piece, up to the next junctions or road ends (ends included) or a change of connection or node type |
-| Move | `V` | Drag a node or the selection; Shift moves along one grid axis only |
-| Generate | `G` | Starts planning mode and generates a route, a junction, the parking spots of a shed or the lanes of stations (see [Planning and generating](#planning-and-generating)) |
-| Create (Regular / Subprio) | `E` / `Shift+E` | Create a node on free ground; a click on a connection inserts the node into it (on the line, height between the ends, type and direction kept) |
-| Connect (Regular / Dual / Reverse) | `1` / `2` / `3` | Click nodes one after another to connect them. A click on free ground creates a node, a click on a connection inserts one; either is connected from the previous node, so a road is drawn with one tool. Node type in the options bar; Esc or right-click ends the chain |
-| Delete (Node / Reconnect) | `L` / `Shift+L` | Node: delete a node or the selection. Reconnect: delete nodes in the middle of a road and join its two ends the same way (A→N→B becomes A→B, dual stays dual); refused for junctions, road ends and connections of different types. Also `Edit → Delete selection and reconnect` (`Shift+Del`) |
-| Toggle type | `T` | Switch between Regular and Subprio |
-| Reverse direction | `U` | Click a connection to reverse it; inside a selection, all connections of the selection are reversed |
-| Rotate | `R` | Rotate the selection using the ring; Shift snaps in steps (default 15°, `Snap step` in the options bar) |
-| Enter position | `P` | Enter a node's X/Y/Z as numbers |
-| Align horizontally / vertically | `H` / `J` | Put the selection on the line through a reference node |
-| Height like reference / Height from heightmap | `Y` / `Shift+Y` | Set the heights of the selection |
-| Draw (Line / Arc / Bézier / Parallel) | `I` / `K` / `B` / `Shift+I` | Line: straight section with even node spacing. Arc and Bézier: click start and end, drag the handles, press Enter; the Bézier curve has one or two control points. Spacing, connection type, node type and control points are in the options bar. Switching the variant while drawing keeps start and end. Parallel: a lane beside the selected roads, see [Parallel lane](#parallel-lane) |
-| Marker (Add / Edit / Move / Delete) | `M` / `Shift+M` / `Ctrl+M` / `Ctrl+Shift+M` | Add or edit a marker (name and group), move it to another node or delete it |
-| Measure (Distance / Angle) | `D` / `Shift+D` | Click point A and point B (node or free ground), drag a point to move it. `Align view to line` in the options bar rotates the view along the line. Esc with nothing to clear goes back to the tool used before |
+| [Route](#route) | a drivable route through waypoints you click | a savegame |
+| [Junction](#junction) | a crossing box or turn curves from a road into a yard | |
+| [Stations](#stations) | lanes with markers over the stops of selling points, productions, silos, barns | a savegame |
+| [Roads](#roads) | AutoDrive roads along the map's traffic lanes | a savegame |
+| [Parking spots](#parking-spots) | parking spots with markers in sheds | a savegame |
+| [Bunker silos](#bunker-silos) | lanes with markers in bunker silos | a savegame |
 
-Also in the `Edit` menu and the toolbar: Undo and Redo (`Ctrl+Z` / `Ctrl+Y`), Copy, Cut and Paste (`Ctrl+C/X/V`; `Ctrl+Shift+V` pastes at the original position; pasted nodes get the terrain height at the new place, unless `Keep heights when pasting` is on, e.g. for a bridge or ramp), Select all (`Ctrl+A`), Select road piece (grows the selection to whole road pieces), Delete selection (`Del`) and Snap to grid (`S`). All keys can be changed under `File → Settings → Shortcuts`.
+Curve radius, node spacing, vehicle width and the marker patterns are set under `File → Settings → Generators`.
 
-### Parallel lane
+> **Tip:** Generated lanes usually end open. Connect them to the network afterwards, e.g. with the Route task.
 
-`Draw → Parallel` (`Shift+I`) adds a lane beside each selected road, e.g. the second lane of a pair of one-way roads. Select the roads first or in the tool: right-drag a box, Shift + right-drag a lasso, Ctrl+click toggles a node, a right-click clears the selection. Then point beside a road: the dashed preview follows the pointer, which sets the side and the distance (in steps of 0.5 m, shown in `Lane distance`). A click creates the lanes there; `Enter` or `Apply` creates them at the distance in the box.
+### Route
 
-- Every selected road gets its lane on the same side of its own driving direction, so the lanes of several one-way roads are added at once.
-- The lane is connected like the road (regular, dual or reverse); `Direction` sets the same or the opposite driving direction. The nodes are spaced evenly (`Spacing`) and get the terrain height, or the height of the road beside them; `Node type` sets their type.
-- The ends stay open and the new nodes are not selected; one undo step removes all lanes.
-- Refused with a status message: a junction in the selection, a closed ring, a road whose connections differ in type or direction, or a curve tighter than the distance on the inner side.
+Finds a drivable one-way route through waypoints, around buildings, fences, trees and water.
 
-## Display
+1. Choose the task **Route**.
+2. Click nodes, connections or free ground one after another as waypoints. The route is searched and shown; parts that cross obstacles are red.
+3. Change it: drag a waypoint or any node, or press on the route to insert a waypoint there and drag it. The route is searched again after each change.
+4. Press `Enter` to add it to the plan. Free waypoints become nodes; a waypoint on a connection splits it with a new node.
 
-`View → Show` switches nodes, node IDs, each connection type (Regular, Dual, Reverse), markers, marker names, the parking positions of vehicles, sheds, stations, the drivability map (see [Find route](#find-route)) and the scale bar in the bottom-left corner on and off. The line color shows the connection type; arrows show the direction, dual connections get one pointing to each end. Subprio nodes are drawn orange. In every tool, the nodes connected to the node under the pointer are drawn purple. Node IDs appear only when zoomed in; parking positions (a "P" next to the marker) are read from the savegame's `vehicles.xml`, so they show only with a savegame open, see [Buildings of the savegame](#buildings-of-the-savegame), which also explains sheds and stations. Hidden nodes and connections cannot be clicked or selected unless `Hidden items can be selected` is on. Sizes and colors are set under `View → Display options…`. All switches are remembered.
+Afterwards the tool starts empty, and the next click picks a new start.
 
-**Background.** `View → Background` (also the Background button of the toolbar) chooses what lies under the network: the map image (`Overview`), the `Ground map` or the `Game picture`. The ground map is drawn from the map's ground textures: asphalt, concrete, gravel, grass, mud, forest, rock and sand each in their own color, with the field outlines and field numbers on top. It shows the map as the game paints it, which helps where the map image is out of date. Maps imported with an older version of the editor have no ground map; import them again under `File → Settings → Maps` to get one. Importing a large map takes a little longer for this (about 15 seconds for a 16x map).
+**Editing waypoints.** The waypoint under the pointer is highlighted. `Delete` or right-click removes it, `Backspace` removes the last one, `Esc` all of them. `Ctrl+Z` first takes back waypoint changes, then the plan's edits.
 
-## Game picture
+**How the route is built.** It drives only forward, like a hand-drawn course: straight pieces joined by arcs of the curve radius. Nodes are spaced as AutoDrive records a drive, up to the node spacing on straights (default 12 m) and closer in tight turns. It keeps half the vehicle width plus a safety margin from obstacles. It prefers roads and yards, goes around a meadow or orchard rather than across it, but crosses grass where that is much shorter, and avoids fields. It leaves the first and enters the last node in the direction of their connections. Near the waypoints it may cross blocked ground, since nodes can sit under a roof or in a hall.
 
-The game picture is the map as the game draws it from above, sharper and more current than the map image: roads, yards, buildings and fields as they are in your savegame. The companion mod `FS25_AutoDriveEditorLink` renders it in the running game; the editor stores it per map and savegame and shows it as a background.
+**Joining other routes.** Routes already in the plan are reused: a route in the same direction joins them. The way back gets its own lane where there is room and shares the lane (as dual) where there is not.
 
-**Capture.** Start the game with the mod active, load the savegame and open the same savegame in the editor. Then choose `View → Background → Capture game picture…`. The dialog says at the top whether the game is connected; `Start` works only then. Choose the resolution, 0.25 m/px (sharper) or 0.5 m/px (faster, smaller), each with the number of tiles, the time and the disk space it needs. Capturing at the other resolution replaces the current picture. `Wait per tile` is the time the game gets to load a place before it renders it; raise it if tiles come out with holes.
+**Several starts and ends.** `Shift`+click a node to add another start, `Ctrl`+click to add another end. The editor then finds a route from every start to every end and builds them as a tree: routes from the same start run together and branch off later, and routes to the same end join.
 
-While capturing, the game is set to 12:00 and sun, and it freezes briefly for each tile. Do not move the camera or open menus in the game. Afterwards, also after `Cancel` or an error, the game gets its weather back and its clock goes on from the old time plus the capture's duration. The editor stays usable: the status bar shows `Game picture 37/289 · 4 min left` with a `Cancel` button, and the tiles appear on the map as they arrive. Cancelled or finished, the tiles captured so far are kept. Opening another file or closing the editor during a capture asks whether to cancel it.
+- A click adds a waypoint all routes share; they run as one up to it.
+- Pressing on a route inserts a waypoint into that route only, or into all routes that run together there (also up to 5 m past where they split).
+- `Delete` or right-click on a start or end removes it with its routes.
+- While a search runs, all routes are drawn faded. `Enter` needs all routes clear; the status bar names those that are not.
 
-**Show.** `View → Background → Game picture` shows the picture; it is chosen automatically after a capture. Where nothing was captured, the map image shows through. The picture of a savegame is kept when the savegame is deleted.
+**If no route is found.** The editor shows the part that can be driven and a red dashed line to the waypoint it could not reach; the status bar names it. Move or add waypoints there. Two waypoints too close for the curve radius are marked the same way. If the route joins at a poor node (a marker node, a first node nothing drives to, a last node that leads nowhere), the status bar says so, but you can still add it.
 
-**Refresh tiles.** After changing something on the map, `Refresh game picture tiles` (toolbar or `View → Background`) captures just the affected tiles again. It needs a captured picture and the game connected as for a capture. The tool shows the tile grid: click a tile or right-drag a box to mark tiles, `Ctrl` + right-drag unmarks, left-drag pans. The status bar shows the number of marked tiles and the time needed; `Enter` starts the capture, `Esc` clears the marks and then ends the tool. The new tiles replace the old ones as they arrive.
+**The drivability map.** The route finder uses the map that Farming Simulator writes into the savegame on every save (`vehicleNavigationCostmap.dat`). After placing buildings, save the game again so the map knows them. `View → Show → Drivability map` shows it: blocked ground red (blue in forests), rough ground orange, grass yellow, fields green; roads and yards are clear.
 
-## Buildings of the savegame
+### Junction
 
-With a savegame open, the editor reads its buildings: the sheds to park in and the stations where vehicles load and unload. The Generate tool builds on them. A route opened alone has none.
+Connects a yard road to a road, with a crossing box or turn curves.
 
-**Sheds.** `View → Show → Sheds` draws the indoor areas of the savegame's buildings as purple outlines: those placed in game and those that came with the map, unless they were torn down. The building files are read from the game install folder and the mods folder; buildings whose files are missing are left out and counted in the status bar. What was read is kept in `%APPDATA%\AutoDrive Editor\cache` and read again only when the files change, so a savegame opens faster the second time. Only buildings of the Sheds group are drawn as sheds (see Building types below).
+1. Choose the task **Junction**.
+2. Press on the road and drag towards the yard. The junction slides along the road, and the stem grows out at a right angle.
+3. Release. Drag the handle at the stem's tip to bend the stem, or drop it on a node to join there.
+4. Press `Enter` (or click away from the handle) to add the junction to the plan. `Esc` cancels.
 
-**Bunker silos.** `View → Show → Bunker silos` draws the floor of each bunker silo between its walls as a teal outline, for the building types of the Bunker silos group.
+`Ctrl+Z` while drawing first straightens a bent stem, then goes back to placing, then cancels.
 
-**Stations.** `View → Show → Stations` draws a yellow arrow at each stop of the savegame's stations: the spots where vehicles unload or load at selling points, productions, silos, animal barns and diesel tanks. The arrow lies along the lane over the trigger. Most buildings define the spot the game's AI helper drives to; there the arrow sits on it. Where a building has none (many diesel tanks and animal barns), the arrow sits on the trigger. With the savegame's drivability map, the arrow takes the direction with the most free room through the stop (where the building defines the AI spot: along it or across it), and all stops of a building circle it counterclockwise, so one route can pass them all; a lane pointing at the building heads to the side with more room. It can still be wrong; the lane can be turned when it is created. Triggers of the same kind at nearly the same spot, one per fill type, are shown as one stop.
+| Option | Choices |
+| --- | --- |
+| Style | **Box** (default): a compact crossing box where a road of two one-way lanes meets a stem of two lanes. The lanes share a node where they cross, a centre node takes left turns and U-turns, short curves take right turns. The pieces inside the box are two-way, so AutoDrive drivers see each other there. **Curves**: one one-way turn curve per direction. |
+| Stem | **Auto** (default): two lanes at a road of two one-way lanes, one two-way lane at a two-way road. **Two-way** or **Two lanes** choose directly. **One way in** / **One way out**: only the curves into or out of the yard, e.g. for a yard with a separate exit. |
+| Lane gap | Distance between two lanes (default 5.5 m) |
 
-**Building types.** `Generate → Building types…` lists the building types of the savegame that have indoor areas, stations or a bunker silo, in four groups: Stations (unload or load triggers), Sheds (only indoor areas), Bunker silos and Other. A production with a hall is a station, not a shed; farmhouses and weighing stations are in Other, as only the player's character goes inside or vehicles only drive over them. If a type is in the wrong group, choose another one in its `Group` column; unticked types or groups are hidden. `Reset` puts every listed type back in its own group and shows it. Both apply on every map.
+The options are kept for next time. If road or stem don't have two one-way lanes, curves are built instead of a box, and the status bar says so.
 
-## Planning and generating
+Curves leave and join the road with a slight kink (20°), then bend in an arc of the curve radius, like the forks of hand-made courses. Where a road continues on the other side, lanes straight across are added too.
 
-The planning button at the right end of the toolbar (`Edit → Planning mode`, `Ctrl+P`) starts a plan. All tools work as usual, but the edits are collected in the plan: a blue bar above the map shows how many nodes the plan changed, and those nodes get a blue halo. Undo and Redo work inside the plan and stop at its start. `Apply plan` adds the whole plan to the history as one undo step; `Discard plan` reverts all of it. Clicking the planning button again, opening another file or closing the editor asks whether to apply or discard the plan. While a plan is open, saving is not possible; starting a plan backs up the edits made before it, and autosave then pauses until the plan is applied or discarded.
+**If something doesn't fit:** curves that don't fit on the drivability map are searched with the route finder. Those still blocked are drawn as red dashed lines and listed in the status bar, e.g. "No left turn in from the north". You can still add the rest.
 
-The Generate tool (`G`) starts planning mode and creates what is picked with the task buttons in the options bar: a route, a junction, the parking spots of a shed, the lanes of stations or of bunker silos, or the roads of the map. The `Generate` menu has the same six tasks.
+### Stations
 
-### Find route
+Builds a one-way lane with a marker over each stop of selling points, productions, silos, animal barns and diesel tanks.
 
-Choose the task `Route` of the Generate tool, then click nodes, connections or free ground one after another as waypoints. The editor searches a drivable one-way route through them in that order and shows it; parts that cross buildings, fences, trees or water are red. The route drives only forward and is built like a hand-drawn course: straight pieces with arcs of the curve radius through the corners. Its nodes are spaced the way AutoDrive records a drive, on straights up to the spacing set under `File → Settings → Generators` (default 12 m), closer the tighter it turns. It keeps half the vehicle width plus a safety margin away from obstacles; curve radius, vehicle width and margin are set there too. It prefers roads and yards and follows a road around a meadow or orchard rather than crossing it, but crosses grass where that is much shorter; it avoids fields and leaves the first and enters the last node in the direction of their connections. At the waypoints in between it takes the direction that suits the next part. Near the waypoints, blocked ground may be crossed, since nodes can sit under a roof or in a hall. Drag free waypoints or any node to change the route; it is searched again after each change. Pressing on the route inserts a waypoint there, which can be dragged right away.
+1. Choose the task **Stations**. Pointing at a station shows its name.
+2. Click a stop arrow, or the space between the arrows of a building, to pick all its stops. Buildings within 15 m are picked too (e.g. two gas stations side by side). Or right-drag a box (`Shift`: lasso) around the stops.
+3. A dialog opens beside the stops. It lists each stop with a check box, type, fill types, marker name and group, lane angle and a note (e.g. no AI spot in the building, or an existing node where the lane goes).
+4. Adjust the lanes on the map if needed (see below).
+5. Click `Create`. The lanes go into the plan as one undo step.
 
-The waypoint under the pointer is highlighted; `Delete` or a right-click removes it. `Remove last (Backspace)` and `Clear (Esc)` in the options bar remove the last or all waypoints. `Ctrl+Z` first takes back waypoint changes (add, move, remove) of the route being built, then the plan's edits. Where the route is red, move nodes or add a waypoint on the way round. `Enter` adds a route without red parts to the plan as one undo step; free waypoints become nodes, and a waypoint on a connection splits it with a new node (same type and direction). Then the tool starts empty, and the next click picks a new start. If the route found joins at a poor node, the status bar says why, e.g. a marker node (other routes would lead through the marker), a first node that nothing drives to or a last node that leads nowhere; the route can still be added.
+The marker sits a set distance past the stop (default 8 m): the tractor stops at the marker, so the trailer stands over the trigger.
 
-Where no drivable way exists, the editor shows the part that can be driven and a red dashed line to the waypoint it could not reach; the status bar names that waypoint, and `Enter` adds nothing until waypoints there are moved or added. Two waypoints too close for the curve radius are marked the same way before any search. If a search fails with an error, the status bar says so; the details are in the log file.
+**Adjusting lanes.**
 
-Routes already in the plan are reused: a route in the same direction joins them. The way back (select the nodes the other way round) gets its own lane where there is room; where there is not, it shares the lane, which becomes dual there. If there is no room to turn at all, the editor reports that no drivable route was found.
+- Drag a lane's marker to turn the lane around its stop (`Shift`: 15° steps), or type the angle.
+- Drag the first or last node to bend that end in an arc, e.g. where there is no room for a straight lane. Turning the lane straightens it again.
+- Drop an end on a node of the network to join the lane there; it must fit the node's driving direction. Ends not joined stay open.
 
-**Several starts and ends.** `Shift`+click a node to add another start, `Ctrl`+click a node to add another end; with several starts or ends, all starts and ends are existing nodes. The editor then searches a route from every start to every end and builds them as a tree: each route reuses the routes before it where it runs along them, so routes from the same start run together and branch off later, and routes to the same end join. A click adds a waypoint all routes share; they pass it in the same direction, run as one up to it and split there. Pressing on a route inserts a waypoint into that route only, or into all routes that run together there, also when pressed up to 5 m past where they split. A new start or end gets the waypoints all routes share. `Delete` or a right-click on a start or end removes it with its routes; `Remove last (Backspace)` removes the waypoint added last. When a route changes, only that one is searched again, and routes running close beside it, so they can join it. While a search runs, all routes are drawn faded. `Enter` needs all routes clear (the status bar names those that are not) and adds them as one undo step.
+**Yard road.** For a yard with several stops, e.g. a production, click `Draw yard road` and draw a road past them:
 
-The route finder uses the game's drivability map, which Farming Simulator writes into the savegame (`vehicleNavigationCostmap.dat`) on every save, so it needs a savegame open. Save the game again after placing buildings, so the map knows them. `View → Show → Drivability map` draws it: blocked ground red (blue in forests), rough ground orange, grass yellow, fields green; roads and yards are clear.
+1. Click its corners on the map. A corner on a node joins the road there; right-click removes the last corner.
+2. Press `Enter` for a one-way road from the first corner to the last. Or click an earlier corner to close a loop: the corners up to it become a two-way road in and out, the rest a one-way ring.
+3. Corners are rounded with the curve radius and can be dragged afterwards.
 
-### Junctions
+The `Shape` column then says how each stop is attached to the road:
 
-Choose the task `Junction` of the Generate tool to connect a yard road to a road. Press on the road and drag towards the yard: the junction moves along the road with the mouse, and the stem leaves the road at a right angle as far as the mouse reaches. After releasing, a handle sits at the stem's tip; drag it to bend the stem, or drop it on a node to join the stem there. `Enter` or a click away from the handle adds the junction to the plan, `Esc` cancels. Undo while drawing first straightens a bent stem, then goes back to placing the junction, then cancels.
+| Shape | Meaning |
+| --- | --- |
+| Branch | a one-way lane over the stop that leaves the road before it and rejoins after |
+| Chain | stops closer than 15 m along the road share one branch |
+| Back-in bay | a line from the marker away from the road, and a stub to drive past and back in. Default for animal barns |
+| Lane | the stop keeps its own lane with open ends. Default for stops more than 30 m from the road |
 
-The options in the options bar set how the junction is built, and are kept for next time:
+The note says when a shape doesn't fit. `Create` adds road, branches, bays and lanes as one undo step. `Remove yard road` goes back to one lane per stop.
 
-- **Style**: *Box* (default) builds a compact crossing box where a road of two one-way lanes meets a stem of two lanes: the lanes share a node where they cross, a centre node takes the left turns and U-turns, and short curves take the right turns. The pieces from the crossings out to the box edge are two-way, so AutoDrive drivers see each other inside the box. *Curves* builds a one-way turn curve for each direction instead. If road or stem do not have two one-way lanes, curves are built and the status bar says so.
-- **Stem**: *Auto* (default) uses two lanes at a road of two one-way lanes and one two-way lane at a two-way road, or at a two-way road at the stem's tip. *Two-way* or *Two lanes* choose it directly. *One way in* and *One way out* build a one-way stem with only the curves into or out of the yard, e.g. for a yard with a separate exit; a box needs both ways, so these build curves. **Lane gap** is the distance between the two lanes (default 5.5 m).
+**Names.** `Generator settings…` opens `File → Settings → Generators`. There you set the lane length before the stop and after the marker (default 10 m each), the marker distance, the node spacing, and the marker name and group per stop type. Names are patterns:
 
-Curves leave and join the road with a slight kink (20°) and then bend in an arc of the curve radius (`File → Settings → Generators`), like the forks of hand-made courses. Where a road continues on the other side, lanes straight across are added too. Curves or lanes that do not fit on the drivability map are searched with the route finder; those still blocked are left out, drawn as red dashed lines and listed in the status bar (e.g. "No left turn in from the north"), as are pieces of a box on blocked ground. The rest of the junction can still be added.
+| Placeholder | Becomes |
+| --- | --- |
+| `{building}` | the building's name |
+| `{type}` | the stop type |
+| `{fill}` | the stop's first fill type |
+| `{action}` | `unload` or `load` |
+| `{n}` | a number counted per group, from `Numbers start at`; `{n:03}` with three digits |
 
-### Parking spots in sheds
-
-The editor creates AutoDrive parking spots in the sheds of a savegame. Choose the task `Parking spots` of the Generate tool; pointing at a shed shows the building's name and category. Left-click a shed outline, or pick several sheds of one type: `Shift`+click them and press `Enter` (or click one of them), or right-drag a box around them; `Esc` drops the pick. The dialog shows a top view of the shed, turned so the open side is at the bottom, with an arrow to north, and updates while you type. The planned spots are also drawn on the map; while the dialog is open the map can be moved, zoomed and rotated, but not edited.
-
-- **Mode**: *Back in* (vehicles reverse into the bay, the marker is at the back wall) or *Drive through* (one forward line per bay through the shed, the exit is on the opposite side).
-- **Open side** / **Entry side**: the side the vehicles come in. Click a side or its compass label in the top view to change it.
-- **Number of bays**: the bay width is calculated from it and shown below. Bays narrower than 3 m are shown in red and cannot be created.
-- **Left wall**, **Right wall**, **Back wall** (or **Exit offset**), **All gaps**: distances in metres. Click a wall or a gap in the top view to edit just that one; a small box opens at the click spot (Enter applies, Esc cancels). Single gaps are kept when the number of bays changes.
-- **Positions per bay**, **Position spacing** (drive through only): several parking positions in a row in each bay, the first at the exit offset and the others toward the entry, each with its own marker.
-- **Entry line**, **Exit line**: the driving direction of the two lines outside the open side, seen from outside.
-- **Marker name**, **Start number**, **Group**: "Shed" from 3 gives "Shed 3", "Shed 4", … With several positions per bay the numbers count on through the positions of each bay, starting at the exit. A new group name creates the group.
-
-When backing in, the side view below shows the line of one bay, which all bays use. Click a segment to change its length, "+" splits a segment in half, `Delete` removes the selected node. The points where the entry and exit lines branch off can be dragged to another node. In drive-through mode the side view only shows the line.
-
-`Create` adds all nodes as subprio nodes at the shed's height, as one undo step. Running it twice creates the spots twice. Afterwards the four open ends of the entry and exit lines still need to be connected to the road network. `Reset shed settings` brings back the default layout.
-
-**Several sheds.** The same settings apply to all picked sheds; `Shed:` chooses which one the top and side views show, and the map shows the spots of all. Neighbouring sheds facing the same way (within 10°, open sides in line within 3 m, at most 5 m apart) form a row and share one entry and one exit line. The marker numbers run on from shed to shed, row by row and from left to right seen from the open side: two sheds with four bays give "Shed 1" … "Shed 8". Sheds of different types cannot be picked together, as templates are kept per shed type.
-
-**Templates.** `Save as template…` stores the mode, side, number of bays, distances, parking positions and bay line under a name for this shed type, so it works for the same building on any map. Line directions, marker name, start number and group are not stored. `Load template…` lists the templates of the shed type, where they can also be deleted. The dialog opens with the template saved or loaded last for the shed type.
-
-### Bunker silos
-
-Choose the task `Bunker silos` of the Generate tool; pointing at a silo shows its building's name. Left-click a silo outline to create the lanes of that silo. To create several at once, `Shift`+click silos one after another (the picked ones are filled darker; `Shift`+click again removes one), then press `Enter` or click one of them; `Esc` drops the pick. Right-dragging a box (`Shift`: a lasso) picks all silos inside it and opens the dialog right away.
-
-The dialog is the one of [Parking spots in sheds](#parking-spots-in-sheds) with the lanes of a silo as bays, and the same settings apply to all picked silos. It starts from the silo's own layout:
-
-- **Mode** and **Open side** come from the drivability map: a silo closed at one end is *Back in* from the other end, a silo open at both ends is *Drive through*. Without a drivability map it is Back in from the front. Both can be changed.
-- **Number of lanes**: one lane per about 5.5 m of inner width, in the centres of equal strips.
-- **Back in**: the marker is 3 m before the back wall; vehicles turn in facing away, drive to the turn about 31 m outside, back down to the marker and leave forwards. The entry line is about 5.5 m and the exit line about 22 m outside the silo. **Drive through**: lanes from about 20 m before the silo to a marker **past the silo** (default 15 m), without an exit line.
-- **Marker name** and **Group** are patterns with `{building}` (the building's name), `{letter}` (the silo's letter: A, B, … along the open side) and `{n}` (the lane's number from `Start number`, from one wall to the other). Defaults: `KS-{letter}-{n}` in `{building}-KS-{letter}` for back in, `DS-{letter}-{n}` in `{building}-DS-{letter}` for drive through. The text below the settings lists the markers of each group and marks new groups. Names repeated within a group, or already in the network in that group, cannot be created.
-- **Silo** (with several silos): which silo the top view and side view show. The map shows the lanes of all of them.
-
-Neighbouring silos facing the same way (within 10°, open sides in line within 3 m, at most 5 m apart) form a row and share one entry and one exit line. `Create` adds all lanes as subprio nodes at the silo's height into the plan, as one undo step; the ends of the entry and exit lines still need to be connected to the network. Templates are kept per silo type, as for sheds. The default patterns are set on `File → Settings → Generators`.
-
-### Station lanes
-
-Choose the task `Stations` of the Generate tool. Left-click a stop arrow or the space between the arrows of a building to pick all its stops, together with the stops of buildings standing within 15 m (e.g. two gas stations side by side), or right-drag a box (`Shift`: a lasso) to pick all stops inside it; pointing at a station shows its name, or the names of the buildings a click would pick. The dialog opens beside the picked stops, so they stay visible. It lists the stops with a check box, type, fill types, marker name and group (e.g. "Grain store (Selling point)" in "Selling points"), the lane angle and a note (no AI spot in the building, an existing node where the lane goes). The marker sits a set distance past the stop (default 8 m), since the tractor stops at the marker and the trailer then stands over the trigger.
-
-The lanes are drawn on the map. Drag the marker of a lane to turn it around its stop (`Shift`: 15° steps), or type the angle. Drag the first or last node of a lane to bend that end in an arc from the stop, e.g. where there is no room for a straight lane; turning the lane straightens it again. Drop an end on a node of the network to join the lane there; the end must fit the node's driving direction. `Create` adds a one-way lane of subprio nodes per chosen stop with the marker on the node at the stop, into the plan as one undo step. Lane ends not dropped on a node are still open and need to be connected to the network, e.g. with Find route.
-
-**Yard road.** For a yard with several stops, e.g. a production, `Draw yard road` draws a road past them. Click its corners on the map; a corner on a node joins the road there, right-click removes the last corner. `Enter` finishes a road that runs one way from the first corner to the last. A click on an earlier corner closes a loop instead: the corners up to that one become a two-way road in and out, the rest a one-way ring in the order clicked. Corners are rounded with the curve radius, and the corners can be dragged afterwards. The `Shape` column then says how each stop is attached to the road:
-
-- **Branch**: a one-way subprio lane over the stop that leaves the road some metres before it and rejoins it after, in the road's direction.
-- **Chain**: stops close together along the road (less than 15 m) share one branch.
-- **Back-in bay**: as in sheds, a line from the marker away from the road and a stub beside the road to drive past it and back in. The default for animal barns.
-- **Lane**: the stop keeps its own lane with open ends. The default for stops more than 30 m from the road.
-
-The note says when a shape does not fit, e.g. no room to leave the road before a stop. `Create` adds the road, its branches and bays and the remaining lanes as one undo step. `Remove yard road` goes back to a lane per stop.
-
-`Generator settings…` in the dialog opens the page `File → Settings → Generators`, which holds for station lanes the lane length before the stop and after the marker (default 10 m each), the marker distance, the node spacing, and the marker name and group per stop type. A name is a pattern with the placeholders `{building}` (the building's name), `{type}` (the stop type), `{fill}` (the stop's first fill type), `{action}` (`unload` or `load`) and `{n}` (a number counted per group, `{n:03}` with three digits, starting at `Numbers start at`), e.g. `VK-{n:02}`. The group is a pattern too, without `{n}`. Productions are named as course authors do, e.g. `Diesel-unload` in `prod.Distillery` (`{fill}-{action}` in `prod.{building}`). A name already in the network in the same group is not used twice.
+For example `VK-{n:02}`, or for productions `{fill}-{action}` in `prod.{building}`, which gives `Diesel-unload` in `prod.Distillery`. Groups are patterns too, without `{n}`. A name already in the same group isn't used twice.
 
 ### Roads
 
-Choose the task `Roads` of the Generate tool to build AutoDrive roads along the map's own traffic lanes, the lanes the game's traffic drives on. They are read from the map when the task is chosen first (with a progress window and `Cancel`; afterwards they are kept in the cache) and drawn as thin lines while the task is active. The task needs a savegame open. Maps without traffic lanes cannot use it; on maps whose traffic lanes are only a few loops without junctions, the status bar asks to check the roads where they cross.
+Builds AutoDrive roads along the map's own traffic lanes, the lanes the game's traffic drives on.
 
-**Mode** in the options bar:
+1. Choose the task **Roads**. The first time, the traffic lanes are read from the map (with a progress window and `Cancel`); they are drawn as thin lines.
+2. Choose the **Mode**:
+   - **Whole map**: press `Create` or `Enter`.
+   - **Box**: right-drag a box. The roads in it are built, cut off at the box edge, with the junctions whose middle lies inside.
+   - **Click road**: click a road to build it from junction to junction (the junctions themselves are not built).
+3. Check the result in the `Road network` group of the Network check dock (see below).
 
-- *Whole map*: `Create` (or `Enter`) builds the roads of the whole map.
-- *Box*: right-drag a box; the roads in it are built, cut off at the box edge, with the junctions whose middle lies inside.
-- *Click road*: click a road to build it from junction to junction; the pointer becomes a hand over a road. The junctions at its ends are not built.
+| Option | Choices |
+| --- | --- |
+| Existing | **Skip and connect** (default): existing roads stay; new roads are built only where none run and join the existing lanes. Junctions with existing nodes are kept. **Replace**: existing regular nodes along the new roads are removed, including inside junction boxes; side branches join the new lanes and markers move to the nearest new node. Subprio lanes are never removed. |
+| Lanes | **Two one-way** (at the Junction task's lane gap), **Two-way**, or **Auto** (default): what most of the network uses, two one-way lanes in an empty network |
 
-**Existing**: *Skip and connect* (default) leaves the roads already in the network as they are: new roads are built only where none run yet, and their ends join the existing lanes. A junction with existing nodes in it is kept as it is. *Replace* removes the existing regular nodes along the new roads, including those inside a junction box, and joins their side branches to the new lanes; markers move to the nearest new node. Subprio lanes are never removed.
+Where three or four two-way roads meet, a junction box is built as by the Junction task (in the two-way style, the roads meet at one shared node). Other junctions, such as roundabouts, slip roads and forks, use the map's own lanes. The result goes into the plan as one undo step.
 
-**Lanes**: *Two one-way* builds two one-way lanes at the lane gap of the Junction task, *Two-way* one two-way lane. *Auto* (default) uses what most of the existing network uses, and two one-way lanes in an empty network.
+**Checking the result.** The editor checks that every turn the traffic allows through a junction can be driven, that the new lanes lead on and are reached, and that they avoid blocked ground. Places to look at are listed, e.g. "No junction box", "Existing junction kept", "2 of 6 turns missing", "Dead end" or "Road end not joined to the network"; a click shows the place. Places at the edge of a box or clicked road are not listed, as the roads end there on purpose.
 
-The roads follow the traffic lanes with nodes spaced as AutoDrive records a drive. Where three or four two-way roads meet, a junction box is built as by the Junction task; in the two-way style the roads meet at one shared node. Other junctions (roundabouts, slip roads, forks, five or more roads) use the map's own lanes inside them. The result goes into the plan as one undo step.
+Maps without traffic lanes can't use this task. On maps whose traffic lanes are only a few loops without junctions, the status bar asks you to check the roads where they cross.
 
-Afterwards the editor checks that every turn the traffic lanes allow through a junction can be driven, that the new lanes lead on and are reached, and that they stay off blocked ground of the drivability map. Places to look at are listed in the group `Road network` of the Check dock, e.g. "No junction box", "Existing junction kept", "2 of 6 turns missing", "Dead end" or "Road end not joined to the network"; a click shows the place on the map. Places near the edge of a box or clicked road are not listed, as the roads end there on purpose.
+### Parking spots
 
-## Checking the network
+Creates AutoDrive parking spots in the sheds of a savegame.
 
-`Check → Check network` lists overlapping nodes, nodes outside the map and, with a heightmap loaded, nodes whose height differs too much from the terrain, invalid connection references (to a node that does not exist, to the node itself, or an incoming entry without the other node's outgoing entry) and nodes without any connection. The distance for overlapping nodes and the allowed height difference are set at the top of the dock. Click an entry to show it on the map. `Fix selected` or `Fix all` merges overlapping nodes into one (the node with a marker, otherwise the lowest ID), moves nodes back onto the map, sets heights from the heightmap, removes invalid references and deletes nodes without connections (nodes with a marker are kept). Each kind of fix is one undo step.
+1. Choose the task **Parking spots**. Pointing at a shed shows its name and category.
+2. Click a shed outline. For several sheds of one type, `Shift`+click them and press `Enter`, or right-drag a box around them. `Esc` drops the pick.
+3. Set up the spots in the dialog. Its top view shows the shed with the open side at the bottom and an arrow to north; the planned spots are also drawn on the map. You can move and zoom the map meanwhile, but not edit it.
+4. Click `Create`. All nodes are added as subprio nodes at the shed's height, as one undo step.
+5. Connect the four open ends of the entry and exit lines to the network.
 
-Entries that are fine as they are, such as nodes on a bridge, can be hidden with `Ignore`. They move to the `Ignored` group and are not fixed by `Fix all`; `Don't ignore` brings them back. An ignored entry also shows up again when one of its nodes is moved. The checkboxes switch off a whole check. Ignored entries and switched-off checks are remembered for each route or savegame.
+| Setting | Meaning |
+| --- | --- |
+| Mode | **Back in**: vehicles reverse into the bay; the marker is at the back wall. **Drive through**: one forward line per bay; the exit is on the opposite side. |
+| Open side / Entry side | where vehicles come in. Click a side or its compass label in the top view to change it. |
+| Number of bays | the bay width is calculated from it. Bays narrower than 3 m are red and can't be created. |
+| Left wall, Right wall, Back wall (or Exit offset), All gaps | distances in metres. Click a wall or gap in the top view to edit just that one (`Enter` applies, `Esc` cancels). Single gaps are kept when the number of bays changes. |
+| Positions per bay, Position spacing | drive through only: several parking positions in a row, each with its own marker, the first at the exit offset |
+| Entry line, Exit line | the driving direction of the two lines outside, seen from outside |
+| Marker name, Start number, Group | "Shed" from 3 gives "Shed 3", "Shed 4", … With several positions per bay, the numbers count through each bay from the exit. |
 
-Saving runs the check first. If it finds problems that are not ignored, the dock shows them and the editor asks whether to save anyway.
+**Side view** (back in): shows the line of one bay, used by all bays. Click a segment to change its length, "+" splits it, `Delete` removes the selected node. The points where entry and exit lines branch off can be dragged to another node. In drive-through mode the side view only shows the line.
 
-## Saving
+**Several sheds.** The settings apply to all picked sheds; `Shed:` chooses which one the views show. Neighbouring sheds facing the same way (within 10°, open sides in line within 3 m, at most 5 m apart) form a row and share one entry and one exit line. Marker numbers run on row by row, left to right seen from the open side: two sheds with four bays give "Shed 1" … "Shed 8". Sheds of different types can't be picked together.
 
-`File → Save` (`Ctrl+S`) writes to the file you opened. Before the first overwrite, the editor creates a backup copy (`.bak`).
+**Templates.** `Save as template…` stores mode, side, bays, distances, positions and bay line under a name for this shed type, so it works for the same building on any map. Line directions, marker name, start number and group are not stored. `Load template…` lists the templates, where they can also be deleted. The dialog opens with the template used last. `Reset shed settings` brings back the default layout.
 
-**Changed by the game.** If the network in the file was changed since the editor opened or last saved it, usually because the game saved it, Save warns first: `Save anyway` overwrites the game's changes, `Reload (my changes are lost)` loads the file again, `Cancel` does nothing. A game save that leaves the network as it was does not warn. `File → Reload` (`F5`) loads the open file again from disk at any time and keeps the view; with unsaved changes it asks first.
+> **Note:** Running Create twice creates the spots twice.
 
-**Savegame.** Save writes the savegame's `AutoDrive_config.xml` and updates the marker targets of its vehicles in `vehicles.xml`. If vehicles have a deleted marker as their target, Save lists them first and asks `Save` or `Cancel`: saving sets their target to marker 1 and removes a parking target. If the game is running this savegame with the companion mod `FS25_AutoDriveEditorLink`, the editor then reloads the network in the game: the status bar shows `Saved · reloaded in game`, and AutoDrive drives on the new network right away. Network edits made in the game since the file was opened are replaced by the reload. If the game reports an error or does not answer within 30 seconds, a message says that the file is saved but not reloaded, and that the game will overwrite it on its next save. If the game runs without the mod, a warning says the same once per savegame and session: exit the game without saving, or install the mod. With the game closed, the new network is simply there the next time the savegame is loaded.
+### Bunker silos
 
-**Route.** Save on an open route writes only the route file. To use it in a running game, press `Import` in AutoDrive's RoutesManager and save in the game.
+Creates the lanes of bunker silos, with markers.
 
-**Save as route…** (`Ctrl+Shift+S`) keeps a version of the network as a route in the RoutesManager. It suggests the name of the route last saved or loaded, else the map name; an existing name asks before replacing the route, whose revision then goes up. A savegame stays open afterwards; a route or XML file goes on as the saved route.
+1. Choose the task **Bunker silos**. Pointing at a silo shows its building's name.
+2. Click a silo outline. For several, `Shift`+click them one after another (picked ones turn darker; `Shift`+click again removes one) and press `Enter`, or right-drag a box (`Shift`: lasso), which opens the dialog right away. `Esc` drops the pick.
+3. Adjust the settings. The dialog is the one of [Parking spots](#parking-spots), with the silo's lanes as bays.
+4. Click `Create`. The lanes are added as subprio nodes at the silo's height, as one undo step.
+5. Connect the ends of the entry and exit lines to the network.
 
-**Load route into savegame…** (savegame open) replaces the network with a route of the savegame's map from the RoutesManager (name, revision and date, newest first), as one undo step. If no route holds the current network yet, it first offers to save it as a route. Vehicles keep their targets at markers with the same name and group. Save then writes the route into the savegame and reloads it in the game.
+The dialog starts from the silo's own layout:
 
-Unsaved changes are backed up automatically every few minutes (interval under `File → Settings`). If the editor closes unexpectedly, it offers to restore them on the next start.
+- **Mode and open side** come from the drivability map: a silo closed at one end is *Back in* from the other end, a silo open at both ends is *Drive through*. Without a drivability map: back in from the front.
+- **Number of lanes**: one lane per about 5.5 m of inner width.
+- **Back in**: the marker is 3 m before the back wall. Vehicles turn about 31 m outside, back down to the marker and leave forwards. The entry line is about 5.5 m and the exit line about 22 m outside.
+- **Drive through**: lanes from about 20 m before the silo to a marker past it (default 15 m), without an exit line.
+- **Marker name and group** are patterns with `{building}`, `{letter}` (the silo's letter A, B, … along the open side) and `{n}` (the lane's number from one wall to the other). Defaults: `KS-{letter}-{n}` in `{building}-KS-{letter}` for back in, `DS-{letter}-{n}` in `{building}-DS-{letter}` for drive through (changed under `File → Settings → Generators`). The text below the settings lists the markers per group. Names that repeat can't be created.
+- **Silo** (with several silos): which silo the views show.
 
-## Settings
+Rows of neighbouring silos share one entry and one exit line, as for sheds. Templates are kept per silo type.
+
+## The map underneath
+
+### Background
+
+`View → Background` (or the Background button of the toolbar) chooses what lies under the network:
+
+- **Overview**: the map image of the map mod.
+- **Ground map**: drawn from the map's ground textures. Asphalt, concrete, gravel, grass, mud, forest, rock and sand each get a color, with field outlines and numbers. It shows the map as the game paints it, which helps where the map image is out of date. Maps imported with an older version of the editor have no ground map; import them again under `File → Settings → Maps` (about 15 seconds for a 16x map).
+- **Game picture**: see below.
+
+### Game picture
+
+The game picture is the map as the game draws it from above: sharper and more current than the map image, with your yards, roads and buildings as they are in your savegame. It needs the [Companion mod](#companion-mod). The editor stores it per map and savegame.
+
+**Capture**
+
+1. Start the game with the mod active and load the savegame. Open the same savegame in the editor.
+2. Choose `View → Background → Capture game picture…`. The dialog says at the top whether the game is connected; `Start` works only then.
+3. Choose the resolution: 0.25 m/px (sharper) or 0.5 m/px (faster, smaller). Each shows the number of tiles, the time and the disk space.
+4. Click `Start`.
+
+While capturing, don't move the camera or open menus in the game. The game is set to 12:00 and sun and freezes briefly for each tile. Afterwards (also after `Cancel` or an error) it gets its weather back, and its clock goes on from the old time plus the capture's duration.
+
+The editor stays usable meanwhile. The status bar shows the progress (`Game picture 37/289 · 4 min left`) with a `Cancel` button, and the tiles appear on the map as they arrive. Tiles captured so far are kept. Opening another file or closing the editor asks whether to cancel the capture.
+
+> **Tip:** If tiles come out with holes, raise `Wait per tile`, the time the game gets to load a place before rendering it.
+
+Capturing at the other resolution replaces the current picture. Where nothing was captured, the map image shows through. The picture is kept when the savegame is deleted.
+
+**Refresh tiles after a change on the map**
+
+1. Click `Refresh game picture tiles` (toolbar or `View → Background`). The tile grid is shown. The game must be connected as for a capture.
+2. Click tiles or right-drag a box to mark them; `Ctrl` + right-drag unmarks. The status bar shows the number of tiles and the time.
+3. Press `Enter`. The new tiles replace the old ones as they arrive. `Esc` clears the marks, then ends the tool.
+
+### Buildings of the savegame
+
+With a savegame open, the editor reads its buildings. The generators build on them. A route opened alone has none.
+
+- **Sheds** (`View → Show → Sheds`): the indoor areas of the buildings as purple outlines, both those placed in the game and those of the map, unless torn down.
+- **Bunker silos** (`View → Show → Bunker silos`): the floor between the walls as a teal outline.
+- **Stations** (`View → Show → Stations`): a yellow arrow at each stop where vehicles unload or load: selling points, productions, silos, animal barns and diesel tanks.
+
+The building files are read from the game and the mods folder; buildings whose files are missing are left out and counted in the status bar. What was read is kept in `%APPDATA%\AutoDrive Editor\cache`, so a savegame opens faster the second time.
+
+**Where the stop arrows point.** Most buildings define the spot the game's AI helper drives to; the arrow sits on it. Where a building has none (many diesel tanks and animal barns), the arrow sits on the trigger. With a drivability map, the arrow takes the direction with the most free room, and all stops of a building circle it counterclockwise, so one route can pass them all. It can still be wrong; you can turn the lane when you create it. Triggers of one kind at nearly the same spot (one per fill type) are shown as one stop.
+
+**Building types.** `Generate → Building types…` lists the savegame's building types in four groups: Stations, Sheds, Bunker silos and Other. A production with a hall is a station, not a shed; farmhouses and weighing stations are in Other. If a type is in the wrong group, choose another in its `Group` column. Unticked types or groups are hidden. `Reset` puts every type back and shows it. Both apply on every map.
+
+### Display options
+
+`View → Show` switches each of these on and off: nodes, node IDs (only when zoomed in), each connection type, markers, marker names, vehicle parking positions (a "P" next to the marker, from the savegame's `vehicles.xml`), sheds, bunker silos, stations, the drivability map and the scale bar. Arrows show the driving direction; dual connections get one at each end.
+
+`View → Display options…` sets sizes and colors, and `Hidden items can be selected`. All switches are remembered.
+
+## Companion mod
+
+The editor works without any mod. The small companion mod **FS25_AutoDriveEditorLink** connects it to the running game and adds two things:
+
+- **Game picture**: the game renders the map from above, and the editor shows it as its background. See [Game picture](#game-picture).
+- **Reload on save**: when you save the savegame that is running in the game, AutoDrive drives on the new network right away. Without the mod, the game keeps its old network and overwrites your changes the next time it saves.
+
+### Install
+
+1. Download `FS25_AutoDriveEditorLink.zip` from the [latest release](https://github.com/SvenBrauns/FS25_AutoDriveEditorLink/releases/latest).
+2. Put the zip into your `mods` folder (usually `Documents\My Games\FarmingSimulator2025\mods`). Don't unpack or rename it.
+3. Start the game, select your savegame and activate the mod in the mod list, then load the savegame.
+
+To update the mod, replace the zip with the new one.
+
+### Check the connection
+
+Load the savegame in the game and open the same savegame in the editor. Choose `View → Background → Capture game picture…`: the top of the dialog says whether the game is connected.
+
+If it says the game is not connected:
+
+- Is the mod active in this savegame?
+- Is the same savegame loaded in the game and open in the editor?
+- Is the game folder under `File → Settings → General` the one the game uses?
+
+> **Note:** The editor and the mod talk through files in the folder `modSettings\FS25_AutoDriveEditorLink` of your FS25 user folder. Nothing is sent over the internet.
+
+## Checking and saving
+
+### Network check
+
+`Check → Check network` opens the `Network check` dock and lists:
+
+- overlapping nodes,
+- nodes outside the map,
+- nodes whose height differs too much from the terrain (with a heightmap),
+- invalid connections: to a node that doesn't exist, to the node itself, or an incoming entry without the other node's outgoing entry,
+- nodes without any connection.
+
+The distance for overlapping nodes and the allowed height difference are set at the top of the dock. Click an entry to show it on the map.
+
+**Fixing.** `Fix selected` or `Fix all` merges overlapping nodes (keeping the node with a marker, otherwise the lowest ID), moves nodes back onto the map, sets heights from the heightmap, removes invalid references and deletes nodes without connections (nodes with a marker are kept). Each kind of fix is one undo step.
+
+**Ignoring.** Entries that are fine as they are, e.g. nodes on a bridge, can be hidden with `Ignore`. They move to the `Ignored` group and aren't fixed by `Fix all`; `Don't ignore` brings them back. An ignored entry shows up again when one of its nodes moves. The checkboxes switch off a whole check. Both are remembered per route or savegame.
+
+Saving runs the check first. If it finds problems that aren't ignored, the dock shows them and the editor asks whether to save anyway.
+
+### Saving
+
+`File → Save` (`Ctrl+S`) writes to the file you opened. Before the first overwrite, a backup copy (`.bak`) is made.
+
+**Saving a savegame** writes its `AutoDrive_config.xml` and updates the marker targets of its vehicles in `vehicles.xml`. If vehicles have a deleted marker as target, the editor lists them and asks first; saving sets their target to marker 1 and removes a parking target. Then:
+
+- **Game running this savegame with the companion mod:** the network is reloaded in the game, and the status bar shows `Saved · reloaded in game`. Network edits made in the game since the file was opened are replaced. If the game reports an error or doesn't answer within 30 seconds, a message says the file is saved but not reloaded.
+- **Game running without the mod:** a warning says the game will overwrite the file on its next save. Exit the game without saving, or install the [Companion mod](#companion-mod).
+- **Game closed:** the new network is there the next time the savegame is loaded.
+
+**Saving a route** writes only the route file. To use it in a running game, press `Import` in AutoDrive's RoutesManager and save in the game.
+
+**When the game changed the file.** If the network in the file changed since the editor opened or last saved it, usually because the game saved, Save warns first: `Save anyway` overwrites the game's changes, `Reload (my changes are lost)` loads the file again, `Cancel` does nothing. `File → Reload` (`F5`) loads the open file again at any time and keeps the view; with unsaved changes it asks first.
+
+### Routes in the RoutesManager
+
+- **Save as route…** (`Ctrl+Shift+S`) keeps a version of the network as a route. It suggests the name of the route saved or loaded last, else the map name. An existing name asks before replacing; the revision then goes up. A savegame stays open afterwards; a route or XML file goes on as the saved route.
+- **Load route into savegame…** (with a savegame open) replaces the network with a route of the same map, as one undo step. If the current network isn't saved as a route yet, it offers to do that first. Vehicles keep their targets at markers with the same name and group. Save then writes the route into the savegame and reloads it in the game.
+
+### Autosave
+
+Unsaved changes are backed up every few minutes (interval under `File → Settings`). If the editor closes unexpectedly, it offers to restore them at the next start.
+
+## Reference
+
+### All tools and keys
+
+All keys can be changed under `File → Settings → Shortcuts`. Clicking a tool in the strip picks it with the variant used last.
+
+| Tool | Key | What it does |
+| --- | --- | --- |
+| Selection | `A` | Select nodes, see [Selecting](#selecting) |
+| Move | `V` | Drag nodes; `Shift` along one grid axis |
+| Generate | `G` | Generators, see [The Generate tool](#the-generate-tool) |
+| Create (Regular / Subprio) | `E` / `Shift+E` | Create a node, or insert one into a connection |
+| Connect (Regular / Dual / Reverse) | `1` / `2` / `3` | Connect nodes one after another; draws a road |
+| Delete (Node / Reconnect) | `L` / `Shift+L` | Delete nodes, or delete and join the ends |
+| Toggle type | `T` | Regular ↔ subprio |
+| Reverse direction | `U` | Turn a connection around |
+| Rotate | `R` | Rotate the selection |
+| Enter position | `P` | Type a node's coordinates |
+| Align horizontally / vertically | `H` / `J` | Put the selection on a line |
+| Height like reference / from heightmap | `Y` / `Shift+Y` | Set heights of the selection |
+| Draw (Line / Arc / Bézier / Parallel) | `I` / `K` / `B` / `Shift+I` | Lines, curves and parallel lanes |
+| Marker (Add / Edit / Move / Delete) | `M` / `Shift+M` / `Ctrl+M` / `Ctrl+Shift+M` | Markers |
+| Measure (Distance / Angle) | `D` / `Shift+D` | Measure between two points |
+
+| Command | Key |
+| --- | --- |
+| Open / Save / Save as route | `Ctrl+O` / `Ctrl+S` / `Ctrl+Shift+S` |
+| Reload file | `F5` |
+| Undo / Redo | `Ctrl+Z` / `Ctrl+Y` |
+| Copy / Cut / Paste / Paste in place | `Ctrl+C` / `Ctrl+X` / `Ctrl+V` / `Ctrl+Shift+V` |
+| Select all | `Ctrl+A` |
+| Delete selection / and reconnect | `Del` / `Shift+Del` |
+| Snap to grid | `S` |
+| Find marker or node | `Ctrl+F` |
+| Planning mode | `Ctrl+P` |
+| Show whole map / Zoom to selection | `Home` / `F` |
+| Manual | `F1` |
+
+### Settings
 
 `File → Settings…` has four tabs:
 
-- **General**: language (English or German; on first start German on a German Windows, English elsewhere; takes effect after a restart), theme (like Windows, light or dark), the autosave interval, opening the last file at startup, checking for updates at startup, and the game folders.
-- **Maps**: the imported maps with mod, size, heightmap and game picture. `Re-import` reads the selected maps from their mods again (select several with `Ctrl` or `Shift`+click; the import runs in the background, `Cancel` stops after the map being imported), `Remove` deletes the imported map and its game picture (the question shows the size), `Import from mod zip…` imports a map from a zip anywhere on disk. `Use this map for the open file` puts the chosen map under the open file; this is remembered for the file.
-- **Generators**: curve radius (default 6 m) and node spacing on straights (default 12 m) for Find route, Junction and the station lanes; vehicle width and safety margin (see [Find route](#find-route)); the lane lengths of station lanes and the marker name and group per stop type (see [Station lanes](#station-lanes)); the marker name and group patterns of bunker silo lanes for back in and drive through (see [Bunker silos](#bunker-silos)).
+- **General**: language (English or German, after a restart; on first start German on a German Windows), theme (like Windows, light or dark), autosave interval, opening the last file at startup, checking for updates at startup, and the game folders.
+- **Maps**: the imported maps with mod, size, heightmap and game picture.
+  - `Re-import` reads the selected maps again (several with `Ctrl` or `Shift`+click; runs in the background, `Cancel` stops after the current map).
+  - `Remove` deletes the imported map and its game picture.
+  - `Import from mod zip…` imports a map from a zip anywhere on disk.
+  - `Use this map for the open file` puts the chosen map under the open file; remembered for the file.
+- **Generators**: curve radius (default 6 m) and node spacing on straights (default 12 m) for Route, Junction and Stations; vehicle width and safety margin for Route; lane lengths and marker patterns of [Stations](#stations); marker patterns of [Bunker silos](#bunker-silos).
 - **Shortcuts**: the keys of all menu entries and tools, one entry per tool variant.
 
-`Help → Check for updates` asks GitHub whether a newer version exists. Checking at every start is off by default, because it connects to github.com. An update is installed by downloading the zip from the release page and replacing the old program folder with it; settings and imported maps are kept.
+### Updates
 
-## Help and errors
+`Help → Check for updates` asks GitHub whether a newer version exists. Checking at every start is off by default, because it connects to github.com. To update, download the zip from the release page and replace the old program folder with it; settings and imported maps are kept.
 
-`Help → Manual` (`F1`) opens this manual in the editor's language. `Help → Version history` shows what changed in each version, `Help → About` shows the version and license. If an unexpected error occurs, the editor shows a message and keeps running. The details are written to a log file (`Help → Open log folder`, in `%APPDATA%\AutoDrive Editor\logs`); please attach it when reporting a bug. `Help → Debug log` adds detailed entries to the log, e.g. for each route search (start, goal, headings, why no route was found); turn it on, repeat what went wrong, and attach the log. `Help → Debug info` shows runtime numbers such as the node count and the cached map tiles.
+### Help and errors
+
+- `Help → Manual` (`F1`) opens this manual in the editor's language; `Help → Version history` shows what changed; `Help → About` shows version and license.
+- If an unexpected error occurs, the editor shows a message and keeps running. The details are in a log file: `Help → Open log folder` (`%APPDATA%\AutoDrive Editor\logs`). Please attach it when reporting a bug.
+- `Help → Debug log` adds detailed entries, e.g. for each route search (start, goal, headings, why no route was found). Turn it on, repeat what went wrong, and attach the log.
+- `Help → Debug info` shows runtime numbers such as the node count and cached map tiles.
