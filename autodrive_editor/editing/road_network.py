@@ -8,24 +8,39 @@ the map's own lanes. Generated lane ends snap to the
 map lane ends next to them, so every move the map allows stays possible. Nodes are spaced as
 AutoDrive records a drive; heights come from the map's lanes.
 
+Junctions close together form one (junction_groups). Where three or four two-way roads meet, the
+roads end at a box in the NF Marsch style (see junction_box.py) in the pair style, or at one
+shared node in the two-way style; every other junction keeps the map's lanes and is listed.
+
 Points are world positions (x, height, z).
 """
 
 import math
 from collections import defaultdict
-from dataclasses import dataclass, field
-from itertools import pairwise
+from dataclasses import dataclass, field, replace
+from itertools import combinations, pairwise
 
-from autodrive_editor.editing.junction import LANE_GAP
+from autodrive_editor.editing.dubins import shortest_path
+from autodrive_editor.editing.junction import (
+    LANE_GAP,
+    MIN_RADIUS,
+    RADIUS_STEP,
+    SAMPLE,
+    _turns_little,
+)
+from autodrive_editor.editing.junction_box import BOX_MARGIN
 from autodrive_editor.editing.parallel_lane import ParallelLaneError, offset_polyline
 from autodrive_editor.editing.planned_piece import PlannedPiece
 from autodrive_editor.editing.road_centre import RoadPiece, road_pieces
 from autodrive_editor.editing.road_graph import (
+    JUNCTION_SPAN,
+    PAIR_DISTANCE,
     SAME_LEVEL,
     Grid,
     Point3,
     RoadGraph,
     _between,
+    _intersection,
     flat_distance,
     length,
     lerp,
@@ -40,6 +55,13 @@ NODE_SNAP = 0.5  # lane ends this close share a node
 MIN_REST = 1.0  # shorter bits of map lane outside the road pieces are left out
 MIN_STEP = 1.0  # centre line points closer than this are left out before the lanes are offset
 SPACING = 12.0  # longest node gap on straight roads (AutoDrive's recording)
+MERGE_ONE_WAY = 60.0  # junctions linked by a one-way piece this short are one ...
+MERGE_ANY = 30.0  # ... and by any piece this short
+SPAWN_LENGTH = 20.0  # shorter pieces from a junction to a road end are left out (spawn lanes)
+MIN_ARM_ANGLE = 30.0  # roads into a box are at least this far apart (degrees)
+ARM_HEADING = 20.0  # a road's direction at a junction: over this much of it (metres)
+MIN_ARM = 5.0  # a road keeps at least this much outside the box (metres)
+LONG = 200.0  # half length of the lines through a box centre the crossings are found on
 
 
 @dataclass(frozen=True)
@@ -67,18 +89,99 @@ class _Lane:
     # driven along its points, and for a two-way lane of the one driven back.
     along: Ends | None = None
     back: Ends | None = None
+    placed: tuple[bool, bool] = (False, False)  # start, end already where they belong (boxes)
+
+
+@dataclass
+class JunctionGroups:
+    """Junctions that become one junction, and the road pieces left out."""
+
+    groups: list[frozenset[int]]
+    links: set[int]  # short pieces between junctions of one group
+    spawns: set[int]  # short pieces from a junction to a road end (spawn lanes)
+
+
+def junction_groups(graph: RoadGraph, pieces: list[RoadPiece]) -> JunctionGroups:
+    """Junctions linked by a one-way piece up to MERGE_ONE_WAY or any piece under MERGE_ANY are
+    one (the map's turn lanes split some junctions into a main-road and a side-road part)."""
+    parent = list(range(len(graph.junctions)))
+
+    def root(j: int) -> int:
+        while parent[j] != j:
+            j = parent[j]
+        return j
+
+    links = set()
+    for i, piece in enumerate(pieces):
+        if piece.start is None or piece.end is None or piece.start == piece.end:
+            continue
+        size = length(piece.points)
+        if size < MERGE_ANY or (not piece.two_way and size <= MERGE_ONE_WAY):
+            links.add(i)
+            parent[root(piece.start)] = root(piece.end)
+    members = defaultdict(set)
+    for j in range(len(graph.junctions)):
+        members[root(j)].add(j)
+
+    def free(piece: RoadPiece, at_end: bool) -> bool:
+        stretch, k = graph.stretches[piece.forward], -1 if at_end else 0
+        road_end = (stretch.end if at_end else stretch.start) is None
+        return road_end and flat_distance(piece.points[k], stretch.points[k]) <= PAIR_DISTANCE
+
+    spawns = {
+        i
+        for i, p in enumerate(pieces)
+        if length(p.points) < SPAWN_LENGTH
+        and ((p.start is not None and free(p, True)) or (p.end is not None and free(p, False)))
+    }
+    return JunctionGroups([frozenset(m) for m in members.values()], links, spawns)
 
 
 def build_road_network(graph: RoadGraph, options: RoadOptions | None = None) -> RoadNetwork:
     options = options or RoadOptions()
     network = RoadNetwork(PlannedPiece())
     pieces = road_pieces(graph)
+    grouped = junction_groups(graph, pieces)
+    dropped = grouped.links | grouped.spawns
+    boxes, kept_inner = [], set()
+    for group in grouped.groups:
+        box = _plan_box(group, graph, pieces, dropped, options)
+        if box is not None:
+            boxes.append(box)
+            continue
+        kept_inner |= set().union(*(graph.junctions[j].inner for j in group))
+        network.listed.append((_middle(graph, group), tr("No junction box")))
+    boxed = set().union(*(box.group for box in boxes))
     inner = set().union(*(j.inner for j in graph.junctions))
-    rests = _uncovered(graph, pieces, inner)
-    lanes = [_Lane(list(graph.stretches[i].points), fixed=True) for i in sorted(inner)]
+    spawn_stretches = {s for i in grouped.spawns for s in (pieces[i].forward, pieces[i].backward)}
+    kept = [p for i, p in enumerate(pieces) if i not in dropped]
+    rests = _uncovered(graph, kept, inner | spawn_stretches)
+    for s, parts in rests.items():  # bits of map lane into a box are left out
+        stretch, last = graph.stretches[s], len(graph.stretches[s].points) - 1
+        parts[:] = [
+            (a, b, part)
+            for a, b, part in parts
+            if not (a == 0 and stretch.start in boxed or b == last and stretch.end in boxed)
+        ]
+
+    lanes = [_Lane(list(graph.stretches[i].points), fixed=True) for i in sorted(kept_inner)]
     lanes += [_Lane(list(part), fixed=True) for parts in rests.values() for _, _, part in parts]
-    for piece in pieces:
-        lanes += _piece_lanes(piece, graph, rests, options, network.listed)
+    cuts = {(arm.piece, arm.at_end): (box, arm) for box in boxes for arm in box.arms}
+    piece_lanes = {}
+    for i, piece in enumerate(pieces):
+        if i in dropped:
+            continue
+        placed = ((i, False) in cuts, (i, True) in cuts)
+        points = list(piece.points)
+        for at_end in (False, True):
+            if placed[at_end]:
+                points = _cut(points, at_end, *cuts[i, at_end], options.two_way)
+        piece = replace(piece, points=tuple(points))
+        piece_lanes[i] = _piece_lanes(piece, graph, rests, options, network.listed, placed)
+        lanes += piece_lanes[i]
+    if not options.two_way:
+        for box in boxes:
+            lanes += _box_lanes(box, [_arm_ends(arm, piece_lanes[arm.piece]) for arm in box.arms])
     joins = _snap_ends(lanes)
     _add_lanes(network.piece, lanes, joins, options.spacing)
     return network
@@ -113,7 +216,12 @@ def _uncovered(graph: RoadGraph, pieces: list[RoadPiece], inner: set[int]) -> Re
 
 
 def _piece_lanes(
-    piece: RoadPiece, graph: RoadGraph, rests: Rests, options: RoadOptions, listed
+    piece: RoadPiece,
+    graph: RoadGraph,
+    rests: Rests,
+    options: RoadOptions,
+    listed,
+    placed: tuple[bool, bool] = (False, False),
 ) -> list[_Lane]:
     points = list(piece.points)
     if not piece.two_way:
@@ -140,13 +248,241 @@ def _piece_lanes(
     if not options.two_way:
         side = _side(points, graph.stretches[piece.forward].points)
         try:
+            forward = _offset(points, side * options.gap / 2)
+            backward = _offset(points, -side * options.gap / 2)[::-1]
             return [
-                _Lane(_offset(points, side * options.gap / 2), False, along=along),
-                _Lane(_offset(points, -side * options.gap / 2)[::-1], False, along=back),
+                _Lane(forward, False, along=along, placed=placed),
+                _Lane(backward, False, along=back, placed=placed[::-1]),
             ]
         except ParallelLaneError:
             listed.append((points[len(points) // 2], tr("Curve too tight for two lanes")))
-    return [_Lane(points, False, two_way=True, along=along, back=back)]
+    return [_Lane(points, False, two_way=True, along=along, back=back, placed=placed)]
+
+
+def _middle(graph: RoadGraph, group) -> Point3:
+    points = [p for j in group for p in graph.junctions[j].points]
+    return tuple(sum(p[k] for p in points) / len(points) for k in range(3))
+
+
+@dataclass
+class _Arm:
+    piece: int
+    at_end: bool  # the piece's end lies at the junction, else its start
+    heading: float = 0.0  # from the box centre out along the road
+    reach: float = 0.0  # from the centre to the box edge along the heading (pair style)
+
+
+@dataclass
+class _Box:
+    group: frozenset[int]
+    centre: Point3
+    arms: list[_Arm]
+    roads: list[tuple[int, ...]]  # the arms of each road through the box: two, or one (a stem)
+    lines: list[list[Point3]] = field(default_factory=list)  # two lanes per road, along it
+    crossings: list[tuple[int, int, Point3]] = field(default_factory=list)  # line, line, point
+
+
+def _plan_box(
+    group: frozenset[int], graph: RoadGraph, pieces: list[RoadPiece], dropped, options
+) -> _Box | None:
+    """The box where 3 or 4 two-way roads at least MIN_ARM_ANGLE apart meet: the two most
+    opposite roads run through it, a third one runs into it (stem), a fourth one through as well.
+    None for any other junction."""
+    if any(graph.junctions[j].crossing or graph.junctions[j].roundabout for j in group):
+        return None
+    arms = [
+        _Arm(i, at_end)
+        for i, p in enumerate(pieces)
+        if i not in dropped
+        for at_end in (False, True)
+        if (p.end if at_end else p.start) in group
+    ]
+    if not 3 <= len(arms) <= 4 or not all(pieces[arm.piece].two_way for arm in arms):
+        return None
+    outward = [_outward(pieces[arm.piece].points, arm.at_end) for arm in arms]
+    headings = [_heading(line[0], _point_at(line, ARM_HEADING)) for line in outward]
+    centre = _meeting_point([line[0] for line in outward], headings)
+    if centre is None or flat_distance(centre, _middle(graph, group)) > JUNCTION_SPAN:
+        return None
+    for arm, line in zip(arms, outward, strict=True):
+        # The direction to the arm's end; the arm's own one if the end lies at the centre.
+        far = line[0] if flat_distance(centre, line[0]) >= 1.0 else line[-1]
+        arm.heading = _heading(centre, far)
+    order = sorted(arm.heading % math.tau for arm in arms)
+    turns = [(b - a) % math.tau for a, b in zip(order, order[1:] + order[:1], strict=True)]
+    if min(turns) < math.radians(MIN_ARM_ANGLE):
+        return None
+    a, b = max(
+        combinations(range(len(arms)), 2),
+        key=lambda ab: abs(math.remainder(arms[ab[0]].heading - arms[ab[1]].heading, math.tau)),
+    )
+    box = _Box(group, centre, arms, [(a, b), tuple(k for k in range(len(arms)) if k not in (a, b))])
+    if not options.two_way and not _place_crossings(box, options.gap):
+        return None
+    if any(
+        flat_distance(centre, line[-1]) < arm.reach + MIN_ARM
+        for arm, line in zip(arms, outward, strict=True)
+    ):
+        return None
+    return box
+
+
+def _outward(points, at_end: bool) -> list[Point3]:
+    """The piece's points from its end at the junction outward."""
+    return list(points[::-1] if at_end else points)
+
+
+def _point_at(points: list[Point3], distance: float) -> Point3:
+    walked = 0.0
+    for a, b in pairwise(points):
+        step = flat_distance(a, b)
+        if step > 0 and walked + step >= distance:
+            return lerp(a, b, (distance - walked) / step)
+        walked += step
+    return points[-1]
+
+
+def _meeting_point(points: list[Point3], headings: list[float]) -> Point3 | None:
+    """The point closest to all lines through the points along the headings (least squares)."""
+    a11 = a12 = a22 = b1 = b2 = 0.0
+    for p, heading in zip(points, headings, strict=True):
+        dx, dz = math.cos(heading), math.sin(heading)
+        m11, m12, m22 = 1 - dx * dx, -dx * dz, 1 - dz * dz
+        a11, a12, a22 = a11 + m11, a12 + m12, a22 + m22
+        b1 += m11 * p[0] + m12 * p[2]
+        b2 += m12 * p[0] + m22 * p[2]
+    determinant = a11 * a22 - a12 * a12
+    if abs(determinant) < 1e-3:
+        return None
+    x, z = (b1 * a22 - b2 * a12) / determinant, (a11 * b2 - a12 * b1) / determinant
+    return x, sum(p[1] for p in points) / len(points), z
+
+
+def _from_centre(box: _Box, heading: float, distance: float) -> Point3:
+    c = box.centre
+    return c[0] + distance * math.cos(heading), c[1], c[2] + distance * math.sin(heading)
+
+
+def _place_crossings(box: _Box, gap: float) -> bool:
+    """The box lanes: each road's centre line through the box centre (kinked there between the
+    two arms of a through road, straight on across for a stem) with a lane gap/2 to each side;
+    where the lanes of the two roads cross; each arm's box edge BOX_MARGIN past the crossings.
+    False if the lanes don't cross four times."""
+    for road in box.roads:
+        first = box.arms[road[0]].heading
+        last = box.arms[road[1]].heading if len(road) == 2 else first + math.pi
+        line = [_from_centre(box, first, LONG), box.centre, _from_centre(box, last, LONG)]
+        try:
+            box.lines += [_offset(line, gap / 2), _offset(line, -gap / 2)]
+        except ParallelLaneError:
+            return False
+    for p in (0, 1):
+        for q in (2, 3):
+            found = []
+            for a, b in pairwise(box.lines[p]):
+                for c, d in pairwise(box.lines[q]):
+                    hit = _intersection(a, b, c, d)
+                    if hit is not None:
+                        point = lerp(a, b, hit[0])
+                        found.append((flat_distance(point, box.centre), point))
+            if not found:
+                return False
+            box.crossings.append((p, q, min(found)[1]))
+    for arm in box.arms:
+        dx, dz = math.cos(arm.heading), math.sin(arm.heading)
+        arm.reach = BOX_MARGIN + max(
+            (x[0] - box.centre[0]) * dx + (x[2] - box.centre[2]) * dz for _, _, x in box.crossings
+        )
+    return True
+
+
+def _cut(points: list[Point3], at_end: bool, box: _Box, arm: _Arm, two_way: bool) -> list[Point3]:
+    """The road's centre line cut back to the box edge (pair style) or run on to the box centre
+    (two-way style), straight from its last point outside."""
+    line = _outward(points, at_end)
+    if two_way:
+        target, keep_out = box.centre, 0.0
+    else:
+        edge = _from_centre(box, arm.heading, arm.reach)
+        target, keep_out = (edge[0], line[0][1], edge[2]), arm.reach
+    while len(line) > 1 and flat_distance(line[0], box.centre) < keep_out + MIN_STEP:
+        line.pop(0)
+    return _outward([target, *line], at_end)
+
+
+def _arm_ends(arm: _Arm, lanes: list[_Lane]) -> tuple[Point3, Point3]:
+    """Where the road's lane into the box ends and its lane out of it starts."""
+    if len(lanes) == 1:
+        end = lanes[0].points[-1 if arm.at_end else 0]
+        return end, end
+    into, out = lanes if arm.at_end else lanes[::-1]
+    return into.points[-1], out.points[0]
+
+
+def _box_lanes(box: _Box, ends: list[tuple[Point3, Point3]]) -> list[_Lane]:
+    """The box from the arms' lane ends (in, out): lanes from edge to crossing two-way, between
+    crossings one-way; a centre node with two-way lanes to the crossings (left turns, U-turns);
+    the short turns between neighbouring arms of different roads as arcs."""
+    lanes = []
+    for r, road in enumerate(box.roads):
+        first_in = ends[road[0]][0]
+        nearer = min((2 * r, 2 * r + 1), key=lambda k: _distance_to(box.lines[k], first_in))
+        for k in (2 * r, 2 * r + 1):
+            stops = [x for p, q, x in box.crossings if k in (p, q)]
+            stops.sort(key=lambda x, line=box.lines[k]: _position(line, x))
+            # The lane nearer to the first arm's lane into the box is driven along the road.
+            along = k == nearer
+            chain = stops if along else stops[::-1]
+            if along or len(road) == 2:
+                chain = [ends[road[0] if along else road[-1]][0], *chain]
+            if not along or len(road) == 2:
+                chain = [*chain, ends[road[-1] if along else road[0]][1]]
+            for a, b in pairwise(chain):
+                between = a in stops and b in stops
+                lanes.append(_Lane([a, b], fixed=True, two_way=not between))
+    middle = tuple(sum(x[k] for _, _, x in box.crossings) / 4 for k in range(3))
+    lanes += [_Lane([middle, x], fixed=True, two_way=True) for _, _, x in box.crossings]
+
+    road_of = {k: r for r, road in enumerate(box.roads) for k in road}
+    order = sorted(range(len(box.arms)), key=lambda k: box.arms[k].heading % math.tau)
+    for k, m in zip(order, order[1:] + order[:1], strict=True):
+        if road_of[k] == road_of[m]:
+            continue
+        # Of the two turns between the arms, the short one: lane ends on the side facing.
+        a, b = min((k, m), (m, k), key=lambda ab: flat_distance(ends[ab[0]][0], ends[ab[1]][1]))
+        arc = _corner(ends[a][0], box.arms[a].heading + math.pi, ends[b][1], box.arms[b].heading)
+        if arc is not None:
+            lanes.append(_Lane(arc, fixed=True))
+    return lanes
+
+
+def _distance_to(points: list[Point3], point: Point3) -> float:
+    """Flat distance from the point to the line."""
+    return min(
+        flat_distance(point, lerp(a, b, min(1.0, max(0.0, _along(a, b, point[0], point[2])))))
+        for a, b in pairwise(points)
+    )
+
+
+def _corner(start: Point3, start_heading: float, goal: Point3, goal_heading: float):
+    """An arc from the lane end into the box to the lane start out of it, at BOX_MARGIN or
+    tighter down to MIN_RADIUS; None if none fits."""
+    radius = BOX_MARGIN
+    while radius >= MIN_RADIUS - 1e-9:
+        path = shortest_path(
+            (start[0], start[2], start_heading), (goal[0], goal[2], goal_heading), radius
+        )
+        if path is not None and _turns_little(path, start_heading, goal_heading, radius):
+            poses = path.sample(SAMPLE)
+            count = len(poses) - 1
+            points = [
+                (x, start[1] + (goal[1] - start[1]) * n / count, z)
+                for n, (x, z, _) in enumerate(poses)
+            ]
+            points[0], points[-1] = start, goal
+            return points
+        radius -= RADIUS_STEP
+    return None
 
 
 def _position(points, point: Point3) -> float:
@@ -228,6 +564,8 @@ def _snap_ends(lanes: list[_Lane]) -> list[tuple[int, bool, Point3, bool]]:
         if lane.fixed:
             continue
         for at_end in (False, True):
+            if lane.placed[at_end]:
+                continue
             index = -1 if at_end else 0
             point = lane.points[index]
             if lane.two_way:
@@ -310,23 +648,24 @@ def _add_lanes(piece: PlannedPiece, lanes: list[_Lane], joins, spacing: float) -
 
 def _with_heights(flat: list[tuple[float, float]], lane: _Lane, spacing: float) -> list[Point3]:
     """The node positions with the height of the lane under them. The nodes run along the lane,
-    so each one is looked for on the lane segments up to a few node gaps after the last one."""
-    points, k, result = lane.points, 0, []
+    so each one is looked for on the lane up to a few node gaps after the last one."""
+    points, k, reached, result = lane.points, 0, 0.0, []
     walked = [0.0]
     for a, b in pairwise(points):
         walked.append(walked[-1] + flat_distance(a, b))
     for x, z in flat:
         best = None
         for j in range(k, len(points) - 1):
-            if j > k and walked[j] - walked[k] > 3 * spacing:
+            if j > k and walked[j] - reached > 3 * spacing:
                 break
             a, b = points[j], points[j + 1]
             t = min(1.0, max(0.0, _along(a, b, x, z)))
             d = math.hypot(a[0] + t * (b[0] - a[0]) - x, a[2] + t * (b[2] - a[2]) - z)
             if best is None or d < best[0]:
-                best = (d, j, a[1] + t * (b[1] - a[1]))
-        k = best[1]
-        result.append((x, best[2], z))
+                best = (d, j, t, a[1] + t * (b[1] - a[1]))
+        _, k, t, height = best
+        reached = walked[k] + t * (walked[k + 1] - walked[k])
+        result.append((x, height, z))
     return result
 
 
