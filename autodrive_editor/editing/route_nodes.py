@@ -321,9 +321,10 @@ def _recorded(polyline: list[Point], spacing: float) -> list[Point]:
             indices.append(index - 1)
             heading = _heading(last, points[-1])
         elif distance >= limit and (index < len(dense) - 1 or distance > limit + 1e-9):
-            # Back to where the distance is the limit, between the dense points.
+            # Back to where the distance is the limit, between the dense points (after a sharp
+            # bend the distance can shrink between them: then no further than the point).
             before = math.dist(last, dense[index - 1])
-            fraction = max(0.0, (limit - before) / (distance - before))
+            fraction = min(1.0, max(0.0, (limit - before) / (distance - before)))
             points.append(_lerp(dense[index - 1], point, fraction))
             indices.append(index)
             heading = _heading(last, points[-1])
