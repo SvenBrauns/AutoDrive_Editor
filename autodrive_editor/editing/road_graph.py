@@ -86,6 +86,14 @@ class Grid:
             for k in (cz - 1, cz, cz + 1):
                 yield from self.cells.get((i, k), ())
 
+    def box(self, x0: float, z0: float, x1: float, z1: float):
+        """Items in the cells the rectangle touches."""
+        cx0, cz0 = self._cell(x0, z0)
+        cx1, cz1 = self._cell(x1, z1)
+        for i in range(cx0, cx1 + 1):
+            for k in range(cz0, cz1 + 1):
+                yield from self.cells.get((i, k), ())
+
 
 def flat_distance(a: Point3, b: Point3) -> float:
     return math.hypot(a[0] - b[0], a[2] - b[2])

@@ -75,6 +75,7 @@ class RoadOptions:
 class RoadNetwork:
     piece: PlannedPiece  # points as map positions (x, y, z)
     listed: list[tuple[Point3, str]] = field(default_factory=list)  # places to look at
+    areas: list[list[tuple[float, float]]] = field(default_factory=list)  # junction outlines (x, z)
 
 
 Ends = tuple[Point3 | None, Point3 | None]  # where a lane's start and end belong
@@ -149,7 +150,14 @@ def build_road_network(graph: RoadGraph, options: RoadOptions | None = None) -> 
         if box is not None:
             boxes.append(box)
             continue
-        kept_inner |= set().union(*(graph.junctions[j].inner for j in group))
+        group_inner = set().union(*(graph.junctions[j].inner for j in group))
+        kept_inner |= group_inner
+        network.areas.append(
+            _outline(
+                [p for j in group for p in graph.junctions[j].points]
+                + [p for s in group_inner for p in graph.stretches[s].points]
+            )
+        )
         network.listed.append((_middle(graph, group), tr("No junction box")))
     boxed = set().union(*(box.group for box in boxes))
     inner = set().union(*(j.inner for j in graph.junctions))
@@ -179,9 +187,15 @@ def build_road_network(graph: RoadGraph, options: RoadOptions | None = None) -> 
         piece = replace(piece, points=tuple(points))
         piece_lanes[i] = _piece_lanes(piece, graph, rests, options, network.listed, placed)
         lanes += piece_lanes[i]
-    if not options.two_way:
-        for box in boxes:
-            lanes += _box_lanes(box, [_arm_ends(arm, piece_lanes[arm.piece]) for arm in box.arms])
+    for box in boxes:
+        if options.two_way:  # the arms meet at the centre: the outline of a box that size
+            reach = options.gap / 2 + BOX_MARGIN
+            corners = [_from_centre(box, arm.heading, reach) for arm in box.arms]
+            network.areas.append(_outline([box.centre, *corners]))
+            continue
+        box_lanes = _box_lanes(box, [_arm_ends(arm, piece_lanes[arm.piece]) for arm in box.arms])
+        network.areas.append(_outline([p for lane in box_lanes for p in lane.points]))
+        lanes += box_lanes
     joins = _snap_ends(lanes)
     _add_lanes(network.piece, lanes, joins, options.spacing)
     return network
@@ -325,6 +339,27 @@ def _plan_box(
     ):
         return None
     return box
+
+
+def _outline(points) -> list[tuple[float, float]]:
+    """The convex hull (x, z) of the points, counterclockwise."""
+    flat = sorted({(p[0], p[2]) for p in points})
+    if len(flat) < 3:
+        return flat
+
+    def half(ordered):
+        hull = []
+        for p in ordered:
+            while len(hull) >= 2 and _cross(hull[-2], hull[-1], p) <= 0:
+                hull.pop()
+            hull.append(p)
+        return hull[:-1]
+
+    return half(flat) + half(flat[::-1])
+
+
+def _cross(o, a, b) -> float:
+    return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
 
 
 def _outward(points, at_end: bool) -> list[Point3]:

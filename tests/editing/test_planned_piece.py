@@ -1,7 +1,12 @@
 from autodrive_editor.editing.edit_history import EditHistory
 from autodrive_editor.editing.planned_piece import PlannedPiece, push_piece
 from autodrive_editor.model.autodrive_data import SUBPRIO_FLAG, AutoDriveData, NodeData
-from autodrive_editor.model.connections import ConnectionType, get_connection_type
+from autodrive_editor.model.connections import (
+    CONNECTION_STATES,
+    ConnectionType,
+    get_connection_type,
+    write_connection_state,
+)
 
 
 def test_add_connect_and_chain():
@@ -55,3 +60,33 @@ def test_push_piece_adds_nodes_connections_and_markers_in_one_undo_step():
     edits.undo()
 
     assert list(data.nodes) == [5] and not data.markers
+
+
+def test_push_piece_joins_cuts_and_removes_existing_nodes():
+    data = AutoDriveData()
+    for node_id in (1, 2, 3, 4):
+        data.add_node(NodeData(node_id, node_id * 10, 0, 0))
+    write_connection_state(data, 1, 2, CONNECTION_STATES[ConnectionType.DUAL])
+    write_connection_state(data, 2, 3, CONNECTION_STATES[ConnectionType.REGULAR])
+    write_connection_state(data, 3, 4, CONNECTION_STATES[ConnectionType.REGULAR])
+    edits = EditHistory()
+    piece = PlannedPiece()
+    a = piece.add(15, 0, 5)
+    piece.joins += [(a, 1, True), (a, 1, False), (a, 3, False)]
+    piece.cut += [(1, 2)]
+    piece.removed.add(4)
+
+    assert push_piece(edits, data, piece, "Create") == [5]
+
+    assert 4 not in data.nodes
+    assert get_connection_type(data.nodes[5], data.nodes[1]) == ConnectionType.DUAL
+    assert get_connection_type(data.nodes[3], data.nodes[5]) == ConnectionType.REGULAR
+    assert 2 not in data.nodes[1].outgoing and 1 in data.nodes[2].outgoing
+    assert get_connection_type(data.nodes[2], data.nodes[1]) == ConnectionType.REGULAR
+
+    edits.undo()
+    edits.undo()
+
+    assert sorted(data.nodes) == [1, 2, 3, 4]
+    assert get_connection_type(data.nodes[1], data.nodes[2]) == ConnectionType.DUAL
+    assert not data.nodes[1].incoming - {2}
