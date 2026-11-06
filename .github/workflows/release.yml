@@ -41,7 +41,9 @@ jobs:
           Copy-Item LICENSE, README.md, README.de.md, MANUAL.md, MANUAL.de.md, CHANGELOG.md, packaging/LGPL-3.0.txt, packaging/THIRD_PARTY_NOTICES.md "$env:APP_FOLDER"
           Compress-Archive -Path "$env:APP_FOLDER" -DestinationPath "$env:ZIP_NAME"
 
-      - name: Publish release
+      - name: Publish release with the newest companion mod
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${{ github.ref_name }}" "$env:ZIP_NAME" --title "${{ github.ref_name }}" --notes-file build/release_notes.md
+        run: |
+          gh release download --repo SvenBrauns/FS25_AutoDriveEditorLink --pattern FS25_AutoDriveEditorLink.zip
+          gh release create "${{ github.ref_name }}" "$env:ZIP_NAME" FS25_AutoDriveEditorLink.zip --title "${{ github.ref_name }}" --notes-file build/release_notes.md
