@@ -38,7 +38,7 @@ def test_create_builds_the_whole_map_into_the_plan(zoomed_window):
     found = []
     zoomed_window.road_network_operation.places_found.connect(found.append)
 
-    zoomed_window.generate_options.create_roads_button.click()
+    zoomed_window.generators.options.create_roads_button.click()
 
     assert len(zoomed_window._get_autodrive_data().nodes) > before
     assert zoomed_window.planning.changes is not None
@@ -47,7 +47,7 @@ def test_create_builds_the_whole_map_into_the_plan(zoomed_window):
 
 def test_a_click_on_a_road_builds_it_in_the_click_road_mode(zoomed_window):
     choose_roads(zoomed_window)
-    options = zoomed_window.generate_options
+    options = zoomed_window.generators.options
     options.road_mode_box.setCurrentIndex(options.road_mode_box.findData(RoadMode.CLICK_ROAD))
     before = len(zoomed_window._get_autodrive_data().nodes)
     zoomed_window.view.centerOn(560, 502)

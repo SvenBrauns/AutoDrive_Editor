@@ -44,7 +44,7 @@ def test_release_shows_the_tip_handle_and_enter_adds_the_junction(window):
 
     drag(window, start, end, release=False)
 
-    tool = window.generate_tool.current
+    tool = window.generators.tool.current
     assert tool._item.isVisible() and not tool._item.path().isEmpty()
     assert not tool._handle.isVisible() and not tool._gap_item.isVisible()
 
@@ -120,7 +120,7 @@ def test_the_preview_shows_both_lanes_of_a_two_lane_stem(window):
 
     drag(window, view_pos(window, 5, 0), view_pos(window, 5, 25), release=False)
 
-    path = window.generate_tool.current._item.path()
+    path = window.generators.tool.current._item.path()
     elements = [path.elementAt(i) for i in range(path.elementCount())]
     # A stem line from 3 m to each side of the stem's centre line towards the drag end, drawn
     # after the curves.
@@ -137,7 +137,7 @@ def test_the_preview_shows_both_lanes_of_a_two_lane_stem(window):
 
 
 def test_the_stem_options_are_in_the_options_bar_and_are_saved(window):
-    options = window.generate_options
+    options = window.generators.options
     window.actions.generate_task_actions[GenerateTask.JUNCTION].trigger()
 
     assert window.options_bar.stack.currentWidget() is options

@@ -42,7 +42,7 @@ def test_clicks_on_free_ground_and_nodes_add_waypoints_and_show_the_route(window
     wait(window)
 
     assert waypoint_ids(window) == [None, 3]
-    tool = window.generate_tool.current
+    tool = window.generators.tool.current
     assert tool._route_item.isVisible() and not tool._route_item.path().isEmpty()
     assert tool._blocked_item.path().isEmpty()
     assert tool._gap_item.path().isEmpty()
@@ -59,7 +59,7 @@ def test_a_gap_is_drawn_where_no_route_was_found(window, monkeypatch):
     click(window, view_pos(window, 40, 20))
     wait(window)
 
-    tool = window.generate_tool.current
+    tool = window.generators.tool.current
     assert tool._gap_item.isVisible() and not tool._gap_item.path().isEmpty()
 
 
@@ -114,7 +114,7 @@ def test_confirm_after_applied_plan_adds_the_route_to_a_new_plan(window):
     window.planning.apply_button.click()
     wait(window)
 
-    assert window.generate_tool.confirm()
+    assert window.generators.tool.confirm()
     assert window.edit_history.is_planning and window.edit_history.has_plan_edits
 
 
@@ -123,7 +123,7 @@ def test_discarding_the_plan_removes_routes_and_waypoints(window):
     click(window, view_pos(window, 0, 20))
     click(window, view_pos(window, 20, 0))
     wait(window)
-    window.generate_tool.confirm()
+    window.generators.tool.confirm()
     click(window, view_pos(window, 0, -20))
 
     window.planning.discard_button.click()
@@ -139,15 +139,15 @@ def test_the_options_pick_what_generate_creates(window):
 
     window.actions.generate_task_actions[GenerateTask.PARKING_SPOTS].trigger()
 
-    assert window.generate_tool.task == GenerateTask.PARKING_SPOTS
-    assert window.view.active_tool is window.generate_tool
+    assert window.generators.tool.task == GenerateTask.PARKING_SPOTS
+    assert window.view.active_tool is window.generators.tool
 
 
 def test_menu_entry_and_button_pick_the_same_task(window):
     window.set_interaction_mode(InteractionMode.SELECT)
     menu = next(a.menu() for a in window.menuBar().actions() if a.text() == "Generate")
     entries = [a for a in menu.actions() if not a.isSeparator()]
-    buttons = window.generate_options.task_buttons
+    buttons = window.generators.options.task_buttons
 
     assert [a.text() for a in entries] == [
         "Route",
@@ -161,7 +161,7 @@ def test_menu_entry_and_button_pick_the_same_task(window):
 
     entries[3].trigger()
 
-    assert window.generate_tool.task == GenerateTask.STATIONS
+    assert window.generators.tool.task == GenerateTask.STATIONS
     assert window.view.interaction_mode == InteractionMode.GENERATE
     assert buttons[GenerateTask.STATIONS].defaultAction() is entries[3]
     assert buttons[GenerateTask.STATIONS].isChecked()
@@ -207,7 +207,7 @@ def test_delete_removes_the_waypoint_under_the_pointer_not_the_selection(window)
     window.node_selection.replace({1}, 1)
     for x in (0, 10, 20):
         click(window, view_pos(window, x, 20))
-    tool = window.generate_tool.current
+    tool = window.generators.tool.current
 
     hover(window, view_pos(window, 10, 20))
     assert tool._handle_items[1].pen().color() == HOVER_COLOR
@@ -236,7 +236,7 @@ def test_enter_starts_empty(window):
     click(window, view_pos(window, 20, 0))
     wait(window)
 
-    assert window.generate_tool.confirm()
+    assert window.generators.tool.confirm()
 
     assert window.find_route_operation.waypoints == []
 
@@ -244,7 +244,7 @@ def test_enter_starts_empty(window):
 def test_options_bar_buttons_remove_the_last_waypoint_and_clear(window):
     for x in (0, 10, 20):
         click(window, view_pos(window, x, 20))
-    options = window.generate_options
+    options = window.generators.options
     assert not options.route_options.isHidden()
 
     options.remove_last_button.click()

@@ -33,7 +33,7 @@ def station_window(zoomed_window):
             5, 5, 5
         )
 
-    window._ask_station_choices = ask
+    window.generators.ask_station_choices = ask
     types = [
         BuildingType("store.xml", "Store", "stations", BuildingGroup.STATIONS, 1),
         BuildingType("barn.xml", "Barn", "stations", BuildingGroup.STATIONS, 1),
@@ -105,7 +105,7 @@ def test_yard_road_is_drawn_by_clicks_on_the_map_and_finished_with_enter(zoomed_
         dialog.accept()
 
     QTimer.singleShot(0, draw)
-    lanes, _, yard = window._ask_station_choices([STORE_A, STORE_B], data)
+    lanes, _, yard = window.generators.ask_station_choices([STORE_A, STORE_B], data)
 
     assert seen["drawing"] is False
     assert lanes == [] and len(yard[0].piece.markers) == 2
