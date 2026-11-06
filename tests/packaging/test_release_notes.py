@@ -30,6 +30,11 @@ def test_last_section_goes_to_the_end():
     assert release_notes.changelog_section(CHANGELOG, "1.0.0") == "- first\n"
 
 
+def test_section_heading_without_date_is_found():
+    changelog = "## 2.0.0\n\n- big\n\n## 1.0.0 – 2026-10-27\n"
+    assert release_notes.changelog_section(changelog, "2.0.0") == "- big\n"
+
+
 def test_missing_section_stops_the_release():
     with pytest.raises(SystemExit, match="no section for 2.0.0"):
         release_notes.changelog_section(CHANGELOG, "2.0.0")

@@ -32,7 +32,10 @@ def test_version_history_shows_the_changelog(window):
 
 
 def test_changelog_has_an_entry_for_the_current_version():
-    assert f"## {__version__} – " in CHANGELOG_PATH.read_text(encoding="utf-8")
+    headings = [
+        line.split(" – ")[0] for line in CHANGELOG_PATH.read_text(encoding="utf-8").splitlines()
+    ]
+    assert f"## {__version__}" in headings
 
 
 def test_missing_changelog_is_explained(window, monkeypatch, tmp_path):

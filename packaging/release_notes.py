@@ -12,7 +12,9 @@ PROJECT_ROOT = Path(__file__).parents[1]
 
 def changelog_section(changelog: str, version: str) -> str:
     lines = changelog.splitlines()
-    start = next((i for i, line in enumerate(lines) if line.startswith(f"## {version} ")), None)
+    start = next(
+        (i for i, line in enumerate(lines) if line.split(" – ")[0] == f"## {version}"), None
+    )
     if start is None:
         raise SystemExit(f"CHANGELOG.md has no section for {version}")
     end = next((i for i in range(start + 1, len(lines)) if lines[i].startswith("## ")), len(lines))
