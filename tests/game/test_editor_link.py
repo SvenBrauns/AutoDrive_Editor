@@ -3,6 +3,7 @@ from datetime import datetime
 
 from PIL import Image
 
+from autodrive_editor.file_io.savegame_vehicles import SavegameVehicle
 from autodrive_editor.game import editor_link
 from autodrive_editor.game.editor_link import CaptureResult, GameStatus, ReloadInfo
 
@@ -108,6 +109,42 @@ def test_reload_request_names_the_network_file(tmp_path):
     assert root.attrib == {"format": "1", "id": "18", "type": "reload", "map": MAP, "savegame": "1"}
     assert root.find("reload").attrib == {"file": "network_18.xml"}
     assert editor_link.network_file_name(18) == "network_18.xml"
+
+
+def test_reload_request_lists_the_markers_that_moved_or_went(tmp_path):
+    editor_link.write_reload_request(tmp_path, 18, MAP, "1", {1: 1, 2: None, 3: 2})
+
+    markers = ET.parse(tmp_path / "request.xml").getroot().findall("reload/marker")
+    assert [m.attrib for m in markers] == [{"old": "2", "new": "0"}, {"old": "3", "new": "2"}]
+
+
+def test_park_request_lists_the_vehicles_with_their_marker(tmp_path):
+    editor_link.write_park_request(tmp_path, 19, MAP, "1", {"vehicleA": 5, "vehicleB": None})
+
+    root = ET.parse(tmp_path / "request.xml").getroot()
+    assert root.get("type") == "park"
+    assert [v.attrib for v in root.findall("park/vehicle")] == [
+        {"uniqueId": "vehicleA", "marker": "5"},
+        {"uniqueId": "vehicleB", "marker": "0"},
+    ]
+
+
+def test_vehicles_result_lists_the_game_vehicles(tmp_path):
+    (tmp_path / "result_20.xml").write_text(
+        '<result format="1" id="20" status="done" message="">'
+        '<vehicle uniqueId="v1" filename="data/vehicles/vario.xml" name="Fendt 1000 Vario"'
+        ' driverName="Vario" attachedTo="" park="4"/>'
+        '<vehicle uniqueId="v2" filename="data/vehicles/gx520.xml" name="Krone GX 520"'
+        ' driverName="" attachedTo="v1" park="-1"/></result>',
+        encoding="utf-8",
+    )
+    (tmp_path / "result_20.done").write_bytes(b"")
+
+    vehicles = editor_link.read_result(tmp_path, 20).vehicles
+    assert vehicles == (
+        SavegameVehicle("v1", "data/vehicles/vario.xml", "Vario", "", 4, "Fendt 1000 Vario"),
+        SavegameVehicle("v2", "data/vehicles/gx520.xml", "", "v1", None, "Krone GX 520"),
+    )
 
 
 def test_reload_result_carries_the_counts_and_times(tmp_path):
