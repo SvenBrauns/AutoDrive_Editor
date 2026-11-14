@@ -222,7 +222,6 @@ TEXTS = {
     "Vehicle parking positions…": "Parkpositionen der Fahrzeuge…",
     "Set the parking marker of each vehicle and implement of the savegame": "Den Parkmarker jedes Fahrzeugs und Anbaugeräts des Spielstands festlegen",
     "Vehicle parking positions": "Parkpositionen der Fahrzeuge",
-    "Vehicle": "Fahrzeug",
     "Attached to": "Angehängt an",
     "Parking marker": "Parkmarker",
     "Type into a marker field to search the markers.": "In ein Markerfeld tippen, um die Marker zu durchsuchen.",
