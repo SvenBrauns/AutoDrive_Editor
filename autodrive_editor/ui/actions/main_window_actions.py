@@ -99,7 +99,8 @@ class MainWindowActions:
                 tr("Edit"),
                 ("undo", "redo", "copy", "cut", "paste", "paste_at_original")
                 + ("select_all", "select_road_piece")
-                + ("delete_selection", "delete_reconnect", "find", "grid_snap", "planning_mode"),
+                + ("delete_selection", "delete_reconnect", "find", "grid_snap", "planning_mode")
+                + ("vehicle_parking",),
             ),
             (
                 tr("View"),
@@ -301,6 +302,12 @@ class MainWindowActions:
         self.display_options_action = QAction(tr("Display options…"), self.window)
 
         self.display_options_action.triggered.connect(self.window.open_display_options)
+
+        self.vehicle_parking_action = QAction(tr("Vehicle parking positions…"), self.window)
+        self.vehicle_parking_action.setStatusTip(
+            tr("Set the parking marker of each vehicle and implement of the savegame")
+        )
+        self.vehicle_parking_action.triggered.connect(self.window.vehicle_parking.open)
 
         self.building_types_action = QAction(tr("Building types…"), self.window)
 
@@ -645,6 +652,10 @@ class MainWindowActions:
         edit_menu.addSeparator()
 
         edit_menu.addAction(self.planning_mode_action)
+
+        edit_menu.addSeparator()
+
+        edit_menu.addAction(self.vehicle_parking_action)
 
         view_menu = menu_bar.addMenu(tr("View"))
 

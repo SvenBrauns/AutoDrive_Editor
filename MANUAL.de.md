@@ -167,6 +167,15 @@ Die Nodes liegen gleichmäßig verteilt. Abstand, Connection-Art, Node-Typ und Z
 - **Verschieben** (`Strg+M`): den Marker auf eine andere Node setzen.
 - **Löschen** (`Strg+Umschalt+M`).
 
+### Parkpositionen der Fahrzeuge
+
+`Bearbeiten → Parkpositionen der Fahrzeuge…` listet die Fahrzeuge und Anbaugeräte des geöffneten Savegames mit ihrem Shopbild, woran sie hängen, und ihrem Parkmarker. Den Marker in der Auswahlliste einer Zeile wählen oder hineintippen, um die Marker zu durchsuchen; `(keiner)` entfernt die Parkposition. Züge und Paletten stehen nicht in der Liste; DLC-Fahrzeuge haben kein Bild.
+
+- **Spiel läuft mit diesem Savegame und dem [Begleit-Mod](#begleit-mod):** Die Liste kommt aus dem Spiel, und OK setzt die Parkpositionen dort sofort. Das Spiel schreibt sie beim Speichern ins Savegame.
+- **Sonst:** Die Liste kommt aus der `vehicles.xml` des Savegames, und OK schreibt sie dorthin.
+
+Parkpositionen sind Markernummern des gespeicherten Netzes, deshalb fragt der Editor bei ungespeicherten Änderungen, ob zuerst gespeichert werden soll.
+
 ### Messen
 
 `D` (Abstand) oder `Umschalt+D` (Winkel) drücken, dann Punkt A und Punkt B anklicken (eine Node oder freie Fläche). Einen Punkt ziehen, um ihn zu verschieben. `Ansicht an Linie ausrichten` dreht die Ansicht entlang der Linie. `Esc` ohne etwas zu löschen kehrt zum vorher benutzten Werkzeug zurück.
@@ -434,10 +443,11 @@ Die Gebäudedateien werden aus dem Spiel und dem Mods-Ordner gelesen; Gebäude, 
 
 ## Begleit-Mod
 
-Der Editor funktioniert ohne jeden Mod. Der kleine Begleit-Mod **FS25_AutoDriveEditorLink** verbindet ihn mit dem laufenden Spiel und bringt zwei Dinge:
+Der Editor funktioniert ohne jeden Mod. Der kleine Begleit-Mod **FS25_AutoDriveEditorLink** verbindet ihn mit dem laufenden Spiel und bringt drei Dinge:
 
 - **Spielbild**: Das Spiel rendert die Karte von oben, und der Editor zeigt sie als Hintergrund. Siehe [Spielbild](#spielbild).
-- **Neu laden beim Speichern**: Speichert man das Savegame, das im Spiel läuft, fährt AutoDrive sofort auf dem neuen Netz. Ohne den Mod behält das Spiel sein altes Netz und überschreibt die Änderungen beim nächsten Speichern.
+- **Neu laden beim Speichern**: Speichert man das Savegame, das im Spiel läuft, fährt AutoDrive sofort auf dem neuen Netz, und die Fahrzeuge behalten ihre Ziele und Parkpositionen, auch wenn Marker gelöscht wurden. Ohne den Mod behält das Spiel sein altes Netz und überschreibt die Änderungen beim nächsten Speichern.
+- **Parkpositionen der Fahrzeuge** werden aus dem laufenden Spiel gelesen und dort gesetzt. Siehe [Parkpositionen der Fahrzeuge](#parkpositionen-der-fahrzeuge).
 
 ### Installieren
 
@@ -485,7 +495,7 @@ Beim Speichern läuft zuerst die Prüfung. Findet sie Probleme, die nicht ignori
 
 **Ein Savegame speichern** schreibt seine `AutoDrive_config.xml` und passt die Markerziele seiner Fahrzeuge in der `vehicles.xml` an. Haben Fahrzeuge einen gelöschten Marker als Ziel, listet der Editor sie und fragt zuerst; beim Speichern wird ihr Ziel auf Marker 1 gesetzt und ein Parkziel entfernt. Dann:
 
-- **Spiel läuft mit diesem Savegame und dem Begleit-Mod:** Das Netz wird im Spiel neu geladen, und die Statusleiste zeigt `Gespeichert · im Spiel neu geladen`. Netzänderungen, die seit dem Öffnen im Spiel gemacht wurden, werden ersetzt. Meldet das Spiel einen Fehler oder antwortet es nicht innerhalb von 30 Sekunden, sagt eine Meldung, dass die Datei gespeichert, aber nicht neu geladen ist.
+- **Spiel läuft mit diesem Savegame und dem Begleit-Mod:** Das Netz wird im Spiel neu geladen, und die Statusleiste zeigt `Gespeichert · im Spiel neu geladen`. Die Fahrzeuge im Spiel behalten ihre Ziele und Parkpositionen; ein gelöschtes Ziel wird zu Marker 1, eine gelöschte Parkposition wird entfernt. Netzänderungen, die seit dem Öffnen im Spiel gemacht wurden, werden ersetzt. Meldet das Spiel einen Fehler oder antwortet es nicht innerhalb von 30 Sekunden, sagt eine Meldung, dass die Datei gespeichert, aber nicht neu geladen ist.
 - **Spiel läuft ohne den Mod:** Eine Warnung sagt, dass das Spiel die Datei beim nächsten Speichern überschreibt. Das Spiel ohne Speichern beenden oder den [Begleit-Mod](#begleit-mod) installieren.
 - **Spiel geschlossen:** Das neue Netz ist da, wenn das Savegame das nächste Mal geladen wird.
 

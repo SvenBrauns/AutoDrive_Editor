@@ -1,5 +1,10 @@
 # Version history
 
+## Unreleased
+
+- `Edit → Vehicle parking positions…`: the vehicles and implements of the savegame with their shop picture and parking marker, chosen from a searchable marker list. With the companion mod (1.1.0) in the running game, otherwise in `vehicles.xml`
+- Reload in game after Save keeps the vehicles' targets and parking positions on their markers when markers were deleted (needs the companion mod 1.1.0)
+
 ## 2.0.0
 
 Generators build routes, junctions, roads, station lanes, parking spots and bunker silo lanes from the map's data, in a planning mode that applies them as one undo step. With the companion mod `FS25_AutoDriveEditorLink` the editor takes a picture of the map in the running game and reloads saved networks there.

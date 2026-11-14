@@ -23,7 +23,8 @@
   - **Parkplätze** in Hallen und **Spuren in Fahrsilos**, mit Markern, für ein Gebäude oder viele auf einmal.
 - **Planungsmodus.** Mit jedem Werkzeug bearbeiten, dann den Plan als einen Rückgängig-Schritt übernehmen oder verwerfen. Geänderte Nodes sind auf der Karte markiert.
 - **Spielbild.** Der Begleit-Mod zeichnet die Karte im laufenden Spiel von oben: Höfe, Straßen und Gebäude, wie sie wirklich sind, als Hintergrund im Editor.
-- **Neu laden im Spiel.** Mit dem Begleit-Mod [`FS25_AutoDriveEditorLink`](https://github.com/SvenBrauns/FS25_AutoDriveEditorLink/releases/latest) lädt Speichern das Netz im laufenden Spiel neu. Kein Neustart nötig.
+- **Neu laden im Spiel.** Mit dem Begleit-Mod [`FS25_AutoDriveEditorLink`](https://github.com/SvenBrauns/FS25_AutoDriveEditorLink/releases/latest) lädt Speichern das Netz im laufenden Spiel neu. Kein Neustart nötig, und die Fahrzeuge behalten ihre Ziele und Parkpositionen.
+- **Parkpositionen der Fahrzeuge.** Den Parkmarker jedes Fahrzeugs und Anbaugeräts in einer Liste mit Bildern festlegen, im laufenden Spiel oder im Savegame.
 - **Deine Karten, automatisch gefunden.** Ein Savegame oder eine Route aus dem RoutesManager öffnen, und die Karte kommt mit: Kartenbild, Heightmap und Größe werden beim ersten Mal aus dem `mods`-Ordner oder dem Grundspiel importiert.
 - **Zeichnen und Straßen bearbeiten.** Linien, Bézierkurven und Kreisbögen mit gleichmäßigem Node-Abstand, parallele Spuren, Nodes in Connections einfügen, löschen und neu verbinden. Drehen, ausrichten, Höhen aus dem Gelände setzen, ganze Abschnitte kopieren und einfügen.
 - **Suchen.** Marker nach Name oder Gruppe suchen oder per Nummer zu einem Node springen.

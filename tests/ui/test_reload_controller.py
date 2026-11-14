@@ -1,10 +1,12 @@
 """Save on a savegame reloads it in the game, with the companion mod played by the test."""
 
+import xml.etree.ElementTree as ET
 from datetime import datetime
 
 import pytest
 from game_folder_helpers import add_savegame, make_game_folder
 
+from autodrive_editor.editing.commands.markers import AddMarkerCommand, DeleteMarkerCommand
 from autodrive_editor.file_io.autodrive_xml import AutoDriveXmlReader
 from autodrive_editor.game import editor_link
 from autodrive_editor.ui import reload_controller
@@ -123,3 +125,25 @@ def test_no_warning_when_the_game_is_closed(reload_window):
     reload_window.files.save_xml()
 
     assert reload_window.boxes == []
+
+
+def test_reload_tells_the_game_how_its_markers_were_renumbered(reload_window):
+    game_status(reload_window)
+    data = reload_window.project_coordinator.autodrive_data
+    history = reload_window.edit_history
+    history.push(AddMarkerCommand(data, 1, "Hof", "All"))
+    history.push(AddMarkerCommand(data, 2, "Feld", "All"))
+    reload_window.files.save_xml()
+    mod_result(
+        reload_window,
+        '<result format="1" status="done" message="">'
+        '<reload nodes="2" markers="2" groups="1" readSec="0.1" uploadSec="0.1"/></result>',
+    )
+    reload_window.reload._poll()
+
+    history.push(DeleteMarkerCommand(data, 1))
+    reload_window.files.save_xml()
+
+    request = ET.parse(reload_window.link / "request.xml").getroot()
+    markers = [m.attrib for m in request.findall("reload/marker")]
+    assert markers == [{"old": "1", "new": "0"}, {"old": "2", "new": "1"}]

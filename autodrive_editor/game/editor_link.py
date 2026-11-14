@@ -20,6 +20,7 @@ from pathlib import Path
 
 from PIL import Image
 
+from autodrive_editor.file_io.savegame_vehicles import SavegameVehicle
 from autodrive_editor.i18n import tr
 
 LINK_FOLDER = "FS25_AutoDriveEditorLink"
@@ -59,6 +60,8 @@ class CaptureResult:
     message: str = ""
     # Only for a reload request that is done.
     reload: ReloadInfo | None = None
+    # Only for a vehicles request that is done.
+    vehicles: tuple[SavegameVehicle, ...] = ()
 
 
 def link_directory(game_folder_path: Path) -> Path:
@@ -123,12 +126,44 @@ def network_file_name(request_id: int) -> str:
     return f"network_{request_id}.xml"
 
 
-def write_reload_request(directory: Path, request_id: int, map_id: str, savegame: str):
+def write_reload_request(
+    directory: Path,
+    request_id: int,
+    map_id: str,
+    savegame: str,
+    marker_numbers: dict[int, int | None] | None = None,
+):
     """Asks the game to load the network file of the request (written before) instead of its
-    network."""
+    network. marker_numbers (number in the game -> number in the file, None: deleted) lets the
+    mod move the vehicles' targets and parking positions along."""
 
     root = _request(request_id, "reload", map_id, savegame)
-    ET.SubElement(root, "reload", file=network_file_name(request_id))
+    reload = ET.SubElement(root, "reload", file=network_file_name(request_id))
+
+    for old, new in (marker_numbers or {}).items():
+        if new != old:
+            ET.SubElement(reload, "marker", old=str(old), new=str(new or 0))
+
+    _write_atomic(Path(directory) / "request.xml", ET.tostring(root, encoding="unicode"))
+
+
+def write_vehicles_request(directory: Path, request_id: int, map_id: str, savegame: str):
+    """Asks the game for its vehicles and their parking positions."""
+
+    root = _request(request_id, "vehicles", map_id, savegame)
+    _write_atomic(Path(directory) / "request.xml", ET.tostring(root, encoding="unicode"))
+
+
+def write_park_request(
+    directory: Path, request_id: int, map_id: str, savegame: str, parks: dict[str, int | None]
+):
+    """Asks the game to set the parking marker of the vehicles by unique id (None: none)."""
+
+    root = _request(request_id, "park", map_id, savegame)
+    park = ET.SubElement(root, "park")
+
+    for unique_id, marker in parks.items():
+        ET.SubElement(park, "vehicle", uniqueId=unique_id, marker=str(marker or 0))
 
     _write_atomic(Path(directory) / "request.xml", ET.tostring(root, encoding="unicode"))
 
@@ -201,7 +236,22 @@ def read_result(directory: Path, request_id: int) -> CaptureResult | None:
         )
 
     return CaptureResult(
-        root.get("status", "error"), root.get("message", ""), _reload_info(root.find("reload"))
+        root.get("status", "error"),
+        root.get("message", ""),
+        _reload_info(root.find("reload")),
+        tuple(_vehicle(element) for element in root.iter("vehicle")),
+    )
+
+
+def _vehicle(element: ET.Element) -> SavegameVehicle:
+    park = int(element.get("park") or 0)
+    return SavegameVehicle(
+        element.get("uniqueId", ""),
+        element.get("filename", ""),
+        element.get("driverName", ""),
+        element.get("attachedTo", ""),
+        park if park > 0 else None,
+        element.get("name", ""),
     )
 
 
