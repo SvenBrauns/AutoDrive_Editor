@@ -30,6 +30,7 @@ from autodrive_editor.file_io.savegame_buildings import SavegameBuildings, read_
 from autodrive_editor.file_io.savegame_vehicles import (
     read_park_destinations,
     renumber_vehicle_markers,
+    set_park_destinations,
     vehicles_losing_markers,
 )
 from autodrive_editor.i18n import tr
@@ -118,6 +119,9 @@ class ProjectCoordinator(QObject):
         # Markers in the order the running game has them: those of the file it loaded or of the
         # last reload. The reload moves the game's vehicle targets by them.
         self._game_markers = []
+        # Markers the game's vehicles park at after Vehicle parking positions changed them in the
+        # running game, which writes vehicles.xml only on its next save; None: read the file.
+        self._game_parking = None
 
         # vehicles.xml of the loaded savegame. Only saving into that
         # savegame updates it, not saving a copy elsewhere.
@@ -248,6 +252,7 @@ class ProjectCoordinator(QObject):
         self.config_source = source
         self._file_markers = list(data.markers.values())
         self._game_markers = self._file_markers
+        self._game_parking = None
         self._vehicles_path = (
             xml_path.parent / "vehicles.xml" if source.format == ConfigFormat.SAVEGAME else None
         )
@@ -495,15 +500,36 @@ class ProjectCoordinator(QObject):
         too; only markers in the network are drawn."""
 
         numbers = set()
+        markers = list(self.autodrive_data.markers.values()) if self.autodrive_data else []
+
+        if self._game_parking is not None:
+            present = {id(marker) for marker in markers}
+            parked = [m for m in self._game_parking if id(m) in present]
+            self.scene_renderer.set_parking_markers(parked)
+            return
 
         if self._vehicles_path is not None and self._vehicles_path.is_file():
             numbers = read_park_destinations(self._vehicles_path)
 
-        markers = list(self.autodrive_data.markers.values()) if self.autodrive_data else []
         now = self._marker_numbers() if self.autodrive_data else {}
         parked = [m for number, m in enumerate(self._file_markers, start=1) if number in numbers]
         parked += [markers[now[number] - 1] for number in numbers if now.get(number)]
         self.scene_renderer.set_parking_markers({id(m): m for m in parked}.values())
+
+    def show_game_parking(self, numbers: set[int]):
+        """Marks the markers the game's vehicles park at, by their numbers now."""
+
+        markers = list(self.autodrive_data.markers.values())
+        self._game_parking = [markers[n - 1] for n in numbers if 0 < n <= len(markers)]
+        self.show_parking()
+
+    def set_park_destinations(self, parks: dict[str, int | None]):
+        """Writes the parking markers (unique id -> number now) into the savegame's vehicles.xml;
+        the network must be saved, so its numbers are those of the file."""
+
+        self._back_up(self._vehicles_path)
+        set_park_destinations(self._vehicles_path, parks)
+        self.show_parking()
 
     def _show_buildings(self):
         """Shows the sheds and stations of the buildings in the loaded savegame."""

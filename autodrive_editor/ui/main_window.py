@@ -111,6 +111,7 @@ from autodrive_editor.ui.tools.rotate_selection_tool import RotateSelectionTool
 from autodrive_editor.ui.tools.select_tool import SelectTool
 from autodrive_editor.ui.tools.toggle_node_type_tool import ToggleNodeTypeTool
 from autodrive_editor.ui.update_controller import UpdateController
+from autodrive_editor.ui.vehicle_parking_controller import VehicleParkingController
 
 
 class MainWindow(QMainWindow):
@@ -709,6 +710,16 @@ class MainWindow(QMainWindow):
         self.reload = ReloadController(self, self.settings, self.project_coordinator)
         self.files.saved.connect(self.reload.after_save)
 
+        self.vehicle_parking = VehicleParkingController(
+            self,
+            self.settings,
+            self.project_coordinator,
+            self.edit_history,
+            self.files,
+            self.reload,
+            self.picture_capture,
+        )
+
     def _create_planning(self):
         self.planning = PlanningController(
             self,
@@ -1207,6 +1218,7 @@ class MainWindow(QMainWindow):
 
         self.picture_capture.status_changed.connect(self._set_status)
         self.reload.status_changed.connect(self._set_status)
+        self.vehicle_parking.status_changed.connect(self._set_status)
         self.generators.status_changed.connect(self._set_status)
         self.picture_capture.picture_shown.connect(self._show_captured_picture)
         self.picture_capture.running_changed.connect(
