@@ -63,17 +63,25 @@ class ReloadController(QObject):
         status = editor_link.read_status(link)
 
         if status is None or not status.is_fresh(datetime.now()):
-            self._warn_without_mod(source.path)
+            # Without the mod a running game keeps its network; else the game loads this file.
+            if not self._warn_without_mod(source.path):
+                self.project_coordinator.game_has_network()
             return
 
         if not check_game(link, savegame)[0]:
+            self.project_coordinator.game_has_network()
             return
 
         self._send(link, savegame)
 
-    def _warn_without_mod(self, path: Path):
-        if path in self.warned_paths or not game_is_running():
-            return
+    def _warn_without_mod(self, path: Path) -> bool:
+        """Whether the game runs; warns once per savegame."""
+
+        if not game_is_running():
+            return False
+
+        if path in self.warned_paths:
+            return True
 
         self.warned_paths.add(path)
         self._inform(
@@ -84,6 +92,7 @@ class ReloadController(QObject):
                 "install the mod."
             )
         )
+        return True
 
     def _send(self, link: Path, savegame):
         data = self.project_coordinator.autodrive_data
@@ -92,7 +101,11 @@ class ReloadController(QObject):
         editor_link.clean_up(link)
         write_route_export(data, link / editor_link.network_file_name(self.request_id))
         editor_link.write_reload_request(
-            link, self.request_id, savegame.map_id, str(savegame.number)
+            link,
+            self.request_id,
+            savegame.map_id,
+            str(savegame.number),
+            self.project_coordinator.game_marker_numbers(),
         )
 
         self.status_changed.emit(tr("Saved · reloading in game…"))
@@ -116,6 +129,7 @@ class ReloadController(QObject):
         elif result.status != "done" or result.reload is None:
             self._not_reloaded(result.message)
         else:
+            self.project_coordinator.game_has_network()
             self.status_changed.emit(
                 tr(
                     "Saved · reloaded in game ({nodes} nodes, {seconds} s)",
