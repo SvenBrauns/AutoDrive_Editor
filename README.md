@@ -23,7 +23,8 @@ Edit [AutoDrive](https://github.com/Stephan-S/FS25_AutoDrive) route networks for
   - **Parking spots** in sheds and **lanes in bunker silos**, with markers, for one building or many at once.
 - **Planning mode.** Edit with every tool, then apply the plan as one undo step or throw it away. Changed nodes are marked on the map.
 - **Game picture.** The companion mod renders the map from above in the running game: your yards, roads and buildings as they really are, as the editor's background.
-- **Reload in the game.** With the companion mod [`FS25_AutoDriveEditorLink`](https://github.com/SvenBrauns/FS25_AutoDriveEditorLink/releases/latest), Save reloads the network in the running game. No restart needed.
+- **Reload in the game.** With the companion mod [`FS25_AutoDriveEditorLink`](https://github.com/SvenBrauns/FS25_AutoDriveEditorLink/releases/latest), Save reloads the network in the running game. No restart needed, and vehicles keep their targets and parking positions.
+- **Vehicle parking positions.** Set the parking marker of every vehicle and implement in a list with their pictures, in the running game or in the savegame.
 - **Your maps, found automatically.** Open a savegame or a RoutesManager route and its map comes with it: map image, heightmap and size are imported from your `mods` folder or the base game the first time.
 - **Drawing and road editing.** Lines, Bézier curves and arcs with even node spacing, parallel lanes, inserting nodes into connections, deleting with reconnect. Rotate, align, set heights from the terrain, copy and paste whole sections.
 - **Find.** Search markers by name or group, or jump to a node by its number.

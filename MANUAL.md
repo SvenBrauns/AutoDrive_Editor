@@ -167,6 +167,15 @@ Press `M` and click a node to add a marker, with a name and a group. A new group
 - **Move** (`Ctrl+M`): move the marker to another node.
 - **Delete** (`Ctrl+Shift+M`).
 
+### Vehicle parking positions
+
+`Edit → Vehicle parking positions…` lists the vehicles and implements of the open savegame with their shop picture, what they are attached to, and their parking marker. Pick a marker in a row's dropdown, or type into it to search the markers; `(none)` removes the parking position. Trains and pallets are not listed; DLC vehicles have no picture.
+
+- **Game running this savegame with the [Companion mod](#companion-mod):** the list comes from the game, and OK sets the parking positions there at once. The game writes them into the savegame when it saves.
+- **Otherwise:** the list comes from the savegame's `vehicles.xml`, and OK writes it there.
+
+Parking positions are marker numbers of the saved network, so with unsaved changes the editor asks to save first.
+
 ### Measuring
 
 Press `D` (Distance) or `Shift+D` (Angle), then click point A and point B (a node or free ground). Drag a point to move it. `Align view to line` rotates the view along the line. `Esc` with nothing to clear returns to the tool used before.
@@ -434,10 +443,11 @@ The building files are read from the game and the mods folder; buildings whose f
 
 ## Companion mod
 
-The editor works without any mod. The small companion mod **FS25_AutoDriveEditorLink** connects it to the running game and adds two things:
+The editor works without any mod. The small companion mod **FS25_AutoDriveEditorLink** connects it to the running game and adds three things:
 
 - **Game picture**: the game renders the map from above, and the editor shows it as its background. See [Game picture](#game-picture).
-- **Reload on save**: when you save the savegame that is running in the game, AutoDrive drives on the new network right away. Without the mod, the game keeps its old network and overwrites your changes the next time it saves.
+- **Reload on save**: when you save the savegame that is running in the game, AutoDrive drives on the new network right away, and the vehicles keep their targets and parking positions even when markers were deleted. Without the mod, the game keeps its old network and overwrites your changes the next time it saves.
+- **Vehicle parking positions** are read from and set in the running game. See [Vehicle parking positions](#vehicle-parking-positions).
 
 ### Install
 
@@ -485,7 +495,7 @@ Saving runs the check first. If it finds problems that aren't ignored, the dock 
 
 **Saving a savegame** writes its `AutoDrive_config.xml` and updates the marker targets of its vehicles in `vehicles.xml`. If vehicles have a deleted marker as target, the editor lists them and asks first; saving sets their target to marker 1 and removes a parking target. Then:
 
-- **Game running this savegame with the companion mod:** the network is reloaded in the game, and the status bar shows `Saved · reloaded in game`. Network edits made in the game since the file was opened are replaced. If the game reports an error or doesn't answer within 30 seconds, a message says the file is saved but not reloaded.
+- **Game running this savegame with the companion mod:** the network is reloaded in the game, and the status bar shows `Saved · reloaded in game`. The vehicles in the game keep their targets and parking positions; a deleted target becomes marker 1, a deleted parking position is removed. Network edits made in the game since the file was opened are replaced. If the game reports an error or doesn't answer within 30 seconds, a message says the file is saved but not reloaded.
 - **Game running without the mod:** a warning says the game will overwrite the file on its next save. Exit the game without saving, or install the [Companion mod](#companion-mod).
 - **Game closed:** the new network is there the next time the savegame is loaded.
 
