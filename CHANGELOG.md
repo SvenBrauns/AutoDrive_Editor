@@ -1,6 +1,6 @@
 # Version history
 
-## Unreleased
+## 2.1.0
 
 - `Edit → Vehicle parking positions…`: the vehicles and implements of the savegame with their shop picture and parking marker, chosen from a searchable marker list. With the companion mod (1.1.0) in the running game, otherwise in `vehicles.xml`
 - Reload in game after Save keeps the vehicles' targets and parking positions on their markers when markers were deleted (needs the companion mod 1.1.0)
